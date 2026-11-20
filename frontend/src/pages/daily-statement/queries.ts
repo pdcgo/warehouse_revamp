@@ -94,9 +94,21 @@ const RETURN_COD_FEE = LiabilitySourceType.RETURN_INCIDENTAL_FEE;
 // The same courier money on a warehouse transfer's accept (a-transfer-charge-is-a-transfer-fee), keyed by the transfer.
 const TRANSFER_COD_FEE = LiabilitySourceType.TRANSFER_FEE;
 
-/** What the couriers asked at the door, a restock's, a return's and a transfer's together — the statement's one courier column. */
+// …and the courier the warehouse paid at a custom shipment's handover, *Gudang bayar* (the-courier-is-paid-by-the-team-or-
+// by-the-warehouse: *as a restock's courier charge*), keyed by the parcel (backlog #88 P4).
+const CUSTOM_SHIPMENT_COD_FEE = LiabilitySourceType.CUSTOM_SHIPMENT_FEE;
+
+/**
+ * What the couriers asked, a restock's, a return's, a transfer's and a custom shipment's together — the statement's one
+ * courier column.
+ */
 export function courierAsks(bySource: { [source: number]: number } | undefined): number {
-  return (bySource?.[COD_FEE] ?? 0) + (bySource?.[RETURN_COD_FEE] ?? 0) + (bySource?.[TRANSFER_COD_FEE] ?? 0);
+  return (
+    (bySource?.[COD_FEE] ?? 0) +
+    (bySource?.[RETURN_COD_FEE] ?? 0) +
+    (bySource?.[TRANSFER_COD_FEE] ?? 0) +
+    (bySource?.[CUSTOM_SHIPMENT_COD_FEE] ?? 0)
+  );
 }
 
 // The grain on the wire — the server's names for the three resolutions.

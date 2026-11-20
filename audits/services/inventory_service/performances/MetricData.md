@@ -14,6 +14,10 @@ this host's 128 MB of shared buffers:
 One finding was fixed in the build by a pure index (finding 0, ✅ applied). Nothing else is applied: the two open ones
 are a read-cost-vs-write-path trade-off for the owner.
 
+**#85 (2026-11-19):** Restock widened before the accept (ordered, lost on the way, the courier's COD) is still ONE
+statement per read; same seed before → after within run-to-run noise, the root headline included — nothing added, no
+index, no rollup ([below](#restock-before-the-accept--85-2026-11-19)).
+
 **Measured:** 2026-11-12 · `inventory_service/inventory_v1/inventory_metric_{shared,restock,return,transfer,ready}.go`
 via `MetricSearch` / `MetricData` (`lost_metric_search.go`, `lost_metric_data.go` dispatch) · warm, 5 runs, medians, a
 clean `warehouse_test` (dead rows vacuumed) · [`inventory_metric_perf_test.go`](../../../../backend/services/inventory_service/inventory_v1/inventory_metric_perf_test.go)
@@ -121,6 +125,58 @@ the order take's included, so it is a write-path cost the standing OK does not c
 
 ---
 
+## Restock before the accept — #85, 2026-11-19
+
+Restock also reads ordered, lost on the way and the courier's COD (`ordered_count`, `ordered_value`, `lost_count`,
+`lost_value`, `cod_amount`) off its door rows — five more columns on the door side of the SAME one statement
+(`doorMovementSource`; the change side reads them as 0) — and every restock create, edit, cancel, mark lost and sign
+from lost now writes door rows (`00056`,
+[rpc.md](../../../../docs/services/inventory_service/rpc.md#restock-before-the-accept--ordered-lost-on-the-way-and-the-couriers-cod-built-2026-11-19-backlog-85)).
+Measured on a vacuumed `warehouse_test` — the seeded tables `VACUUM`ed before every process: the build's first AFTER ran
+three processes back to back and read through 285 MB of their dead rows — 5 runs, medians.
+
+**Same seed, before → after** — `TestPerf_InventoryMetrics` (the background above, 18 250 door rows); BEFORE is HEAD
+`d21a2710` in a throwaway worktree, AFTER the build:
+
+| Restock read | queries | before | after | |
+| --- | --- | --- | --- | --- |
+| search — warehouse, by product, 365 days | 1 → 1 | 19.2 ms | 23.4 ms | DB 10.6 → 11.0 ms; Go 8.6 → 12.1 ms: ≈ 9 000 keys of nine fields instead of four |
+| search — seller, by day, 30 days | 1 → 1 | 1.9 ms | 1.7 ms | |
+| data — seller, 20 products, 365 days | 1 → 1 | 5.3 ms | 4.6 ms | |
+| data — **root, headline, 365 days** | 1 → 1 | 445 ms | 377 ms | finding 2's scan; the door side 3.4–4.5 ms of it in both |
+
+**The door report at the new volume** — `TestPerf_RestockMetric`
+([restock_metric_perf_test.go](../../../../backend/services/inventory_service/inventory_v1/restock_metric_perf_test.go)):
+the same background plus a door row per line per restock write, 600 a day × 365 (ordered — an edit or a cancel
+negative —, now and then lost, a COD on a fifth): 18 250 → 237 250 door rows. The build's code in both columns
+(`PERF_RESTOCK_OLD_DOOR=1` seeds the old volume):
+
+| Restock read | queries | 18 250 door rows | 237 250 door rows |
+| --- | --- | --- | --- |
+| search — warehouse, by product, 365 days | 1 | 32.8 ms | 64.0 ms (DB 29, Go 38: ≈ 10 000 keys) |
+| search — seller, by day, 30 days | 1 | 2.1 ms | 2.9 ms |
+| data — seller, 20 products, 365 days | 1 | 4.4 ms | 8.6 ms |
+| data — warehouse, 30 days | 1 | 4.3 ms | 4.5 ms |
+| data — warehouse, headline, 365 days | 1 | 8.0 ms | 16.9 ms |
+| data — **root, headline, 365 days** | 1 | 479 ms | 624 ms (the door's seq scan 4.5 → 73 ms; the rest is the change rows' scan) |
+
+**The root headline's +10 % (455 → 501 ms in the build's first run) needs nothing.** It was the dirty database, not the
+change: on the vacuumed one the same pair reads 445 → 377 ms. The read is finding 2's parallel seq scan of the year's
+change rows — page I/O that swings ±15 % run to run — and the five door columns cost ≈ 0 of it at today's door volume.
+**No index is added**: [a-pure-index-is-added-without-asking](../../../../docs/technical/architecture/context_decision.md#a-pure-index-is-added-without-asking)
+needs a measured gain and there is none — root reads every restock row of the year, so a seq scan is the right plan; a
+reader's read keeps its `(warehouse_id | team_id, day)` bitmap scans on the door table, and `source` is `restock` on nearly
+every door row, so an index on it would filter nothing. A rollup or a rewrite for root's year stays finding 2's open
+question — not built.
+
+**The writes:** a restock create, edit, cancel, mark lost and sign from lost each add ONE statement — the door upsert,
+the transaction's last, one per thousand keys; an edit that changes nothing and an ordinary sign add none (the no-op
+edit pinned by `ctid` in `TestRestockBeforeAccept_AnEditsDifferenceByProduct`). The accept's COD rides in the door upsert
+its broken / missing already write, or is that upsert when the door found neither. Not timed — one multi-row upsert of a
+restock's few lines.
+
+---
+
 ## Not measured
 
 - a production network and buffer size: here each round trip is ~0.5 ms (Docker on Windows) and shared buffers are
@@ -146,3 +202,4 @@ the order take's included, so it is a write-path cost the standing OK does not c
 | --- | --- | --- | --- |
 | 2026-11-12 | 1 255 ms (the first seed) | 126–132 ms (the first seed) | first probe — the movement reads 1.4–1.6 s on `(…, day)` indexes |
 | 2026-11-12 | 607 ms | 311–332 ms | `(…, day, change_type)` reader indexes (finding 0); the seed fixed so every warehouse and seller has every change type |
+| 2026-11-19 | — | Restock 445 → 377 ms (vacuumed, same seed) | #85: Restock reads ordered, lost on the way and the COD off its door rows (`00056`) — still 1 statement; door report +219 000 rows a year at the probe's volume (root 479 → 624 ms); nothing added |

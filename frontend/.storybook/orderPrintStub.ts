@@ -5,7 +5,8 @@
 //   team — in the asked order, each with its step (the story's scenario, returnAcceptStub), shop (orderShopStub), ref,
 //   courier, resi, and whether a label is attached: the fixture's file, or one a story lends it through
 //   `orderLabelScenario.labelled` — the same test OrderLabels' stub makes, so the page names before the print exactly the
-//   orders the print leaves out for want of a label. Another building's order, or no such order, is absent. Never money.
+//   orders the print leaves out for want of a label — and Cetak ulang label (reprintLabelScenario.ts). Another building's
+//   order, or no such order, is absent. Never money.
 //
 // What it received is recorded in sessionScenario's `orderPrintScenario` for the stories to assert.
 
@@ -14,6 +15,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import type { OrderPrintByIdsRequest } from "../src/gen/warehouse/selling/v1/order_pb";
 import { orderDetailFor } from "./fixtures";
 import { shopOf } from "./orderShopStub";
+import { reprintLabelOf } from "./reprintLabelScenario";
 import { scenarioStatus } from "./returnAcceptStub";
 import { orderLabelScenario, orderPrintScenario } from "./sessionScenario";
 
@@ -45,6 +47,8 @@ export function orderPrintByIds(req: OrderPrintByIdsRequest) {
         shipmentChannelId: order.shipmentChannelId,
         receiptCode: order.receiptCode,
         hasLabel: Boolean(order.receipt?.documentId) || orderLabelScenario.labelled.includes(orderId),
+        // Cetak ulang label — marked under its label until the print page's Print records it (reprintLabelScenario.ts).
+        reprintLabel: reprintLabelOf(orderId, read.status),
       },
     ];
   });

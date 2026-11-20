@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { customShipmentCalls } from "../../../.storybook/customShipmentStory";
-import { PHONE, SELLING_META, pickAccount, sellingAt, typeInto } from "../../features/customShipment/storyKit";
+import { customShipmentScenario, customShipmentWrites } from "../../../.storybook/customShipmentScenario";
+import { PHONE, SELLING_META, clearToasts, pickAccount, sellingAt, typeInto } from "../../features/customShipment/storyKit";
 import { fitsTheScreen } from "../../features/warehouseTransfer/storyPhone";
 
-// ⚠ PROTOTYPE (backlog #88) — ONE PARCEL AS ITS OWNER READS IT, Toko Melati (12) as Eko: the parcel, the goods with the
-// sample's value, the team's acts in the header and the TRAIL — Diminta → Diambil → Diserahkan, or Dibatalkan.
+// ONE PARCEL AS ITS OWNER READS IT, Toko Melati (12), live through the stub transport (CustomShipmentDetail as the
+// owning team): the parcel, the goods with the sample's value, the team's acts in the header (CustomShipmentCostSet,
+// CustomShipmentCancel) and the TRAIL — Diminta → Diambil → Diserahkan, or Dibatalkan.
 //
 //   804  sample, handed over, Gudang bayar Rp 12.000 + resi — the whole trail
 //   801  sample, requested, Gudang bayar — Batalkan
@@ -42,6 +43,8 @@ const steps = (canvasElement: HTMLElement) =>
   Array.from(within(canvasElement).getByTestId("custom-shipment-timeline").querySelectorAll("[data-kind]")).map((row) =>
     row.getAttribute("data-kind"),
   );
+
+const writes = () => customShipmentWrites().map((c) => ({ rpc: c.rpc, ...c.req }));
 
 // A PARCEL THAT IS DONE: handed over by Gudang Pusat, the courier paid by the warehouse and owed back through Team Balance,
 // its resi; the goods with what they were worth; the trail requested → picked → handed over, nothing left to wait for, and
@@ -89,14 +92,33 @@ export const CancelWhileRequested: Story = {
     await userEvent.click(screen.getByTestId("confirm-action"));
 
     await waitFor(() => expect(canvas.getByTestId("custom-shipment-detail-status")).toHaveTextContent("Cancelled"));
-    await expect(customShipmentCalls).toEqual([{ rpc: "CustomShipmentCancel", id: 801n }]);
+    await expect(writes()).toEqual([expect.objectContaining({ rpc: "CustomShipmentCancel", teamId: 12n, id: 801n })]);
     await expect(steps(canvasElement)).toEqual(["created", "status"]);
     await expect(canvas.queryByTestId("custom-shipment-action-cancel-801")).toBeNull();
   },
 };
 
+// A REFUSED CANCEL SAYS WHY — the warehouse picked it meanwhile: the server's sentence in the toast, and the page re-reads
+// the parcel as it now is.
+export const ARefusedCancelSaysWhy: Story = {
+  name: "A refused cancel says why",
+  render: () => <At801 />,
+  play: async ({ canvasElement }) => {
+    clearToasts();
+    const canvas = await opened(canvasElement);
+
+    customShipmentScenario.refuseNext = { rpc: "CustomShipmentCancel", message: "only a requested parcel can be cancelled" };
+    await userEvent.click(canvas.getByTestId("custom-shipment-action-cancel-801"));
+    await userEvent.click(await screen.findByTestId("confirm-action"));
+
+    await expect(await screen.findByText("Not allowed in this status")).toBeVisible();
+    await expect(await screen.findByText("only a requested parcel can be cancelled")).toBeVisible();
+    await expect(canvas.getByTestId("custom-shipment-detail-status")).toHaveTextContent("Requested");
+  },
+};
+
 // NO CANCEL ONCE PICKED — the goods are in the basket (no-cancel-after-the-warehouse-confirms' reason). *Kami bayar*:
-// Ubah Ongkir, until the handover — the account and the cost; the trail keeps the edit as its own row.
+// Ubah Ongkir, until the handover — the account and the cost; the trail keeps the edit as its own row, with what moved.
 export const WePayEditsTheCostUntilHandover: Story = {
   name: "We pay edits the cost until handover",
   render: () => <At802 />,
@@ -115,8 +137,8 @@ export const WePayEditsTheCostUntilHandover: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("custom-shipment-detail-ongkir")).toHaveTextContent("Rp 21.000"));
     await waitFor(() => expect(canvas.getByTestId("custom-shipment-detail-account")).toHaveTextContent("BCA Gaji"));
-    await expect(customShipmentCalls).toEqual([
-      { rpc: "CustomShipmentCostSet", id: 802n, financeAccountId: BCA_GAJI, shippingCost: 21000 },
+    await expect(writes()).toEqual([
+      expect.objectContaining({ rpc: "CustomShipmentCostSet", teamId: 12n, id: 802n, financeAccountId: BCA_GAJI, shippingCost: 21000 }),
     ]);
     await expect(steps(canvasElement)).toEqual(["created", "status", "edit"]);
     await expect(canvas.getByTestId("custom-shipment-timeline")).toHaveTextContent("Rp 18.000 → Rp 21.000");
@@ -124,7 +146,7 @@ export const WePayEditsTheCostUntilHandover: Story = {
 };
 
 // A RESHIP, DONE: from restock 510 to its supplier, the team paying the courier — the trail keeps the cost edit made while
-// it was picked; no value (it took nothing from a rack).
+// it was picked, its amounts the team's own; no value (it took nothing from a rack).
 export const AReshipHandedOver: Story = {
   name: "A reship handed over",
   render: () => <At805 />,
@@ -135,6 +157,7 @@ export const AReshipHandedOver: Story = {
     await expect(canvas.getByTestId("custom-shipment-detail-recipient")).toHaveTextContent("PT Banyak Toko");
     await expect(canvas.queryByTestId("custom-shipment-value-73")).toBeNull();
     await expect(steps(canvasElement)).toEqual(["created", "status", "edit", "status"]);
+    await expect(canvas.getByTestId("custom-shipment-timeline")).toHaveTextContent("Rp 0 → Rp 22.000");
     await expect(canvas.getByTestId("custom-shipment-timeline")).toHaveTextContent("The courier is paid by us");
   },
 };
@@ -150,22 +173,11 @@ export const Cancelled: Story = {
   },
 };
 
-// ANOTHER TEAM'S PARCEL reads as not found — 807 is Toko Kenanga's.
+// ANOTHER TEAM'S PARCEL reads as not found — 807 is Toko Kenanga's (the server answers NotFound).
 export const AnotherTeamsParcelIsNotFound: Story = {
   name: "Another team's parcel is not found",
   render: () => <At807 />,
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByTestId("custom-shipment-not-found")).toBeVisible();
-  },
-};
-
-export const Live: Story = {
-  name: "Live · not available",
-  parameters: { live: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    await expect(await canvas.findByTestId("custom-shipment-unavailable")).toBeVisible();
-    await expect(canvas.queryByTestId("custom-shipment-detail-page")).toBeNull();
+    await expect(await within(canvasElement).findByTestId("custom-shipment-not-found", {}, { timeout: 4000 })).toBeVisible();
   },
 };

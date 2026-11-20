@@ -21,6 +21,8 @@ import { CourierCounts } from "./CourierCounts";
 //
 // Rules the owner gave, each a line below:
 //   • a parcel at another step is marked as an ERROR, with the wrong sound
+//   • a parcel still marked Cetak ulang label is NOT handed over — *Cetak ulang label dulu*, the wrong sound
+//     (a-parcel-marked-for-reprint-is-not-handed-over); the server refuses its move from every door too
 //   • the same label scanned twice is not added twice — only the fulfilled sound
 //   • the mass button is off while the list holds no parcel that can be handed over
 //   • no proof or manifest is printed
@@ -32,7 +34,8 @@ import { CourierCounts } from "./CourierCounts";
 // hands NONE over — each is shown and the crew asks the selling team or the warehouse admin
 // (two-orders-on-one-label-are-shown-not-chosen); a cancelled one is skipped, so a live order beside its cancelled twin is
 // handed over as the only one.
-type EntryState = "ready" | "wrongStep" | "notFound" | "several" | "handedOver" | "failed";
+// `reprint` — the label changed after it was printed (the read's `reprint_label`): print the new one first.
+type EntryState = "ready" | "wrongStep" | "notFound" | "several" | "handedOver" | "failed" | "reprint";
 
 interface Entry {
   code: string;
@@ -51,6 +54,7 @@ const STATE_PALETTE: Record<EntryState, string> = {
   notFound: "error",
   several: "warning",
   failed: "error",
+  reprint: "warning",
 };
 
 export function HandoverScanDialog({
@@ -136,6 +140,15 @@ export function HandoverScanDialog({
         { code, order, state: "wrongStep", stepKey: step ? stepLabelKey(step) : undefined },
         ...prev,
       ]);
+      return;
+    }
+
+    // CETAK ULANG LABEL DULU (a-parcel-marked-for-reprint-is-not-handed-over): a parcel still carrying its old label stays —
+    // the wrong sound, as a parcel at another step. The server refuses the move too, so a mark set after this read still
+    // keeps it back (the move then answers refused).
+    if (order.reprintLabel) {
+      beep("wrong");
+      setEntries((prev) => [{ code, order, state: "reprint" }, ...prev]);
       return;
     }
 
@@ -236,10 +249,17 @@ export function HandoverScanDialog({
                           <Badge colorPalette={STATE_PALETTE[entry.state]} variant="subtle">
                             {entry.state === "wrongStep"
                               ? t("warehouseOrders.handover.wrongStep", { step: entry.stepKey ? t(entry.stepKey) : "—" })
-                              : t(`warehouseOrders.handover.${entry.state}`)}
+                              : entry.state === "reprint"
+                                ? t("orders.reprintLabel.handover")
+                                : t(`warehouseOrders.handover.${entry.state}`)}
                           </Badge>
                         </Flex>
                         {/* Which orders the label is — the crew asks which one ships (two-orders-on-one-label-are-shown-not-chosen). */}
+                        {entry.state === "reprint" && entry.order && (
+                          <Text fontSize="xs" color="fg.muted" data-testid={`handover-reprint-${entry.code}`}>
+                            {t("orders.reprintLabel.handoverHint", { id: String(entry.order.id) })}
+                          </Text>
+                        )}
                         {entry.several && (
                           <Text fontSize="xs" color="fg.muted" data-testid={`handover-several-${entry.code}`}>
                             {t("warehouseOrders.handover.severalHint", {

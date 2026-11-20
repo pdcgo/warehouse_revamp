@@ -3,8 +3,9 @@
 //
 //   OrderPickLines      1–50 unique ids (InvalidArgument otherwise); the orders that SHIP FROM the asking warehouse — any,
 //                       for the root team — in the asked order, with their take (`pickTransactionOf`), status (the
-//                       story's scenario, returnAcceptStub), shop (orderShopStub) and lines (OrderDetail's items), never
-//                       money. Another building's order, or no such order, is absent.
+//                       story's scenario, returnAcceptStub), shop (orderShopStub), lines (OrderDetail's items) and
+//                       Cetak ulang label (reprintLabelScenario.ts), never money. Another building's order, or no such
+//                       order, is absent.
 //   StockPickLocations  one take (`transactionId`, the single pick page — answered as before) or 1–50 (`transactionIds`),
 //                       exactly one of the two; a take of another building adds nothing; each stop names its take.
 //
@@ -17,6 +18,7 @@ import type { OrderPickLinesRequest } from "../src/gen/warehouse/selling/v1/orde
 import { bulkPickScenario } from "./bulkPickScenario";
 import { PICK_TX_BASE, orderDetailFor, orders, pickLocationsByTransaction, pickLocationsFor } from "./fixtures";
 import { shopOf } from "./orderShopStub";
+import { reprintLabelOf } from "./reprintLabelScenario";
 import { scenarioStatus } from "./returnAcceptStub";
 
 /** The cap of both reads — the warehouse list's largest page. */
@@ -55,6 +57,8 @@ export function orderPickLines(req: OrderPickLinesRequest) {
         orderExternalRefId: fixture.orderExternalRefId ?? "",
         shipmentChannelId: fixture.shipmentChannelId,
         receiptCode: fixture.receiptCode,
+        // Cetak ulang label — the order block's badge (reprintLabelScenario.ts).
+        reprintLabel: reprintLabelOf(id, scenarioStatus(fixture).status),
         lines: detail.items.map((item) => ({
           productId: item.productId,
           productCode: item.productCode,

@@ -291,7 +291,11 @@ test.describe("warehouse:owner wants to lift a team's own limit (team limit · d
     await openTerms(page, ground.seller);
     await expect(page.getByTestId("terms-panel-meter")).toContainText(`of ${rp(OWN_LIMIT)}`);
     await expect(page.getByTestId("terms-inherited")).toHaveCount(0);
-    const before = await (await historyRows(page)).count();
+    // The history table fills after its own read: wait for the logged change before counting (a bare count() read 0
+    // once, in the 20261119-205254 affected run, while the rows were still on their way).
+    const logged = await historyRows(page);
+    await expect(logged).not.toHaveCount(0);
+    const before = await logged.count();
     expect(before).toBeGreaterThanOrEqual(1);
     await page.getByTestId("liability-detail-tab-terms").click();
 

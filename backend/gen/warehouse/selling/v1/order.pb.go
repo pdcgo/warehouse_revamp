@@ -1318,9 +1318,22 @@ type Order struct {
 	// THE PLACEMENT WAS AN OVERRIDE — the person in `created_by_user_id` is Root or the System Administrator and placed it inside a team they hold no role in (an-override-is-stamped-in-every-service);
 	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
 	// From `orders.is_override`, set at placement and never updated.
-	IsOverride    bool `protobuf:"varint,39,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	IsOverride bool `protobuf:"varint,39,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	// CETAK ULANG LABEL (a-changed-label-asks-the-warehouse-to-reprint): the seller changed the resi or the label file
+	// (OrderReceiptUpdate) AFTER the warehouse last printed this order's label on the print page (OrderLabels with
+	// `record_print`), and the parcel is still in the building — pending, processed or picked. True until the label is
+	// printed again. Computed from two stamps on the row:
+	//
+	//	label_printed_at IS NOT NULL AND receipt_changed_at > label_printed_at AND status IN (pending, processed, picked)
+	//
+	// A change before any print marks nothing (the first print takes the new label), and nothing is marked from shipping
+	// on. A marked order is not handed over (a-parcel-marked-for-reprint-is-not-handed-over).
+	ReprintLabel bool `protobuf:"varint,40,opt,name=reprint_label,json=reprintLabel,proto3" json:"reprint_label,omitempty"`
+	// WHEN THE WAREHOUSE LAST PRINTED ITS LABEL on the print page (`orders.label_printed_at`); 0 = never. The seller's
+	// Edit Resi reads it to say a change asks the warehouse to print again. The order page's label viewer is not a print.
+	LabelPrintedAtUnix int64 `protobuf:"varint,41,opt,name=label_printed_at_unix,json=labelPrintedAtUnix,proto3" json:"label_printed_at_unix,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Order) Reset() {
@@ -1575,6 +1588,20 @@ func (x *Order) GetIsOverride() bool {
 		return x.IsOverride
 	}
 	return false
+}
+
+func (x *Order) GetReprintLabel() bool {
+	if x != nil {
+		return x.ReprintLabel
+	}
+	return false
+}
+
+func (x *Order) GetLabelPrintedAtUnix() int64 {
+	if x != nil {
+		return x.LabelPrintedAtUnix
+	}
+	return 0
 }
 
 type OrderCreateRequest struct {
@@ -1999,7 +2026,10 @@ type OrderListFilter struct {
 	// The warehouse list's Returns tab is `return` and `return_completed` together — the parcels on their way back and the
 	// ones accepted (the-warehouse-list-has-a-returns-tab). NOT mirrored on OrderStatFilter, for the reason `status` is
 	// not: the stat groups by status, and the tab's count is the sum of its statuses' counts.
-	Statuses      []OrderStatus `protobuf:"varint,15,rep,packed,name=statuses,proto3,enum=warehouse.selling.v1.OrderStatus" json:"statuses,omitempty"`
+	Statuses []OrderStatus `protobuf:"varint,15,rep,packed,name=statuses,proto3,enum=warehouse.selling.v1.OrderStatus" json:"statuses,omitempty"`
+	// PERLU CETAK ULANG (the-reprint-label-prototype-is-accepted): only the orders marked `Order.reprint_label` — the
+	// rule written there. false = no filter. Mirrored on OrderStatFilter, so the tabs count the same set.
+	ReprintLabel  bool `protobuf:"varint,16,opt,name=reprint_label,json=reprintLabel,proto3" json:"reprint_label,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2130,6 +2160,13 @@ func (x *OrderListFilter) GetStatuses() []OrderStatus {
 		return x.Statuses
 	}
 	return nil
+}
+
+func (x *OrderListFilter) GetReprintLabel() bool {
+	if x != nil {
+		return x.ReprintLabel
+	}
+	return false
 }
 
 type OrderListFilterSort struct {
@@ -4557,8 +4594,10 @@ type OrderStatFilter struct {
 	DateField OrderDateField `protobuf:"varint,11,opt,name=date_field,json=dateField,proto3,enum=warehouse.selling.v1.OrderDateField" json:"date_field,omitempty"`
 	// Only orders whose settlement account has not opened, as on OrderListFilter.
 	SettlementNotOpened bool `protobuf:"varint,12,opt,name=settlement_not_opened,json=settlementNotOpened,proto3" json:"settlement_not_opened,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Only the orders marked Cetak ulang label, as on OrderListFilter.
+	ReprintLabel  bool `protobuf:"varint,14,opt,name=reprint_label,json=reprintLabel,proto3" json:"reprint_label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *OrderStatFilter) Reset() {
@@ -4671,6 +4710,13 @@ func (x *OrderStatFilter) GetDateField() OrderDateField {
 func (x *OrderStatFilter) GetSettlementNotOpened() bool {
 	if x != nil {
 		return x.SettlementNotOpened
+	}
+	return false
+}
+
+func (x *OrderStatFilter) GetReprintLabel() bool {
+	if x != nil {
+		return x.ReprintLabel
 	}
 	return false
 }
@@ -5771,8 +5817,13 @@ type OrderLabelsRequest struct {
 	// never the caller's. Off (the default), the labels print as they are. On, even ONE id is merged and stored like
 	// several, so its one page carries the sentence too.
 	UnboxingWarning bool `protobuf:"varint,3,opt,name=unboxing_warning,json=unboxingWarning,proto3" json:"unboxing_warning,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// THIS IS THE PRINT PAGE'S PRINT (a-changed-label-asks-the-warehouse-to-reprint): stamp `orders.label_printed_at` on
+	// every order whose label the answer INCLUDES — what clears its Cetak ulang label. An order left out (no label,
+	// unreadable) keeps its mark. Off (the default) is the order page's label viewer, which looks and records nothing. The
+	// stamp moves no status and writes no timeline row (a reprint keeps its step); it records what the crew holds.
+	RecordPrint   bool `protobuf:"varint,4,opt,name=record_print,json=recordPrint,proto3" json:"record_print,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *OrderLabelsRequest) Reset() {
@@ -5822,6 +5873,13 @@ func (x *OrderLabelsRequest) GetOrderIds() []uint64 {
 func (x *OrderLabelsRequest) GetUnboxingWarning() bool {
 	if x != nil {
 		return x.UnboxingWarning
+	}
+	return false
+}
+
+func (x *OrderLabelsRequest) GetRecordPrint() bool {
+	if x != nil {
+		return x.RecordPrint
 	}
 	return false
 }
@@ -6089,8 +6147,10 @@ type OrderPick struct {
 	OrderExternalRefId string      `protobuf:"bytes,5,opt,name=order_external_ref_id,json=orderExternalRefId,proto3" json:"order_external_ref_id,omitempty"`
 	ShipmentChannelId  uint64      `protobuf:"varint,6,opt,name=shipment_channel_id,json=shipmentChannelId,proto3" json:"shipment_channel_id,omitempty"`
 	// The resi; "" when nobody recorded one.
-	ReceiptCode   string           `protobuf:"bytes,7,opt,name=receipt_code,json=receiptCode,proto3" json:"receipt_code,omitempty"`
-	Lines         []*OrderPickLine `protobuf:"bytes,8,rep,name=lines,proto3" json:"lines,omitempty"`
+	ReceiptCode string           `protobuf:"bytes,7,opt,name=receipt_code,json=receiptCode,proto3" json:"receipt_code,omitempty"`
+	Lines       []*OrderPickLine `protobuf:"bytes,8,rep,name=lines,proto3" json:"lines,omitempty"`
+	// Cetak ulang label — the rule on Order.reprint_label; the Daftar Ambil order block carries the badge.
+	ReprintLabel  bool `protobuf:"varint,9,opt,name=reprint_label,json=reprintLabel,proto3" json:"reprint_label,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6179,6 +6239,13 @@ func (x *OrderPick) GetLines() []*OrderPickLine {
 		return x.Lines
 	}
 	return nil
+}
+
+func (x *OrderPick) GetReprintLabel() bool {
+	if x != nil {
+		return x.ReprintLabel
+	}
+	return false
 }
 
 type OrderPickLinesResponse struct {
@@ -6295,7 +6362,9 @@ type OrderPrint struct {
 	ReceiptCode string `protobuf:"bytes,6,opt,name=receipt_code,json=receiptCode,proto3" json:"receipt_code,omitempty"`
 	// Whether a label file is attached — the seller's document OrderLabels reads (NO_LABEL there when false). Its id is not
 	// sent: the warehouse opens a label only through OrderLabels, never as a document.
-	HasLabel      bool `protobuf:"varint,7,opt,name=has_label,json=hasLabel,proto3" json:"has_label,omitempty"`
+	HasLabel bool `protobuf:"varint,7,opt,name=has_label,json=hasLabel,proto3" json:"has_label,omitempty"`
+	// Cetak ulang label — the rule on Order.reprint_label: the page marks it under the label and counts it; Print clears it.
+	ReprintLabel  bool `protobuf:"varint,8,opt,name=reprint_label,json=reprintLabel,proto3" json:"reprint_label,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6375,6 +6444,13 @@ func (x *OrderPrint) GetReceiptCode() string {
 func (x *OrderPrint) GetHasLabel() bool {
 	if x != nil {
 		return x.HasLabel
+	}
+	return false
+}
+
+func (x *OrderPrint) GetReprintLabel() bool {
+	if x != nil {
+		return x.ReprintLabel
 	}
 	return false
 }
@@ -6473,7 +6549,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\vdocument_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18@R\n" +
 	"documentId\x12$\n" +
 	"\bfilename\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\bfilename\x12%\n" +
-	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\x9b\f\n" +
+	"\tmime_type\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\bmimeType\"\xf3\f\n" +
 	"\x05Order\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -6509,7 +6585,9 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x13return_warehouse_id\x18% \x01(\x04R\x11returnWarehouseId\x122\n" +
 	"\x15return_transaction_id\x18& \x01(\x04R\x13returnTransactionId\x12\x1f\n" +
 	"\vis_override\x18' \x01(\bR\n" +
-	"isOverrideB\x10\n" +
+	"isOverride\x12#\n" +
+	"\rreprint_label\x18( \x01(\bR\freprintLabel\x121\n" +
+	"\x15label_printed_at_unix\x18) \x01(\x03R\x12labelPrintedAtUnixB\x10\n" +
 	"\x0e_warehouse_feeJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
 	"J\x04\b\n" +
 	"\x10\vJ\x04\b\v\x10\fJ\x04\b\x14\x10\x15J\x04\b\x12\x10\x13R\x10customer_addressR\rshipping_codeR\bsubtotalR\rshipping_costR\x05totalR\x06eventsR\x04note\"\xa1\b\n" +
@@ -6547,7 +6625,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\fdata_request\x18\x04 \x03(\x0e2'.warehouse.selling.v1.OrderListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xe8\x05\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\x8d\x06\n" +
 	"\x0fOrderListFilter\x12C\n" +
 	"\x06status\x18\x01 \x01(\x0e2!.warehouse.selling.v1.OrderStatusB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06status\x12\x1d\n" +
 	"\n" +
@@ -6564,7 +6642,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\n" +
 	"date_field\x18\f \x01(\x0e2$.warehouse.selling.v1.OrderDateFieldB\b\xbaH\x05\x82\x01\x02\x10\x01R\tdateField\x122\n" +
 	"\x15settlement_not_opened\x18\r \x01(\bR\x13settlementNotOpened\x12R\n" +
-	"\bstatuses\x18\x0f \x03(\x0e2!.warehouse.selling.v1.OrderStatusB\x13\xbaH\x10\x92\x01\r\x10\v\x18\x01\"\a\x82\x01\x04\x10\x01 \x00R\bstatusesJ\x04\b\n" +
+	"\bstatuses\x18\x0f \x03(\x0e2!.warehouse.selling.v1.OrderStatusB\x13\xbaH\x10\x92\x01\r\x10\v\x18\x01\"\a\x82\x01\x04\x10\x01 \x00R\bstatuses\x12#\n" +
+	"\rreprint_label\x18\x10 \x01(\bR\freprintLabelJ\x04\b\n" +
 	"\x10\vR\rshipping_code\"\xd6\x01\n" +
 	"\x13OrderListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
@@ -6744,7 +6823,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\n" +
 	"orders_30d\x18\x02 \x01(\x03R\torders30d\"a\n" +
 	"\x19OrderActivityStatResponse\x12D\n" +
-	"\apreview\x18\x01 \x01(\v2*.warehouse.selling.v1.OrderActivityPreviewR\apreview\"\xcf\x04\n" +
+	"\apreview\x18\x01 \x01(\v2*.warehouse.selling.v1.OrderActivityPreviewR\apreview\"\xf4\x04\n" +
 	"\x0fOrderStatFilter\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12\x1f\n" +
@@ -6760,7 +6839,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	" \x01(\x04R\vwarehouseId\x12M\n" +
 	"\n" +
 	"date_field\x18\v \x01(\x0e2$.warehouse.selling.v1.OrderDateFieldB\b\xbaH\x05\x82\x01\x02\x10\x01R\tdateField\x122\n" +
-	"\x15settlement_not_opened\x18\f \x01(\bR\x13settlementNotOpenedJ\x04\b\t\x10\n" +
+	"\x15settlement_not_opened\x18\f \x01(\bR\x13settlementNotOpened\x12#\n" +
+	"\rreprint_label\x18\x0e \x01(\bR\freprintLabelJ\x04\b\t\x10\n" +
 	"R\rshipping_code\"\x87\x01\n" +
 	"\x10OrderStatRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12=\n" +
@@ -6843,11 +6923,12 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x18OrderCreatorListResponse\x12H\n" +
 	"\x05items\x18\x01 \x03(\v22.warehouse.selling.v1.OrderCreatorListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xa3\x01\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"\xc6\x01\n" +
 	"\x12OrderLabelsRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12/\n" +
 	"\torder_ids\x18\x02 \x03(\x04B\x12\xbaH\x0f\x92\x01\f\b\x01\x102\x18\x01\"\x042\x02 \x00R\borderIds\x12)\n" +
-	"\x10unboxing_warning\x18\x03 \x01(\bR\x0funboxingWarning:\v\x92\xb5\x18\a\n" +
+	"\x10unboxing_warning\x18\x03 \x01(\bR\x0funboxingWarning\x12!\n" +
+	"\frecord_print\x18\x04 \x01(\bR\vrecordPrint:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"\x89\x01\n" +
 	"\x10OrderLabelResult\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\x04R\aorderId\x12\x1a\n" +
@@ -6866,7 +6947,7 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12!\n" +
 	"\fproduct_code\x18\x02 \x01(\tR\vproductCode\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1a\n" +
-	"\bquantity\x18\x04 \x01(\rR\bquantity\"\xe2\x02\n" +
+	"\bquantity\x18\x04 \x01(\rR\bquantity\"\x87\x03\n" +
 	"\tOrderPick\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\x04R\aorderId\x12%\n" +
 	"\x0etransaction_id\x18\x02 \x01(\x04R\rtransactionId\x129\n" +
@@ -6875,13 +6956,14 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x15order_external_ref_id\x18\x05 \x01(\tR\x12orderExternalRefId\x12.\n" +
 	"\x13shipment_channel_id\x18\x06 \x01(\x04R\x11shipmentChannelId\x12!\n" +
 	"\freceipt_code\x18\a \x01(\tR\vreceiptCode\x129\n" +
-	"\x05lines\x18\b \x03(\v2#.warehouse.selling.v1.OrderPickLineR\x05lines\"Q\n" +
+	"\x05lines\x18\b \x03(\v2#.warehouse.selling.v1.OrderPickLineR\x05lines\x12#\n" +
+	"\rreprint_label\x18\t \x01(\bR\freprintLabel\"Q\n" +
 	"\x16OrderPickLinesResponse\x127\n" +
 	"\x06orders\x18\x01 \x03(\v2\x1f.warehouse.selling.v1.OrderPickR\x06orders\"|\n" +
 	"\x16OrderPrintByIdsRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12/\n" +
 	"\torder_ids\x18\x02 \x03(\x04B\x12\xbaH\x0f\x92\x01\f\b\x01\x102\x18\x01\"\x042\x02 \x00R\borderIds:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x06\t\b\"\x9e\x02\n" +
+	"\x05\x01\x02\x06\t\b\"\xc3\x02\n" +
 	"\n" +
 	"OrderPrint\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\x04R\aorderId\x129\n" +
@@ -6890,7 +6972,8 @@ const file_warehouse_selling_v1_order_proto_rawDesc = "" +
 	"\x15order_external_ref_id\x18\x04 \x01(\tR\x12orderExternalRefId\x12.\n" +
 	"\x13shipment_channel_id\x18\x05 \x01(\x04R\x11shipmentChannelId\x12!\n" +
 	"\freceipt_code\x18\x06 \x01(\tR\vreceiptCode\x12\x1b\n" +
-	"\thas_label\x18\a \x01(\bR\bhasLabel\"S\n" +
+	"\thas_label\x18\a \x01(\bR\bhasLabel\x12#\n" +
+	"\rreprint_label\x18\b \x01(\bR\freprintLabel\"S\n" +
 	"\x17OrderPrintByIdsResponse\x128\n" +
 	"\x06orders\x18\x01 \x03(\v2 .warehouse.selling.v1.OrderPrintR\x06orders*\xc7\x03\n" +
 	"\vOrderStatus\x12\x1c\n" +

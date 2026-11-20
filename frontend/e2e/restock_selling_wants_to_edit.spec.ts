@@ -24,12 +24,15 @@ import { pickTeam } from "./pickers";
 //   the line is Rp 120.000). A moved payment nets the old account back to nothing and charges the new one.
 // - `… recorded in account history` — the account's own page: `Restock #<id> edited`, or `moved to / from another account`.
 //
-// `restock analytic metric adjusted` is 🚧 unimplemented — no analytic metric counts a restock until it is accepted (Restock
-// counts what an accept puts on the racks), so none is adjusted by an edit. Its check is its own test per given, marked
-// `test.fail` with the status (guide.md): its own test, so the expected failure never hides a broken then of the others. It
-// edits its own restock as selling:owner and asks Restock by product for ANY figure of the edited product reading what the
-// edit made it — field-agnostic, since how an edit will be shown is not built. The day one turns red, the then is built: ask
-// the owner, then run it as every selling role and point it at the field that was built.
+// `restock analytic metric adjusted` — built by #85 (the-restock-before-the-accept-prototype-is-accepted: an edit's
+// difference — lines, warehouse, shipping cost; ongoing and arrived — lands on Units / Value ordered on the EDIT day). It is
+// checked in every role's test, on the restock that role edited, as that role, and reads Analytic › Inventory › Restock
+// over this week — which holds both the create day and the edit day, so every figure is the NET of the two: by product,
+// filtered to the line, `ordered_count` (and `ordered_value`, the line's share of the restock's total) for a lines edit;
+// `ordered_value` for the shipping-cost edit (the total moves by the shipping's difference, the units stay); and by
+// WAREHOUSE, filtered to the moved line, for the warehouse change — the new warehouse reads its units, the old one nets to
+// nothing (out of the old, into the new, on the edit day). A key whose figures net to nothing is no row at all, so a
+// "nothing" read waits for the headline to answer (it reads "—" until the answer is in) before it trusts an empty table.
 test.describe("selling:all wants to edit a restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -39,11 +42,9 @@ test.describe("selling:all wants to edit a restock", () => {
     { given: "selling:admin", role: "ROLE_SELLING_ADMIN", key: "adm" },
     { given: "selling:cs", role: "ROLE_SELLING_CS", key: "cs" },
   ] as const;
-  // The 🚧 checks' own restocks — raised for, and edited by, selling:owner.
-  const METRIC = "met";
 
   type Key = "on" | "ad" | "rm" | "su" | "wh" | "ac" | "tr" | "co" | "nt" | "aa" | "ap";
-  // Each given, the restock seeded for it per role, and whether its `restock analytic metric adjusted` is a 🚧 row.
+  // Each given, the restock seeded for it per role, and whether it has a `restock analytic metric adjusted` row.
   const CASES: { key: Key; cond: string; metric: boolean }[] = [
     { key: "ad", cond: "status: ongoing · 1 product · add product · 1 warehouse · operational account", metric: true },
     { key: "on", cond: "status: ongoing · 1 product · change product · 1 warehouse · operational account", metric: true },
@@ -198,12 +199,9 @@ test.describe("selling:all wants to edit a restock", () => {
     };
 
     let n = 0;
-    const seeds = [
-      ...ROLES.map((r) => ({ role: r.key as string, cases: CASES })),
-      { role: METRIC, cases: CASES.filter((c) => c.metric) },
-    ];
+    const seeds = ROLES.map((r) => ({ role: r.key as string, cases: CASES }));
     for (const s of seeds) {
-      if (s.role !== METRIC) ground.newAccounts[s.role] = await account(newAccountName(s.role), `80${SUFFIX}${++n}`);
+      ground.newAccounts[s.role] = await account(newAccountName(s.role), `80${SUFFIX}${++n}`);
 
       for (const c of s.cases) {
         const p = code(s.role, c.key, "P");
@@ -566,6 +564,23 @@ test.describe("selling:all wants to edit a restock", () => {
             break;
         }
 
+        // THEN — `restock analytic metric adjusted`, as this role: Restock over this week, the create and the edit netted
+        // (see ADJUSTED below). By WAREHOUSE for the warehouse change, filtered to the moved line: out of A and into B on
+        // the edit day — B reads the 10, A nets to nothing, and the line's whole stays 10.
+        if (c.metric) {
+          await test.step("then: restock analytic metric adjusted", async () => {
+            if (c.key === "wh") {
+              await expect.soft(async () => orderedIs(page, "warehouse", pid, ground.w2, 10, 100_000)).toPass({ timeout: 35_000 });
+              await expect.soft(async () => orderedIs(page, "warehouse", pid, ground.w1, 0, 0, 10)).toPass({ timeout: 35_000 });
+              return;
+            }
+            for (const { line, count, value } of ADJUSTED[c.key]) {
+              const lid = ground.products[code(r.key, c.key, line)];
+              await expect.soft(async () => orderedIs(page, "product", lid, lid, count, value)).toPass({ timeout: 35_000 });
+            }
+          });
+        }
+
         // THEN — as the warehouses: their inbound lists, and the restock's page on their side. The list is searched for the
         // restock's product P: warehouse A holds every given's restock, more than one page of them, so an unsearched read
         // misses the row (and an absence would prove nothing).
@@ -620,40 +635,46 @@ test.describe("selling:all wants to edit a restock", () => {
     }
   }
 
-  // 🚧 — its own test per given, so the expected failure hides none of the thens above (see the head of this file).
-  // What the edit made the edited product's figure: P's new count, Q's added count, P's count left after Q went, P's count
-  // at its new warehouse, the new shipping (or the total it makes).
-  const ADJUSTED: Record<string, { line: "P" | "Q"; figure: RegExp }> = {
-    on: { line: "P", figure: /^12$/ },
-    ap: { line: "P", figure: /^12$/ },
-    ad: { line: "Q", figure: /^5$/ },
-    aa: { line: "Q", figure: /^5$/ },
-    rm: { line: "P", figure: /^10$/ },
-    wh: { line: "P", figure: /^10$/ },
-    co: { line: "P", figure: /^(Rp 25\.000|Rp 125\.000)$/ },
+  // What each edit made Restock read this week per line, in every role's test — Units / Value ordered, the create's figure
+  // and the edit's difference netted:
+  //   on / ap  P 10 for Rp 100.000 → 12 for Rp 120.000   P 12 · Rp 120.000
+  //   ad / aa  Q added, 5 for Rp 50.000                  Q 5 · Rp 50.000, P still 10 · Rp 100.000
+  //   rm       Q (4 for Rp 40.000) taken off             Q nets to nothing, P still 10 · Rp 100.000
+  //   co       shipping Rp 10.000 → Rp 25.000            P still 10 units, Rp 125.000 (its goods + the whole new shipping)
+  //   wh       warehouse A → B (read by warehouse)       B 10 · Rp 100.000, A nets to nothing
+  const RESTOCK = "metrics/inventory/restock";
+  const ADJUSTED: Record<string, { line: "P" | "Q"; count: number; value: number }[]> = {
+    on: [{ line: "P", count: 12, value: 120_000 }],
+    ap: [{ line: "P", count: 12, value: 120_000 }],
+    ad: [
+      { line: "Q", count: 5, value: 50_000 },
+      { line: "P", count: 10, value: 100_000 },
+    ],
+    aa: [
+      { line: "Q", count: 5, value: 50_000 },
+      { line: "P", count: 10, value: 100_000 },
+    ],
+    rm: [
+      { line: "Q", count: 0, value: 0 },
+      { line: "P", count: 10, value: 100_000 },
+    ],
+    co: [{ line: "P", count: 10, value: 100_000 + SHIPPING2 }],
   };
-  for (const c of CASES.filter((k) => k.metric)) {
-    test(`selling:owner edit restock (${c.cond}): restock analytic metric adjusted`, async ({ page }) => {
-      test.fail(
-        true,
-        "🚧 unimplemented (docs/acceptances/inventory/restock.md) — no analytic metric counts a restock before it is accepted, so none is adjusted by an edit",
-      );
 
-      const id = ground.restocks[at(METRIC, c.key)];
-      await signIn(page, username("own"), ground.team);
-      await edit(page, METRIC, c.key, id);
-      const { line, figure } = ADJUSTED[c.key];
-      const product = ground.products[code(METRIC, c.key, line)];
-
-      // Restock by product, this week: any figure of the edited product reading what the edit made it. Re-read until it lands.
-      await test.step("then: restock analytic metric adjusted", async () => {
-        await expect(async () => {
-          await page.goto(`/analytic?g=product&m=metrics/inventory/restock&r=7d`);
-          await expect(page.locator(`[data-testid^="analytic-cell-${product}-"]`).filter({ hasText: figure })).not.toHaveCount(0, {
-            timeout: 2_000,
-          });
-        }).toPass({ timeout: 20_000 });
-      });
-    });
+  // Restock this week, `group` rows, filtered to one product: the headline (the filtered whole — "—" until the answer is
+  // in, so reading it first proves the table below is the answer's) and `key`'s row. A key netting to nothing is no row
+  // (or, were it drawn, a 0). Re-read until it lands.
+  async function orderedIs(page: Page, group: string, productId: string, key: string, count: number, value: number, whole = count) {
+    await expect(async () => {
+      await page.goto(`/analytic?g=${group}&m=${RESTOCK}&r=7d&product=${productId}`);
+      await expect(page.getByTestId("analytic-headline-ordered_count-value")).toHaveText(String(whole), { timeout: 3_000 });
+      const units = page.getByTestId(`analytic-cell-${key}-ordered_count`);
+      if (count === 0) {
+        if ((await units.count()) > 0) await expect(units).toHaveText("0");
+        return;
+      }
+      await expect(units).toHaveText(String(count));
+      await expect(page.getByTestId(`analytic-cell-${key}-ordered_value`)).toHaveText(rupiah(value));
+    }).toPass({ timeout: 30_000 });
   }
 });

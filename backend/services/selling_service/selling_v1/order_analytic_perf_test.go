@@ -22,13 +22,13 @@ import (
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
-// perfReportRows is a year of report rows: 365 days × 13 metric values (the five order metrics, Warehouse Fee and Order
-// status moves' seven counts) × 55 (seller, shop, warehouse, creator) — ~261 000 rows over 5 sellers, 20 shops, 3
+// perfReportRows is a year of report rows: 365 days × 14 metric values (the five order metrics, Warehouse Fee and Order
+// status moves' eight counts) × 55 (seller, shop, warehouse, creator) — ~281 000 rows over 5 sellers, 20 shops, 3
 // warehouses and 7 creators.
 func perfReportRows() []selling_service_models.OrderDailyReport {
 	metrics := []string{"created", "cancelled", "return_created", "return_arrived", "lost_created", "warehouse_fee",
 		"moves_confirmed", "moves_back_to_pending", "moves_picked", "moves_handed_over", "moves_shipped", "moves_problem",
-		"moves_completed"}
+		"moves_completed", "moves_disputes_resolved"}
 	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	rows := make([]selling_service_models.OrderDailyReport, 0, 365*len(metrics)*55)
@@ -156,7 +156,7 @@ func TestPerf_OrderMetric(t *testing.T) {
 
 			return err
 		}},
-		// ORDER STATUS MOVES (the-order-status-moves-prototype-is-accepted) — seven report values per read.
+		// ORDER STATUS MOVES (the-order-status-moves-prototype-is-accepted) — eight report values per read.
 		{"search · warehouse · moves by team, by handed over · a year", func() error {
 			_, err := analytic.MetricSearch(ctx, connect.NewRequest(&sellingv1.MetricSearchRequest{
 				TeamId: 900, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_TEAM, Filters: perfWindow("2026-01-01", "2026-12-31"),
@@ -170,6 +170,16 @@ func TestPerf_OrderMetric(t *testing.T) {
 			_, err := analytic.MetricSearch(ctx, connect.NewRequest(&sellingv1.MetricSearchRequest{
 				TeamId: 2, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SHOP, Filters: perfWindow("2026-10-01", "2026-10-30"),
 				Sort: &analytic_basev1.MetricSort{MetricId: metricMoves, Field: "completed_count"},
+				Page: &analytic_basev1.PaginationFilter{Limit: 50},
+			}))
+
+			return err
+		}},
+		// DISPUTES RESOLVED (its 2026-11-20 line) — a seller ranks its shops by the resolves.
+		{"search · seller · moves by shop, by disputes resolved · a year", func() error {
+			_, err := analytic.MetricSearch(ctx, connect.NewRequest(&sellingv1.MetricSearchRequest{
+				TeamId: 2, GroupBy: analytic_basev1.GroupType_GROUP_TYPE_SHOP, Filters: perfWindow("2026-01-01", "2026-12-31"),
+				Sort: &analytic_basev1.MetricSort{MetricId: metricMoves, Field: "disputes_resolved_count"},
 				Page: &analytic_basev1.PaginationFilter{Limit: 50},
 			}))
 

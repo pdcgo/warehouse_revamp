@@ -305,6 +305,13 @@ func (s *Service) RestockRequestAccept(
 			return doorErr
 		}
 
+		// THE COURIER'S COD on Analytic's Restock, on the accept day: Terima's final figure, spread over the lines by the
+		// units ordered as the landed price spreads it (the-restock-before-the-accept-prototype-is-accepted).
+		codErr := inventory_ledgers.NoteRestockFacts(tx, restockCODFacts(&rr, rr.Items, courierCharge)...)
+		if codErr != nil {
+			return codErr
+		}
+
 		// THE DECIDED LEDGERS, in the same transaction (the-decided-ledgers-come-before-the-restock-accept): one batch per
 		// line with good units at the landed price over every unit ORDERED, its units on the racks named, one item per
 		// product. They are the stock record — nothing else is written for the goods.

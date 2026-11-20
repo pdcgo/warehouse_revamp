@@ -17,6 +17,10 @@ export function causeKey(type: LiabilitySourceType): string {
     // The courier B paid at its door on a warehouse transfer (a-transfer-charge-is-a-transfer-fee) — keyed by the transfer.
     case LiabilitySourceType.TRANSFER_FEE:
       return "liabilityDetail.causeTransferFee";
+    // The courier the warehouse paid at a CUSTOM SHIPMENT's handover, *Gudang bayar* (the-courier-is-paid-by-the-team-or-
+    // by-the-warehouse) — `custom_shipment_fee`, keyed by the parcel (liability rpc.md, ChargeCustomShipmentCourier).
+    case LiabilitySourceType.CUSTOM_SHIPMENT_FEE:
+      return "liabilityDetail.causeCustomShipmentFee";
     case LiabilitySourceType.PRODUCT_FEE:
       return "liabilityDetail.causeProductFee";
     case LiabilitySourceType.PAYMENT:

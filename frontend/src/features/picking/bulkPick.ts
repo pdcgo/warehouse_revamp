@@ -13,7 +13,7 @@ import type { OrderPick as OrderPickRow } from "../../gen/warehouse/selling/v1/o
 //   selling   OrderService.OrderPickLines { team_id: the warehouse, order_ids: 1–50 }
 //               → orders: OrderPick { order_id, transaction_id, status, shop_id, order_external_ref_id,
 //                                     shipment_channel_id, receipt_code, lines: { product_id, product_code, name,
-//                                     quantity } }
+//                                     quantity }, reprint_label }
 //             only the orders that SHIP FROM the warehouse, in the asked order; another building's, or no such order,
 //             is absent. No money.
 //   inventory InventoryService.StockPickLocations { warehouse_id, transaction_ids: 1–50 }   (the single pick page
@@ -36,6 +36,11 @@ export interface BulkPickOrder {
   shipmentChannelId: bigint;
   /** The resi; "" when nobody recorded one. */
   receiptCode: string;
+  /**
+   * CETAK ULANG LABEL — the seller changed the resi or label after it was printed (OrderPick.reprint_label,
+   * a-changed-label-asks-the-warehouse-to-reprint): the order's block carries the badge, as the list's row does.
+   */
+  reprintLabel: boolean;
   /** The order's lines — what to fetch. */
   lines: BulkPickLine[];
 }
@@ -90,6 +95,7 @@ export function bulkPickAnswerOf(
         orderExternalRefId: order.orderExternalRefId,
         shipmentChannelId: order.shipmentChannelId,
         receiptCode: order.receiptCode,
+        reprintLabel: order.reprintLabel,
         lines: order.lines.map((line) => ({
           productId: line.productId,
           name: line.name,

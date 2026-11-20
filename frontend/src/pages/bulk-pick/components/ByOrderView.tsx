@@ -6,6 +6,7 @@ import type { OrderPick } from "../../../features/picking/bulkPick";
 import { MarketplaceBadge } from "../../../components/badges/MarketplaceBadge";
 import { CopyText } from "../../../components/chrome/CopyText";
 import { OrderCourierBadge } from "../../../features/orders/OrderCourierBadge";
+import { ReprintLabelBadge, ReprintLabelBlockLine } from "../../../features/orders/ReprintLabel";
 import { RackLine } from "./RackLine";
 
 /** Every new table's row lights up under the pointer, every cell (a-table-row-lights-up). */
@@ -42,8 +43,12 @@ export function ByOrderView({
   );
 }
 
-/** The order's own facts, as the parcel carries them — the shop and its ref, the courier and its resi. */
-function OrderHead({ pick, onOpen }: { pick: OrderPick; onOpen: () => void }) {
+/**
+ * The order's own facts, as the parcel carries them — the shop and its ref, the courier and its resi — and, when its label
+ * changed after the print, *Cetak ulang label* beside the resi (the-reprint-label-prototype-is-accepted: drawn as the
+ * list's row draws it; on a phone a line of its own under the head, as the list's block).
+ */
+function OrderHead({ pick, onOpen, mobile }: { pick: OrderPick; onOpen: () => void; mobile: boolean }) {
   const { t } = useTranslation();
   const { order } = pick;
   const ref = order.orderExternalRefId || t("picking.detail.title", { id: order.id.toString() });
@@ -57,6 +62,9 @@ function OrderHead({ pick, onOpen }: { pick: OrderPick; onOpen: () => void }) {
       {order.orderExternalRefId && <CopyText value={order.orderExternalRefId} fontSize="xs" />}
       {order.shipmentChannelId > 0n && <OrderCourierBadge channelId={order.shipmentChannelId} />}
       {order.receiptCode && <CopyText value={order.receiptCode} mono fontSize="xs" />}
+      {!mobile && (
+        <ReprintLabelBadge on={order.reprintLabel} orderId={order.id} testId={`bulk-pick-reprint-label-${order.id}`} />
+      )}
       <Text fontSize="xs" color="fg.muted" data-testid={`bulk-pick-order-units-${order.id}`}>
         {t("bulkPick.units", { count: pick.units })}
       </Text>
@@ -83,7 +91,7 @@ function OrderCard({ pick, onOpen }: { pick: OrderPick; onOpen: () => void }) {
     <Card.Root data-testid={`bulk-pick-order-${order.id}`}>
       <Card.Body>
         <Stack gap="card">
-          <OrderHead pick={pick} onOpen={onOpen} />
+          <OrderHead pick={pick} onOpen={onOpen} mobile={false} />
           <Table.Root size="sm">
             <Table.Header>
               <Table.Row>
@@ -135,7 +143,11 @@ function OrderBlock({ pick, onOpen }: { pick: OrderPick; onOpen: () => void }) {
   return (
     <Box borderWidth="1px" borderColor="border" borderRadius="l2" bg="bg" p="3" data-testid={`bulk-pick-order-${order.id}`}>
       <Stack gap="2">
-        <OrderHead pick={pick} onOpen={onOpen} />
+        <OrderHead pick={pick} onOpen={onOpen} mobile />
+        <ReprintLabelBlockLine
+          order={{ id: order.id, reprintLabel: order.reprintLabel }}
+          testId={`bulk-pick-reprint-label-${order.id}`}
+        />
         {pick.lines.map((line) => (
           <Stack
             key={line.productId.toString()}

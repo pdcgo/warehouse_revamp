@@ -165,6 +165,18 @@ export function accountLogByForStory(logId: bigint, actorId: bigint, isOverride:
 }
 
 /**
+ * A STORY'S SETUP: one more row on an account's book, as the server would post it — the #99 expense-types prototype's
+ * capital rows (a Prive typed on Pengeluaran, a Setor Modal made on the account page). Returns its id.
+ * `resetFinancialAccounts` (preview's beforeEach) drops it.
+ */
+export function postLogForStory(accountId: bigint, changeType: T, change: number, description: string, occurredOn: string): bigint {
+  const a = accounts.find((x) => x.id === accountId);
+  if (!a) throw new Error(`no account ${accountId} in the stub`);
+
+  return post(a, changeType, change, description, occurredOn).id;
+}
+
+/**
  * Whether an account may pay a warehouse transfer's shipping — the team's own and ACTIVE, operational or not
  * (a-transfers-shipping-is-paid-from-any-active-account; inventory_v1 `checkActive`). `null` when it may; else the
  * server's FailedPrecondition sentence. Another team's account reads as one that never existed.

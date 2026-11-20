@@ -1,32 +1,33 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { RESTOCK_ID } from "../../../.storybook/inventoryMetricsFixtures";
+import { inventoryMetricCalls } from "../../../.storybook/inventoryAnalyticStub";
+import { RESTOCK_ID, workedRestocks } from "../../../.storybook/inventoryMetricsFixtures";
 import { asTeam, routedPage } from "../../../.storybook/pageStory";
 import { asPlatformOnly } from "../../../.storybook/sessionScenario";
-import { INVENTORY_METRICS, METRICS, catalogueMetrics, metricById, showPrototypeMetrics } from "../../features/analytic/catalogue";
+import { INVENTORY_METRICS, PROTOTYPE_METRICS, metricById } from "../../features/analytic/catalogue";
 import { ROOT_TEAM_ID } from "../../features/team/TeamContext";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { AnalyticPage } from "./index";
 
-// ⚠ PROTOTYPE (backlog #85) — RESTOCK BEFORE THE ACCEPT on the Analytic composer, for the owner's design accept.
-// Storybook only: the meta's beforeEach shows the prototypes and its cleanup hides them; while shown, the prototype takes
-// the live Restock's place (same id, same filters and groups), and the live screen keeps the accepted four
-// (TheLiveRestockIsUntouched). Answered from sample.ts until the folds are built.
+// RESTOCK, FROM THE RAISE TO THE COUNT, on the Analytic composer — LIVE (backlog #85, the owner's accept of 2026-11-19:
+// the-restock-before-the-accept-prototype-is-accepted). Served by inventory_service (`InventoryRestockMetric`) and
+// answered here over the stub transport (inventoryAnalyticStub.ts) from the accepted prototype's worked restocks — the
+// meta's beforeEach asks the stub for them (`workedRestocks`), its cleanup puts the simulation back.
 //
 // What the checklist asks (acceptances/inventory/restock.md, 12 rows): a restock recorded at create, adjusted at every edit
-// — warehouse, shipping cost, lines, ongoing and arrived —, lost recorded at mark lost, the COD recorded at accept
-// (the-inventory-metrics-prototype-is-accepted, its 2026-11-18 🔄 line). Drawn as Restock with five more fields:
+// — warehouse, shipping cost, lines, ongoing and arrived —, lost recorded at mark lost, the COD recorded at accept. Read as
+// Restock's nine fields:
 //   Units / Value ordered — on the create day; an edit's DIFFERENCE on the edit day, a warehouse change −/+ under the two
-//     warehouses that day (past days never change — an-expense-correction-counts-on-the-day-it-is-made, the owner's
-//     correction pick); the value is the restock's total, goods + shipping (the-couriers-charge-stays-out-of-total),
-//     spread over the units as the landed price is (restock.md §Calculating Price Unit);
-//   Units / Value lost on the way — on the lost day;
-//   the accepted four, as served — on the accept day;
+//     warehouses that day (past days never change — an-expense-correction-counts-on-the-day-it-is-made); a cancel takes it
+//     back on its day (a-cancelled-restock-takes-its-ordered-back-on-its-day); the value is the restock's total, goods +
+//     shipping (the-couriers-charge-stays-out-of-total), spread over the units as the landed price is;
+//   Units / Value lost on the way — on the lost day; taken back the day a lost box is signed for as arrived
+//     (a-lost-box-that-turns-up-takes-its-lost-back-on-its-day);
+//   the accepted four, as before — on the accept day;
 //   Courier COD — on the accept day, Terima's final figure (the-courier-charge-is-noted-at-tiba-and-final-at-terima).
 // A warehouse reads the units and the COD it paid (the-warehouse-sees-the-cod-it-paid), never a value
-// (a-warehouse-sees-no-seller-money). ⚠ Two readings are the build's defaults, asked at the accept: a CANCEL takes the
-// ordered back on its day, and a lost box that TURNS UP takes the lost back on its day.
+// (a-warehouse-sees-no-seller-money): the service leaves the three values unset.
 //
 // THE WORKED RESTOCKS (sample.ts SAMPLE_RESTOCKS_OCTOBER — Toko Melati's, Gudang Pusat unless named; nothing else
 // restocks 1–20 Oct):
@@ -59,15 +60,18 @@ const RestockDailyGraph = at(`?g=daily&m=${RESTOCK_ID}&${OCTOBER}&v=graph`);
 const RestockMonthly = at(`?g=monthly&m=${RESTOCK_ID}&r=2026-08-01..2026-10-31`);
 
 const meta = {
-  title: "Pages/Analytic/Restock before the accept (prototype)",
+  title: "Pages/Analytic/Restock",
   component: RestockDaily,
   parameters: { dataRouter: true, signedIn: true },
   beforeEach: [
     asTeam(12n),
     () => {
-      showPrototypeMetrics(true);
+      workedRestocks.on = true;
+      inventoryMetricCalls.length = 0;
 
-      return () => showPrototypeMetrics(false);
+      return () => {
+        workedRestocks.on = false;
+      };
     },
   ],
 } satisfies Meta<typeof RestockDaily>;
@@ -104,14 +108,14 @@ const OCTOBER_DAYS: Record<string, Partial<Record<Field, number>>> = {
   "2026-10-09": { ordered_count: 2, ordered_value: 190_000 }, // R7 edited while arrived: + 2 × 95.000
   // R1 accepted: 37 good at the landed price ((30.000 + 20.000) / 40 = 1.250 a unit), 1 broken, 2 missing, COD 20.000.
   "2026-10-10": { accepted_count: 37, accepted_value: 2_386_250, broken_count: 1, missing_count: 2, cod_amount: 20_000 },
-  "2026-10-11": { ordered_count: -10, ordered_value: -460_000 }, // R5 cancelled — ⚠ the build's default
+  "2026-10-11": { ordered_count: -10, ordered_value: -460_000 }, // R5 cancelled — its ordered taken back
   "2026-10-12": { ordered_count: 10, ordered_value: 1_820_000, accepted_count: 8, accepted_value: 1_282_000 }, // R2 created; R7 accepted
   "2026-10-13": {}, // R2 moved Cabang → Pusat: −10 and +10, the day nets 0
   "2026-10-14": { ordered_count: 4, ordered_value: 400_000 }, // R3 created
   "2026-10-15": { ordered_count: 100, ordered_value: 695_000 }, // R4 created
   "2026-10-16": { ordered_value: 15_000, accepted_count: 10, accepted_value: 1_820_000 }, // R4's ongkir 20.000 → 35.000; R2 accepted
   "2026-10-17": { lost_count: 4, lost_value: 400_000 }, // R3 lost
-  "2026-10-18": { lost_count: -5, lost_value: -615_000 }, // R6 turns up — ⚠ the build's default
+  "2026-10-18": { lost_count: -5, lost_value: -615_000 }, // R6 turns up — its lost taken back
   "2026-10-19": { accepted_count: 5, accepted_value: 620_000, cod_amount: 5_000 }, // R6 accepted
   "2026-10-20": { accepted_count: 97, accepted_value: 697_650, missing_count: 3, cod_amount: 10_000 }, // R4 accepted
 };
@@ -177,8 +181,8 @@ const slug = (id: string) => id.replaceAll("/", "-");
 
 // ── the picker ───────────────────────────────────────────────────────────────────────────────────
 
-// INVENTORY › RESTOCK, WIDENED — the same leaf, the same place; its fields now run ordered → lost → the accepted four →
-// the COD, and a warehouse is not given the three values.
+// INVENTORY › RESTOCK, WIDENED — the same leaf, the same place, read off its SERVED descriptor; its fields run ordered →
+// lost → the accepted four → the COD, and the contract marks the three values a warehouse is not given.
 export const RestockGainsItsFields: Story = {
   name: "Picker: Inventory › Restock",
   render: () => <Nothing />,
@@ -191,8 +195,9 @@ export const RestockGainsItsFields: Story = {
     await expect(column.getByTestId(`analytic-metric-${slug(RESTOCK_ID)}`)).toHaveTextContent(/^Restock$/);
 
     const def = metricById(RESTOCK_ID)!;
-    // Compared as a boolean: a failing match would print the whole generated descriptor graph.
-    await expect(def.schema === undefined).toBe(true);
+    // Compared as booleans: a failing match would print the whole generated descriptor graph.
+    await expect(def.schema !== undefined).toBe(true);
+    await expect(def === INVENTORY_METRICS[0]).toBe(true);
     await expect(def.fields.map((f) => f.name)).toEqual([...FIELDS]);
     await expect(def.fields.filter((f) => f.warehouseHidden).map((f) => f.name)).toEqual(VALUES);
     await expect(def.fields.find((f) => f.name === "cod_amount")).toMatchObject({ kind: "money", warehouseHidden: false });
@@ -206,33 +211,21 @@ export const RestockGainsItsFields: Story = {
   },
 };
 
-// TODAY — the same October days on the live Restock (prototypes hidden): the served accepted four alone, nothing before the
-// accept. The accept's BEFORE picture.
-export const TodaysRestockByDay: Story = {
-  name: "Today: the live Restock by day",
+// THE ACCEPTED FOUR STAY — on the same October days, the accept's four still read as they did (units and value accepted,
+// broken, missing on the accept day), beside the new five; no prototype is drawn any more.
+export const TheAcceptedFourStay: Story = {
+  name: "The accepted four stay",
   render: () => <RestockDaily />,
-  beforeEach: [() => showPrototypeMetrics(false)],
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    for (const f of ["accepted_count", "accepted_value", "broken_count", "missing_count"]) await expect(canvas.getByTestId(`analytic-sort-${f}`)).toBeVisible();
-    for (const f of ["ordered_count", "ordered_value", "lost_count", "lost_value", "cod_amount"]) {
-      await expect(canvas.queryByTestId(`analytic-sort-${f}`)).toBeNull();
-    }
-  },
-};
-
-// THE LIVE RESTOCK IS UNTOUCHED — with the prototypes hidden (as the app always runs), Restock is the served metric with
-// the accepted four alone.
-export const TheLiveRestockIsUntouched: Story = {
-  name: "Live: the accepted four",
-  render: () => <Nothing />,
-  beforeEach: [() => showPrototypeMetrics(false)],
-  play: async () => {
     // Compared as booleans: a failing match on a MetricDef would print its whole generated descriptor graph.
-    await expect(catalogueMetrics() === METRICS).toBe(true);
-    await expect(metricById(RESTOCK_ID)?.schema !== undefined).toBe(true);
-    await expect(metricById(RESTOCK_ID)?.fields.map((f) => f.name)).toEqual(["accepted_count", "accepted_value", "broken_count", "missing_count"]);
+    await expect(PROTOTYPE_METRICS.length === 0).toBe(true);
+    for (const f of FIELDS) await expect(canvas.getByTestId(`analytic-sort-${f}`)).toBeVisible();
+    for (const f of ["accepted_count", "accepted_value", "broken_count", "missing_count"] as const) {
+      await expect({ f, value: cell(canvas, "2026-10-10", f) }).toEqual({ f, value: OCTOBER_DAYS["2026-10-10"]![f] });
+      await expect({ f, value: headline(canvas, f) }).toEqual({ f, value: TOTALS[f] });
+    }
   },
 };
 
@@ -374,7 +367,8 @@ export const TheOldWarehouseSeesItLeave: Story = {
   },
 };
 
-// A LINK RANKED BY A VALUE, OPENED BY A WAREHOUSE — it opens on its default (units ordered) instead of a refusal.
+// A LINK RANKED BY A VALUE, OPENED BY A WAREHOUSE — it opens on its default (units ordered) instead of the server's
+// refusal, and never asks to rank by a value.
 export const AWarehouseOpensAValueSortedLink: Story = {
   name: "A warehouse opens a value-sorted link",
   render: () => <RestockByProductByValue />,
@@ -386,6 +380,9 @@ export const AWarehouseOpensAValueSortedLink: Story = {
     const units = column(canvas, "ordered_count");
     await expect([...units].sort((a, b) => b - a)).toEqual(units);
     await showsNoValue(canvas, VALUES);
+    const searches = inventoryMetricCalls.filter((c) => c.rpc === "metricSearch");
+    await expect(searches.length).toBeGreaterThan(0);
+    await expect(searches.every((c) => c.sortField === "ordered_count")).toBe(true);
   },
 };
 

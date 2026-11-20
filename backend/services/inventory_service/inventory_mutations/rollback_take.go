@@ -35,21 +35,32 @@ func RollbackTake(tx *gorm.DB, transactionID, actorID uint64) (bool, error) {
 		return false, fmt.Errorf("%w: transaction %d is %s", ErrNotATake, t.ID, t.TxType)
 	}
 
-	// BATCHES before racks (batches-lock-before-shelves-by-id).
-	err = inventory_ledgers.ReverseBatchLogs(tx, t, actorID)
+	err = reverseTake(tx, t, actorID)
 	if err != nil {
 		return false, err
+	}
+
+	return true, nil
+}
+
+// reverseTake writes the undo of a LOCKED take its caller has already judged may be undone (RollbackTake's guard,
+// RollbackParcelSample's): every batch and rack row reversed under the same transaction, then `is_rollback` set.
+func reverseTake(tx *gorm.DB, t models.InventoryTransaction, actorID uint64) error {
+	// BATCHES before racks (batches-lock-before-shelves-by-id).
+	err := inventory_ledgers.ReverseBatchLogs(tx, t, actorID)
+	if err != nil {
+		return err
 	}
 
 	err = inventory_ledgers.ReversePlacementLogs(tx, t, actorID)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	err = tx.Model(&t).Updates(map[string]any{"is_rollback": true, "updated_at": gorm.Expr("NOW()")}).Error
 	if err != nil {
-		return false, fmt.Errorf("mark transaction %d rolled back: %w", t.ID, err)
+		return fmt.Errorf("mark transaction %d rolled back: %w", t.ID, err)
 	}
 
-	return true, nil
+	return nil
 }

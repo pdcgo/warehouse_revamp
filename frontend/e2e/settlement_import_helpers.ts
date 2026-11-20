@@ -222,8 +222,9 @@ export async function importsOf(page: Page, shop: string): Promise<Locator> {
 /**
  * The page's load has finished talking to the server — its CheckAccess pair answered among the rest. A spec that polls
  * a screen by navigating again (expect.toPass around a goto) must not navigate while the last load's CheckAccess is in
- * flight: the navigation aborts it, and the app drops the token on ANY CheckAccess failure (AuthContext's catch), so
- * the next load opens on Sign in. Seen once in an affected run (reported to revamp_dev, 2026-11-19).
+ * flight: the navigation aborts it. Until #92/#96 the app dropped the token on ANY CheckAccess failure, so the next load
+ * opened on Sign in (seen once in an affected run, 2026-11-19); now an aborted check keeps the token and retries, but a
+ * settled page is still the clean point to navigate from.
  */
 export async function settled(page: Page): Promise<void> {
   await page.waitForLoadState("networkidle");

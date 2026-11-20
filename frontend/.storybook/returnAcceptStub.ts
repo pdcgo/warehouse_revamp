@@ -17,6 +17,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import type { OrderReturnAcceptRequest, OrderStatusChangeRequest } from "../src/gen/warehouse/selling/v1/order_pb";
 import { OrderStatus } from "../src/gen/warehouse/selling/v1/order_pb";
 import { orderDetailFor, orders, racks, teams } from "./fixtures";
+import { reprintLabelOf } from "./reprintLabelScenario";
 import { returnWarehouseOf } from "./returnConfigurationStub";
 import { returnAcceptScenario } from "./sessionScenario";
 
@@ -67,6 +68,12 @@ export function orderStatusChange(req: OrderStatusChangeRequest) {
       const found = orders.find((o) => o.id === orderId && (o.teamId === req.teamId || o.warehouseId === req.teamId));
       if (!found) {
         return { orderId, moved: false, refusedReason: "not one of this team's orders" };
+      }
+
+      // A PARCEL MARKED CETAK ULANG LABEL IS NOT HANDED OVER (a-parcel-marked-for-reprint-is-not-handed-over), in the
+      // server's words — from every door, each order with its own result.
+      if (req.to === OrderStatus.SHIPPING && reprintLabelOf(orderId, scenarioStatus(found).status)) {
+        return { orderId, moved: false, refusedReason: "the label changed after it was printed — print the new label first" };
       }
 
       if (req.to === OrderStatus.RETURN) {

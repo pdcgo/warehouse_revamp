@@ -400,6 +400,54 @@ sequenceDiagram
 | the daily report | `foldDay` writes the `expense` column, so the overview, the report and the analytics count it as an expense with no other change |
 | *Warehouse Transfer Accepted* | not this listener's — balance's courier charge; the event_type filters keep it out |
 
+## The custom-shipment courier listener
+
+[the-courier-is-paid-by-the-team-or-by-the-warehouse](../../business/custom_shipments/context_decision.md#the-courier-is-paid-by-the-team-or-by-the-warehouse)
+— *Kami bayar*: the selling team pays a custom shipment's courier from one of its own accounts, *as a warehouse
+transfer's shipping* ([a-transfers-shipping-posts-as-an-expense](../../business/financial_account/context_decision.md#a-transfers-shipping-posts-as-an-expense)).
+Inventory publishes the parcel's cost after each commit, and this posts it on the team's account as **`expense`** rows,
+the transfer-shipping listener's twin: no expense record, so the Expenses screen never lists it; each row names its parcel.
+[custom_shipment_shipping_listener.go](../../../backend/services/financial_account_service/financial_account_v1/custom_shipment_shipping_listener.go),
+three subscriptions to one handler: `financial-account-custom-shipment-created|cost-updated|cancelled`, through the same
+`postPaymentLegs`. A *Gudang bayar* parcel is never this listener's: the warehouse pays and is owed it back through Team
+Balance (liability's `custom_shipment_fee`, from the handover). Built 2026-11-19 (backlog #88 P4).
+
+```mermaid
+sequenceDiagram
+    participant B as Pub/Sub
+    participant L as the listener
+    participant DB as one transaction
+    B->>L: CustomShipmentCreated, CostUpdated or Cancelled
+    L->>L: a warehouse payer or nothing to post means claim only
+    L->>DB: CLAIM the event id — a redelivery stops here
+    L->>DB: lock the one or two accounts FOR UPDATE, in id order, ONE statement — each the selling team's
+    L->>DB: post expense rows — two legs of a move share a group and name each other
+    L-->>B: 200 acks, and any error NACKs and Pub/Sub redelivers
+```
+
+| event | posts |
+| --- | --- |
+| `CustomShipmentCreated`, team payer | `−amount` on `finance_account_id`, dated `created_at_unix` · *"Custom shipment #N shipping"* · nothing for 0 (the cost is optional at create) |
+| `CustomShipmentCostUpdated`, same account (event id keyed by the cost revision) | `−(new − old)` — a lower cost comes back in · *"… shipping edited"* |
+| `CustomShipmentCostUpdated`, old account 0 | the cost was 0 until this edit: `−new` on the new account |
+| `CustomShipmentCostUpdated`, another account | `+old_amount` back on the old account, `−new_amount` on the new — one group · *"… moved to / from another account"*. A cost cleared to 0 is the old account's refund alone |
+| `CustomShipmentCancelled`, team payer | `+amount` on the account that paid · *"Custom shipment #N shipping cancelled — money returned"* — nothing for 0 |
+| a WAREHOUSE payer's Created or Cancelled | nothing, claimed — even if the event carried an account and a cost (logged): a *Gudang bayar* courier never leaves the team's account |
+
+| case | what happens |
+| --- | --- |
+| the same event twice, even at once | posted once — the claim is the write (`TestCustomShipmentShipping_ARedeliveryPostsOnce`, `TestRace_CustomShipmentShipping_OneEventFourDeliveries`) |
+| out of order | the same end balance — every event carries its own delta |
+| an account missing, or not the selling team's (the warehouse's own included) | an error, never filed elsewhere — a dead letter, and the claim rolls back with it |
+| no account on a cost above 0 (create or edit) | an error — inventory requires one; the listener does not trust that |
+| a cancel with an amount and no account | nothing posts (acked, logged), as the transfer's |
+| an archived account | posts — refusing would dead-letter money that moved |
+| custom shipment 603 beside warehouse transfer 603 | two rows — the event ids are each source's own |
+| beside transfer shipping and hand transfers on the same accounts | no deadlock — both lock in id order ([lock order](../../../audits/services/financial_account_service/concurrency/lock-order.md)) |
+| the daily report | the `expense` column, as the transfer's — no new change type, no migration |
+| *Custom Shipment Handed Over* | not this listener's — balance's courier charge; the event_type filters keep it out |
+| performance | no new query: `postPaymentLegs` as the transfer's (perf `transfer_shipping_listener_perf_test.go`, 7 statements ≈2.3 ms) |
+
 ---
 
 ## FinancialAccountShopSet

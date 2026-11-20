@@ -3,17 +3,26 @@ import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { returnState } from "./returnTo";
+import { SessionNoAnswer } from "./SessionNoAnswer";
 
 // AuthGate blocks the first render until CheckAccess has settled.
 //
 // Without it, an authenticated user with a token in storage sees the login page flash before
 // being redirected — the app would be rendering a decision it has not made yet.
+//
+// SETTLED MEANS ANSWERED (#96): a check that failed with no verdict from the server (aborted, the network, a 5xx) is
+// sent again while the spinner stays, and when the tries are spent the gate says the server gave no answer, with Try
+// Again — never the Sign in form, since nothing said the person is signed out (tokenVerdict.ts).
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { ready } = useAuth();
+  const { ready, unreachable } = useAuth();
 
   if (!ready) {
+    if (unreachable) {
+      return <SessionNoAnswer />;
+    }
+
     return (
-      <Center minH="100dvh">
+      <Center minH="100dvh" data-testid="auth-checking">
         <Spinner size="lg" colorPalette="brand" />
       </Center>
     );

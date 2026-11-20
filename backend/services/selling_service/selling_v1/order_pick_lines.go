@@ -33,7 +33,11 @@ func (s *Service) OrderPickLines(
 	query := s.db.
 		WithContext(ctx).
 		Model(&selling_service_models.Order{}).
-		Select("id", "status", "shop_id", "order_external_ref_id", "shipment_channel_id", "receipt", "transaction_id").
+		Select(
+			"id", "status", "shop_id", "order_external_ref_id", "shipment_channel_id", "receipt", "transaction_id",
+			// Cetak ulang label's two stamps (needsReprint) — the Daftar Ambil order block's badge.
+			"label_printed_at", "receipt_changed_at",
+		).
 		Preload("Items", func(db *gorm.DB) *gorm.DB {
 			return db.
 				Select("id", "order_id", "product_id", "product_code", "name", "quantity").
@@ -85,6 +89,8 @@ func orderPickToProto(order *selling_service_models.Order) *sellingv1.OrderPick 
 		ShipmentChannelId:  order.ShipmentChannelID,
 		ReceiptCode:        order.Receipt,
 		Lines:              make([]*sellingv1.OrderPickLine, 0, len(order.Items)),
+		// The badge on its order block (the-reprint-label-prototype-is-accepted).
+		ReprintLabel: needsReprint(order),
 	}
 
 	if order.TransactionID != nil {

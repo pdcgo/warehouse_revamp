@@ -143,8 +143,11 @@ service OrderService {
   // ids — a PDF label adds its pages, a label photo one page — stored as a private ORDER_LABELS document of the
   // warehouse, and the link is that file. A label that cannot be read is refused for its order, and the rest merge.
   rpc OrderLabels(OrderLabelsRequest) returns (OrderLabelsResponse) {
-    // A READ — it changes no order and no label (an-agent-only-reads-for-now, the-admin-team-monitors-read-only). The
-    // merged PDF it stores is its answer, the way an export's file is, not a record of anything.
+    // A READ — it changes no order's status, line or label (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only). The merged PDF it stores is its answer, the way an export's file is. With
+    // `record_print` (the print page's Print) it also stamps WHEN each included label was printed — the fact the
+    // Cetak ulang label mark reads (a-changed-label-asks-the-warehouse-to-reprint): it moves nothing and writes no
+    // timeline row, and whoever may print records it, a monitor too (printing is a read the warehouse does).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
@@ -550,6 +553,21 @@ message Order {
   // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
   // From `orders.is_override`, set at placement and never updated.
   bool is_override = 39;
+
+  // CETAK ULANG LABEL (a-changed-label-asks-the-warehouse-to-reprint): the seller changed the resi or the label file
+  // (OrderReceiptUpdate) AFTER the warehouse last printed this order's label on the print page (OrderLabels with
+  // `record_print`), and the parcel is still in the building — pending, processed or picked. True until the label is
+  // printed again. Computed from two stamps on the row:
+  //
+  //   label_printed_at IS NOT NULL AND receipt_changed_at > label_printed_at AND status IN (pending, processed, picked)
+  //
+  // A change before any print marks nothing (the first print takes the new label), and nothing is marked from shipping
+  // on. A marked order is not handed over (a-parcel-marked-for-reprint-is-not-handed-over).
+  bool reprint_label = 40;
+
+  // WHEN THE WAREHOUSE LAST PRINTED ITS LABEL on the print page (`orders.label_printed_at`); 0 = never. The seller's
+  // Edit Resi reads it to say a change asks the warehouse to print again. The order page's label viewer is not a print.
+  int64 label_printed_at_unix = 41;
 }
 
 // WHICH DATE a list's date window reads (the-date-filter-switches-created-or-platform). The two answer different
@@ -831,6 +849,10 @@ message OrderListFilter {
       }
     }
   }];
+
+  // PERLU CETAK ULANG (the-reprint-label-prototype-is-accepted): only the orders marked `Order.reprint_label` — the
+  // rule written there. false = no filter. Mirrored on OrderStatFilter, so the tabs count the same set.
+  bool reprint_label = 16;
 }
 
 // OrderListDataType selects which slices the response carries per order.
@@ -1478,6 +1500,9 @@ message OrderStatFilter {
 
   // Only orders whose settlement account has not opened, as on OrderListFilter.
   bool settlement_not_opened = 12;
+
+  // Only the orders marked Cetak ulang label, as on OrderListFilter.
+  bool reprint_label = 14;
 }
 
 message OrderStatRequest {
@@ -1757,6 +1782,12 @@ message OrderLabelsRequest {
   // never the caller's. Off (the default), the labels print as they are. On, even ONE id is merged and stored like
   // several, so its one page carries the sentence too.
   bool unboxing_warning = 3;
+
+  // THIS IS THE PRINT PAGE'S PRINT (a-changed-label-asks-the-warehouse-to-reprint): stamp `orders.label_printed_at` on
+  // every order whose label the answer INCLUDES — what clears its Cetak ulang label. An order left out (no label,
+  // unreadable) keeps its mark. Off (the default) is the order page's label viewer, which looks and records nothing. The
+  // stamp moves no status and writes no timeline row (a reprint keeps its step); it records what the crew holds.
+  bool record_print = 4;
 }
 
 // Why an order's label is not behind the link.
@@ -1848,6 +1879,8 @@ message OrderPick {
   // The resi; "" when nobody recorded one.
   string receipt_code = 7;
   repeated OrderPickLine lines = 8;
+  // Cetak ulang label — the rule on Order.reprint_label; the Daftar Ambil order block carries the badge.
+  bool reprint_label = 9;
 }
 
 message OrderPickLinesResponse {
@@ -1906,6 +1939,8 @@ message OrderPrint {
   // Whether a label file is attached — the seller's document OrderLabels reads (NO_LABEL there when false). Its id is not
   // sent: the warehouse opens a label only through OrderLabels, never as a document.
   bool has_label = 7;
+  // Cetak ulang label — the rule on Order.reprint_label: the page marks it under the label and counts it; Print clears it.
+  bool reprint_label = 8;
 }
 
 message OrderPrintByIdsResponse {

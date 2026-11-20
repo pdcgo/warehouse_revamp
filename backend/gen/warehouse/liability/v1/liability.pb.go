@@ -106,6 +106,17 @@ const (
 	// 41 beside restock 41 for the same pair would share the idempotency key and the second would be dropped as a
 	// redelivery.
 	LiabilitySourceType_LIABILITY_SOURCE_TYPE_TRANSFER_FEE LiabilitySourceType = 10
+	// What the warehouse paid the courier for a CUSTOM SHIPMENT it handed over, when the selling team picked *Gudang bayar*
+	// (the-courier-is-paid-by-the-team-or-by-the-warehouse) — the selling team owes the warehouse it shipped from.
+	// `source_id` is the CUSTOM SHIPMENT, posted once from CustomShipmentHandedOver; a cost of 0 posts nothing, and a
+	// *Kami bayar* parcel posts nothing here at all (its cost is an expense on the team's own account). Business word
+	// `custom_shipment_fee` (the-ledger-speaks-the-business-words).
+	//
+	// ⚠ NOT INCIDENTAL_FEE nor TRANSFER_FEE, for their reason (a-transfer-charge-is-a-transfer-fee): parcels, restocks and
+	// transfers are numbered separately, so custom shipment 41 beside restock 41 for the same pair would share the
+	// idempotency key and the second would be dropped as a redelivery. A reader summing the couriers' asks (the daily
+	// statement's one courier column) reads this one too.
+	LiabilitySourceType_LIABILITY_SOURCE_TYPE_CUSTOM_SHIPMENT_FEE LiabilitySourceType = 11
 )
 
 // Enum value maps for LiabilitySourceType.
@@ -121,6 +132,7 @@ var (
 		8:  "LIABILITY_SOURCE_TYPE_FOUND",
 		9:  "LIABILITY_SOURCE_TYPE_RETURN_INCIDENTAL_FEE",
 		10: "LIABILITY_SOURCE_TYPE_TRANSFER_FEE",
+		11: "LIABILITY_SOURCE_TYPE_CUSTOM_SHIPMENT_FEE",
 	}
 	LiabilitySourceType_value = map[string]int32{
 		"LIABILITY_SOURCE_TYPE_UNSPECIFIED":           0,
@@ -133,6 +145,7 @@ var (
 		"LIABILITY_SOURCE_TYPE_FOUND":                 8,
 		"LIABILITY_SOURCE_TYPE_RETURN_INCIDENTAL_FEE": 9,
 		"LIABILITY_SOURCE_TYPE_TRANSFER_FEE":          10,
+		"LIABILITY_SOURCE_TYPE_CUSTOM_SHIPMENT_FEE":   11,
 	}
 )
 
@@ -5069,7 +5082,7 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"!LiabilityTermsHistoryListResponse\x12S\n" +
 	"\x05items\x18\x01 \x03(\v2=.warehouse.liability.v1.LiabilityTermsHistoryListResponseItemR\x05items\x12\x10\n" +
 	"\x03ids\x18\x02 \x03(\x04R\x03ids\x12:\n" +
-	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo*\xc0\x03\n" +
+	"\tpage_info\x18\x03 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo*\xef\x03\n" +
 	"\x13LiabilitySourceType\x12%\n" +
 	"!LIABILITY_SOURCE_TYPE_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fLIABILITY_SOURCE_TYPE_ORDER_FEE\x10\x02\x12%\n" +
@@ -5081,7 +5094,8 @@ const file_warehouse_liability_v1_liability_proto_rawDesc = "" +
 	"\x1bLIABILITY_SOURCE_TYPE_FOUND\x10\b\x12/\n" +
 	"+LIABILITY_SOURCE_TYPE_RETURN_INCIDENTAL_FEE\x10\t\x12&\n" +
 	"\"LIABILITY_SOURCE_TYPE_TRANSFER_FEE\x10\n" +
-	"\"\x04\b\x01\x10\x01*\x1dLIABILITY_SOURCE_TYPE_COD_FEE*\xb1\x01\n" +
+	"\x12-\n" +
+	")LIABILITY_SOURCE_TYPE_CUSTOM_SHIPMENT_FEE\x10\v\"\x04\b\x01\x10\x01*\x1dLIABILITY_SOURCE_TYPE_COD_FEE*\xb1\x01\n" +
 	"\x1dLiabilityPositionListDataType\x121\n" +
 	"-LIABILITY_POSITION_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12-\n" +
 	")LIABILITY_POSITION_LIST_DATA_TYPE_GENERAL\x10\x01\x12.\n" +

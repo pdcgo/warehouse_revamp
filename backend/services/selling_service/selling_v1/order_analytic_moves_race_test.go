@@ -81,3 +81,57 @@ func TestRace_OrderMovesFold_TwoMovesOfOneOrderAndTwoOrdersOnOneDay(t *testing.T
 		}
 	}
 }
+
+// RESOLVES AND A COMPLETE ON ONE DAY AT ONCE, × 10 rounds (Disputes resolved — the-order-status-moves-prototype-is-accepted,
+// its 2026-11-20 line): orders A and B (same day, shop, warehouse and creator) are each resolved, problem → completed,
+// order C completed from shipped, and A's resolve is delivered twice — four folds together. A resolve writes the
+// Completed row and THEN the Disputes resolved row (metricLockRank); C writes the Completed row alone. Every round adds
+// exactly 3 to Completed and 2 to Disputes resolved: nothing lost, the redelivery counted once, no deadlock.
+func TestRace_OrderMovesFold_ResolvesAndACompleteOnOneDay(t *testing.T) {
+	h := orderRaceHarness(t)
+	cleanShopFixFold(t, h)
+
+	svc := newService(t, h.DB())
+	analytic := selling_v1.NewAnalytic(h.DB(), fakeTeamTypes{})
+	shopID := insertShop(t, h.DB(), raceOrderTeam, "Race Resolves", "RR-1", "shopee")
+
+	for round := range 10 {
+		a, b, c := raceOrder(t, svc, shopID), raceOrder(t, svc, shopID), raceOrder(t, svc, shopID)
+
+		for _, order := range []uint64{a, b} {
+			raceTimelineRow(t, h, order, "shipped")
+			raceTimelineRow(t, h, order, "problem")
+		}
+
+		raceTimelineRow(t, h, c, "shipped")
+
+		resolveA := movedBy(a, raceTimelineRow(t, h, a, "completed"), "problem", "completed", 55, foldAt)
+		events := []*eventsv1.Event{
+			resolveA,
+			movedBy(b, raceTimelineRow(t, h, b, "completed"), "problem", "completed", 55, foldAt),
+			movedBy(c, raceTimelineRow(t, h, c, "completed"), "shipped", "completed", 55, foldAt),
+			resolveA, // the redelivery
+		}
+
+		res := h.Race(t, len(events), func(i int) error {
+			return analytic.FoldHandler()(context.Background(), events[i])
+		})
+
+		if round == 0 {
+			res.Report(t)
+		}
+
+		if res.Failed() > 0 {
+			t.Fatalf("round %d: %d folds failed — deadlocks %d", round, res.Failed(), res.Count(san_race.Deadlock))
+		}
+
+		if got, want := foldCount(t, h, "moves_completed"), int64(3*(round+1)); got != want {
+			t.Fatalf("round %d: Completed counts %d, want %d — an increment was lost or the redelivery counted", round, got, want)
+		}
+
+		if got, want := foldCount(t, h, "moves_disputes_resolved"), int64(2*(round+1)); got != want {
+			t.Fatalf("round %d: Disputes resolved counts %d, want %d — an increment was lost, the redelivery counted or a "+
+				"complete from shipped counted", round, got, want)
+		}
+	}
+}

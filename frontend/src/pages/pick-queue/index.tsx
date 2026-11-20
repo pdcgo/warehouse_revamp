@@ -61,7 +61,7 @@ import { NO_SHOPS, useShopsByIds, type ShopNames } from "../../features/shops/qu
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixDateTimeShort, formatUnixRelative } from "../../lib/datetime";
 import { useDebounced } from "../../lib/useDebounced";
-import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
+import { boolCodec, dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
 import type { WarehouseStep } from "./steps";
 import { commonMoves, isBack, stepLabelKey, stepOfStatus } from "./steps";
 import type { WarehouseTab } from "./tabs";
@@ -75,6 +75,9 @@ import { ReceiveReturnDialog } from "./components/ReceiveReturnDialog";
 import { ScanLabelDialog } from "./components/ScanLabelDialog";
 import { printReceiptsPath } from "../print-receipts/path";
 import { WarehouseStatusBadge } from "./components/WarehouseStatusBadge";
+// CETAK ULANG LABEL (a-changed-label-asks-the-warehouse-to-reprint): the badge beside the status, the phone block's line
+// and the *Perlu cetak ulang* filter — drawn from the server's `reprint_label` (the-reprint-label-prototype-is-accepted).
+import { ReprintLabelBlockLine, ReprintLabelFilter, StatusWithReprint } from "../../features/orders/ReprintLabel";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -124,6 +127,9 @@ export function PickQueuePage() {
   const [marketplace, setMarketplace] = useUrlState("marketplace", Marketplace.UNSPECIFIED, MARKETPLACE_CODEC);
   // The courier is its shipment channel id (shipment-channel-is-an-id-into-shipment-service).
   const [courier, setCourier] = useUrlState("courier", 0n, idCodec);
+  // PERLU CETAK ULANG (the-reprint-label-prototype-is-accepted): only the orders marked Cetak ulang label — on the server,
+  // so the tab counts follow it; `?reprint=1` in the address like every filter here.
+  const [reprint, setReprint] = useUrlState("reprint", false, boolCodec);
 
   // ── THE WORKBENCH (`a-warehouse-step-moves-by-the-old-systems-table`, `scanning-is-the-crews-hands`) ──
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -152,14 +158,16 @@ export function PickQueuePage() {
       sellerTeamId: sellerId,
       marketplace,
       shipmentChannelId: courier,
+      reprintLabel: reprint,
     };
-  }, [debouncedSearch, range, sellerId, marketplace, courier]);
+  }, [debouncedSearch, range, sellerId, marketplace, courier, reprint]);
   const filterCount = [
     search.trim() !== "",
     !isAllDates(range),
     sellerId > 0n,
     marketplace !== Marketplace.UNSPECIFIED,
     courier > 0n,
+    reprint,
   ].filter(Boolean).length;
   const filtered = filterCount > 0;
 
@@ -300,6 +308,7 @@ export function PickQueuePage() {
       setSellerId(0n);
       setMarketplace(Marketplace.UNSPECIFIED);
       setCourier(0n);
+      setReprint(false);
     });
   }
 
@@ -444,6 +453,8 @@ export function PickQueuePage() {
             onChange={(channelId) => refilter(() => setCourier(channelId))}
           />
         </FilterField>
+
+        <ReprintLabelFilter checked={reprint} onChange={(on) => refilter(() => setReprint(on))} />
 
       </FilterBar>
 
@@ -622,7 +633,7 @@ export function PickQueuePage() {
                                 {facts.quantity}
                               </Table.Cell>
                               <Table.Cell>
-                                <WarehouseStatusBadge status={order.status} />
+                                <StatusWithReprint order={order} status={<WarehouseStatusBadge status={order.status} />} />
                               </Table.Cell>
                               <Table.Cell>
                                 <DateAgoCell unix={order.createdAtUnix} testId={`pick-queue-created-${order.id}`} />
@@ -795,6 +806,7 @@ function OrderBlock({
           </Flex>
           <Box onClick={(e) => e.stopPropagation()}>{actions}</Box>
         </Flex>
+        <ReprintLabelBlockLine order={order} />
         <Flex align="center" gap="1.5" minW="0" wrap="wrap">
           {facts.shop && <MarketplaceBadge marketplace={facts.shop.marketplace} size="sm" />}
           <Text fontSize="sm" lineClamp={1}>

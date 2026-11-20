@@ -33,8 +33,9 @@ import (
 //	lost_created    a timeline row INTO lost                  order-status-changed:<timeline row>
 //	return_arrived  the timeline row INTO return_completed    order-return-accepted:<order>
 //	moves_*         a timeline row INTO processed, picked, shipping, shipped, problem or completed, or INTO pending
-//	                after the placement's own row — a count of Order status moves, no money
-//	                                                          order-status-changed:<timeline row>
+//	                after the placement's own row — a count of Order status moves, no money; a row into completed
+//	                whose previous status row is problem (resolveSQL) also +1 moves_disputes_resolved — the same
+//	                event, so one claim covers both rows             order-status-changed:<timeline row>
 //	warehouse_fee   +1 and the fee beside a created, −1 and the fee beside a cancelled — an order with a fee only
 //	a shop fix      an order_shop_changes row: every metric the order had counted before it, −1 under the old shop and
 //	                +1 under the new                                                       order-shop-changed:<change>
@@ -127,8 +128,10 @@ type refoldMove struct {
 	TotalCost   float64
 	MpTotal     float64
 	Fee         *float64
-	Claimed     bool
-	Old         bool
+	// Resolve is a move into completed straight from problem (resolveSQL): counted as a Completed AND a Disputes resolved.
+	Resolve bool
+	Claimed bool
+	Old     bool
 }
 
 // refoldKey is a report row of the day under the team.
@@ -286,6 +289,13 @@ func refoldOrderDay(tx *gorm.DB, in OrderDayRefoldInput, start time.Time) (Order
 		// The fold's own sum: one order, its total_cost and its platform_total — a status move its count alone…
 		add(key, moveFigures(move.Metric, move.TotalCost, move.MpTotal))
 
+		// …a resolve's second count beside its Completed, by the fold's own rule (addTheResolve)…
+		if move.Resolve {
+			resolved := key
+			resolved.Metric = reportMovesDisputesResolved
+			add(resolved, moveFigures(resolved.Metric, move.TotalCost, move.MpTotal))
+		}
+
 		// …and the fee row beside a placement or a cancel, by the fold's own rule.
 		fee, ok := feeMove(move.Metric, move.Fee)
 		if ok {
@@ -310,7 +320,7 @@ func refoldOrderDay(tx *gorm.DB, in OrderDayRefoldInput, start time.Time) (Order
 			Cancelled: fix.Cancelled, ReturnCreated: fix.ReturnCreated, ReturnArrived: fix.ReturnArrived,
 			LostCreated: fix.LostCreated,
 			Confirmed:   fix.Confirmed, BackToPending: fix.BackToPending, Picked: fix.Picked, HandedOver: fix.HandedOver,
-			Shipped: fix.Shipped, Problem: fix.Problem, Completed: fix.Completed,
+			Shipped: fix.Shipped, Problem: fix.Problem, Completed: fix.Completed, DisputesResolved: fix.DisputesResolved,
 		}
 
 		for _, row := range shopMoveRows(&order, fix.FromShopID, fix.ToShopID, counts) {
@@ -375,13 +385,15 @@ func refoldOrderDay(tx *gorm.DB, in OrderDayRefoldInput, start time.Time) (Order
 // dayMoves reads every move of the team's orders on the Jakarta day, with its claim, its age, and the order's frozen
 // figures — the event each one was announced by, rebuilt from the row it was built from. A row into pending is a move
 // only after the placement's own (afterThePlacement): the placement's row is Order Created's, announced as OrderPlaced.
+// A row into completed carries whether it is a resolve (resolveSQL), the fold's second count.
 func dayMoves(tx *gorm.DB, teamID uint64, start time.Time) ([]refoldMove, error) {
 	moves := []refoldMove{}
 
 	err := tx.
 		Raw(`
 WITH moves AS (
-    SELECT 'order-placed:' || o.id AS event_id, 'created' AS metric, o.id AS order_id, 0 AS log_id, o.created_at AS at
+    SELECT 'order-placed:' || o.id AS event_id, 'created' AS metric, o.id AS order_id, 0 AS log_id, o.created_at AS at,
+           false AS resolve
     FROM orders o
     WHERE o.team_id = @team AND o.created_at >= @from AND o.created_at < @to
   UNION ALL
@@ -399,7 +411,7 @@ WITH moves AS (
                          WHEN @shipped THEN @moves_shipped
                          WHEN @problem THEN @moves_problem
                          ELSE @moves_completed END,
-           o.id, l.id, l.created_at
+           o.id, l.id, l.created_at, `+isAResolve("l")+`
     FROM orders o
     JOIN order_timeline_logs l ON l.order_id = o.id
     WHERE o.team_id = @team
@@ -408,7 +420,7 @@ WITH moves AS (
       AND (l.status <> @pending OR `+afterThePlacement("l")+`)
       AND l.created_at >= @from AND l.created_at < @to
 )
-SELECT m.event_id, m.metric, m.order_id, m.log_id, m.at,
+SELECT m.event_id, m.metric, m.order_id, m.log_id, m.at, m.resolve,
        -- The shop the order was in AT the move (shopAsOf): a fix after it names it; none, and it is the order's now.
        COALESCE((SELECT c.from_shop_id FROM order_shop_changes c
                  WHERE c.order_id = m.order_id AND c.timeline_log_id > m.log_id
@@ -465,8 +477,10 @@ type refoldShopFix struct {
 	Shipped       int64
 	Problem       int64
 	Completed     int64
-	Claimed       bool
-	Old           bool
+	// The resolves among them (resolveSQL).
+	DisputesResolved int64
+	Claimed          bool
+	Old              bool
 }
 
 // dayShopFixes reads every fix of the team's orders' shops on the Jakarta day — the OrderShopChanged each was announced
@@ -482,7 +496,7 @@ SELECT 'order-shop-changed:' || c.id AS event_id, c.id AS change_id, c.order_id,
        o.warehouse_fee AS fee,
        before.cancelled, before.return_created, before.return_arrived, before.lost_created,
        before.confirmed, before.back_to_pending, before.picked, before.handed_over, before.shipped, before.problem,
-       before.completed,
+       before.completed, before.disputes_resolved,
        EXISTS (SELECT 1 FROM order_event_logs e WHERE e.id = 'order-shop-changed:' || c.id) AS claimed,
        c.created_at < NOW() - CAST(@inflight AS interval) AS old
 FROM order_shop_changes c
@@ -593,9 +607,14 @@ func lostMoveEvent(teamID uint64, move refoldMove) *eventsv1.Event {
 			to = moveStatusOf(move.Metric)
 		}
 
-		event.Message = &eventsv1.Event_OrderStatusChanged{OrderStatusChanged: &eventsv1.OrderStatusChanged{
-			TeamId: teamID, OrderId: move.OrderID, ToStatus: to, TimelineLogId: move.LogID,
-		}}
+		changed := &eventsv1.OrderStatusChanged{TeamId: teamID, OrderId: move.OrderID, ToStatus: to, TimelineLogId: move.LogID}
+
+		// A resolve's event said where the order came from — the very thing its second count reads.
+		if move.Resolve {
+			changed.FromStatus = orderStatusProblem
+		}
+
+		event.Message = &eventsv1.Event_OrderStatusChanged{OrderStatusChanged: changed}
 	}
 
 	return event

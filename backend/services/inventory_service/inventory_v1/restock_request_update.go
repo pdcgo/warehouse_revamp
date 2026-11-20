@@ -10,6 +10,7 @@ import (
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
@@ -29,6 +30,10 @@ import (
 //
 // The row is loaded FOR UPDATE and the status re-checked inside the transaction: the check and the write have to be
 // atomic, or an edit racing the warehouse's accept could land just after the box was counted.
+//
+// An edit's DIFFERENCE lands on Analytic's Restock on the edit day (the-restock-before-the-accept-prototype-is-accepted):
+// the ordered as it was out, as it is in — lines, shipping, warehouse — noted on the stock transaction's report, which
+// writes it as the transaction's last statement (restock_metric_fold.go).
 func (s *Service) RestockRequestUpdate(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RestockRequestUpdateRequest],
@@ -64,7 +69,7 @@ func (s *Service) RestockRequestUpdate(
 		changes    []inventory_service_models.RestockLogChange
 	)
 
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		loadErr := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("id = ? AND team_id = ?", msg.GetRequestId(), teamID).
@@ -152,7 +157,12 @@ func (s *Service) RestockRequestUpdate(
 		// `stored` still hold what was there: editOngoing overwrites the restock, editArrived the stored lines in place.
 		changes = restockEditChanges(&rr, stored, msg)
 
-		editedAt = time.Now()
+		// THE ORDERED AS IT WAS, taken out on the edit day — read here for the same reason: from the warehouse, the
+		// shipping and the lines still stored (the-restock-before-the-accept-prototype-is-accepted).
+		before := restockShareFacts(&rr, stored, restockOrdered, -1)
+
+		// The transaction's clock, so the trail's edit and its difference on Analytic share one day.
+		editedAt = inventory_ledgers.TxNow(tx)
 
 		var editErr error
 
@@ -201,7 +211,16 @@ func (s *Service) RestockRequestUpdate(
 		// Asking a warehouse to stock a product is what makes it VISIBLE there (#142) — a product added by this edit
 		// included, under the restock's team (the-warehouse-link-names-its-owner-team). ON CONFLICT DO NOTHING, so the
 		// products already linked cost nothing.
-		return linkWarehouseProducts(tx, rr.WarehouseID, rr.TeamID, rr.Items)
+		linkErr := linkWarehouseProducts(tx, rr.WarehouseID, rr.TeamID, rr.Items)
+		if linkErr != nil {
+			return linkErr
+		}
+
+		// THE DIFFERENCE: what was ordered out, what is ordered in — they net per key, so an unchanged line adds nothing,
+		// a moved restock leaves the old warehouse and reaches the new one, and changed shipping moves every line's share.
+		after := restockShareFacts(&rr, rr.Items, restockOrdered, 1)
+
+		return inventory_ledgers.NoteRestockFacts(tx, append(before, after...)...)
 	})
 	if err != nil {
 		// An ongoing edit to a resi or an Order ID another restock of the team holds

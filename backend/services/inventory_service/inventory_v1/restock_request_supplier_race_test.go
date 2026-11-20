@@ -28,6 +28,8 @@ import (
 
 // The tables this audit writes, CHILDREN FIRST.
 var raceRestockTables = []string{
+	// A restock's create and edit add its ordered to the door report (the-restock-before-the-accept-prototype-is-accepted).
+	"inventory_door_daily_reports",
 	"restock_logs",
 	"restock_items",
 	"restocks",

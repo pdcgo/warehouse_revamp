@@ -8,6 +8,8 @@ import { ReceiptUpload, emptyReceipt } from "../../components/orders/ReceiptUplo
 import type { ReceiptValue } from "../../components/orders/ReceiptUpload";
 import { toaster } from "../../components/feedback/Toaster";
 import { useOrder, useUpdateOrderReceipt } from "./queries";
+// CETAK ULANG LABEL (a-changed-label-asks-the-warehouse-to-reprint): one line when the warehouse already printed it.
+import { ReprintLabelSellerHint } from "./ReprintLabel";
 
 export const description =
   "Edit Resi: the selling team replaces an order's tracking number, its label file, or both, while the parcel is still in the warehouse. Only what changed is sent, and each change becomes a note on the order.";
@@ -101,6 +103,8 @@ export function EditReceiptDialog({
                     <Text fontSize="sm" color="fg.muted">
                       {t("orders.editReceipt.intro")}
                     </Text>
+                    {/* Printed already: saving asks the warehouse to print it again — the server stamps the change. */}
+                    <ReprintLabelSellerHint printedAtUnix={current?.labelPrintedAtUnix ?? 0n} />
 
                     <Field.Root>
                       <Field.Label>{t("orders.receiptCode")}</Field.Label>

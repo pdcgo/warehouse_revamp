@@ -2208,6 +2208,10 @@ The owning seller and root keep every figure. ⚠ My reading of *"in placement l
 
 ✅ Built 2026-11-19 — served live by selling_service (`metrics/orders/moves`, `OrderMovesMetric`): every `OrderStatusChanged` into processed, pending (from processed or picked — the placement is Order Created's), picked, shipping, shipped, problem or completed (a resolve too) folds +1 into its own `moves_*` row of `order_daily_reports` (migration 00052) on the move's Jakarta day, under the order's seller, its shop at the move, its shipping warehouse and its creator, no money; the reads, the day re-fold and a shop fix's −1 / +1 cover it with the five's machinery; no backfill. The Analytic picker reads the served descriptor; `orderMoves.stories.tsx` pins the live metric. Pinned by `order_analytic_moves_test.go` (each move named by where it went and on its own day, Created by = the creator, the seller / shipping warehouse / root read every count and another team nothing — on the Go response —, the headline the sum of its rows, the re-fold and the shop fix) and `TestRace_OrderMovesFold_TwoMovesOfOneOrderAndTwoOrdersOnOneDay`.
 
+🔄 *(2026-11-20)* The owner's later word adds a figure: his acceptance checklist ([analytic/order_metric.md](../../acceptances/analytic/order_metric.md) given 14, 2026-11-19 16:19 — after this accept) has *disputes resolved shown*. **Disputes resolved** (problem → completed, on the resolve's Jakarta day) becomes its own count in Order status moves. *(Not asked — the build's default:)* *Completed* keeps counting resolves as accepted, so no figure already shown changes. Backlog #97.
+
+✅ Built 2026-11-20 — Disputes resolved (backlog #97): Order status moves' 8th count **Disputes resolved** / *Sengketa selesai* (`disputes_resolved_count`, sortable) — a move into completed whose previous status row on the order's timeline is problem folds +1 into `moves_disputes_resolved` of `order_daily_reports` (migration 00053) on the resolve's Jakarta day, under the same seller, shop at the move, shipping warehouse and creator as its Completed, which still counts it, so no figure already shown changes; the re-fold rebuilds it from the timeline and a shop fix carries it −1 / +1; no backfill. Pinned by `TestOrderMovesFold_AResolveCountsAsDisputesResolvedAndAsCompleted` (a resolve one of each on its day, a shipped → completed a Completed only, a note between problem and completed changing nothing), `TestOrderMovesData_EachReaderReadsItsOwn` (the shipping warehouse reads and ranks by it, another team nothing), `TestOrderMovesData_TheHeadlineIsTheSumOfItsRows`, `TestOrderDayRefold_RebuildsTheMovesAsTheFoldWould` (a lost resolve rebuilt both ways), `TestOrderMetricFold_AShopFixCarriesAResolve`, `TestRace_OrderMovesFold_ResolvesAndACompleteOnOneDay`, and the stories `DisputesResolvedBesideCompleted` / `DisputesResolvedInIndonesian` (`orderMoves.stories.tsx`).
+
 ---
 
 ## a-cancelled-restock-takes-its-ordered-back-on-its-day
@@ -2218,6 +2222,8 @@ The owning seller and root keep every figure. ⚠ My reading of *"in placement l
 
 ⚠ Not built — the prototype only (backlog #85).
 
+✅ Built 2026-11-19 (backlog #85) — `RestockRequestCancel` takes the restock's units and value ordered back, every line, on the cancel's Jakarta day, in the cancel's own transaction (`inventory_v1/restock_metric_fold.go`, the door report — migration `00056`); the create day keeps its figure (`TestRestockBeforeAccept_ACancelTakesItsOrderedBackOnItsDay`: R5 +10 / +Rp 460.000 on 7 Oct, −10 / −Rp 460.000 on 11 Oct).
+
 ---
 
 ## a-lost-box-that-turns-up-takes-its-lost-back-on-its-day
@@ -2227,6 +2233,8 @@ The owning seller and root keep every figure. ⚠ My reading of *"in placement l
 **The verdict.** When a lost restock is signed for as arrived, its **units and value lost on the way** are taken back, as negatives, on the **arrival day** (Jakarta); the lost day stays as it was, and the accept counts as usual on its own day. Restock's *lost* therefore reads what is still lost.
 
 ⚠ Not built — the prototype only (backlog #85).
+
+✅ Built 2026-11-19 (backlog #85) — `RestockRequestMarkLost` counts every line lost on the way on the lost day; `RestockRequestArrive` from lost takes it back on the sign's Jakarta day, an ordinary sign counts nothing, and the accept counts as usual on its own day (`TestRestockBeforeAccept_ALostBoxThatTurnsUpTakesItsLostBack`: R6 +5 / +Rp 615.000 on 5 Oct, −5 / −Rp 615.000 on 18 Oct, accepted 19 Oct).
 
 ---
 
@@ -2246,3 +2254,15 @@ The owning seller and root keep every figure. ⚠ My reading of *"in placement l
 *(Not asked — the prototype's defaults, each from its decision, README `accept85`:)* a warehouse change moves the units out of the old warehouse and into the new one on the edit day (checklist row 59); the value ordered is the restock's total (goods + the shipping its team paid), never the courier's COD; by product / supplier the shipping is spread over the units as the landed price spreads it; no count of restocks; groups and filters unchanged; a warehouse reads the units and the COD it paid, never a value; the labels are the prototype's wording, accepted with it.
 
 ⚠ Not built — the prototype only (backlog #85).
+
+✅ Built 2026-11-19 (backlog #85) — LIVE: `InventoryRestockMetric` serves Units / Value ordered, Units / Value lost on the way, the accepted four and Courier COD (`cod_amount`), each on its day as the table above, folded by the restock's create, edit, cancel, lost, sign and accept in their own transactions into the door report the accept already writes (`inventory_door_daily_reports`, migration `00056` — [inventory rpc.md](../../services/inventory_service/rpc.md#restock-before-the-accept--ordered-lost-on-the-way-and-the-couriers-cod-built-2026-11-19-backlog-85)): an edit's difference per key (a warehouse change −/+ under the two warehouses on the edit day), the shipping and the COD spread over the units ordered, a warehouse caller's data carrying no value (the COD it reads); counted from the build, no history replayed (as `00042`'s door rows). The screen reads the served descriptor and the prototype gate is gone; its stories are the live metric's (`pages/analytic/restock.stories.tsx`, 15). Pinned by `restock_metric_before_accept_test.go` (R1–R7 through the real writes, every October day as accepted) and `restock_metric_race_test.go`.
+
+---
+
+## a-warehouse-reads-the-newest-counts-as-accepted
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended — to: *"On the 19th you approved these pictures (`accepts/accept84/06_warehouse_view_by_seller.png`, `accepts/accept85/08_warehouse_view_by_day.png`), where a warehouse sees every count of the orders it ships, plus restock units and the COD it paid, never values. That afternoon, hfrada's checklist rows for the same counts named only the selling team. **A** keep it as approved, and add the warehouse to those checklist rows — the warehouse already sees every one of these statuses on its own order list; **B** narrow it — a warehouse sees only Confirmed, Back to pending, Picked and Handed over in Order status moves, and in Restock no longer sees Units ordered, Lost on the way or Courier COD."*
+
+**The verdict.** What a warehouse reads stays as accepted ([the-order-status-moves-prototype-is-accepted](#the-order-status-moves-prototype-is-accepted), [the-restock-before-the-accept-prototype-is-accepted](#the-restock-before-the-accept-prototype-is-accepted)): in *Order status moves* every count of the orders it ships (now also *Disputes resolved*); in *Restock* the units and the courier COD it paid, never a value. His acceptance rows gain the role on his word: [analytic/order_metric.md](../../acceptances/analytic/order_metric.md) givens 11–14 and [analytic/inventory_metric.md](../../acceptances/analytic/inventory_metric.md) givens 9–12 now read `selling:all` · `warehouse:all` (their statuses unchanged).
+
+✅ Built — nothing to change: the live code already serves this (#84, #85, #97).

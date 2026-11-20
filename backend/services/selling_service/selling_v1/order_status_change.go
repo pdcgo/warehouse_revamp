@@ -189,6 +189,13 @@ func refuseMove(order *selling_service_models.Order, teamID uint64, to, note str
 		return moveRefusal("a note is required to move " + from + " back to " + to)
 	}
 
+	// A PARCEL MARKED CETAK ULANG LABEL IS NOT HANDED OVER (a-parcel-marked-for-reprint-is-not-handed-over): its label
+	// changed after it was printed, so the box still carries the old one. Read from the LOCKED row, so an Edit Resi that
+	// committed first marks it here, and every door — the scan, the bar's Serah Kurir, the pick page — gets this answer.
+	if to == orderStatusShipping && needsReprint(order) {
+		return reprintRefusal
+	}
+
 	return ""
 }
 

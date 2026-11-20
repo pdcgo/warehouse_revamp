@@ -7,6 +7,13 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
+## 2026-11-20 · disputes resolved, reprint label
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Disputes resolved has its own count** | Analytic › Order status moves now shows *Sengketa selesai* — an order whose dispute was resolved, on that day; Completed still counts it as before |
+| **A changed label tells the warehouse to reprint** | after a seller changes an order's resi or label once it was printed, the warehouse list, the pick page and the print page show *Cetak ulang label* until it is printed again, and the parcel cannot be handed over before that |
+
 ## 2026-11-19 · analytic order moves, restock and sign-in fixes, the import page
 
 | What shipped | What it means for a person |
@@ -17,6 +24,10 @@ Users & Role System, Documents, region, shipping, expense.
 | **A borrowed unit's label can be printed at a return** | after accepting a return with a borrowed unit, the page lists the labels to print and stick over the lender's code |
 | **A slow or interrupted page no longer signs you out** | only the server saying the login is expired or suspended signs you out; a dropped or interrupted check keeps you signed in |
 | **The import page shows every row** | a statement import's page now also lists the rows posted to their order (with the order linked) and the rows already imported before — each tab matches its total |
+| **Restocks are counted before the warehouse accepts them** | Analytic › Restock now also shows units and value ordered (on the day the restock is made or edited, taken back if cancelled), lost on the way (taken back if the box turns up) and the courier COD — the warehouse sees units and the COD it paid, never values |
+| **Custom shipments (Kirim Paket)** | a team can send a sample from stock or send a restock's broken units back to the supplier as a parcel: the warehouse picks it, hands it to the courier and types the cost; *Kami bayar* is an expense on the team's account, *Gudang bayar* a Team Balance debt; cancel only while requested; if goods can't be found the warehouse notes *Barang Tidak Ketemu* and the team decides |
+| **The import page reads well on a phone** | a statement import's page shows its totals, sliding tabs and one block per row on a phone; on the desktop it pages and loads like every other list |
+| **No answer from the server no longer shows Sign in** | when the login check gets no answer at all, the app keeps loading and retries, then shows *Try Again* — only the server rejecting the login signs you out |
 
 ## 2026-11-18 · partition library: linked tables
 

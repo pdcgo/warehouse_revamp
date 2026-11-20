@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, Field, Input, Stack } from "@chakra-ui/react";
 
+import { rpcError } from "../../api/clients";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
@@ -10,7 +11,7 @@ import { useShipmentChannelsByIds } from "../shipment/queries";
 import { useTeamsByIds } from "../teams/queries";
 import { DetailField } from "../restock/DetailField";
 import type { CustomShipment } from "./customShipments";
-import { useCustomShipmentPrototype } from "./customShipmentPrototype";
+import { useHandOverCustomShipment } from "./queries";
 
 // SERAHKAN KE KURIR — the warehouse's last step, picked → handed over (the parcel is done).
 //
@@ -23,10 +24,11 @@ import { useCustomShipmentPrototype } from "./customShipmentPrototype";
 //                                                              the warehouse's to know (the-warehouse-sees-the-ongkir-it-paid)
 //
 // The resi is optional — the courier's receipt number as the counter hands it back; tracking itself stays deferred
-// (tracking-is-deferred).
+// (tracking-is-deferred). It is CustomShipmentHandover as the shipping warehouse (the parcel's `warehouse_id`): the cost
+// sent only when the warehouse pays, never when the team does — the server refuses either mistake.
 export function HandoverDialog({ shipment, onClose }: { shipment: CustomShipment; onClose: () => void }) {
   const { t } = useTranslation();
-  const prototype = useCustomShipmentPrototype();
+  const handover = useHandOverCustomShipment();
   const couriers = useShipmentChannelsByIds([shipment.shipmentChannelId]);
   const teams = useTeamsByIds({ ids: [shipment.teamId] });
   const owner = teams.data?.[shipment.teamId.toString()]?.name ?? "";
@@ -35,12 +37,17 @@ export function HandoverDialog({ shipment, onClose }: { shipment: CustomShipment
   const warehousePays = shipment.payer === "WAREHOUSE";
 
   async function confirm() {
-    const ok = prototype?.handover(shipment.id, warehousePays ? Number(cost) : undefined, resi.trim()) ?? false;
-    toaster.create(
-      ok
-        ? { type: "success", title: t("customShipment.toast.handedOver") }
-        : { type: "error", title: t("customShipment.toast.refused") },
-    );
+    try {
+      await handover.mutateAsync({
+        teamId: shipment.warehouseId,
+        id: shipment.id,
+        shippingCost: warehousePays ? Number(cost) : undefined,
+        resi: resi.trim(),
+      });
+      toaster.create({ type: "success", title: t("customShipment.toast.handedOver") });
+    } catch (err) {
+      toaster.create({ type: "error", title: t("customShipment.toast.refused"), description: rpcError(err) });
+    }
   }
 
   return (

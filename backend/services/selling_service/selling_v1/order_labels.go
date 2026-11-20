@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_pdf_merge"
@@ -64,6 +66,10 @@ const unboxingWarning = "Wajib video unboxing saat membuka paket"
 // PDF carries unboxingWarning along its bottom margin — and so ONE id is merged and stored too, since its own file has no
 // such line. Off, the labels print as they are.
 //
+// THE PRINT PAGE'S PRINT IS RECORDED (a-changed-label-asks-the-warehouse-to-reprint): with `record_print`, every order the
+// answer includes is stamped `label_printed_at` — what clears its Cetak ulang label. The order page's label viewer asks
+// without it and records nothing. See labelOrders for why the stamp is the time the files were READ.
+//
 // Every asked order gets a result: included, NOT_SHIPPED_HERE (another warehouse's, or no such order — the two read
 // alike, so ids cannot be probed), NO_LABEL (none attached, or the file is gone) or UNREADABLE (a file the merge cannot
 // read — broken, not a PDF or a picture, or missing from storage). A refusal never blocks the rest, and a hostile file
@@ -78,23 +84,9 @@ func (s *Service) OrderLabels(
 
 	ids := req.Msg.GetOrderIds()
 	teamID := req.Msg.GetTeamId()
+	record := req.Msg.GetRecordPrint()
 
-	query := s.db.
-		WithContext(ctx).
-		Model(&selling_service_models.Order{}).
-		Select("id", "team_id", "warehouse_id", "receipt_document_id").
-		Where("id IN ?", ids)
-
-	if !readsEveryTeam(teamID) {
-		// THE CHECK: the order ships from this warehouse.
-		query = query.Where("warehouse_id = ?", teamID)
-	}
-
-	var orders []selling_service_models.Order
-
-	err := query.
-		Find(&orders).
-		Error
+	orders, readAt, err := s.labelOrders(ctx, teamID, ids, record)
 	if err != nil {
 		return nil, dbError(err)
 	}
@@ -143,7 +135,107 @@ func (s *Service) OrderLabels(
 		return nil, err
 	}
 
+	if record {
+		err = s.recordPrint(ctx, res.Results, readAt)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return connect.NewResponse(res), nil
+}
+
+// labelOrders reads the asked orders the caller may print — each must ship from the caller's warehouse (the root team
+// reads any).
+//
+// A PRINT THE PAGE RECORDS reads them FOR SHARE, in id order, in a short transaction, and takes the database's clock
+// after the read: an Edit Resi still holding an order's row (OrderReceiptUpdate locks it FOR UPDATE) commits first, and
+// this read then sees its NEW label. So every change the read saw is older than `readAt`, and every change it did not
+// see is stamped later — the stamp is never later than the label the PDF holds, and a change racing the print keeps the
+// order marked. The transaction ends before the files are fetched and merged, so no row stays locked for the merge.
+func (s *Service) labelOrders(
+	ctx context.Context,
+	teamID uint64,
+	ids []uint64,
+	record bool,
+) ([]selling_service_models.Order, time.Time, error) {
+	var (
+		orders []selling_service_models.Order
+		readAt time.Time
+	)
+
+	read := func(tx *gorm.DB) error {
+		query := tx.
+			Model(&selling_service_models.Order{}).
+			Select("id", "team_id", "warehouse_id", "receipt_document_id").
+			Where("id IN ?", ids)
+
+		if !readsEveryTeam(teamID) {
+			// THE CHECK: the order ships from this warehouse.
+			query = query.Where("warehouse_id = ?", teamID)
+		}
+
+		if record {
+			query = query.
+				Clauses(clause.Locking{Strength: "SHARE"}).
+				Order("id")
+		}
+
+		return query.
+			Find(&orders).
+			Error
+	}
+
+	if !record {
+		err := read(s.db.WithContext(ctx))
+
+		return orders, readAt, err
+	}
+
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		readErr := read(tx)
+		if readErr != nil {
+			return readErr
+		}
+
+		return tx.
+			Raw("SELECT clock_timestamp()").
+			Scan(&readAt).
+			Error
+	})
+
+	return orders, readAt, err
+}
+
+// recordPrint stamps the print page's print on every order the answer INCLUDES: `label_printed_at` = readAt, when their
+// files were read (labelOrders), and never moved back by a slower print of the same order. An order left out — no label,
+// unreadable — is not stamped and keeps its mark. It moves no status and writes no timeline row: a reprint keeps its
+// step (the-reprint-label-prototype-is-accepted). A stamp that cannot be written fails the print, so the crew prints
+// again rather than holding a label the mark still asks for.
+func (s *Service) recordPrint(ctx context.Context, results []*sellingv1.OrderLabelResult, readAt time.Time) error {
+	included := make([]uint64, 0, len(results))
+
+	for _, result := range results {
+		if result.GetIncluded() {
+			included = append(included, result.GetOrderId())
+		}
+	}
+
+	if len(included) == 0 {
+		return nil
+	}
+
+	err := s.db.
+		WithContext(ctx).
+		Model(&selling_service_models.Order{}).
+		Where("id IN ?", included).
+		UpdateColumn("label_printed_at", gorm.Expr("GREATEST(COALESCE(label_printed_at, ?), ?)", readAt, readAt)).
+		Error
+	if err != nil {
+		return dbError(err)
+	}
+
+	return nil
 }
 
 // linkOneLabel is one asked order: the link is its own file.

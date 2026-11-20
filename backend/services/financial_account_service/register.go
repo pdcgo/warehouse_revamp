@@ -55,8 +55,20 @@ const (
 	WarehouseTransferCancelledSubscription = "financial-account-warehouse-transfer-cancelled"
 )
 
+// The push subscriptions that bring inventory's CUSTOM SHIPMENT courier cost to the selling team's account when the team
+// pays it directly — *Kami bayar* (the-courier-is-paid-by-the-team-or-by-the-warehouse: *as a warehouse transfer's
+// shipping*) — posted as `expense`. One per topic, all three to the one listener; each created by tools/san's `pubsub
+// ensure` with its event_type filter, which is immutable once made. The handover is NOT one of them: a *Gudang bayar*
+// parcel's courier is the warehouse's money, owed back through Team Balance (liability_service).
+const (
+	CustomShipmentCreatedSubscription     = "financial-account-custom-shipment-created"
+	CustomShipmentCostUpdatedSubscription = "financial-account-custom-shipment-cost-updated"
+	CustomShipmentCancelledSubscription   = "financial-account-custom-shipment-cancelled"
+)
+
 // NewRegister mounts financial_account_service's Connect handlers under the shared interceptor chain, mounts
-// the withdrawal, team-payment, restock-payment, expense-payment and transfer-shipping listeners' push routes, and reports the Connect services for reflection.
+// the withdrawal, team-payment, restock-payment, expense-payment, transfer-shipping and custom-shipment-shipping listeners'
+// push routes, and reports the Connect services for reflection.
 func NewRegister(
 	mux *http.ServeMux,
 	accounts *financial_account_v1.Service,
@@ -87,6 +99,13 @@ func NewRegister(
 		mux.Handle("/event/"+WarehouseTransferCreatedSubscription+"/push", shipping)
 		mux.Handle("/event/"+WarehouseTransferUpdatedSubscription+"/push", shipping)
 		mux.Handle("/event/"+WarehouseTransferCancelledSubscription+"/push", shipping)
+
+		// A custom shipment's courier when the team pays it, its edits and its refund — one listener, its three
+		// subscriptions.
+		parcel := event_source.NewMuxPushHandler(accounts.CustomShipmentShippingHandler())
+		mux.Handle("/event/"+CustomShipmentCreatedSubscription+"/push", parcel)
+		mux.Handle("/event/"+CustomShipmentCostUpdatedSubscription+"/push", parcel)
+		mux.Handle("/event/"+CustomShipmentCancelledSubscription+"/push", parcel)
 
 		return san_grpc.ServiceReflectNames{
 			financial_accountv1connect.FinancialAccountServiceName,

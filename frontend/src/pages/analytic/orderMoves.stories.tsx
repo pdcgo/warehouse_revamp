@@ -12,7 +12,7 @@ import {
   catalogueMetrics,
   metricById,
 } from "../../features/analytic/catalogue";
-import { sampleFacts } from "../../features/analytic/sample";
+import { orderMoves, sampleFacts } from "../../features/analytic/sample";
 import { ROOT_TEAM_ID } from "../../features/team/TeamContext";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { OrderMovesMetricSchema } from "../../gen/warehouse/selling/v1/order_analytic_pb";
@@ -21,7 +21,10 @@ import { AnalyticPage } from "./index";
 // ORDER STATUS MOVES on the Analytic composer — LIVE (the-order-status-moves-prototype-is-accepted, backlog #84): SERVED
 // by selling_service (order_analytic.proto `OrderMovesMetric`, folded from OrderStatusChanged into order_daily_reports),
 // read off its descriptor like the five; the Storybook stub (.storybook/orderAnalyticStub.ts) answers it over the wire
-// from sample.ts, scoped by the caller as the server is. Drawn as the accepted prototype was (12 stories, the same pins).
+// from sample.ts, scoped by the caller as the server is. Drawn as the accepted prototype was (12 stories, the same pins),
+// plus DISPUTES RESOLVED (its 2026-11-20 line — the owner's checklist, analytic/order_metric.md given 14, *disputes
+// resolved shown*, backlog #97): an 8th count, the resolves alone, counted BESIDE Completed — a resolve is one of each on
+// its day, so Completed reads what it always read.
 //
 // What the checklist asks (acceptances/inventory/order.md): confirm, back to pending, pick, hand over, shipped, problem,
 // complete and resolve "recorded in analytic metric" — and completed is counted as a STATUS MOVE, a count, no money
@@ -34,7 +37,7 @@ import { AnalyticPage } from "./index";
 //
 // The sample: Toko Melati's (12) orders, shipped by Gudang Pusat (11), created by Ani, Budi and Eko — each placed order
 // confirmed that day, one in twenty handed back to pending and confirmed the next, picked, handed over, shipped, then
-// completed or a problem (most resolved to completed).
+// completed or a problem (most resolved to completed — each resolve a Completed and a Disputes resolved).
 
 const MOVES = ORDER_MOVES_METRIC.metricId;
 const slug = (id: string) => id.replaceAll("/", "-");
@@ -113,8 +116,8 @@ async function openOrder(canvas: Canvas) {
 
 // ── the picker ───────────────────────────────────────────────────────────────────────────────────
 
-// ORDER › ORDER STATUS MOVES — after the five served order metrics, one SERVED metric of seven counts, in the order an
-// order moves; none is money and none is held from a warehouse. Ticked, it goes on the table.
+// ORDER › ORDER STATUS MOVES — after the five served order metrics, one SERVED metric of eight counts, in the order an
+// order moves and Disputes resolved last; none is money and none is held from a warehouse. Ticked, it goes on the table.
 export const TheMovesAreUnderOrder: Story = {
   name: "Picker: Order › Order status moves",
   render: () => <Nothing />,
@@ -144,6 +147,7 @@ export const TheMovesAreUnderOrder: Story = {
       ["shipped_count", "count", false],
       ["problem_count", "count", false],
       ["completed_count", "count", false],
+      ["disputes_resolved_count", "count", false],
     ]);
 
     await userEvent.click(column.getByTestId(`analytic-metric-${slug(MOVES)}`));
@@ -206,7 +210,9 @@ export const MovesByDay: Story = {
     }
     await expect(canvas.getByTestId("analytic-sort-completed_count")).toHaveTextContent("Completed");
     await expect(canvas.getByTestId("analytic-sort-handed_over_count")).toHaveTextContent("Handed over");
+    await expect(canvas.getByTestId("analytic-sort-disputes_resolved_count")).toHaveTextContent("Disputes resolved");
     await expect(headline(canvas, "completed_count")).toBeGreaterThan(0);
+    await expect(headline(canvas, "disputes_resolved_count")).toBeGreaterThan(0);
     await expect(headline(canvas, "back_to_pending_count")).toBeGreaterThan(0);
     await sumsToHeadline(canvas);
     await noMoney(canvasElement);
@@ -228,6 +234,65 @@ export const EachMoveOnItsOwnDay: Story = {
     await expect(cell(canvas, "2025-01-02", "picked_count")).toBeGreaterThan(0);
     await expect(headline(canvas, "completed_count")).toBe(0);
     await expect(headline(canvas, "problem_count")).toBe(0);
+    await expect(headline(canvas, "disputes_resolved_count")).toBe(0);
+  },
+};
+
+// DISPUTES RESOLVED, BESIDE COMPLETED — by day: the resolves alone, each on its own day; every resolve is ALSO a
+// Completed that day, so no day reads more resolves than completes, and Completed reads every complete, the resolves
+// included, exactly as before. The column sits last, after Completed.
+export const DisputesResolvedBesideCompleted: Story = {
+  name: "Disputes resolved beside Completed",
+  render: () => <MovesDaily />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    const sorts = canvas.getAllByTestId(/^analytic-sort-/).map((el: HTMLElement) => el.dataset.testid!.replace("analytic-sort-", ""));
+    await expect(sorts.slice(-2)).toEqual(["completed_count", "disputes_resolved_count"]);
+
+    const resolved = headline(canvas, "disputes_resolved_count");
+    await expect(resolved).toBe(sampleCount("disputes_resolved_count", "2026-10-01", "2026-10-20"));
+    await expect(resolved).toBeGreaterThan(0);
+    await expect(headline(canvas, "completed_count")).toBe(sampleCount("completed_count", "2026-10-01", "2026-10-20"));
+    await expect(headline(canvas, "completed_count")).toBeGreaterThan(resolved);
+
+    for (const day of rowKeys(canvas)) {
+      await expect(cell(canvas, day, "disputes_resolved_count")).toBeLessThanOrEqual(cell(canvas, day, "completed_count"));
+    }
+    await expect(sum(column(canvas, "disputes_resolved_count"))).toBe(resolved);
+
+    // The sample's own orders, one by one: a resolved dispute is a Completed AND a Disputes resolved on one day; a
+    // problem left open is neither; a complete straight from shipped is no Disputes resolved.
+    let resolves = 0;
+    for (let i = 0; i < 400; i++) {
+      const moves = orderMoves(`story|${i}`, "2026-10-01", "2026-12-31");
+      const days = (field: string) => moves.filter((m) => m.field === field).map((m) => m.day);
+      const [problem] = days("problem_count");
+      const completed = days("completed_count");
+      const disputes = days("disputes_resolved_count");
+
+      if (problem === undefined) {
+        await expect(disputes).toEqual([]);
+        continue;
+      }
+      await expect(disputes).toEqual(completed);
+      resolves += disputes.length;
+    }
+    await expect(resolves).toBeGreaterThan(0);
+  },
+};
+
+// IN INDONESIAN — the dispute screens' own word: *Selesaikan Sengketa* resolves it, so the count is *Sengketa selesai*.
+export const DisputesResolvedInIndonesian: Story = {
+  name: "Disputes resolved in Indonesian",
+  render: () => <MovesDaily />,
+  globals: { locale: "id" },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("analytic-sort-disputes_resolved_count")).toHaveTextContent("Sengketa selesai"));
+    await expect(canvas.getByTestId("analytic-sort-completed_count")).toHaveTextContent("Selesai");
+    await expect(canvas.getByTestId("analytic-headline-disputes_resolved_count")).toHaveTextContent("Sengketa selesai");
   },
 };
 
@@ -320,7 +385,7 @@ export const MovesGraphIsCounts: Story = {
   },
 };
 
-// ON A PHONE — each shop a block of its seven counts.
+// ON A PHONE — each shop a block of its eight counts.
 export const MovesOnAPhone: Story = {
   name: "Phone",
   render: () => <MovesByShop />,
@@ -332,5 +397,6 @@ export const MovesOnAPhone: Story = {
     await waitFor(() => expect(canvas.getByTestId("analytic-row-13")).toHaveTextContent("Toko Satria"));
     await expect(canvas.getByTestId("analytic-row-13")).toHaveTextContent("Back to pending");
     await expect(canvas.getByTestId("analytic-row-13")).toHaveTextContent("Completed");
+    await expect(canvas.getByTestId("analytic-row-13")).toHaveTextContent("Disputes resolved");
   },
 };

@@ -2,19 +2,21 @@ package inventory_v1
 
 import (
 	"context"
-	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
 // RestockRequestCancel is called by the REQUESTING team (#105): it cancels its own still-pending
 // request. Scoped to team_id (another team's request reads as NotFound); a fulfilled or
-// already-cancelled request is rejected (FailedPrecondition). No stock is touched.
+// already-cancelled request is rejected (FailedPrecondition). No stock is touched — but the cancel takes the restock's
+// ORDERED back on Analytic's Restock on its own day (a-cancelled-restock-takes-its-ordered-back-on-its-day), noted on the
+// stock transaction's report and written as the transaction's last statement (restock_metric_fold.go).
 func (s *Service) RestockRequestCancel(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RestockRequestCancelRequest],
@@ -23,7 +25,7 @@ func (s *Service) RestockRequestCancel(
 
 	var rr inventory_service_models.Restock
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		loadErr := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("id = ? AND team_id = ?", req.Msg.GetRequestId(), teamID).
@@ -40,8 +42,9 @@ func (s *Service) RestockRequestCancel(
 		}
 
 		// WHEN it was called off, stamped here rather than left to `updated_at`: any later write would
-		// move that column, and "cancelled last Tuesday" has to stay true afterwards.
-		now := time.Now()
+		// move that column, and "cancelled last Tuesday" has to stay true afterwards. The transaction's clock, so the
+		// cancel and its take-back on Analytic share one day.
+		now := inventory_ledgers.TxNow(tx)
 		actor := actorFrom(ctx)
 
 		rr.Status = restockStatusCancelled
@@ -77,7 +80,13 @@ func (s *Service) RestockRequestCancel(
 		}
 
 		// The lines, for the amount the cancel announces.
-		return tx.Where("restock_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
+		itemsErr := tx.Where("restock_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
+		if itemsErr != nil {
+			return itemsErr
+		}
+
+		// The ordered taken back, every line, on the cancel day: ordered reads what is still on order.
+		return inventory_ledgers.NoteRestockFacts(tx, restockShareFacts(&rr, rr.Items, restockOrdered, -1)...)
 	})
 	if err != nil {
 		return nil, restockErr(err)

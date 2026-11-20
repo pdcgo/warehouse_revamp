@@ -1,0 +1,24 @@
+package inventory_service_models
+
+import "time"
+
+// CustomShipmentItem is a row of `custom_shipment_items` (00057) — one line of a parcel: one product of a sample, or one
+// restock line of a reship, once per parcel. Code and name are snapshots at create.
+type CustomShipmentItem struct {
+	ID               uint64 `gorm:"primaryKey"`
+	CustomShipmentID uint64
+	ProductID        uint64
+	ProductCode      string
+	Name             string
+	Quantity         int64
+	// A sample line's value at the batches its take drew from; 0 on a reship.
+	Total float64
+	// A reship's restock line (nil on a sample) and that line's broken note, copied at create.
+	RestockItemID *uint64
+	BrokenNote    string
+	CreatedAt     time.Time
+}
+
+func (CustomShipmentItem) TableName() string {
+	return "custom_shipment_items"
+}

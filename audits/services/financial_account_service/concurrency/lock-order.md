@@ -24,6 +24,7 @@ was found and fixed in this pass (below).
 | the restock-payment listener *(2026-11-04)* | `financial_account_event_logs` (claim) → `financial_accounts` (1, or 2 for a move, **ORDER BY id**, one team) | `lockOwnedAccounts` — one statement, id order, so a payment moved X → Y composes with a hand transfer Y → X. Every event carries its own delta, so out-of-order deliveries need no lock between them |
 | the expense-payment listener *(2026-11-04)* | `financial_account_event_logs` (claim) → `financial_accounts` (1, the expense team's) | `lockOwnedAccounts` with one account — an expense and each correction post on ONE account (the original's, a-correction-follows-the-expenses-account), so it composes with every transfer. Each event carries its own signed delta, so out-of-order deliveries need no lock between them. Expense's account check is an in-process read made BEFORE its insert, never under a lock |
 | the transfer-shipping listener *(2026-11-04)* | `financial_account_event_logs` (claim) → `financial_accounts` (1, or 2 for a move, **ORDER BY id**, the selling team's) | the restock listener's own `postPaymentLegs` (`lockOwnedAccounts`, one statement, id order), posting `expense` — so a shipping cost moved X → Y composes with hand transfers both ways. Each event carries its own delta, and each edit's event id is its cost revision, so out-of-order deliveries need no lock between them |
+| the custom-shipment courier listener *(2026-11-19, #88 P4)* | `financial_account_event_logs` (claim) → `financial_accounts` (1, or 2 for a move, **ORDER BY id**, the selling team's) | the transfer-shipping listener's twin on the same `postPaymentLegs` — no new lock-taker, no new order. A *Gudang bayar* parcel claims only and locks nothing |
 | *(every post)* | under the account lock: `financial_account_logs` → `financial_accounts.balance` → `financial_account_daily_reports` (the day, then later days) | the day rows are per account, so the account lock serialises the upsert and the shift — no advisory lock |
 
 Evidence: [`financial_account_race_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/financial_account_race_test.go) (`raceaudit`), 20 runs clean.
@@ -49,6 +50,9 @@ Evidence: [`financial_account_race_test.go`](../../../../backend/services/financ
 | a transfer's shipping redelivered posts once | the same `WarehouseTransferCreated` 4× at once → paid once ([`transfer_shipping_race_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/transfer_shipping_race_test.go)) |
 | shipping, its edits, moves and refunds beside hand transfers on the same accounts | 2 trips, 2 edits, 2 moves X → Y, 2 refunds, 2 transfers each way, at once → 0 deadlocks, 0 failures, both balances exactly the sum |
 | a shipping post takes the account lock | **Interleave: the shipping post BLOCKS** behind a capital post on its account, then builds on its balance |
+| a custom shipment's courier redelivered posts once | the same `CustomShipmentCreated` 4× at once → paid once ([`custom_shipment_shipping_race_test.go`](../../../../backend/services/financial_account_service/financial_account_v1/custom_shipment_shipping_race_test.go)) |
+| parcel costs, edits, moves and refunds beside transfer shipping and hand transfers on the same accounts | 2 of each of the seven writes at once → 0 deadlocks, 0 failures, both balances exactly the sum |
+| a parcel courier post takes the account lock | **Interleave: the parcel post BLOCKS** behind a capital post on its account, then builds on its balance |
 
 ---
 

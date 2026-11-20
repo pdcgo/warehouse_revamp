@@ -2,13 +2,13 @@ package inventory_v1
 
 import (
 	"context"
-	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
@@ -30,6 +30,10 @@ import (
 // give-up must see the other's write, or a cancelled restock could be signed for. The charge is written under that same
 // lock, on the row the sign already updates: a sign racing Terima queues on it, so a Terima that commits last writes the
 // final figure, and a sign that comes after Terima is refused (a counted box has nothing left to sign).
+//
+// A LOST BOX THAT TURNS UP takes its lost back on Analytic's Restock on the day it is signed for
+// (a-lost-box-that-turns-up-takes-its-lost-back-on-its-day): noted on the stock transaction's report and written as the
+// transaction's last statement (restock_metric_fold.go). An ordinary sign counts nothing there.
 func (s *Service) RestockRequestArrive(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RestockRequestArriveRequest],
@@ -52,7 +56,7 @@ func (s *Service) RestockRequestArrive(
 
 	var rr inventory_service_models.Restock
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		loadErr := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("id = ? AND warehouse_id = ?", req.Msg.GetRequestId(), req.Msg.GetTeamId()).
@@ -69,7 +73,8 @@ func (s *Service) RestockRequestArrive(
 		}
 
 		from := rr.Status
-		now := time.Now()
+		// The transaction's clock, so the sign and a lost box's take-back on Analytic share one day.
+		now := inventory_ledgers.TxNow(tx)
 		actor := actorFrom(ctx)
 
 		rr.Status = restockStatusArrived
@@ -103,7 +108,17 @@ func (s *Service) RestockRequestArrive(
 			return logErr
 		}
 
-		return tx.Where("restock_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
+		itemsErr := tx.Where("restock_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
+		if itemsErr != nil {
+			return itemsErr
+		}
+
+		if from != restockStatusLost {
+			return nil
+		}
+
+		// The box was given up and turned up: lost reads what is still lost — every line taken back, as ordered.
+		return inventory_ledgers.NoteRestockFacts(tx, restockShareFacts(&rr, rr.Items, restockLost, -1)...)
 	})
 	if err != nil {
 		return nil, restockErr(err)

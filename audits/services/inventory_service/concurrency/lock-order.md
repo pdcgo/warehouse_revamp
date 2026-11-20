@@ -6,7 +6,7 @@ even though nothing is currently unsafe: its value is being here **before** the 
 | | |
 | --- | --- |
 | Isolation | READ COMMITTED (Postgres default — nothing in this repo raises it) |
-| Last swept | 2026-11-16: `RestockRequestCreate` / `RestockRequestUpdate` — a resi or an Order ID held by one restock (inventory 00048) — see [A reference in use](#a-reference-in-use-2026-11-16) · 2026-11-13: `RestockReceivedCountCorrect` and `WarehouseTransferReceivedCountCorrect` (Koreksi Jumlah Terima) — see [Koreksi Jumlah Terima](#koreksi-jumlah-terima-2026-11-13) · 2026-11-12: every stock writer's report rows (the four inventory metrics) — see [The stock reports are every stock transaction's last locks](#the-stock-reports-are-every-stock-transactions-last-locks-2026-11-12) · 2026-11-12: `BatchRevalue` (Koreksi Harga) — see [Koreksi Harga](#koreksi-harga-2026-11-12) · 2026-11-09: `OrderTransactionReturn` (backlog #40, an accepted return back on the shelf) — see [An order comes back on its return](#an-order-comes-back-on-its-return-2026-11-09) · 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
+| Last swept | 2026-11-19: the custom shipment's moves (backlog #88 P3) — see [Custom shipments — the moves](#custom-shipments--the-moves-2026-11-19) · 2026-11-16: `RestockRequestCreate` / `RestockRequestUpdate` — a resi or an Order ID held by one restock (inventory 00048) — see [A reference in use](#a-reference-in-use-2026-11-16) · 2026-11-13: `RestockReceivedCountCorrect` and `WarehouseTransferReceivedCountCorrect` (Koreksi Jumlah Terima) — see [Koreksi Jumlah Terima](#koreksi-jumlah-terima-2026-11-13) · 2026-11-12: every stock writer's report rows (the four inventory metrics) — see [The stock reports are every stock transaction's last locks](#the-stock-reports-are-every-stock-transactions-last-locks-2026-11-12) · 2026-11-12: `BatchRevalue` (Koreksi Harga) — see [Koreksi Harga](#koreksi-harga-2026-11-12) · 2026-11-09: `OrderTransactionReturn` (backlog #40, an accepted return back on the shelf) — see [An order comes back on its return](#an-order-comes-back-on-its-return-2026-11-09) · 2026-11-04: the `OrderCancelled` listener and `StockLockCheck` (backlog #10 slice 4) — see [A cancelled order released on its event](#a-cancelled-order-released-on-its-event-2026-11-04) · 2026-11-04: the `InventoryTxCancel` listener (backlog #10 slice 3) — see [Order takes and their release](#order-takes-and-their-release-2026-11-04) · 2026-10-07: the restock supplier check became a supplier_service RPC (an earlier sweep, 2026-08-20, added the SETTLEMENT tables) |
 
 ---
 
@@ -439,4 +439,98 @@ more columns in the `restocks` UPDATE the sign already made, on the row it alrea
 
 ```sh
 go test -tags raceaudit -p 1 -count=1 -run 'TestRace_RestockArriveCharge' -v ./backend/services/inventory_service/inventory_v1/
+```
+
+## Restock before the accept, on the door report (2026-11-19)
+
+[the-restock-before-the-accept-prototype-is-accepted](../../../../docs/business/analytic/rpc_provide_decision.md#the-restock-before-the-accept-prototype-is-accepted):
+a restock's create, edit, cancel, mark lost and sign now run in `inventory_ledgers.StockTransaction`, as the accept always
+did, and add what they moved of Analytic's Restock (ordered, lost on the way; the accept its courier COD) to the restock's
+`inventory_door_daily_reports` rows. **One lock added to five writers, at their very end** — the report rows are every
+stock transaction's last locks ([above](#the-stock-reports-are-every-stock-transactions-last-locks-2026-11-12)); no lock
+before them moves:
+
+| Writer | Locks, in order |
+| --- | --- |
+| `RestockRequestCreate` | `restocks` + `restock_items` INSERT → `restock_logs` INSERT → `warehouse_products` upsert → **door report upsert (last)** |
+| `RestockRequestUpdate` | *(supplier / store / account asks — before the transaction)* → **`restocks` — the ONE row `FOR UPDATE`** → *(read: `restock_items`)* → lines rewritten (ongoing) or updated in place (arrived) → `restocks` totals → `restock_logs` + `restock_log_changes` INSERT → `warehouse_products` upsert → **door report upsert (last)** — the edit's difference is read under the row lock, from the lines as stored, then as written |
+| `RestockRequestCancel` | **`restocks` `FOR UPDATE`** → `restocks` UPDATE → `restock_logs` INSERT → *(read: `restock_items`)* → **door report upsert (last)** |
+| `RestockRequestMarkLost` | the same shape as Cancel |
+| `RestockRequestArrive` | as above (the charge noted at Tiba) → **door report upsert (last)**, from lost only |
+| `RestockRequestAccept` | unchanged — its door rows now also carry the COD (the same upsert) |
+
+**No cycle.** The door rows are taken last, keys sorted (warehouse, team, product, supplier, source), and nothing locks
+after them; two writes of one restock already queue on its row lock, taken first, so the second's difference is read
+against what the first committed. Two restocks of one key on one day meet only on the report row, at the end — each adds.
+
+| Claim | Proof |
+| --- | --- |
+| An edit racing the accept of one arrived restock (its line 4 → 6 against 4 counted in): edit first → the accept counts 4 of 6 (2 missing); accept first → the edit is refused (FailedPrecondition). Either way the report's ordered equals the lines as they stand and its missing what the box lacked | `TestRace_RestockMetric_AnEditAgainstTheAccept` — 12 rounds, 6 each way |
+| Two edits of one ongoing restock at once (6 units / Rp 1.000 shipping, 9 units / Rp 2.000): both commit, one after the other; the report's ordered is exactly the one that committed last, units and value | `TestRace_RestockMetric_TwoEditsAtOnce` — 12 rounds |
+| The door report's other writers keep their order and add into one row | `TestRace_StockReport_*` (unchanged, green), the restock race suites (`TestRace_Restock*`, green) |
+
+```sh
+go test -tags raceaudit -p 1 -count=1 -run 'TestRace_RestockMetric' -v ./backend/services/inventory_service/inventory_v1/
+```
+
+## Custom shipments (2026-11-19)
+
+[the-custom-shipments-prototype-is-accepted](../../../../docs/business/custom_shipments/context_decision.md#the-custom-shipments-prototype-is-accepted)
+(backlog #88 P1): `CustomShipmentCreate` writes a parcel. **One new lock-taker on an existing row — the reship's
+`restocks` row — and no new order**:
+
+| Writer | Locks, in order |
+| --- | --- |
+| `CustomShipmentCreate` — a **sample** | *(product facts, the paying account — asked before the transaction)* → `custom_shipments` INSERT → the team's `batches` (product order, ids ascending — `LockBatches`) → `inventory_transactions` INSERT → `product_placements` (`LockRacks`, ids ascending) → ledger log rows → `custom_shipment_items` INSERT → `custom_shipments` UPDATE (its own new row) → `custom_shipment_logs` INSERT → **stock report upserts (last)** — the transfer out-leg's order (`postSystemPickedTake` is the out-leg's code) |
+| `CustomShipmentCreate` — a **reship** | *(the paying account — before the transaction)* → **`restocks` — the ONE row `FOR UPDATE`** → *(reads: `restock_items`, `restock_problem_items`, the live reships' `custom_shipment_items`)* → `custom_shipments` INSERT → `custom_shipment_items` INSERT → `custom_shipment_logs` INSERT. No ledger row, no batch, no rack |
+
+**No cycle.** The reship takes the restock row first and nothing else that is locked — its other writes are INSERTs of new
+rows. The restock's accept, cancel, edits and Koreksi Jumlah Terima take that same row FIRST too, then batches and racks;
+a reship never holds a batch or a rack, so no writer waits on it while holding one. The sample takes no restock row: it
+is the out-leg's lock order end to end (rows inserted first lock nothing another writer waits on).
+
+**Why the restock row.** A reship's cap is *broken − units on live reships*, a SUM over rows no constraint can express;
+two reships of one restock each read the sum and insert. Taking the restock row `FOR UPDATE` before the read queues them,
+and the second re-reads the sum under READ COMMITTED after the first commits. A `reshipped` counter on
+`restock_problem_items` (the alternative) would alter an existing table and keep a second copy of the sum.
+
+| Claim | Proof |
+| --- | --- |
+| Two people send the last broken units back at once: a line of 3 broken, 8 reships of 1 → exactly 3 created, 5 refused (FailedPrecondition); 8 of 2 → exactly 1 created; never more on the way back than broken; no deadlock | `TestRace_CustomShipmentReship_NeverSendsMoreThanTheBrokenUnits` — 4 rounds × 2 sizes. Mutation-checked: the lock as `FOR SHARE` (no queue) → red in round 0, all 8 created for 3 broken |
+| A parcel sample and an order race for the shelf's last units: 10 units, 8 samples and 8 order takes of 2 → exactly 5 win between them, 11 refused, no deadlock, both ledgers at 0, every take verifies, a parcel for every sample that won and only those | `TestRace_CustomShipmentSample_VsAnOrderForTheLastUnits` — 4 rounds (samples won 8, orders 12 of the 20 takes) |
+| The other writers keep their order with the custom-shipment tables cleared first by every race suite (`ledgerTables`) | the inventory race suites (`TestRace_*`, `TestInterleave_*`), green |
+
+```sh
+go test -tags raceaudit -p 1 -count=1 -run 'TestRace_CustomShipment' -v ./backend/services/inventory_service/inventory_v1/
+```
+
+## Custom shipments — the moves (2026-11-19)
+
+[a-custom-shipment-is-cancelled-only-while-requested](../../../../docs/business/custom_shipments/context_decision.md#a-custom-shipment-is-cancelled-only-while-requested),
+[the-courier-is-paid-by-the-team-or-by-the-warehouse](../../../../docs/business/custom_shipments/context_decision.md#the-courier-is-paid-by-the-team-or-by-the-warehouse)
+(backlog #88 P3): `CustomShipmentCostSet`, `CustomShipmentCancel`, `CustomShipmentPicked`, `CustomShipmentHandover`.
+**One new lock-taker — the parcel row, taken FIRST by every move — and no new order**:
+
+| Writer | Locks, in order |
+| --- | --- |
+| `CustomShipmentCancel` — a **sample** | **`custom_shipments` — the ONE row `FOR UPDATE`** (as its owning team) → *(`RollbackParcelSample`: the same row again — a no-op)* → **`inventory_transactions` — the take's row `FOR UPDATE`** → `batches` (`FOR UPDATE`, id order — `ReverseBatchLogs`) → `product_placements` (`FOR UPDATE`, id order — `ReversePlacementLogs`) → `RefuseCounted` (a read of the open snapshots over them) → the reversing log rows → `inventory_transactions` UPDATE (`is_rollback`) → `custom_shipments` UPDATE → `custom_shipment_logs` INSERT → **stock report upserts (last)** — the transfer cancel's order with the parcel row in the transfer row's seat |
+| `CustomShipmentCancel` — a **reship** | **`custom_shipments` — the ONE row `FOR UPDATE`** → `custom_shipments` UPDATE → `custom_shipment_logs` INSERT. No ledger row; no restock row (a cancel only FREES broken units, so a reship create judging the live sum under the restock's lock can only see too many, never too few) |
+| `CustomShipmentPicked` | **`custom_shipments` — the ONE row `FOR UPDATE`** (as its shipping warehouse) → UPDATE → `custom_shipment_logs` INSERT |
+| `CustomShipmentHandover` | the same as Picked (the cost and resi in the same UPDATE) |
+| `CustomShipmentCostSet` | *(the paying account — asked before the transaction)* → **`custom_shipments` — the ONE row `FOR UPDATE`** (as its owning team) → UPDATE (account, cost, `cost_revision`) → `custom_shipment_logs` INSERT. Nothing written when nothing changed |
+
+**No cycle.** Every move takes the parcel row FIRST; the only one that locks anything after it is a sample's cancel,
+which then follows the order's own order (the take's row, batches, racks — each by id) and ends on the report rows. No
+other writer locks a parcel row while holding a batch or a rack: the create inserts its own new row first, and orders,
+transfers and counts never touch `custom_shipments`. The take's row is locked by nobody else (a `sample` is never an
+order's take, a return's or a found's).
+
+| Claim | Proof |
+| --- | --- |
+| The team cancels while the warehouse picks one parcel: 8 callers (4 cancel, 4 pick) → EXACTLY ONE wins, 7 refused (FailedPrecondition), one move out of requested on the trail; a won cancel leaves the take rolled back and its units back, a won pick leaves them out; both ledgers end at 40 − 2 × picks; no deadlock | `TestRace_CustomShipmentMove_CancelVsPickedExactlyOneWins` — 12 rounds (runs: the cancel won 4 / the pick 8, then 7 / 5; 7 refused every round). Mutation-checked: the parcel lock as `FOR KEY SHARE` (no queue for an UPDATE) → red in round 1 (3 callers deadlocked on the cancel's own row lock) |
+| The team edits its cost while the warehouse hands the parcel over: 4 handovers + 4 edits → one handover, every edit that won committed BEFORE it (its trail row before the handed-over row), revision = edits won, one CostUpdated per won edit and one HandedOver, the stored cost the last edit's; no deadlock | `TestRace_CustomShipmentMove_HandoverVsCostSet` — 12 rounds, staggered by turns (edits won before the handover per round: 0 in 6–7 rounds, 1–2 in the rest). Mutation-checked: the parcel lock as `FOR KEY SHARE` → red in round 1 (two handovers both landed) |
+| A cancelled sample's units go back onto a shelf orders are taking from: 10 units, a sample of 4, then its cancel and 7 orders of 2 at once → the cancel always lands, orders win 3–5, both ledgers end at exactly 10 − 2 × won, the take rolled back, every transaction verifies; no deadlock | `TestRace_CustomShipmentMove_CancelRollbackVsAnOrderForTheSameUnits` — 24 rounds (orders won 3 in 17 rounds, 5 in 7). Mutation-checked: the undo taking racks BEFORE batches → deadlock detected (red twice of two runs; at 8 rounds it was missed once — a timing race, hence 24) |
+
+```sh
+go test -tags raceaudit -p 1 -count=1 -run 'TestRace_CustomShipmentMove' -v ./backend/services/inventory_service/inventory_v1/
 ```

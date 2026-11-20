@@ -180,9 +180,8 @@ const ROOT_READER = "1";
 
 /**
  * May `reader` (the caller's team) read the fact? A fact naming an `owner` (the expense prototypes) is read by that team
- * and by root alone; one naming `readers` (an order status move — the order stub passes its caller — or a prototype's
- * restock: the seller and the warehouse) by those teams and root. Without a reader — the Storybook stubs that scope
- * their own — every fact counts.
+ * and by root alone; one naming `readers` (an order status move — the order stub passes its caller) by those teams and
+ * root. Without a reader — the Storybook stubs that scope their own — every fact counts.
  */
 function readable(fact: Fact, reader: string | undefined): boolean {
   if (reader === undefined || reader === ROOT_READER) return true;
@@ -492,9 +491,7 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
 export function answeredFields(defs: MetricDef[], result: ReportResult, readerIsWarehouse = false): MetricDef[] {
   return defs.map((def) => {
     const headline = result.summary[def.metricId];
-    // A PROTOTYPE (no `schema`) is answered by the sample, which leaves nothing unset — so a warehouse's screen leaves out
-    // what the service will not give a warehouse, as the served answer would (the warehouse view of a prototype).
-    if (headline === undefined || (readerIsWarehouse && !def.schema)) {
+    if (headline === undefined) {
       return readerIsWarehouse ? { ...def, fields: def.fields.filter((f) => !f.warehouseHidden) } : def;
     }
 

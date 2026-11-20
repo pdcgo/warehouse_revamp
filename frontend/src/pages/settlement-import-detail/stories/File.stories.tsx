@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, spyOn, userEvent, waitFor, within } from "storybook/test";
 
+import { formatUnixDateTime } from "../../../lib/datetime";
 import { AtFailed, AtInterrupted, AtUnknown, IMPORT_DETAIL_META, loaded, shopeeDone, shopOf } from "./kit";
 
 // IMPORT DETAIL — the file itself: its shop, its range, its tally, the original to download, what an interrupted or a
@@ -30,6 +31,23 @@ export const TheFileAndItsTally: Story = {
     );
     await expect(canvas.getByTestId("tally-posted-value")).toHaveTextContent(String(shopeeDone!.tally.posted));
     await expect(canvas.getByTestId("tally-held-value")).toHaveTextContent(String(shopeeDone!.tally.held));
+  },
+};
+
+// WHO UPLOADED IT, AND WHEN — the time in the app's language and in WIB, the full form a detail page keeps
+// (a-table-date-is-short-and-every-time-is-wib); never the browser's own format (9/28/2026, 9:10:00 AM).
+export const UploadedByInWib: Story = {
+  name: "Uploaded by, in WIB",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const at = formatUnixDateTime(shopeeDone!.createdAt.seconds);
+
+    const by = canvas.getByTestId("import-detail-uploaded-by");
+    await waitFor(() => expect(by).toHaveTextContent(/^Uploaded by (?!#).+, /));
+    await expect(by).toHaveTextContent(`, ${at}`);
+    // 2026-09-28 09:10 WIB, read in English.
+    await expect(by).toHaveTextContent(/Sep 28, 2026\D+09:10/);
+    await expect(by).not.toHaveTextContent("9/28/2026");
   },
 };
 

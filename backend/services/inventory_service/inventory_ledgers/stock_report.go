@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"time"
@@ -20,10 +21,13 @@ import (
 //
 // Every `batch_logs` row is written by one of three functions here — MintBatches, BatchWrites.Flush and Revalue — and
 // each NOTES what it wrote on the transaction's StockReport: the units and value per (warehouse, owner, product,
-// supplier, change type). A restock or return accept also notes its door rows (NoteDoor). StockTransaction then writes
-// both reports as the transaction's last statements, each ONE multi-row upsert in key order:
+// supplier, change type). A restock or return accept also notes its door rows (NoteDoor), and a restock's create, edit,
+// cancel, lost, sign and accept its facts that are not stock (NoteRestockFacts — ordered, lost on the way, the courier's
+// COD: the-restock-before-the-accept-prototype-is-accepted). StockTransaction then writes both reports as the
+// transaction's last statements, each ONE multi-row upsert in key order:
 //
-//	inventory_door_daily_reports   — broken / missing at a restock's or a return's door
+//	inventory_door_daily_reports   — broken / missing at a restock's or a return's door; a restock's ordered, lost and
+//	                                  COD
 //	inventory_stock_daily_changes  — every change, netted per day, key and type: Restock, Transfer, Returned stock and
 //	                                  Ready stock all read it
 //
@@ -43,8 +47,11 @@ var ErrNoStockReport = errors.New("a stock change outside a stock transaction (i
 // reportDayLayout is a Jakarta day as the reports key it (a-day-is-a-jakarta-date-string).
 const reportDayLayout = "2006-01-02"
 
-// reportBatchSize keeps a multi-row upsert well under Postgres's 65 535 parameters (8 per row).
+// reportBatchSize keeps a multi-row upsert well under Postgres's 65 535 parameters (13 per door row, 8 per change row).
 const reportBatchSize = 1000
+
+// doorColumns is the parameters one door row binds.
+const doorColumns = 13
 
 // The door sources.
 const (
@@ -112,10 +119,23 @@ type DoorKey struct {
 	Source      string
 }
 
-// DoorSum is what a door found under one key.
+// DoorSum is what a door found under one key — and, for a restock, what the transaction moved of its ordered, lost on
+// the way and courier's COD (signed but the COD).
 type DoorSum struct {
-	Broken  int64
-	Missing int64
+	Broken       int64
+	Missing      int64
+	Ordered      int64
+	OrderedValue float64
+	Lost         int64
+	LostValue    float64
+	COD          float64
+}
+
+// empty is whether the sum adds nothing to its row — every count 0 and every value dust (within 4 places, san_money's
+// rule): an edit that changed nothing, or moved a key out and back in.
+func (s *DoorSum) empty() bool {
+	return s.Broken == 0 && s.Missing == 0 && s.Ordered == 0 && s.Lost == 0 &&
+		math.Abs(s.OrderedValue) < 0.00005 && math.Abs(s.LostValue) < 0.00005 && math.Abs(s.COD) < 0.00005
 }
 
 // StockReport is ONE stock transaction's report rows, gathered in memory until StockTransaction writes them.
@@ -233,6 +253,17 @@ type DoorRow struct {
 	Missing     int64
 }
 
+// doorSum is the transaction's sum under one door key, made on first use.
+func (r *StockReport) doorSum(key DoorKey) *DoorSum {
+	sum := r.door[key]
+	if sum == nil {
+		sum = &DoorSum{}
+		r.door[key] = sum
+	}
+
+	return sum
+}
+
 // NoteDoor adds door rows to the transaction's report; a row with neither broken nor missing is skipped.
 func NoteDoor(tx *gorm.DB, rows ...DoorRow) error {
 	report := reportOf(tx)
@@ -245,15 +276,9 @@ func NoteDoor(tx *gorm.DB, rows ...DoorRow) error {
 			continue
 		}
 
-		key := DoorKey{
+		sum := report.doorSum(DoorKey{
 			WarehouseID: r.WarehouseID, TeamID: r.TeamID, ProductID: r.ProductID, SupplierID: r.SupplierID, Source: r.Source,
-		}
-
-		sum := report.door[key]
-		if sum == nil {
-			sum = &DoorSum{}
-			report.door[key] = sum
-		}
+		})
 
 		sum.Broken += max(r.Broken, 0)
 		sum.Missing += max(r.Missing, 0)
@@ -277,17 +302,52 @@ func NoteDoorCorrection(tx *gorm.DB, rows ...DoorRow) error {
 			continue
 		}
 
-		key := DoorKey{
+		sum := report.doorSum(DoorKey{
 			WarehouseID: r.WarehouseID, TeamID: r.TeamID, ProductID: r.ProductID, SupplierID: r.SupplierID, Source: r.Source,
-		}
-
-		sum := report.door[key]
-		if sum == nil {
-			sum = &DoorSum{}
-			report.door[key] = sum
-		}
+		})
 
 		sum.Missing += r.Missing
+	}
+
+	return nil
+}
+
+// RestockFact is what one restock write moved of one line's figures before (and beside) the accept — never stock
+// (the-restock-before-the-accept-prototype-is-accepted): units and value ORDERED, units and value LOST ON THE WAY, each
+// signed (a cancel, an edit's old side, a lost box signed for as arrived are negative), and the courier's COD at the
+// accept. Keyed like the accept's door row: the restock's warehouse and team, the line's product and supplier.
+type RestockFact struct {
+	WarehouseID  uint64
+	TeamID       uint64
+	ProductID    uint64
+	SupplierID   uint64
+	Ordered      int64
+	OrderedValue float64
+	Lost         int64
+	LostValue    float64
+	COD          float64
+}
+
+// NoteRestockFacts adds a restock write's facts to the transaction's door rows (source `restock`), on the transaction's
+// day. Several facts under one key net first — an edit notes the old lines negative and the new ones positive, so a
+// line it did not change adds nothing and a warehouse change moves the line from one warehouse's row to the other's;
+// a key that nets to nothing is not written.
+func NoteRestockFacts(tx *gorm.DB, facts ...RestockFact) error {
+	report := reportOf(tx)
+	if report == nil {
+		return ErrNoStockReport
+	}
+
+	for _, f := range facts {
+		sum := report.doorSum(DoorKey{
+			WarehouseID: f.WarehouseID, TeamID: f.TeamID, ProductID: f.ProductID, SupplierID: f.SupplierID, Source: DoorRestock,
+		})
+
+		sum.Ordered += f.Ordered
+		sum.OrderedValue += f.OrderedValue
+		sum.Lost += f.Lost
+		sum.LostValue += f.LostValue
+		sum.COD += f.COD
 	}
 
 	return nil
@@ -308,7 +368,11 @@ func (r *StockReport) write(tx *gorm.DB) error {
 
 func (r *StockReport) writeDoor(tx *gorm.DB, day string) error {
 	keys := make([]DoorKey, 0, len(r.door))
-	for k := range r.door {
+	for k, s := range r.door {
+		if s.empty() {
+			continue
+		}
+
 		keys = append(keys, k)
 	}
 
@@ -326,21 +390,29 @@ func (r *StockReport) writeDoor(tx *gorm.DB, day string) error {
 		chunk := keys[start:min(start+reportBatchSize, len(keys))]
 
 		values := make([]string, 0, len(chunk))
-		args := make([]any, 0, len(chunk)*8)
+		args := make([]any, 0, len(chunk)*doorColumns)
 
 		for _, k := range chunk {
 			s := r.door[k]
-			values = append(values, "(CAST(? AS date), ?, ?, ?, ?, ?, ?, ?, NOW())")
-			args = append(args, day, k.WarehouseID, k.TeamID, k.ProductID, k.SupplierID, k.Source, s.Broken, s.Missing)
+			values = append(values, "(CAST(? AS date), ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS double precision), ?, "+
+				"CAST(? AS double precision), CAST(? AS double precision), NOW())")
+			args = append(args, day, k.WarehouseID, k.TeamID, k.ProductID, k.SupplierID, k.Source, s.Broken, s.Missing,
+				s.Ordered, s.OrderedValue, s.Lost, s.LostValue, s.COD)
 		}
 
 		err := tx.Exec(`
 INSERT INTO inventory_door_daily_reports
-    (day, warehouse_id, team_id, product_id, supplier_id, source, broken_count, missing_count, last_updated)
+    (day, warehouse_id, team_id, product_id, supplier_id, source, broken_count, missing_count,
+     ordered_count, ordered_value, lost_count, lost_value, cod_amount, last_updated)
 VALUES `+strings.Join(values, ", ")+`
 ON CONFLICT (day, warehouse_id, team_id, product_id, supplier_id, source) DO UPDATE SET
     broken_count  = inventory_door_daily_reports.broken_count + EXCLUDED.broken_count,
     missing_count = inventory_door_daily_reports.missing_count + EXCLUDED.missing_count,
+    ordered_count = inventory_door_daily_reports.ordered_count + EXCLUDED.ordered_count,
+    ordered_value = inventory_door_daily_reports.ordered_value + EXCLUDED.ordered_value,
+    lost_count    = inventory_door_daily_reports.lost_count + EXCLUDED.lost_count,
+    lost_value    = inventory_door_daily_reports.lost_value + EXCLUDED.lost_value,
+    cod_amount    = inventory_door_daily_reports.cod_amount + EXCLUDED.cod_amount,
     last_updated  = NOW()`, args...).Error
 		if err != nil {
 			return fmt.Errorf("door report: %w", err)

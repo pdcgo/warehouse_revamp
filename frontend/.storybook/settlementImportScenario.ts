@@ -10,10 +10,16 @@ export const settlementImportScenario = {
   wrongShopFile: false,
   // How long each row takes: slow enough to watch in the preview, fast enough for the test run.
   stepMs: 40,
+  // How long the file's page waits for its reads — the file (UploadedFileByIds) and its rows (UploadedFileLineList) —
+  // so a story can watch a first load (backlog #94: the skeletons, and a tab waiting for its own rows). 0 = at once.
+  fileHoldMs: 0,
+  linesHoldMs: 0,
 };
 
 export function resetSettlementImportScenario() {
   settlementImportScenario.noPrimaryCs.clear();
   settlementImportScenario.wrongShopFile = false;
   settlementImportScenario.stepMs = 40;
+  settlementImportScenario.fileHoldMs = 0;
+  settlementImportScenario.linesHoldMs = 0;
 }

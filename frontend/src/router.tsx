@@ -221,6 +221,23 @@ const WarehouseTransferWarehouseDetailPage = lazy(() =>
 const WarehouseTransferAcceptPage = lazy(() =>
   import("./pages/warehouse-transfer-accept").then((m) => ({ default: m.WarehouseTransferAcceptPage })),
 );
+// Custom shipments — *Kirim Paket* (docs/business/custom_shipments, backlog #88): a parcel that is not an order, served by
+// inventory_service's CustomShipmentService.
+const CustomShipmentSellingPage = lazy(() =>
+  import("./pages/custom-shipments").then((m) => ({ default: m.CustomShipmentSellingPage })),
+);
+const CustomShipmentWarehousePage = lazy(() =>
+  import("./pages/custom-shipments").then((m) => ({ default: m.CustomShipmentWarehousePage })),
+);
+const CustomShipmentFormPage = lazy(() =>
+  import("./pages/custom-shipment-form").then((m) => ({ default: m.CustomShipmentFormPage })),
+);
+const CustomShipmentDetailPage = lazy(() =>
+  import("./pages/custom-shipment-detail").then((m) => ({ default: m.CustomShipmentDetailPage })),
+);
+const CustomShipmentPickPage = lazy(() =>
+  import("./pages/custom-shipment-pick").then((m) => ({ default: m.CustomShipmentPickPage })),
+);
 const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
 const UserDetailPage = lazy(() =>
   import("./pages/user-detail").then((m) => ({ default: m.UserDetailPage })),
@@ -328,6 +345,21 @@ function WarehouseTransferDetailRoute() {
   ) : (
     <WarehouseTransferSellingDetailPage />
   );
+}
+
+// /inventories/custom-shipments is TWO screens behind ONE path, as the transfer's (above): the selling team reads and
+// asks for its own parcels (the-selling-team-asks-the-warehouse-ships); a warehouse reads the queue it picks, packs and
+// hands over from. One parcel: the team's detail, or the warehouse's pick page — by team type.
+function CustomShipmentRoute() {
+  const { current } = useTeam();
+
+  return current?.teamType === TeamType.WAREHOUSE ? <CustomShipmentWarehousePage /> : <CustomShipmentSellingPage />;
+}
+
+function CustomShipmentDetailRoute() {
+  const { current } = useTeam();
+
+  return current?.teamType === TeamType.WAREHOUSE ? <CustomShipmentPickPage /> : <CustomShipmentDetailPage />;
 }
 
 export const router = createBrowserRouter([
@@ -499,6 +531,10 @@ export const router = createBrowserRouter([
       { path: "inventories/transfer/:transferId", element: <WarehouseTransferDetailRoute /> },
       // Warehouse B counts the box in — a page, not a dialog.
       { path: "inventories/transfer/:transferId/accept", element: write(<WarehouseTransferAcceptPage />) },
+      // Custom shipments — one path, two screens (CustomShipmentRoute). `new` is static, so it ranks above :shipmentId.
+      { path: "inventories/custom-shipments", element: <CustomShipmentRoute /> },
+      { path: "inventories/custom-shipments/new", element: write(<CustomShipmentFormPage />) },
+      { path: "inventories/custom-shipments/:shipmentId", element: <CustomShipmentDetailRoute /> },
       // The old Stock address FORWARDS — a warehouse to its Products, anyone else to /inventory (StockForward). Not a
       // loader redirect: where it goes depends on the current team, which only TeamProvider knows.
       { path: "inventories/stock", element: <StockForward /> },

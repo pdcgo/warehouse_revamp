@@ -34,7 +34,8 @@ import { SHOPEE_INCOME, SHOPEE_WITHDRAWAL, shopeeStatement, today } from "./sett
 // stays ⬜ until the owner's word. The per-role regression that pinned the three old views while the then was expected
 // to fail is folded into the then. The regression after it pins the half of #93 no acceptance row names: the same
 // statement imported again — every row Already there, the order still linked — and a view longer than a page, read a
-// page at a time.
+// page at a time. Since #94 (the page's phone layout) the pages are the growing pager's (`lines-pager`, readView) and an
+// empty view is the empty hint (`lines-empty`); the phone's own checks are settlement_import_detail_phone.spec.ts.
 test.describe("selling:all wants to check what an import did — open import detail", () => {
   test.describe.configure({ timeout: 150_000 });
 
@@ -149,8 +150,14 @@ test.describe("selling:all wants to check what an import did — open import det
 
   /**
    * One view, opened and read to its last page: the count its tab names, the rows each page showed, and every row with
-   * its result (the "Why" column) and the order it links. The list keeps the previous answer on screen while the next
-   * one loads, so each page waits for its own answer and for as many rows as the tab's count leaves for it.
+   * its result (the "Why" column) and the order it links. The list keeps the previous page on screen while the next
+   * one loads, so each page waits for its own answer, for the previous page's first row to leave, and for as many rows
+   * as the tab's count leaves for it.
+   *
+   * The pager is the growing pager since #94 (`lines-pager`, GrowingPager): no "p of n" text — the page you are on is
+   * the number marked `aria-current="page"`, › is `lines-pager-next`, the per-page selector `lines-pager-size` (desktop).
+   * Its › REPLACES the rows with the next page's (the page passes its page number to the list RPC) — it does not append
+   * — so each page is read on its own and its rows added to the view's.
    */
   async function readView(page: Page, view: string): Promise<View> {
     const tab = page.getByTestId(`lines-tab-${view}`);
@@ -162,16 +169,19 @@ test.describe("selling:all wants to check what an import did — open import det
     }
     await expect(tab).toHaveAttribute("aria-selected", "true");
 
-    const size = Number((await page.getByTestId("page-size").innerText()).trim());
+    const pager = page.getByTestId("lines-pager");
+    const size = Number((await pager.getByTestId("lines-pager-size").innerText()).trim());
     const pages = Math.max(1, Math.ceil(count / size));
     const seen: View = { count, pageRows: [], lines: [] };
+    let previousFirst: string | undefined;
     for (let p = 1; p <= pages; p++) {
       if (p > 1) {
         const answered = lineListAnswered(page);
-        await page.getByTestId("page-next").click();
+        await pager.getByTestId("lines-pager-next").click();
         await answered;
+        if (previousFirst) await expect(page.getByTestId(`line-row-${previousFirst}`)).toHaveCount(0);
       }
-      await expect(page.getByTestId("page-text")).toHaveText(`${p} of ${pages}`);
+      await expect(pager.getByTestId(`lines-pager-page-${p}`)).toHaveAttribute("aria-current", "page");
       const expected = Math.min(size, count - (p - 1) * size);
       if (expected > 0) await expect.soft(linesShown(page), `${view}, page ${p}: its rows`).toHaveCount(expected);
       else await expect.soft(page.getByTestId("lines-empty"), `${view}: no rows here`).toBeVisible();
@@ -191,7 +201,10 @@ test.describe("selling:all wants to check what an import did — open import det
       );
       seen.pageRows.push(lines.length);
       seen.lines.push(...lines);
+      previousFirst = lines[0]?.id;
     }
+    // The last page read: the pager knows no page after it.
+    await expect.soft(pager.getByTestId("lines-pager-next"), `${view}: › is off on its last page`).toBeDisabled();
     return seen;
   }
 

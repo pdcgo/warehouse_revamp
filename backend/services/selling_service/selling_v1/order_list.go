@@ -42,6 +42,7 @@ type orderScopeFilter interface {
 	GetWarehouseId() uint64
 	GetDateField() sellingv1.OrderDateField
 	GetSettlementNotOpened() bool
+	GetReprintLabel() bool
 }
 
 // A literal `%`, `_` or `\` typed into the search box must match ITSELF, not act as a wildcard.
@@ -177,6 +178,12 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 	// Served by the partial index orders_settlement_not_opened_idx, which holds only those.
 	if filter.GetSettlementNotOpened() {
 		query = query.Where("settlement_opened_at IS NULL")
+	}
+
+	// PERLU CETAK ULANG (the-reprint-label-prototype-is-accepted): only the orders marked Cetak ulang label — the rule
+	// written once as SQL (reprintLabelCondition), the twin of needsReprint.
+	if filter.GetReprintLabel() {
+		query = query.Where(reprintLabelCondition)
 	}
 
 	return query

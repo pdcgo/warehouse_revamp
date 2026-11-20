@@ -38,41 +38,15 @@ type TransferOut struct {
 // first and its racks holding the fewest first, one item per product equal to its batch rows. Too few at A refuses the
 // create naming EVERY short line, and writes nothing.
 func PostTransferOut(tx *gorm.DB, o TransferOut) (models.InventoryTransaction, []TakenLine, error) {
-	lines := make([]OrderLine, 0, len(o.Lines))
-	for _, line := range o.Lines {
-		lines = append(lines, OrderLine{ProductID: line.ProductID, OwnerTeamID: o.TeamID, Quantity: line.Quantity})
-	}
-
-	lines = sortedByProduct(lines)
-
-	locked, err := inventory_ledgers.LockBatches(tx, o.WarehouseID, ownersOf(lines))
-	if err != nil {
-		return models.InventoryTransaction{}, nil, err
-	}
-
-	err = refuseShortLines(locked, lines)
-	if err != nil {
-		return models.InventoryTransaction{}, nil, err
-	}
-
-	t, err := inventory_ledgers.CreateTransaction(tx, inventory_ledgers.NewTransaction{
+	// The same take a parcel sample writes (post_parcel_sample.go), typed transfer_out.
+	return postSystemPickedTake(tx, inventory_ledgers.NewTransaction{
 		WarehouseID: o.WarehouseID,
 		TeamID:      o.TeamID,
 		TxType:      models.TxTransferOut,
 		ActorID:     o.ActorID,
 		IsOverride:  o.IsOverride,
 		Description: o.Description,
-	})
-	if err != nil {
-		return t, nil, err
-	}
-
-	taken, err := takeLines(tx, t, locked, lines, o.ActorID, o.Description)
-	if err != nil {
-		return t, nil, err
-	}
-
-	return t, taken, nil
+	}, o.Lines)
 }
 
 // TransferInLine is one line as warehouse B counted it. Good + Broken + Missing is what was sent.

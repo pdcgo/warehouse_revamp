@@ -30,6 +30,9 @@ import { SUFFIX, login, api, ongoingOf, inboundRow } from "./restock_helpers";
 // - `cancel recorded in operational account history` — the account's page: `Restock #<id> cancelled — money returned`.
 // - `cancel recorded in finance analytic metric` — Analytic › Finance › Account changes, by account, filtered to the paying
 //   account: its Restock figure this week, −Rp 110.000 once paid, nets back to nothing once the money is returned.
+// - Not a row of its own — a regression step of a-cancelled-restock-takes-its-ordered-back-on-its-day (#85): Analytic ›
+//   Inventory › Restock this week, filtered to the product, reads Units ordered 10 before the cancel and 0 after it (the
+//   cancel takes it back on its day; a product netting to nothing is no row, so the headline is what reads 0).
 test.describe("selling:all wants to cancel a restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -76,6 +79,7 @@ test.describe("selling:all wants to cancel a restock", () => {
     warehouses: {} as Record<string, string>,
     warehouseUsers: {} as Record<string, string>,
     accounts: {} as Record<string, string>,
+    products: {} as Record<string, string>,
     restocks: {} as Record<string, string>,
   };
 
@@ -131,6 +135,7 @@ test.describe("selling:all wants to cancel a restock", () => {
             })
           ).product.id,
         );
+        ground.products[k] = productId;
 
         const created = await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
           teamId: ground.team,
@@ -245,7 +250,18 @@ test.describe("selling:all wants to cancel a restock", () => {
         const warehouse = ground.warehouses[k];
         const warehouseUser = ground.warehouseUsers[k];
         const p = productCode(r.key, c.key);
+        const pid = ground.products[k];
         const amount = TOTAL + SHIPPING;
+        // Restock's Units ordered this week, filtered to the product: the headline (the product's whole — "—" until the
+        // answer is in, so it is read first) and its row, which a product netting to nothing does not have.
+        const orderedIs = async (units: number) => {
+          await expect(async () => {
+            await page.goto(`/analytic?g=product&m=metrics/inventory/restock&r=7d&product=${pid}`);
+            await expect(page.getByTestId("analytic-headline-ordered_count-value")).toHaveText(String(units), { timeout: 3_000 });
+            const cell = page.getByTestId(`analytic-cell-${pid}-ordered_count`);
+            if (units > 0 || (await cell.count()) > 0) await expect(cell).toHaveText(String(units));
+          }).toPass({ timeout: 30_000 });
+        };
 
         // GIVEN, as the warehouse: the restock is its whole queue — 1 restock, 10 pcs on their way.
         await signIn(page, warehouseUser, warehouse);
@@ -256,6 +272,8 @@ test.describe("selling:all wants to cancel a restock", () => {
         const before = await balanceOnceRecorded(page, account, `Restock #${id}`);
         if (c.returned) await financeRestock(page, account, out(amount));
         await ongoingIs(page, p, "10");
+        // …and Restock counts its 10 ordered (so the regression below reads a figure taken back, not one never counted).
+        await orderedIs(10);
 
         // WHEN — as this role.
         await cancel(page, id, c.returned);
@@ -281,6 +299,12 @@ test.describe("selling:all wants to cancel a restock", () => {
         await test.step("then: ongoing stock of 1 product decreases", async () => {
           // From 10 to none — a dash or a 0, whichever the picker draws for none.
           await expect.soft(async () => ongoingIs(page, p, /^(0|—)$/)).toPass({ timeout: 25_000 });
+        });
+        // Regression (a-cancelled-restock-takes-its-ordered-back-on-its-day): Restock's Units ordered this week, filtered
+        // to the product, nets back to 0 — raised and cancelled the same week. The headline answers first ("—" until the
+        // answer is in), since a product netting to nothing is no row at all.
+        await test.step("regression: a cancel takes its ordered back", async () => {
+          await expect.soft(async () => orderedIs(0)).toPass({ timeout: 35_000 });
         });
 
         if (c.returned) {

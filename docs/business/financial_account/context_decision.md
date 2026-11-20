@@ -55,6 +55,9 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [the-expenses-phone-layout-is-accepted](#the-expenses-phone-layout-is-accepted) | the phone Expenses page: one-row header with a + icon, compact totals, each expense a block with a ⋯ menu | owner | — |
 | [an-expense-posts-on-its-own-day](#an-expense-posts-on-its-own-day) | an expense's account row and its corrections count on the expense's own date | owner, as recommended | — |
 | [a-transfers-shipping-posts-as-an-expense](#a-transfers-shipping-posts-as-an-expense) | a warehouse transfer's shipping cost leaves the paying account as `expense` — amends one-way-in-per-type | owner, against my recommendation | ✅ not on the Expenses screen — posted straight from the transfer |
+| [expense-types-sit-under-groups](#expense-types-sit-under-groups) | expense types sit under the four groups | owner, as recommended | — |
+| [prive-and-deposit-on-pengeluaran-are-the-accounts-capital](#prive-and-deposit-on-pengeluaran-are-the-accounts-capital) | a prive or deposit on Pengeluaran is the account's capital row | owner, as recommended | — |
+| [money-in-on-biaya-is-its-own-change-type](#money-in-on-biaya-is-its-own-change-type) | money in typed on Biaya is a money_in row on the account | owner, as recommended | — |
 
 ## the-accounts-are-one-ledger
 
@@ -278,6 +281,8 @@ flowchart LR
 | the way in | by hand — no other service sees the owner's own money ([Q10](./context_clarify.md#question)) |
 | who types it | [Q8](./context_clarify.md#question) |
 
+🔄 *(2026-11-20)* Capital now has a second door: *Prive* and *Setoran modal* on Pengeluaran write this same capital row, and a capital row of a selling team's account shows on Pengeluaran — still never an expense in the profit ([prive-and-deposit-on-pengeluaran-are-the-accounts-capital](#prive-and-deposit-on-pengeluaran-are-the-accounts-capital)).
+
 ## adjustment-is-for-reconciling-only
 
 > Chat *(owner, 2026-09-29)* — *"yes, adjsutment for reconcil only"*, to [Q4](./context_clarify.md#question) as
@@ -313,6 +318,8 @@ sequenceDiagram
 | ⚠ my spec — last checked | the account stamps `reconciled_at`, and shows how long ago it was checked |
 | who reconciles | [Q8](./context_clarify.md#question) |
 | the way in | by hand — only a person looking at the bank app knows the figure ([Q10](./context_clarify.md#question)) |
+
+🔄 *(2026-11-20)* ⚠ My reading, not asked: the new expense type *adjustment · uncovered transaction* ([financial_account/expense.md](../../acceptances/financial_account/expense.md) given 6) is an expense type under a group ([expense-types-sit-under-groups](#expense-types-sit-under-groups)), posted as `expense`; the account's reconcile adjustment is unchanged. Its name is settled at the expense types' prototype, since Pengeluaran already calls its correction rows *adjustments*.
 
 ## the-log-says-balance-after
 
@@ -427,6 +434,8 @@ flowchart LR
   is settled here. Left: which account each shop's withdrawal lands in, and the rename.
 - 🔄 [Q3](./context_clarify.md#question) — that an expense is typed in `expense_service`, never here, is settled here.
   Left: whether it names the account it was paid from, and which expenses name none.
+
+🔄 *(2026-11-20)* For **capital**: two doors, still one row — the account screens' Setor / Tarik Modal and Pengeluaran's *Prive* / *Setoran modal* write the same capital row ([prive-and-deposit-on-pengeluaran-are-the-accounts-capital](#prive-and-deposit-on-pengeluaran-are-the-accounts-capital)).
 
 ## seeing-is-team-wide-moving-is-admin-and-up
 
@@ -1496,3 +1505,34 @@ Also confirmed the same day: *"When create expense it need financial account"* �
 
 ✅ **Built 2026-11-04.** `financial_account_v1/transfer_shipping_listener.go` (`TransferShippingHandler`) on the warehouse-transfer created · updated · cancelled subscriptions — `expense` rows *"Warehouse transfer #N shipping"*, the difference per cost revision, account moves, the refund on cancel; shares `postPaymentLegs` with the restock listener. Tests `transfer_shipping_listener_test.go`, race `transfer_shipping_race_test.go`, perf 7 statements ≈2.3 ms.
 
+---
+
+## expense-types-sit-under-groups
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended, after asking for the pictures (*"Where the image after"*; mock-ups drawn over today's screens: `D:/hermes/profiles/revamp_dev/accepts/q_expense_types/03–06`) — to: *"Your checklist adds about 16 new kinds of cost (electricity, internet, team meals, tools, equipment, content/endorsement, bank fee, basic salary, bonus, contributions, …). Today there are only 4 kinds: Iklan, Gaji, Operasional, Lainnya. **A** groups — today's 4 kinds become groups, each new type sits under one; the totals and the filter show each group with its types inside; expenses already recorded keep their group, so none gets a guessed type; **B** one flat list, totals per type; **C** flat when you record, grouped only in the totals and the filter."* It settles the ❓ Open of his acceptance checklist ([financial_account/expense.md](../../acceptances/financial_account/expense.md), 2026-11-18: *groups or one flat list*).
+
+**The verdict.** An expense has a **type**, and every type sits under one **group**. Today's kinds are the groups — **Iklan**, **Gaji**, **Operasional**, **Lainnya** (Stok hilang/rusak stays the automatic one, never typed by hand — [restock-is-never-typed-by-hand](#restock-is-never-typed-by-hand)). The record dialog's picker lists the types under their group's heading; the month's totals show each group's total with its types' totals under it; the filter takes a group or one type. An expense recorded before the types keeps its group and no type — no guessed backfill.
+
+*(Not asked — the mock's example, settled at the prototype:)* which type sits under which group — the mock put content/endorse under Iklan; basic salary, bonus, contributions under Gaji; electricity, internet, kitchen, tools, equipment, bank fee, the uncovered-transaction adjustment under Operasional; outside debt and other money in/out under Lainnya. Where *prive* and *setoran modal* sit is the next question.
+
+⚠ Not built — a Storybook prototype first (backlog *Expense types*).
+
+---
+
+## prive-and-deposit-on-pengeluaran-are-the-accounts-capital
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended (mock-ups `D:/hermes/profiles/revamp_dev/accepts/q_expense_types/07–09`) — to: *"Your checklist lets the owner record prive (taking money out) and setoran modal (putting money in) on Pengeluaran. Today that is done only on the account page with Setor / Tarik Modal, and the account history marks it Modal. Should both be the same record? **A** one record that both pages show — a prive typed on Pengeluaran is the same Modal record as Tarik Modal on the account page, and a Tarik Modal done on the account page shows on Pengeluaran too; the account history still keeps your own money apart from earnings; **B** separate records — a prive on Pengeluaran is an ordinary expense and Tarik Modal stays apart, so the same money can be typed twice; **C** owner's money stays on the account page only, and Prive and Setoran modal are dropped from Pengeluaran."* His acceptance checklist: [financial_account/expense.md](../../acceptances/financial_account/expense.md) givens 18 (*prive · owner takes capital*) and 19 (*deposit · owner adds capital*).
+
+**The verdict.** One act, one record, two doors. *Prive* and *Setoran modal* typed on Pengeluaran write the account's **capital** row ([capital-joins-the-types](#capital-joins-the-types)) — exactly what Tarik / Setor Modal on the account page writes — and a Setor / Tarik Modal made on a selling team's account shows on Pengeluaran too. The account history still says *capital*, so given money stays apart from earned money, and a capital row never counts as an expense in the profit. Warehouse teams keep the account action as today (Pengeluaran is the selling team's).
+
+⚠ Not built — with the expense types' Storybook prototype first (backlog #99).
+
+---
+
+## money-in-on-biaya-is-its-own-change-type
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended — the first question of the #99 expense types prototype's accept (pictures `D:/hermes/profiles/revamp_dev/accepts/accept99/`, README there): *"Money coming in that is typed on Biaya, like Piutang luar diterima or Uang masuk lain. What should the account's history call that row? **A** a new kind, Uang masuk — the account's expense rows stay spending only; **B** an expense row with a plus sign — it reads like a refund."* His acceptance checklist: [financial_account/expense.md](../../acceptances/financial_account/expense.md) givens 21 (*other · money in*) and 22 (*outside receivable received*).
+
+**The verdict.** Money in typed on Biaya posts a row of a **new change type**, *Uang masuk* (`money_in`), on the operational account it enters — never a plus-sign `expense`. The account's `expense` / `ads_expense` rows stay spending only, and the type list of [context.md](./context.md) §What is `change_type` gains `money_in` beside `capital`.
+
+⚠ Not built (backlog #99).

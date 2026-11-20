@@ -32,7 +32,7 @@ import (
 // (a restock's or a return's broken / missing). Lost stock's filters and groups; the reader is Lost stock's
 // (`warehouse_id = T OR team_id = T`, root every team's) — plus, for a WAREHOUSE, Restock's, Transfer's and Returned
 // stock's value fields left unset (a-warehouse-sees-no-seller-money), never Ready stock's
-// (a-warehouse-sees-ready-value-but-a-shelf-only-units).
+// (a-warehouse-sees-ready-value-but-a-shelf-only-units) nor Restock's courier COD (the-warehouse-sees-the-cod-it-paid).
 //
 // Movements (Restock, Returned stock, Transfer's sent and received) are the window's sum. Positions (Ready stock's two
 // fields, Transfer's in transit) are read at an EDGE: a period's last day cut by the window and never after today, the
@@ -78,7 +78,7 @@ func newStockMetric(prototype proto.Message, oneof string, hidden, positions []p
 
 var (
 	restockMetric = newStockMetric(&inventoryv1.InventoryRestockMetric{}, "restock",
-		[]protoreflect.Name{"accepted_value"}, nil)
+		[]protoreflect.Name{"ordered_value", "lost_value", "accepted_value"}, nil)
 	transferMetric = newStockMetric(&inventoryv1.InventoryTransferMetric{}, "transfer",
 		[]protoreflect.Name{"sent_value", "received_value", "in_transit_value"},
 		[]protoreflect.Name{"in_transit_count", "in_transit_value"})

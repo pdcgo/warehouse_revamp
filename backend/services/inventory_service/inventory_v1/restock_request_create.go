@@ -2,12 +2,12 @@ package inventory_v1
 
 import (
 	"context"
-	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
@@ -79,16 +79,19 @@ func (s *Service) RestockRequestCreate(
 		CreatedByUserID: actorFrom(ctx),
 	}
 
-	// The raise WRITES the note — empty or not — so its writer is whoever raised it, at the raise's own instant
-	// (the-notes-are-one-per-writer). CreatedAt is set here rather than by GORM so the note, the row and the trail's
-	// first row carry one moment.
-	raisedAt := time.Now()
-	rr.CreatedAt = raisedAt
-	stampNote(&rr, rr.CreatedByUserID, overrideFrom(ctx), raisedAt)
-
 	// Subtotal, total and each line's unit price, from the lines as typed — stored with them (restockTotals).
 	restockTotals(&rr)
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+
+	// A STOCK TRANSACTION, though no stock moves: its report writes what the restock ORDERED onto Analytic's Restock as
+	// its last statement, on its own day (the-restock-before-the-accept-prototype-is-accepted, restock_metric_fold.go).
+	err = inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
+		// The raise WRITES the note — empty or not — so its writer is whoever raised it, at the raise's own instant
+		// (the-notes-are-one-per-writer). CreatedAt is set here rather than by GORM so the note, the row, the trail's
+		// first row and the ordered on Analytic carry one moment — the transaction's.
+		raisedAt := inventory_ledgers.TxNow(tx)
+		rr.CreatedAt = raisedAt
+		stampNote(&rr, rr.CreatedByUserID, overrideFrom(ctx), raisedAt)
+
 		// GORM inserts the restock and its lines in this transaction, stamping their RestockID — a restock
 		// without its lines is not a restock.
 		createErr := tx.Create(&rr).Error
@@ -107,7 +110,13 @@ func (s *Service) RestockRequestCreate(
 		// Asking a warehouse to stock a product is what makes that product VISIBLE to it (#142). In the same
 		// transaction, because a restock whose products the warehouse cannot see is one nobody there can act on. Under
 		// the restock's team — its lines are that team's own products (the-warehouse-link-names-its-owner-team).
-		return linkWarehouseProducts(tx, rr.WarehouseID, rr.TeamID, rr.Items)
+		linkErr := linkWarehouseProducts(tx, rr.WarehouseID, rr.TeamID, rr.Items)
+		if linkErr != nil {
+			return linkErr
+		}
+
+		// ORDERED on the create day: every line's units and its share of the total, under the warehouse it goes to.
+		return inventory_ledgers.NoteRestockFacts(tx, restockShareFacts(&rr, rr.Items, restockOrdered, 1)...)
 	})
 	if err != nil {
 		// A resi or an Order ID another restock of the team holds (a-reference-in-use-stops-the-restock-form): 00048's

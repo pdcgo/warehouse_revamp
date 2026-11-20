@@ -4,6 +4,7 @@ import (
 	"context"
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
+	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	liability_v1 "github.com/pdcgo/warehouse_revamp/backend/services/liability_service/liability_v1"
 )
@@ -34,6 +35,10 @@ const (
 	// The courier's charge at a TRANSFER's receiving door, posted from *Warehouse Transfer Accepted*
 	// (balance-posts-the-transfers-on-site-debt-from-the-event, a-transfer-charge-is-a-transfer-fee).
 	WarehouseTransferAcceptedSubscription = "liability-warehouse-transfer-accepted"
+	// The courier the warehouse paid at a CUSTOM SHIPMENT's handover when the selling team picked *Gudang bayar*, posted
+	// from *Custom Shipment Handed Over* (the-courier-is-paid-by-the-team-or-by-the-warehouse) as a
+	// `custom_shipment_fee`.
+	CustomShipmentHandedOverSubscription = "liability-custom-shipment-handed-over"
 )
 
 // NewLiabilityPushHandler charges an order's fees on placement and reverses them on cancellation
@@ -140,6 +145,32 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 				WarehouseID:   accepted.GetToWarehouseId(),
 				Amount:        accepted.GetWarehouseAdditionalCost(),
 				ActorID:       accepted.GetActorId(),
+			})
+
+		case *eventsv1.Event_CustomShipmentHandedOver:
+			handed := variant.CustomShipmentHandedOver
+
+			// Only a WAREHOUSE payer's (*Gudang bayar*) cost is a debt: the warehouse paid the courier on the spot and the
+			// selling team owes it back (the-courier-is-paid-by-the-team-or-by-the-warehouse). A TEAM payer's (*Kami
+			// bayar*) courier is an expense on the team's own account, posted by financial_account from the parcel's
+			// other events — it never reaches Team Balance, so the warehouse's books never carry the team's money
+			// (the-custom-shipments-prototype-is-accepted: *the warehouse sees no seller money … nor in the data it
+			// receives*). Inventory sends a team payer's warehouse_cost as 0; this does not trust that. ACKed: there is
+			// nothing here to retry.
+			if handed.GetPayer() != inventoryv1.CustomShipmentPayer_CUSTOM_SHIPMENT_PAYER_WAREHOUSE {
+				return nil
+			}
+
+			// The selling team owes the warehouse it shipped from. A double, as inventory stores it — PostEntry posts it
+			// exact, never rounded. ActorID is the VARIANT's — who handed it over, from the stored parcel — never the
+			// envelope's.
+			return svc.ChargeCustomShipmentCourier(ctx, liability_v1.CustomShipmentCourierCharge{
+				CustomShipmentID: handed.GetCustomShipmentId(),
+				SellingTeamID:    handed.GetTeamId(),
+				WarehouseID:      handed.GetWarehouseId(),
+				Amount:           handed.GetWarehouseCost(),
+				ActorID:          handed.GetActorId(),
+				ActorIsOverride:  handed.GetActorIsOverride(),
 			})
 
 		default:

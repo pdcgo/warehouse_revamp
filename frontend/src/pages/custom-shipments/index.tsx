@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Box, Button, Flex, Heading, Icon, Spacer, Span, Stack, Table, Tabs, Text } from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, Icon, Spacer, Span, Spinner, Stack, Table, Tabs, Text } from "@chakra-ui/react";
 import { PackageOpen, Plus, SearchX } from "lucide-react";
 
+import { rpcError } from "../../api/clients";
 import { personName } from "../../lib/users";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
@@ -17,21 +18,26 @@ import {
   customShipmentPath,
   statusTab,
 } from "../../features/customShipment/customShipments";
-import { useCustomShipmentPrototype } from "../../features/customShipment/customShipmentPrototype";
+import { useCustomShipments } from "../../features/customShipment/queries";
 import { CustomShipmentKindBadge, CustomShipmentStatusBadge } from "../../features/customShipment/CustomShipmentBadges";
 import { CustomShipmentBlock, ItemsLine, PayLine } from "../../features/customShipment/CustomShipmentBlock";
 import { SellingCustomShipmentActions } from "../../features/customShipment/SellingCustomShipmentActions";
+// The *Barang tidak ketemu* badge beside the status while the parcel waits on the team — on BOTH lists, the team's and
+// the warehouse's queue (backlog #88 P6, the-goods-missing-badge-is-on-both-lists); the status alone without a note.
+import { StatusWithGoodsMissing } from "../../features/customShipment/GoodsMissing";
 import { useIsMobile } from "../../layouts/shell";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { ChoiceFilter } from "../../components/pickers/ChoiceFilter";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import { idCodec, oneOfCodec, optionalCodec, textCodec, useUrlState } from "../../lib/urlState";
+import { useDebounced } from "../../lib/useDebounced";
 
 const STATUS_CODEC = oneOfCodec(STATUS_TABS.map((tab) => tab.value));
 const KIND_CODEC = optionalCodec(oneOfCodec<"sample" | "reship">(["sample", "reship"]));
@@ -56,13 +62,17 @@ export function CustomShipmentWarehousePage() {
 //
 // The strip, then the STATUS TABS, as the accepted transfer lists draw them; the KIND is a filter in the strip — one
 // fixed choice of two (components/pickers/ChoiceFilter), so a second tab row is not stacked on the first. Every pick lives in the URL
-// (a-lists-filters-live-in-the-url). The prototype answers every row at once; the build pages on the server.
+// (a-lists-filters-live-in-the-url).
+//
+// EVERY FILTER IS THE SERVER'S — CustomShipmentList is paged, so a filter on the client would narrow one page and lie
+// about the rest. The free text goes as typed, however short (the server answers a one-letter term too), after a
+// typing pause so a word is one request rather than one per letter.
 function CustomShipmentList({ side }: { side: "selling" | "warehouse" }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { current } = useTeam();
   const phone = useIsMobile();
-  const prototype = useCustomShipmentPrototype();
+  const mySide = current?.teamType === TeamType.SELLING ? "selling" : current?.teamType === TeamType.WAREHOUSE ? "warehouse" : null;
 
   const [tab, setTab] = useUrlState("status", "all", STATUS_CODEC);
   const [search, setSearch] = useUrlState("q", "", textCodec);
@@ -72,14 +82,22 @@ function CustomShipmentList({ side }: { side: "selling" | "warehouse" }) {
   const [pageSize, setPageSize] = useState(20);
 
   const active = statusTab(tab);
-  const rows =
-    prototype?.list({
-      status: active.status,
-      kind: kind ? KIND_OF[kind] : undefined,
-      q: search,
-      warehouseId: side === "selling" ? warehouseFilter : 0n,
-    }) ?? [];
-  const shown = rows.slice(0, page * pageSize);
+  const q = useDebounced(search, 300);
+  const query = useCustomShipments({
+    // Only this side's team asks — another team type draws the one line below and reads nothing.
+    teamId: mySide === side ? current?.teamId : undefined,
+    status: active.status,
+    kind: kind ? KIND_OF[kind] : undefined,
+    q,
+    warehouseId: side === "selling" ? warehouseFilter : 0n,
+    page,
+    pageSize,
+  });
+  const rows = query.data?.shipments ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending;
+  const refreshing = query.isFetching && !query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
   const teams = useTeamsByIds({ ids: rows.map((s) => (side === "selling" ? s.warehouseId : s.teamId)) });
   const couriers = useShipmentChannelsByIds(rows.map((s) => s.shipmentChannelId));
   const actors = useActors(rows.map((s) => s.createdByUserId));
@@ -98,15 +116,7 @@ function CustomShipmentList({ side }: { side: "selling" | "warehouse" }) {
       setWarehouseFilter(0n);
     });
 
-  if (!prototype) {
-    return (
-      <Text color="fg.muted" data-testid="custom-shipment-unavailable">
-        {t("customShipment.unavailable")}
-      </Text>
-    );
-  }
-
-  if (!current || prototype.side !== side) {
+  if (!current || mySide !== side) {
     return (
       <Text color="fg.muted" data-testid="custom-shipment-wrong-team">
         {t(side === "selling" ? "customShipment.sellingOnly" : "customShipment.warehouseOnly")}
@@ -243,138 +253,149 @@ function CustomShipmentList({ side }: { side: "selling" | "warehouse" }) {
         </Tabs.List>
 
         <Tabs.Content value={tab}>
-          <Stack gap="section">
+          <RefreshOverlay busy={refreshing}>
+            <Stack gap="section">
+              {error && (
+                <Text color="error.fg" data-testid="custom-shipments-error">
+                  {error}
+                </Text>
+              )}
 
-            {rows.length === 0 ? (
-              emptyHint()
-            ) : phone ? (
-              <Stack gap="3" data-testid="custom-shipments-table" data-layout="phone">
-                {shown.map((s) => (
-                  <CustomShipmentBlock
-                    key={s.id.toString()}
-                    shipment={s}
-                    side={side}
-                    otherTeam={otherTeam(side === "selling" ? s.warehouseId : s.teamId)}
-                    createdBy={createdBy(s.createdByUserId)}
-                    courier={couriers.data?.get(s.shipmentChannelId.toString())}
-                    onOpen={() => navigate(customShipmentPath(s.id))}
-                  />
-                ))}
-              </Stack>
-            ) : (
-              <Box overflowX="auto">
-                <Table.Root size="sm" data-testid="custom-shipments-table">
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.ColumnHeader>{t("customShipment.table.parcel")}</Table.ColumnHeader>
-                      <Table.ColumnHeader>{t("customShipment.table.kind")}</Table.ColumnHeader>
-                      <Table.ColumnHeader>{t("customShipment.table.recipient")}</Table.ColumnHeader>
-                      <Table.ColumnHeader>
-                        {t(side === "selling" ? "customShipment.table.warehouse" : "customShipment.table.owner")}
-                      </Table.ColumnHeader>
-                      <Table.ColumnHeader>{t("customShipment.table.products")}</Table.ColumnHeader>
-                      <Table.ColumnHeader>{t("customShipment.table.shipping")}</Table.ColumnHeader>
-                      <Table.ColumnHeader>{t("customShipment.table.created")}</Table.ColumnHeader>
-                      {side === "selling" && (
-                        <>
-                          <Table.ColumnHeader textAlign="end">{t("customShipment.table.value")}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="end">{t("customShipment.table.actions")}</Table.ColumnHeader>
-                        </>
-                      )}
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {shown.map((s) => {
-                      const by = createdBy(s.createdByUserId);
+              {loading ? (
+                <Spinner colorPalette="brand" data-testid="custom-shipments-loading" />
+              ) : rows.length === 0 ? (
+                !error && emptyHint()
+              ) : phone ? (
+                <Stack gap="3" data-testid="custom-shipments-table" data-layout="phone">
+                  {rows.map((s) => (
+                    <CustomShipmentBlock
+                      key={s.id.toString()}
+                      shipment={s}
+                      side={side}
+                      otherTeam={otherTeam(side === "selling" ? s.warehouseId : s.teamId)}
+                      createdBy={createdBy(s.createdByUserId)}
+                      courier={couriers.data?.get(s.shipmentChannelId.toString())}
+                      onOpen={() => navigate(customShipmentPath(s.id))}
+                    />
+                  ))}
+                </Stack>
+              ) : (
+                <Box overflowX="auto">
+                  <Table.Root size="sm" data-testid="custom-shipments-table">
+                    <Table.Header>
+                      <Table.Row>
+                        <Table.ColumnHeader>{t("customShipment.table.parcel")}</Table.ColumnHeader>
+                        <Table.ColumnHeader>{t("customShipment.table.kind")}</Table.ColumnHeader>
+                        <Table.ColumnHeader>{t("customShipment.table.recipient")}</Table.ColumnHeader>
+                        <Table.ColumnHeader>
+                          {t(side === "selling" ? "customShipment.table.warehouse" : "customShipment.table.owner")}
+                        </Table.ColumnHeader>
+                        <Table.ColumnHeader>{t("customShipment.table.products")}</Table.ColumnHeader>
+                        <Table.ColumnHeader>{t("customShipment.table.shipping")}</Table.ColumnHeader>
+                        <Table.ColumnHeader>{t("customShipment.table.created")}</Table.ColumnHeader>
+                        {side === "selling" && (
+                          <>
+                            <Table.ColumnHeader textAlign="end">{t("customShipment.table.value")}</Table.ColumnHeader>
+                            <Table.ColumnHeader textAlign="end">{t("customShipment.table.actions")}</Table.ColumnHeader>
+                          </>
+                        )}
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                      {rows.map((s) => {
+                        const by = createdBy(s.createdByUserId);
 
-                      return (
-                        <Table.Row
-                          key={s.id.toString()}
-                          data-testid={`custom-shipment-row-${s.id}`}
-                          cursor="pointer"
-                          _hover={{ bg: "bg.subtle" }}
-                          onClick={() => navigate(customShipmentPath(s.id))}
-                        >
-                          {/* ONE CONTEXT PER CELL, NEVER THREE LINES (one-context-per-column-and-never-three-lines): the
-                              parcel and where it stands; its kind; who it goes to; the other end; what is in it; how it
-                              travels and who pays; when and by whom it was asked for. */}
-                          <Table.Cell>
-                            <Stack gap="1" align="start">
-                              <Span fontWeight="medium">#{s.id.toString()}</Span>
-                              <CustomShipmentStatusBadge status={s.status} />
-                            </Stack>
-                          </Table.Cell>
-                          <Table.Cell>
-                            <CustomShipmentKindBadge kind={s.kind} />
-                          </Table.Cell>
-                          <Table.Cell data-testid={`custom-shipment-recipient-${s.id}`}>
-                            <Stack gap="0">
-                              <Span>{s.recipient.name}</Span>
-                              <Span fontSize="xs" color="fg.muted">
-                                {s.recipient.phone}
-                              </Span>
-                            </Stack>
-                          </Table.Cell>
-                          <Table.Cell data-testid={`custom-shipment-other-${s.id}`}>
-                            {otherTeam(side === "selling" ? s.warehouseId : s.teamId)}
-                          </Table.Cell>
-                          <Table.Cell>
-                            <ItemsLine shipment={s} />
-                          </Table.Cell>
-                          <Table.Cell>
-                            <Stack gap="0" align="start">
-                              <ShipmentChannelBadge
-                                channelId={s.shipmentChannelId}
-                                channel={couriers.data?.get(s.shipmentChannelId.toString())}
-                              />
-                              <PayLine shipment={s} side={side} />
-                            </Stack>
-                          </Table.Cell>
-                          <Table.Cell>
-                            <Stack gap="0">
-                              <Span fontSize="sm" whiteSpace="nowrap">
-                                {formatUnixDateTimeShort(s.createdAtUnix)}
-                              </Span>
-                              {by && (
+                        return (
+                          <Table.Row
+                            key={s.id.toString()}
+                            data-testid={`custom-shipment-row-${s.id}`}
+                            cursor="pointer"
+                            _hover={{ bg: "bg.subtle" }}
+                            onClick={() => navigate(customShipmentPath(s.id))}
+                          >
+                            {/* ONE CONTEXT PER CELL, NEVER THREE LINES (one-context-per-column-and-never-three-lines): the
+                                parcel and where it stands; its kind; who it goes to; the other end; what is in it; how it
+                                travels and who pays; when and by whom it was asked for. */}
+                            <Table.Cell>
+                              <Stack gap="1" align="start">
+                                <Span fontWeight="medium">#{s.id.toString()}</Span>
+                                <StatusWithGoodsMissing shipment={s} status={<CustomShipmentStatusBadge status={s.status} />} />
+                              </Stack>
+                            </Table.Cell>
+                            <Table.Cell>
+                              <CustomShipmentKindBadge kind={s.kind} />
+                            </Table.Cell>
+                            <Table.Cell data-testid={`custom-shipment-recipient-${s.id}`}>
+                              <Stack gap="0">
+                                <Span>{s.recipient.name}</Span>
                                 <Span fontSize="xs" color="fg.muted">
-                                  {t("customShipment.table.by", { name: by })}
+                                  {s.recipient.phone}
                                 </Span>
-                              )}
-                            </Stack>
-                          </Table.Cell>
-                          {side === "selling" && (
-                            <>
-                              <Table.Cell textAlign="end" whiteSpace="nowrap" data-testid={`custom-shipment-value-${s.id}`}>
-                                {s.kind === "SAMPLE" ? formatRupiahNumber(s.total) : "—"}
-                              </Table.Cell>
-                              <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
-                                <SellingCustomShipmentActions shipment={s} variant="menu" />
-                              </Table.Cell>
-                            </>
-                          )}
-                        </Table.Row>
-                      );
-                    })}
-                  </Table.Body>
-                </Table.Root>
-              </Box>
-            )}
+                              </Stack>
+                            </Table.Cell>
+                            <Table.Cell data-testid={`custom-shipment-other-${s.id}`}>
+                              {otherTeam(side === "selling" ? s.warehouseId : s.teamId)}
+                            </Table.Cell>
+                            <Table.Cell>
+                              <ItemsLine shipment={s} />
+                            </Table.Cell>
+                            <Table.Cell>
+                              <Stack gap="0" align="start">
+                                <ShipmentChannelBadge
+                                  channelId={s.shipmentChannelId}
+                                  channel={couriers.data?.get(s.shipmentChannelId.toString())}
+                                />
+                                <PayLine shipment={s} side={side} />
+                              </Stack>
+                            </Table.Cell>
+                            <Table.Cell>
+                              <Stack gap="0">
+                                <Span fontSize="sm" whiteSpace="nowrap">
+                                  {formatUnixDateTimeShort(s.createdAtUnix)}
+                                </Span>
+                                {by && (
+                                  <Span fontSize="xs" color="fg.muted">
+                                    {t("customShipment.table.by", { name: by })}
+                                  </Span>
+                                )}
+                              </Stack>
+                            </Table.Cell>
+                            {side === "selling" && (
+                              <>
+                                <Table.Cell textAlign="end" whiteSpace="nowrap" data-testid={`custom-shipment-value-${s.id}`}>
+                                  {s.kind === "SAMPLE" ? formatRupiahNumber(s.total ?? 0) : "—"}
+                                </Table.Cell>
+                                <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
+                                  <SellingCustomShipmentActions shipment={s} variant="menu" />
+                                </Table.Cell>
+                              </>
+                            )}
+                          </Table.Row>
+                        );
+                      })}
+                    </Table.Body>
+                  </Table.Root>
+                </Box>
+              )}
 
-            {/* The pager is always on screen (the-pager-is-always-on-screen, every-list-pages-with-the-growing-pager). */}
-            <GrowingPager
-              page={page}
-              onPageChange={setPage}
-              hasNext={page * pageSize < rows.length}
-              resetKey={[tab, search, kind, warehouseFilter, pageSize].join("|")}
-              pageSize={pageSize}
-              pageSizeOptions={PAGE_SIZE_OPTIONS}
-              onPageSizeChange={(n) => {
-                setPageSize(n);
-                setPage(1);
-              }}
-              testId="custom-shipment-pager"
-            />
-          </Stack>
+              {/* The pager is always on screen (the-pager-is-always-on-screen, every-list-pages-with-the-growing-pager). */}
+              {!loading && (
+                <GrowingPager
+                  page={page}
+                  onPageChange={setPage}
+                  hasNext={query.isPlaceholderData ? undefined : page * pageSize < totalItems}
+                  resetKey={[tab, search, kind, warehouseFilter, pageSize].join("|")}
+                  pageSize={pageSize}
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
+                  onPageSizeChange={(n) => {
+                    setPageSize(n);
+                    setPage(1);
+                  }}
+                  testId="custom-shipment-pager"
+                />
+              )}
+            </Stack>
+          </RefreshOverlay>
         </Tabs.Content>
       </Tabs.Root>
     </Stack>

@@ -37,7 +37,7 @@ import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { toaster } from "../../components/feedback/Toaster";
 import { AwbCell, ShopRefCell } from "../../features/orders/OrderRowCells";
 import { OrderCourierBadge } from "../../features/orders/OrderCourierBadge";
-import { useOrderStatusChange } from "../../features/orders/queries";
+import { useInvalidateOrders, useOrderStatusChange } from "../../features/orders/queries";
 import { NO_SHOPS, useShopsByIds } from "../../features/shops/queries";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useIsMobile } from "../../layouts/shell";
@@ -45,6 +45,9 @@ import { cameFrom } from "../../lib/cameFrom";
 import { WarehouseStatusBadge } from "../pick-queue/components/WarehouseStatusBadge";
 import { printIdsOf, printReceiptsPath } from "./path";
 import { loadUnboxing, saveUnboxing } from "./unboxing";
+// CETAK ULANG LABEL (a-changed-label-asks-the-warehouse-to-reprint): a marked order's badge under its label and its
+// count on the list line — the server's `OrderPrint.reprint_label`. Print records the print, which clears it.
+import { ReprintLabelPrintMark } from "../../features/orders/ReprintLabel";
 
 // PRINT RECEIPTS — CETAK RESI — the warehouse's daily confirm step on ONE page (acceptance inventory/order.md:133–142),
 // accepted as drawn (the-print-page-and-the-courier-count-prototype-is-accepted) and routed at `/warehouse-orders/print`.
@@ -189,6 +192,7 @@ export function PrintReceiptsPage() {
   const moving = statusChange && mayWrite;
 
   const change = useOrderStatusChange();
+  const invalidateOrders = useInvalidateOrders();
   const [busy, setBusy] = useState(false);
   const [run, setRun] = useState<PrintRun | null>(null);
   // The step each order was moved to by a print on this page — until the read says so itself (a server re-read does
@@ -215,6 +219,8 @@ export function PrintReceiptsPage() {
   const readOrders = chosen.flatMap((c) => (c.order ? [c.order] : []));
   const withoutLabel = readOrders.filter((order) => !order.hasLabel);
   const waiting = readOrders.filter((order) => stepOf(order) === OrderStatus.PENDING);
+  // The orders printed AGAIN because their label changed after the last print (the-reprint-label-prototype-is-accepted).
+  const toReprint = readOrders.filter((order) => order.reprintLabel).length;
 
   // PRINT — ONE OrderLabels for every order on the page, in its order; the PDF opens; then, with the switch on, ONE
   // OrderStatusChange for the To confirm orders the PDF holds. A failure of the move never un-prints the labels: the
@@ -224,13 +230,18 @@ export function PrintReceiptsPage() {
 
     setBusy(true);
     try {
-      const res = await orderClient.orderLabels({ teamId, orderIds: ids, unboxingWarning: unboxing });
+      // `recordPrint`: THIS is a print — the server stamps every order the PDF includes, which clears its Cetak ulang
+      // label (a-changed-label-asks-the-warehouse-to-reprint). The order page's label viewer asks without it.
+      const res = await orderClient.orderLabels({ teamId, orderIds: ids, unboxingWarning: unboxing, recordPrint: true });
       if (res.url) window.open(res.url, "_blank", "noopener,noreferrer");
 
       const byId = new Map<string, Printed>();
       for (const result of res.results) {
         byId.set(result.orderId.toString(), { included: result.included, reason: result.reason, move: "kept" });
       }
+      // The labels in the PDF are printed now: every order read re-reads, so the badge clears everywhere — this page, the
+      // list, the pick page, Daftar Ambil (all under the orders' key).
+      if (res.results.some((result) => result.included)) void invalidateOrders();
 
       const movable = moving
         ? readOrders.filter((order) => byId.get(order.orderId.toString())?.included && stepOf(order) === OrderStatus.PENDING)
@@ -485,6 +496,7 @@ export function PrintReceiptsPage() {
                   {t("printReceipts.list.line", { count: total })}
                   {withoutLabel.length > 0 && ` · ${t("printReceipts.list.withoutLabel", { count: withoutLabel.length })}`}
                   {moving && waiting.length > 0 && ` · ${t("printReceipts.list.toConfirm", { count: waiting.length })}`}
+                  {toReprint > 0 && ` · ${t("orders.reprintLabel.printLine", { count: toReprint })}`}
                 </Text>
               </Flex>
 
@@ -539,6 +551,7 @@ export function PrintReceiptsPage() {
                                 </Table.Cell>
                                 <Table.Cell>
                                   <LabelCell id={id} order={c.order} printed={printed} />
+                                  <ReprintLabelPrintMark on={c.order.reprintLabel} orderId={c.id} />
                                 </Table.Cell>
                               </>
                             ) : (
@@ -707,6 +720,7 @@ function OrderBlock({
         {/* In a Box, so the badge keeps its own width instead of the block's. */}
         <Box>
           <LabelCell id={id} order={order} printed={printed} />
+          <ReprintLabelPrintMark on={order.reprintLabel} orderId={chosen.id} />
         </Box>
       </>
     );

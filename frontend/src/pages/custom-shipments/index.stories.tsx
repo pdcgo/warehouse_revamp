@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { customShipmentListTerms, customShipmentScenario } from "../../../.storybook/customShipmentScenario";
 import { PHONE, SELLING_META, sellingAt } from "../../features/customShipment/storyKit";
 import { fitsTheScreen } from "../../features/warehouseTransfer/storyPhone";
 
-// ⚠ PROTOTYPE (backlog #88, awaiting the owner's design accept) — KIRIM PAKET, the selling team's list of its custom
-// shipments (docs/business/custom_shipments/context_decision.md). Not routed and not in the menu: the pages draw only
-// under the prototype provider (features/customShipment/customShipmentPrototype.tsx); `Live` pins the gate.
+// KIRIM PAKET — the selling team's list of its custom shipments (docs/business/custom_shipments/context_decision.md,
+// the-custom-shipments-prototype-is-accepted), live: CustomShipmentList through the stub transport
+// (.storybook/customShipmentStub.ts), paged and filtered by the server.
 //
 // Toko Melati (12) sees its seven: 801 requested · 802 picked · 803 a reship requested · 804 handed over · 805 a reship
 // handed over · 806 cancelled · 808 picked — never Toko Kenanga's 807.
@@ -33,14 +34,18 @@ const rowIds = (canvasElement: HTMLElement) =>
     (row) => row.getAttribute("data-testid")!.replace("custom-shipment-row-", ""),
   );
 
+const lastListRequest = () => customShipmentScenario.calls.filter((c) => c.rpc === "CustomShipmentList").at(-1)?.req;
+
 // THE TEAM'S OWN PARCELS, newest first — the kind on each, who it goes to, from which warehouse, the step it is at, what
-// is in it, how it travels and who pays, and the sample's value (the team sees what its samples are worth).
+// is in it, how it travels and who pays, and the sample's value (the team sees what its samples are worth). The list is
+// the server's page: asked as the team, page 1 of 20.
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(rowIds(canvasElement).sort()).toEqual(["801", "802", "803", "804", "805", "806", "808"]);
+    await expect(rowIds(canvasElement)).toEqual(["808", "806", "805", "804", "803", "802", "801"]);
     await expect(canvas.queryByTestId("custom-shipment-row-807")).toBeNull();
+    await expect(lastListRequest()).toMatchObject({ teamId: 12n, page: { page: 1, limit: 20 } });
 
     const sample = within(canvas.getByTestId("custom-shipment-row-801"));
     await expect(sample.getByTestId("custom-shipment-kind-sample")).toBeVisible();
@@ -79,15 +84,16 @@ export const Mobile: Story = {
   },
 };
 
-// THE STATUS TABS cut the list to one step, and say so in the URL (a-lists-filters-live-in-the-url).
+// THE STATUS TABS cut the list to one step ON THE SERVER, and say so in the URL (a-lists-filters-live-in-the-url).
 export const ATabNarrowsToItsStatus: Story = {
   name: "A tab narrows to its status",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("custom-shipment-tab-picked"));
-    await waitFor(() => expect(rowIds(canvasElement).sort()).toEqual(["802", "808"]));
+    await waitFor(() => expect(rowIds(canvasElement)).toEqual(["808", "802"]));
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("status=picked"));
+    await expect(lastListRequest()).toMatchObject({ filter: { status: 2 } });
 
     await userEvent.click(canvas.getByTestId("custom-shipment-tab-cancelled"));
     await waitFor(() => expect(rowIds(canvasElement)).toEqual(["806"]));
@@ -105,8 +111,42 @@ export const TheKindFilterNarrows: Story = {
     await waitFor(() => expect(option).toBeVisible());
     await userEvent.click(option);
 
-    await waitFor(() => expect(rowIds(canvasElement).sort()).toEqual(["803", "805"]));
+    await waitFor(() => expect(rowIds(canvasElement)).toEqual(["805", "803"]));
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("kind=reship"));
+    await expect(lastListRequest()).toMatchObject({ filter: { kind: 2 } });
+  },
+};
+
+// THE SEARCH IS THE SERVER'S, sent once typing pauses — the whole term in one request (pasted here as a person's quick
+// typing would land), never one request per letter.
+export const TheSearchSendsTheWholeTerm: Story = {
+  name: "The search sends the whole term",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("custom-shipment-search"));
+    await userEvent.paste("Dimas");
+
+    await waitFor(() => expect(rowIds(canvasElement)).toEqual(["808"]));
+    await expect(customShipmentListTerms().filter((q) => q !== "")).toEqual(["Dimas"]);
+    await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("q=Dimas"));
+  },
+};
+
+// NO LETTER MINIMUM (a-product-picker-needs-no-two-letters' spirit): ONE letter is asked of the server as typed — here
+// nothing matches it, so the list says so and offers to clear the search.
+export const OneLetterIsSearchedToo: Story = {
+  name: "One letter is searched too",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("custom-shipment-search"));
+    await userEvent.paste("x");
+
+    await waitFor(() => expect(customShipmentListTerms()).toContain("x"));
+    await expect(await canvas.findByTestId("custom-shipments-empty")).toBeVisible();
+    await userEvent.click(canvas.getByTestId("custom-shipments-empty-clear"));
+    await waitFor(() => expect(rowIds(canvasElement)).toHaveLength(7));
   },
 };
 
@@ -131,6 +171,25 @@ export const EachRowOffersWhatItsStepAllows: Story = {
   },
 };
 
+// A CANCEL FROM THE ROW'S ⋯ — the server's write, and the list re-reads: 801 moves to Cancelled where it stands.
+export const ARowCancelsFromItsMenu: Story = {
+  name: "A row cancels from its menu",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(canvas.getByTestId("custom-shipment-actions-801"));
+    await userEvent.click(await screen.findByTestId("custom-shipment-action-cancel-801"));
+    await userEvent.click(await screen.findByTestId("confirm-action"));
+
+    await waitFor(() =>
+      expect(within(canvas.getByTestId("custom-shipment-row-801")).getByTestId("custom-shipment-status-cancelled")).toBeVisible(),
+    );
+    await expect(customShipmentScenario.calls.filter((c) => c.rpc === "CustomShipmentCancel").map((c) => c.req)).toEqual([
+      expect.objectContaining({ teamId: 12n, id: 801n }),
+    ]);
+  },
+};
+
 // Paket Baru opens the form; a row opens its parcel.
 export const NewParcelAndARowOpen: Story = {
   name: "New parcel and a row open",
@@ -143,18 +202,5 @@ export const NewParcelAndARowOpen: Story = {
 
     await userEvent.click(await canvas.findByTestId("open-create-custom-shipment"));
     await expect(await canvas.findByTestId("custom-shipment-form")).toBeVisible();
-  },
-};
-
-// THE GATE — live, nothing mounts the prototype, so the page draws only its one line: no list, no ＋.
-export const Live: Story = {
-  name: "Live · not available",
-  parameters: { live: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    await expect(await canvas.findByTestId("custom-shipment-unavailable")).toBeVisible();
-    await expect(canvas.queryByTestId("custom-shipments-table")).toBeNull();
-    await expect(canvas.queryByTestId("open-create-custom-shipment")).toBeNull();
   },
 };

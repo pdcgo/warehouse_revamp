@@ -314,7 +314,9 @@ message OrderLostCreatedMetricByDay {
 // along its way out, each named by what happened to the order (the-order-metric-ids-name-what-moved): a resolve
 // (problem → completed) is a Completed, a picked or a processed order handed back (→ pending) is a Back to pending. The
 // placement's own pending row is Order Created's, never a Back to pending. Moves into cancel, return, return_completed
-// and lost are the five metrics' own, not counted here.
+// and lost are the five metrics' own, not counted here. Beside the seven, DISPUTES RESOLVED (the accept's 2026-11-20
+// line, the owner's checklist's *disputes resolved shown*) counts each resolve once more on its own: a resolve is one
+// Completed AND one Disputes resolved on the resolve's day.
 //
 // Each move counts on ITS OWN Jakarta day (a-fact-counts-on-the-day-it-happened), shaped as the five: their filters and
 // groups (the-four-group-by-team-shop-warehouse-user-and-time), USER the order's CREATOR — never the crew member who made
@@ -378,6 +380,12 @@ message OrderMovesMetric {
   ];
   // Completed: shipped → completed, and a resolved problem → completed.
   int64 completed_count = 7 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
+  ];
+  // Disputes resolved: problem → completed — the dispute closed (the-order-status-moves-prototype-is-accepted, its
+  // 2026-11-20 line). Each resolve ALSO counts in completed_count, as accepted, so no figure already shown changes.
+  int64 disputes_resolved_count = 8 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_QTY
   ];

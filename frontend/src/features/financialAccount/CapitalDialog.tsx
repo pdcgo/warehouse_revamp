@@ -12,6 +12,9 @@ import { toDateInputValue } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import { FormDialog } from "./FormDialog";
 import { useCapital } from "./queries";
+// ⚠ #99 PROTOTYPE (expense types) — inert live.
+import { useExpenseTypes } from "../expense/expenseTypesPrototype";
+import { CapitalOnExpensesHint } from "../expense/ExpenseTypesParts";
 
 // Setor / Tarik Modal — the business owner's own money, put in or taken out (capital-joins-the-types; the
 // action's name, `capital-reads-setor-tarik-modal`).
@@ -32,6 +35,8 @@ export function CapitalDialog({
   const { t } = useTranslation();
   const today = toDateInputValue(new Date());
   const capital = useCapital();
+  // #99 PROTOTYPE: null live. In a story, the act also lands on Pengeluaran — the same one record.
+  const types = useExpenseTypes();
 
   const [error, setError] = useState("");
   const [direction, setDirection] = useState(CapitalDirection.IN);
@@ -48,6 +53,7 @@ export function CapitalDialog({
       { teamId, accountId: account.id, direction, amount: value, occurredOn, note },
       {
         onSuccess: () => {
+          types?.capitalMade({ teamId, accountId: account.id, inward: direction === CapitalDirection.IN, amount: value, occurredOn, note });
           toaster.create({
             type: "success",
             title: t(direction === CapitalDirection.IN ? "financialAccounts.toast.capitalIn" : "financialAccounts.toast.capitalOut", {
@@ -83,6 +89,7 @@ export function CapitalDialog({
           { value: String(CapitalDirection.OUT), label: t("financialAccounts.capital.out"), testId: "capital-out" },
         ]}
       />
+      <CapitalOnExpensesHint />
 
       <Field.Root required>
         <Field.Label>{t("financialAccounts.amount")}</Field.Label>

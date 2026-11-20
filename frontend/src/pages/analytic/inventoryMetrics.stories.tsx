@@ -149,6 +149,8 @@ export const TheFourAreUnderInventory: Story = {
       ["on_hand_value", "position", false],
     ]);
     await expect(INVENTORY_METRICS.flatMap((d) => d.fields.filter((f) => f.warehouseHidden).map((f) => f.name))).toEqual([
+      "ordered_value",
+      "lost_value",
       "accepted_value",
       "sent_value",
       "received_value",
@@ -223,7 +225,8 @@ export const ThreeOnOneTable: Story = {
     await waitFor(() => expect(canvas.getByTestId("analytic-row-205")).toHaveTextContent("Sepatu Kanvas"));
     await expect(cell(canvas, "205", "accepted_count")).toBeGreaterThan(0);
     await expect(cell(canvas, "205", "on_hand_count")).toBe(readyOn("2026-10-31", { product: "205" }).units);
-    await expect(canvas.getByTestId("analytic-cell-205-lost_count")).toBeVisible();
+    // Lost stock's units lost beside Restock's units lost on the way (#85) — one field name, a column for each metric.
+    await expect(canvas.getAllByTestId("analytic-cell-205-lost_count")).toHaveLength(2);
     await expect(
       inventoryMetricCalls.some((c) => c.rpc === "metricData" && c.metricIds.join(",") === `${RESTOCK_ID},${READY_ID}`),
     ).toBe(true);
@@ -300,12 +303,13 @@ export const RestockAWarehouseReadsUnits: Story = {
     await expect(cell(canvas, "11", "accepted_count")).toBeGreaterThan(0);
     await expect(headline(canvas, "accepted_count")).toBe(cell(canvas, "11", "accepted_count"));
     for (const f of ["accepted_count", "broken_count", "missing_count"]) await expect(canvas.getByTestId(`analytic-sort-${f}`)).toBeVisible();
-    await showsNoValue(canvas, ["accepted_value"]);
+    await showsNoValue(canvas, ["ordered_value", "lost_value", "accepted_value"]);
   },
 };
 
 // A LINK SORTED BY VALUE, OPENED BY A WAREHOUSE — the seller's link ranks products by value accepted; Gudang Pusat opens
-// it on its default (units accepted) instead of the server's refusal, and never asks to rank by a value.
+// it on its default instead of the server's refusal — units ordered, Restock's first field since #85 (as the accepted
+// Pages/Analytic/Restock pins) — and never asks to rank by a value.
 export const RestockAWarehouseOpensAValueSortedLink: Story = {
   render: () => <RestockByProduct />,
   beforeEach: [asTeam(11n)],
@@ -314,16 +318,16 @@ export const RestockAWarehouseOpensAValueSortedLink: Story = {
 
     await expect(canvas.queryByTestId("analytic-error")).toBeNull();
     await expect(canvas.getByTestId("analytic-rows-line")).toHaveTextContent("Rows: products with restock in this period");
-    const units = column(canvas, "accepted_count");
+    const units = column(canvas, "ordered_count");
     await expect([...units].sort((a, b) => b - a)).toEqual(units);
-    await showsNoValue(canvas, ["accepted_value"]);
+    await showsNoValue(canvas, ["ordered_value", "lost_value", "accepted_value"]);
     const searches = inventoryMetricCalls.filter((c) => c.rpc === "metricSearch");
     await expect(searches.length).toBeGreaterThan(0);
-    await expect(searches.every((c) => c.sortField === "accepted_count")).toBe(true);
+    await expect(searches.every((c) => c.sortField === "ordered_count")).toBe(true);
   },
 };
 
-// ON A PHONE — each product a block of its four figures.
+// ON A PHONE — each product a block of its figures (Restock's nine since #85 — Pages/Analytic/Restock reads the rest).
 export const RestockOnAPhone: Story = {
   render: () => <RestockByProduct />,
   globals: { viewport: { value: "mobile2" } },

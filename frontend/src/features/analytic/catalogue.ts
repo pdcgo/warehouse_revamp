@@ -294,13 +294,16 @@ export const INVENTORY_LOST_METRIC: MetricDef = servedMetric(InventoryLostMetric
 /**
  * THE FOUR INVENTORY METRICS beside Lost stock, served by inventory_service (the-inventory-metrics-prototype-is-accepted),
  * each with Lost stock's filters and groups (the-four-inventory-metrics-filter-like-lost-stock), in the tree's order:
- *   Restock — units and value accepted on the accept day, broken and missing at the door; the warehouse that received.
+ *   Restock — from the raise to the count (the-restock-before-the-accept-prototype-is-accepted): units and value
+ *     ORDERED on the create day, each edit's difference on its day and a cancel taking it back on its; units and value
+ *     LOST ON THE WAY on the lost day, taken back the day a lost box is signed for; units and value accepted, broken and
+ *     missing at the door, and the courier's COD, on the accept day — under the warehouse the restock goes to.
  *   Transfer — sent under the sender on the create day, received under the receiver on the accept day, in transit a
  *     units and value POSITION under the receiver (a-transfer-counts-each-side-on-its-own-day).
  *   Returned stock — back on the shelf, its value, broken (thrown away) and missing, on the return accept day.
  *   Ready stock — units on hand and stock value at the end of each day: POSITIONS, the headline the window's last day.
- * A warehouse reads units only on the first three (their values come back unset) and Ready's value too
- * (a-warehouse-sees-ready-value-but-a-shelf-only-units).
+ * A warehouse reads units only on the first three (their values come back unset) — and Restock's COD, which it paid
+ * (the-warehouse-sees-the-cod-it-paid) — and Ready's value too (a-warehouse-sees-ready-value-but-a-shelf-only-units).
  */
 export const INVENTORY_METRICS: MetricDef[] = [
   servedMetric(InventoryRestockMetricSchema, "inventoryRestock", "inventory", "inventory"),
@@ -330,7 +333,8 @@ export const EXPENSE_METRICS: MetricDef[] = [
  * ORDER STATUS MOVES, served by selling_service (the-order-status-moves-prototype-is-accepted) — under Order, after the
  * five: ONE metric with a count per status an order moved TO on its way out — Confirmed · Back to pending · Picked ·
  * Handed over · Shipped · Problem · Completed — named by what happened to the order (the-order-metric-ids-name-what-moved:
- * a resolve, problem → completed, is a Completed; a picked or processed order handed back is a Back to pending). Each
+ * a resolve, problem → completed, is a Completed; a picked or processed order handed back is a Back to pending) — and
+ * Disputes resolved, the resolves alone, beside Completed (its 2026-11-20 line: a resolve counts in both). Each
  * counts on the move's own day (a-fact-counts-on-the-day-it-happened), with the five's filters and groups
  * (the-four-group-by-team-shop-warehouse-user-and-time), Created by the order's creator
  * (a-metrics-user-is-the-orders-creator), a warehouse reading the orders it ships (a-warehouse-reads-the-orders-it-ships).
@@ -338,7 +342,7 @@ export const EXPENSE_METRICS: MetricDef[] = [
  */
 export const ORDER_MOVES_METRIC: MetricDef = servedMetric(OrderMovesMetricSchema, "ordersMoves", "selling", "order");
 
-/** Its seven counts, in the order an order moves — the proto's fields. */
+/** Its eight counts, in the order an order moves — the proto's fields (Disputes resolved last, beside Completed). */
 export const ORDER_MOVE_FIELDS: string[] = ORDER_MOVES_METRIC.fields.map((f) => f.name);
 
 export const METRICS: MetricDef[] = [
@@ -360,55 +364,15 @@ export const METRICS: MetricDef[] = [
  */
 export const EXPENSE_KIND_FIELDS: string[] = EXPENSE_METRICS[1]!.fields.map((f) => f.name).filter((name) => name !== "total");
 
-/** A prototype's count field — any reader is given a count (a-warehouse-sees-no-seller-money). */
-const countField = (name: string): MetricField => ({ name, kind: "count", canSort: true, warehouseHidden: false });
-
-/** A prototype's money field; `warehouseHidden` when it is the seller's money (a-warehouse-sees-no-seller-money). */
-const moneyField = (name: string, warehouseHidden: boolean): MetricField => ({ name, kind: "money", canSort: true, warehouseHidden });
-
-/**
- * ⚠ PROTOTYPE (backlog #85) — RESTOCK BEFORE THE ACCEPT, for the owner's design accept. It takes the live Restock's place
- * while a story shows it (same id, same filters and groups — the-four-inventory-metrics-filter-like-lost-stock) and adds
- * what the checklist (acceptances/inventory/restock.md) records before and at the accept
- * (the-inventory-metrics-prototype-is-accepted, its 2026-11-18 🔄 line):
- *   ordered units and value on the CREATE day, an edit's DIFFERENCE on the EDIT day (a warehouse change −/+ under the two
- *     warehouses that day), so a past day never changes (an-expense-correction-counts-on-the-day-it-is-made, the
- *     owner's correction pick); the value is the restock's total, goods + shipping — what the paying account paid —
- *     never the courier's charge (the-couriers-charge-stays-out-of-total), spread over the units as the landed price is;
- *   lost units and value on the LOST day;
- *   the accepted four as served (accepted, its value, broken, missing — the accept day);
- *   the courier's COD on the ACCEPT day, Terima's final figure (the-courier-charge-is-noted-at-tiba-and-final-at-terima).
- * A warehouse is given units and the COD it paid (the-warehouse-sees-the-cod-it-paid), never a value
- * (a-warehouse-sees-no-seller-money). No count of restocks (product-is-its-own-line-metric). Answered from sample.ts.
- */
-const LIVE_RESTOCK = INVENTORY_METRICS[0]!;
-
-export const RESTOCK_PROTOTYPE: MetricDef = {
-  metricId: LIVE_RESTOCK.metricId,
-  labelKey: LIVE_RESTOCK.labelKey,
-  service: LIVE_RESTOCK.service,
-  category: LIVE_RESTOCK.category,
-  supportedFilters: LIVE_RESTOCK.supportedFilters,
-  requiredFilters: LIVE_RESTOCK.requiredFilters,
-  supportedGroupBy: LIVE_RESTOCK.supportedGroupBy,
-  fields: [
-    countField("ordered_count"),
-    moneyField("ordered_value", true),
-    countField("lost_count"),
-    moneyField("lost_value", true),
-    ...LIVE_RESTOCK.fields,
-    moneyField("cod_amount", false),
-  ],
-};
-
 /**
  * ⚠ PROTOTYPES — metrics drawn for the owner's design accept, in Storybook only. They never reach the live screen: only a
  * story turns them on (`showPrototypeMetrics`), and the live app never calls it. Each goes into METRICS once the owner
  * accepts it and decides what it counts — Warehouse Fee, then Finance's two metrics and Lost stock (all served
  * 2026-11-05), then Ads expense and Expenses (served 2026-11-06), then Restock, Transfer, Returned stock and Ready stock
- * (served 2026-11-12), then Order status moves (served 2026-11-19). Now: Restock before the accept (#85).
+ * (served 2026-11-12), then Order status moves and Restock before the accept (both served 2026-11-19). None is drawn now;
+ * the mechanism stays for the next.
  */
-export const PROTOTYPE_METRICS: MetricDef[] = [RESTOCK_PROTOTYPE];
+export const PROTOTYPE_METRICS: MetricDef[] = [];
 
 let prototypesShown = false;
 

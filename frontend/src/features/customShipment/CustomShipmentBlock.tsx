@@ -11,6 +11,8 @@ import type { CustomShipment } from "./customShipments";
 import { unitsOf } from "./customShipments";
 import { CustomShipmentKindBadge, CustomShipmentStatusBadge } from "./CustomShipmentBadges";
 import { SellingCustomShipmentActions } from "./SellingCustomShipmentActions";
+// The *Barang tidak ketemu* badge on a line of its own while the parcel waits on the team (backlog #88 P6).
+import { GoodsMissingBlockLine } from "./GoodsMissing";
 
 /** "Beras Pandan Wangi 5kg +1 lainnya" — the first product by name, the rest counted (the lists' items cell). */
 export function ItemsLine({ shipment }: { shipment: CustomShipment }) {
@@ -43,11 +45,12 @@ export function PayLine({ shipment, side }: { shipment: CustomShipment; side: "s
     shipment.payer === "TEAM"
       ? side === "selling"
         ? t("customShipment.table.teamPays", {
-            amount: shipment.shippingCost > 0 ? formatRupiahNumber(shipment.shippingCost) : t("customShipment.table.costNotYet"),
+            amount:
+              (shipment.shippingCost ?? 0) > 0 ? formatRupiahNumber(shipment.shippingCost ?? 0) : t("customShipment.table.costNotYet"),
           })
         : t("customShipment.table.teamPaysForWarehouse")
       : handed
-        ? t("customShipment.table.warehousePaid", { amount: formatRupiahNumber(shipment.shippingCost) })
+        ? t("customShipment.table.warehousePaid", { amount: formatRupiahNumber(shipment.shippingCost ?? 0) })
         : t("customShipment.table.warehousePays");
 
   return (
@@ -112,6 +115,7 @@ export function CustomShipmentBlock({
           </Box>
         )}
       </Flex>
+      <GoodsMissingBlockLine shipment={shipment} />
 
       <Text fontSize="sm" fontWeight="medium" wordBreak="break-word" data-testid={`custom-shipment-recipient-${id}`}>
         {shipment.recipient.name}
@@ -128,7 +132,7 @@ export function CustomShipmentBlock({
         <ItemsLine shipment={shipment} />
         {value && (
           <Text fontWeight="bold" whiteSpace="nowrap" data-testid={`custom-shipment-value-${id}`}>
-            {formatRupiahNumber(shipment.total)}
+            {formatRupiahNumber(shipment.total ?? 0)}
           </Text>
         )}
       </Flex>

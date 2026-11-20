@@ -40,9 +40,10 @@ import { listLanded } from "./pickers";
 // supplier of its own (D), so its Statistics hold those three products alone.
 // (COD) — the courier's charge typed at the accept: the restock's page says it, and the SELLING team's liability ledger
 // with the warehouse holds it (read as selling:owner — liability is not a staff read). `COD recorded in analytic metric`
-// is 🚧 unimplemented — liability keeps no metric — so its check is its own test, marked `test.fail` with the status, as
-// warehouse:owner: any figure of the product's Restock row reading the charge (field-agnostic, since where it will show is
-// not built). The day it turns red the then is built: ask the owner, then run it as every role, pointed at that field.
+// — built by #85 (the-restock-before-the-accept-prototype-is-accepted: Courier COD on the accept day, Terima's final
+// figure) — is read in every role's (COD) test, as that role: Restock by product, filtered to the product, its
+// `cod_amount` reads the charge typed at Terima (the restock's one line takes it whole — the COD is spread over the units
+// ordered). The warehouse reads it because it paid it (the-warehouse-sees-the-cod-it-paid), though it reads no value.
 // (multi suppliers) is ✅ ok since 2026-11-14 (the owner's word, after supplier_service
 // began crediting each LINE's own supplier — the-supplier-comes-from-the-restock-until-lines-name-a-store); until then the
 // restock was recorded at none and this check was `test.fail`. A one-supplier restock accepted AFTER the multi-supplier one
@@ -68,9 +69,8 @@ test.describe("warehouse:all wants to accept a restock", () => {
   // Of a (has brokens, thrown away) restock's 10, how many are broken; of a (has missing items) one's, how many never came.
   const BROKEN = 2;
   const MISSING = 3;
-  // (COD): the courier's charge per role — amounts no other figure of these pages reads — and the 🚧 metric test's own.
+  // (COD): the courier's charge per role — amounts no other figure of these pages reads.
   const COD = { own: 6_150, adm: 6_250, stf: 6_350 } as Record<string, number>;
-  const COD_METRIC = 7_350;
   const COD_NOTE = `courier asked at the door ${SUFFIX}`;
   const rp = (n: number) => n.toLocaleString("id-ID");
   const RESTOCK_METRIC = "metrics/inventory/restock";
@@ -183,7 +183,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
     for (const r of ROLES) {
       for (const line of ["A", "B", "C", "D"] as const) await product(sku(r.key, line));
       for (const c of CASES) await product(caseSku(r.key, c.key));
-      for (const kase of ["nw", "al", "br", "ms", "cd", "cx", "bk", "bx"]) await product(caseSku(r.key, kase));
+      for (const kase of ["nw", "al", "br", "ms", "cd", "bk", "bx"]) await product(caseSku(r.key, kase));
     }
 
     const account = await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
@@ -256,7 +256,7 @@ test.describe("warehouse:all wants to accept a restock", () => {
         { code: caseSku(r.key, "ms"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
       ]);
 
-      // …and one the courier asks a charge for at the door; warehouse:owner's 🚧 metric test has one more, below.
+      // …and one the courier asks a charge for at the door.
       ground.restocks[`${r.key}-cd`] = await raise(page, [
         { code: caseSku(r.key, "cd"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
       ]);
@@ -266,9 +266,6 @@ test.describe("warehouse:all wants to accept a restock", () => {
         { code: caseSku(r.key, "bk"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
       ]);
     }
-    ground.restocks["own-cx"] = await raise(page, [
-      { code: caseSku("own", "cx"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
-    ]);
     ground.restocks["own-bx"] = await raise(page, [
       { code: caseSku("own", "bx"), supplierId: ground.supplierC, count: COUNTED, total: COUNTED_TOTAL },
     ]);
@@ -746,6 +743,11 @@ test.describe("warehouse:all wants to accept a restock", () => {
         await expect.soft(page.getByTestId("restock-detail-courier-charge-note")).toContainText(COD_NOTE);
       });
 
+      // Restock by product, this week, filtered to the product, read by this role: its Courier COD is Terima's figure.
+      await test.step("then: COD recorded in analytic metric", async () => {
+        await restockMetric(page, ground.products[code], "cod_amount", `Rp ${rp(charge)}`);
+      });
+
       // THEN — as the selling team, who owes the warehouse the charge: its ledger with the warehouse holds the restock's
       // courier entry. Liability posts it from the accept's event, so it is re-read until it lands.
       await signIn(page, SELLER, ground.team);
@@ -787,32 +789,6 @@ test.describe("warehouse:all wants to accept a restock", () => {
     // past that: the day a rack for broken units is asked again and built, this turns red — ask the owner.
     await test.step("then: brokens on rack", async () => {
       await expect(page.getByTestId(`accept-broken-to-rack-${productId}`)).toBeVisible({ timeout: 5_000 });
-    });
-  });
-
-  // 🚧 — its own test, so the expected failure hides none of the thens above (see the head of this file).
-  test("warehouse:owner accept restock (status: ongoing · all received · new product · COD · 1 supplier): COD recorded in analytic metric", async ({
-    page,
-  }) => {
-    test.fail(
-      true,
-      "🚧 unimplemented (docs/acceptances/inventory/restock.md) — liability keeps no metric, so no analytic metric records the COD",
-    );
-
-    const restock = ground.restocks["own-cx"];
-    const productId = ground.products[caseSku("own", "cx")];
-
-    await signIn(page, username("own"), ground.warehouse);
-    await acceptWithCod(page, restock, COD_METRIC);
-
-    // Restock by product, this week: ANY figure of the product's row reading the charge. Re-read until it lands.
-    await test.step("then: COD recorded in analytic metric", async () => {
-      await expect(async () => {
-        await page.goto(`/analytic?g=product&m=${RESTOCK_METRIC}&r=7d&product=${productId}`);
-        await expect(
-          page.locator(`[data-testid^="analytic-cell-${productId}-"]`).filter({ hasText: rp(COD_METRIC) }),
-        ).not.toHaveCount(0, { timeout: 2_000 });
-      }).toPass({ timeout: 20_000 });
     });
   });
 });

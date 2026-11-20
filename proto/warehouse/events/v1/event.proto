@@ -12,6 +12,7 @@ import "buf/validate/validate.proto";
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/timestamp.proto";
 import "warehouse/expense/v1/expense.proto";
+import "warehouse/inventory/v1/custom_shipment.proto";
 import "warehouse/role_base/v1/role.proto";
 import "warehouse/settlement/v1/settlement.proto";
 
@@ -114,6 +115,10 @@ message Event {
     WarehouseTransferCancelled warehouse_transfer_cancelled = 406;
     WarehouseTransferAccepted warehouse_transfer_accepted = 407;
     RestockReceivedCountCorrected restock_received_count_corrected = 408;
+    CustomShipmentCreated custom_shipment_created = 409;
+    CustomShipmentCostUpdated custom_shipment_cost_updated = 410;
+    CustomShipmentCancelled custom_shipment_cancelled = 411;
+    CustomShipmentHandedOver custom_shipment_handed_over = 412;
 
     LiabilityPaymentAccepted liability_payment_accepted = 500;
 
@@ -752,6 +757,104 @@ message WarehouseTransferAccepted {
   // Who counted it in — read from the stored transfer, never from the envelope's identity.
   uint64 actor_id = 7;
   int64 accepted_at_unix = 8;
+}
+
+// ── CUSTOM SHIPMENTS (backlog #88, docs/business/custom_shipments/context_decision.md) ──────────────────────────────────
+//
+// A parcel the warehouse sends that is not an order. Its courier is paid one of two ways, the team picking at create
+// (the-courier-is-paid-by-the-team-or-by-the-warehouse): TEAM (*Kami bayar*) — an expense on the team's account, as a
+// transfer's shipping (a-transfers-shipping-posts-as-an-expense): Created posts the cost, CostUpdated the difference or
+// the move, Cancelled the refund; WAREHOUSE (*Gudang bayar*) — the warehouse types the real cost at the handover and the
+// team owes it through Team Balance, as a restock's courier charge: HandedOver posts it. Published by inventory_service
+// after each commit, never inside it (no-outbox-the-publish-is-trusted); every event_id is DERIVED, so a republish
+// collides in the listener's dedup. The listeners are #88's P4.
+//
+// Money is `double`, as inventory stores it (money-is-double-in-the-api-too).
+
+// CustomShipmentCreated announces a parcel CREATED by its selling team — and, for a TEAM payer, the courier cost typed
+// with it (0 = typed later, or never). A WAREHOUSE payer's carries no account and 0: nothing is posted until the
+// handover. `event_id` is `custom-shipment-created:<custom_shipment_id>`.
+message CustomShipmentCreated {
+  option (event_config).topic = "custom-shipment-created";
+
+  uint64 custom_shipment_id = 1;
+  // The owning selling team — the one that pays.
+  uint64 team_id = 2;
+  // The warehouse it ships from.
+  uint64 warehouse_id = 3;
+  warehouse.inventory.v1.CustomShipmentKind kind = 4;
+  warehouse.inventory.v1.CustomShipmentPayer payer = 5;
+  // TEAM payer: the account that pays and the cost, rupiah; a listener posts nothing for 0. WAREHOUSE payer: 0 and 0.
+  uint64 finance_account_id = 6;
+  double amount = 7;
+  // Who created it — read from the stored parcel — and whether as Root or the Administrator from outside the team
+  // (an-override-is-stamped-in-every-service).
+  uint64 actor_id = 8;
+  bool actor_is_override = 9;
+  int64 created_at_unix = 10;
+}
+
+// CustomShipmentCostUpdated announces *Ubah Ongkir* — a TEAM payer's edit that changed the cost or the account, until the
+// handover. Not sent for an edit that changed neither. Both sides are carried, as WarehouseTransferUpdated: the same
+// account means post new − old; a different account means the old one gets old_amount back and the new one pays
+// new_amount. `event_id` is `custom-shipment-cost-updated:<custom_shipment_id>:<cost_revision>` — one per edit that
+// moved money.
+message CustomShipmentCostUpdated {
+  option (event_config).topic = "custom-shipment-cost-updated";
+
+  uint64 custom_shipment_id = 1;
+  uint64 team_id = 2;
+  uint64 old_finance_account_id = 3;
+  uint64 new_finance_account_id = 4;
+  double old_amount = 5;
+  double new_amount = 6;
+  uint64 actor_id = 7;
+  bool actor_is_override = 8;
+  int64 updated_at_unix = 9;
+}
+
+// CustomShipmentCancelled announces a parcel called off by its selling team while REQUESTED
+// (a-custom-shipment-is-cancelled-only-while-requested): a TEAM payer's posted cost comes back to the account that paid;
+// a WAREHOUSE payer had nothing posted. `event_id` is `custom-shipment-cancelled:<custom_shipment_id>` — a parcel is
+// cancelled once.
+message CustomShipmentCancelled {
+  option (event_config).topic = "custom-shipment-cancelled";
+
+  uint64 custom_shipment_id = 1;
+  uint64 team_id = 2;
+  uint64 warehouse_id = 3;
+  warehouse.inventory.v1.CustomShipmentKind kind = 4;
+  warehouse.inventory.v1.CustomShipmentPayer payer = 5;
+  // The account that paid and the amount it gets back; 0 = nothing was posted.
+  uint64 finance_account_id = 6;
+  double amount = 7;
+  uint64 actor_id = 8;
+  bool actor_is_override = 9;
+  int64 cancelled_at_unix = 10;
+}
+
+// CustomShipmentHandedOver announces the warehouse handed the parcel to the courier — final. For a WAREHOUSE payer it
+// carries the real cost the warehouse paid on the spot, typed at the handover (0 allowed): the selling team owes the
+// warehouse that through Team Balance, nothing for 0, as a restock's courier charge at the door
+// (the-warehouse-cost-is-the-couriers-charge-at-the-door) — under a source type of its own, since a parcel's id collides
+// with a restock's or a transfer's (a-transfer-charge-is-a-transfer-fee). A TEAM payer's carries 0: its cost was posted
+// as an expense already. `event_id` is `custom-shipment-handed-over:<custom_shipment_id>` — a parcel is handed over once.
+message CustomShipmentHandedOver {
+  option (event_config).topic = "custom-shipment-handed-over";
+
+  uint64 custom_shipment_id = 1;
+  // The selling team — the debtor of a WAREHOUSE payer's cost.
+  uint64 team_id = 2;
+  // The warehouse that shipped it — the creditor of a WAREHOUSE payer's cost.
+  uint64 warehouse_id = 3;
+  warehouse.inventory.v1.CustomShipmentKind kind = 4;
+  warehouse.inventory.v1.CustomShipmentPayer payer = 5;
+  // WAREHOUSE payer: the courier cost the warehouse paid, rupiah; 0 = it paid nothing. TEAM payer: 0.
+  double warehouse_cost = 6;
+  // Who handed it over — read from the stored parcel, never from the envelope's identity.
+  uint64 actor_id = 7;
+  bool actor_is_override = 8;
+  int64 handed_over_at_unix = 9;
 }
 
 // LiabilityPaymentAccepted announces that a CREDITOR accepted a team payment — they looked at their bank and the

@@ -218,6 +218,18 @@ enum LiabilitySourceType {
   // 41 beside restock 41 for the same pair would share the idempotency key and the second would be dropped as a
   // redelivery.
   LIABILITY_SOURCE_TYPE_TRANSFER_FEE = 10;
+
+  // What the warehouse paid the courier for a CUSTOM SHIPMENT it handed over, when the selling team picked *Gudang bayar*
+  // (the-courier-is-paid-by-the-team-or-by-the-warehouse) — the selling team owes the warehouse it shipped from.
+  // `source_id` is the CUSTOM SHIPMENT, posted once from CustomShipmentHandedOver; a cost of 0 posts nothing, and a
+  // *Kami bayar* parcel posts nothing here at all (its cost is an expense on the team's own account). Business word
+  // `custom_shipment_fee` (the-ledger-speaks-the-business-words).
+  //
+  // ⚠ NOT INCIDENTAL_FEE nor TRANSFER_FEE, for their reason (a-transfer-charge-is-a-transfer-fee): parcels, restocks and
+  // transfers are numbered separately, so custom shipment 41 beside restock 41 for the same pair would share the
+  // idempotency key and the second would be dropped as a redelivery. A reader summing the couriers' asks (the daily
+  // statement's one courier column) reads this one too.
+  LIABILITY_SOURCE_TYPE_CUSTOM_SHIPMENT_FEE = 11;
 }
 
 // One leg of one movement, immutable (§4.1). Entries are APPEND ONLY: a correction is a compensating

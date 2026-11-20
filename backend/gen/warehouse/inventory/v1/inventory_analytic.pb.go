@@ -174,10 +174,27 @@ func (x *InventoryLostMetricByDay) GetItems() map[string]*InventoryLostMetric {
 	return nil
 }
 
-// RESTOCK — what the receiving warehouse accepted onto its racks on the accept's Jakarta day, and what its door found
-// broken or missing. Warehouse = where it was received.
+// RESTOCK — a restock from the day it is raised to the day it is counted in (the-inventory-metrics-prototype-is-accepted,
+// widened before the accept by the-restock-before-the-accept-prototype-is-accepted): what is ORDERED (the create day;
+// each edit's difference on the edit day — lines, warehouse, shipping, ongoing and arrived; a cancel taking it back on
+// the cancel day — a-cancelled-restock-takes-its-ordered-back-on-its-day), what is LOST ON THE WAY (the lost day; taken
+// back on the day a lost box is signed for as arrived — a-lost-box-that-turns-up-takes-its-lost-back-on-its-day), what
+// the warehouse ACCEPTED onto its racks and what its door found broken or missing (the accept day), and the courier's
+// COD (the accept day, Terima's final figure). Warehouse = where the restock goes — a warehouse change moves its ordered
+// out of the old warehouse and into the new one on the edit day. The values are the restock's total (goods + the
+// shipping its team paid, never the courier's COD — the-couriers-charge-stays-out-of-total); by product or supplier the
+// shipping, and at the accept the COD, is spread over the units ORDERED as the landed price spreads it. A warehouse
+// reads the units and the COD it paid (the-warehouse-sees-the-cod-it-paid), never a value.
 type InventoryRestockMetric struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// Units ordered — signed: an edit that removes units, a warehouse change's old warehouse, or a cancel reads negative.
+	OrderedCount int64 `protobuf:"varint,5,opt,name=ordered_count,json=orderedCount,proto3" json:"ordered_count,omitempty"`
+	// Those units' share of the restock's total (goods + shipping), rupiah, signed like the units. Unset for a warehouse.
+	OrderedValue *float64 `protobuf:"fixed64,6,opt,name=ordered_value,json=orderedValue,proto3,oneof" json:"ordered_value,omitempty"`
+	// Units given up as lost on the way — negative on the day a lost box is signed for as arrived.
+	LostCount int64 `protobuf:"varint,7,opt,name=lost_count,json=lostCount,proto3" json:"lost_count,omitempty"`
+	// Those units' share of the restock's total, rupiah, signed like the units. Unset for a warehouse.
+	LostValue *float64 `protobuf:"fixed64,8,opt,name=lost_value,json=lostValue,proto3,oneof" json:"lost_value,omitempty"`
 	// Good units accepted onto the racks.
 	AcceptedCount int64 `protobuf:"varint,1,opt,name=accepted_count,json=acceptedCount,proto3" json:"accepted_count,omitempty"`
 	// Those units at their landed price (the batch's), rupiah. Unset for a warehouse.
@@ -185,7 +202,10 @@ type InventoryRestockMetric struct {
 	// Units the door found broken.
 	BrokenCount int64 `protobuf:"varint,3,opt,name=broken_count,json=brokenCount,proto3" json:"broken_count,omitempty"`
 	// Units the line ordered that were not in the box.
-	MissingCount  int64 `protobuf:"varint,4,opt,name=missing_count,json=missingCount,proto3" json:"missing_count,omitempty"`
+	MissingCount int64 `protobuf:"varint,4,opt,name=missing_count,json=missingCount,proto3" json:"missing_count,omitempty"`
+	// The courier's charge the warehouse paid at the door, rupiah — Terima's final figure, on the accept day. A warehouse
+	// reads it (the-warehouse-sees-the-cod-it-paid).
+	CodAmount     float64 `protobuf:"fixed64,9,opt,name=cod_amount,json=codAmount,proto3" json:"cod_amount,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -220,6 +240,34 @@ func (*InventoryRestockMetric) Descriptor() ([]byte, []int) {
 	return file_warehouse_inventory_v1_inventory_analytic_proto_rawDescGZIP(), []int{3}
 }
 
+func (x *InventoryRestockMetric) GetOrderedCount() int64 {
+	if x != nil {
+		return x.OrderedCount
+	}
+	return 0
+}
+
+func (x *InventoryRestockMetric) GetOrderedValue() float64 {
+	if x != nil && x.OrderedValue != nil {
+		return *x.OrderedValue
+	}
+	return 0
+}
+
+func (x *InventoryRestockMetric) GetLostCount() int64 {
+	if x != nil {
+		return x.LostCount
+	}
+	return 0
+}
+
+func (x *InventoryRestockMetric) GetLostValue() float64 {
+	if x != nil && x.LostValue != nil {
+		return *x.LostValue
+	}
+	return 0
+}
+
 func (x *InventoryRestockMetric) GetAcceptedCount() int64 {
 	if x != nil {
 		return x.AcceptedCount
@@ -248,7 +296,14 @@ func (x *InventoryRestockMetric) GetMissingCount() int64 {
 	return 0
 }
 
-// Keyed by product, supplier (0 = a batch naming none), seller team or warehouse id.
+func (x *InventoryRestockMetric) GetCodAmount() float64 {
+	if x != nil {
+		return x.CodAmount
+	}
+	return 0
+}
+
+// Keyed by product, supplier (0 = a line naming none), seller team or warehouse id.
 type InventoryRestockMetricByID struct {
 	state         protoimpl.MessageState             `protogen:"open.v1"`
 	Items         map[uint64]*InventoryRestockMetric `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -1409,17 +1464,32 @@ const file_warehouse_inventory_v1_inventory_analytic_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12A\n" +
-	"\x05value\x18\x02 \x01(\v2+.warehouse.inventory.v1.InventoryLostMetricR\x05value:\x028\x01\"\xac\x02\n" +
-	"\x16InventoryRestockMetric\x121\n" +
+	"\x05value\x18\x02 \x01(\v2+.warehouse.inventory.v1.InventoryLostMetricR\x05value:\x028\x01\"\xba\x04\n" +
+	"\x16InventoryRestockMetric\x12/\n" +
+	"\rordered_count\x18\x05 \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\forderedCount\x124\n" +
+	"\rordered_value\x18\x06 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\forderedValue\x88\x01\x01\x12)\n" +
+	"\n" +
+	"lost_count\x18\a \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\tlostCount\x12.\n" +
+	"\n" +
+	"lost_value\x18\b \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x01R\tlostValue\x88\x01\x01\x121\n" +
 	"\x0eaccepted_count\x18\x01 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\racceptedCount\x126\n" +
 	"\x0eaccepted_value\x18\x02 \x01(\x01B\n" +
-	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x00R\racceptedValue\x88\x01\x01\x12-\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03H\x02R\racceptedValue\x88\x01\x01\x12-\n" +
 	"\fbroken_count\x18\x03 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\vbrokenCount\x12/\n" +
 	"\rmissing_count\x18\x04 \x01(\x03B\n" +
-	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\fmissingCount:4\x9a\xb5\x180\n" +
-	"\x05\x01\x04\a\x03\x06\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\x06\b\t\v\"\x19metrics/inventory/restockB\x11\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\fmissingCount\x12)\n" +
+	"\n" +
+	"cod_amount\x18\t \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\tcodAmount:4\x9a\xb5\x180\n" +
+	"\x05\x01\x04\a\x03\x06\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\x06\b\t\v\"\x19metrics/inventory/restockB\x10\n" +
+	"\x0e_ordered_valueB\r\n" +
+	"\v_lost_valueB\x11\n" +
 	"\x0f_accepted_value\"\xdb\x01\n" +
 	"\x1aInventoryRestockMetricByID\x12S\n" +
 	"\x05items\x18\x01 \x03(\v2=.warehouse.inventory.v1.InventoryRestockMetricByID.ItemsEntryR\x05items\x1ah\n" +

@@ -24,6 +24,7 @@ import {
   PackageSearch,
   Receipt,
   Scale,
+  Send,
   Settings,
   ShoppingCart,
   Store,
@@ -324,6 +325,10 @@ function inventoriesFor(teamType: TeamType | undefined, role: Role | undefined):
     // Both sides: the selling team opens a transfer, the warehouses send and receive it
     // (the-team-opens-the-sender-ships-the-receiver-accepts). A prototype until design_accept.
     { to: "/inventories/transfer", label: "nav.warehouseTransfer", icon: ArrowLeftRight },
+    // Custom shipments — *Kirim Paket* — RIGHT AFTER Transfer, on both sides (owner,
+    // custom-shipments-sit-in-inventories-after-transfer): the selling team asks for a parcel that is not an order, the
+    // warehouse picks, packs and hands it over (the-selling-team-asks-the-warehouse-ships).
+    { to: "/inventories/custom-shipments", label: "nav.customShipments", icon: Send },
   ];
 
   // Returns sit directly UNDER Restock — a return is a restock's mirror image (#163), goods arriving

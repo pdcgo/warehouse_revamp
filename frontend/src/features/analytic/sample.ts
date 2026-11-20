@@ -174,9 +174,10 @@ const between = (seed: string, low: number, high: number) => low + Math.floor(se
  * order's shop, seller, warehouse and creator (a-metrics-user-is-the-orders-creator): confirmed the day it is placed;
  * one in twenty handed back to pending that day (goods on no rack) and confirmed again the next; picked, handed to the
  * courier, shipped by the platform; then completed — or a problem first, most of which are resolved to completed. A
- * move still to come is not a fact yet. Returns, losses and cancels are the five metrics' own, not drawn here.
+ * resolve is a Completed AND a Disputes resolved on its day (the-order-status-moves-prototype-is-accepted, its 2026-11-20
+ * line). A move still to come is not a fact yet. Returns, losses and cancels are the five metrics' own, not drawn here.
  */
-function orderMoves(order: string, placed: string, today: string): { day: string; field: string }[] {
+export function orderMoves(order: string, placed: string, today: string): { day: string; field: string }[] {
   const out: { day: string; field: string }[] = [{ day: placed, field: "confirmed_count" }];
 
   let ready = placed;
@@ -195,7 +196,10 @@ function orderMoves(order: string, placed: string, today: string): { day: string
   if (fate < 0.06) {
     const problem = addDay(shipped, 3);
     out.push({ day: problem, field: "problem_count" });
-    if (seeded(`mvr|${order}`) < 0.7) out.push({ day: addDay(problem, 4), field: "completed_count" });
+    if (seeded(`mvr|${order}`) < 0.7) {
+      const resolved = addDay(problem, 4);
+      out.push({ day: resolved, field: "completed_count" }, { day: resolved, field: "disputes_resolved_count" });
+    }
   } else if (fate >= 0.1) {
     out.push({ day: addDay(shipped, between(`mvc|${order}`, 3, 6)), field: "completed_count" });
   }
@@ -203,7 +207,11 @@ function orderMoves(order: string, placed: string, today: string): { day: string
   return out.filter((m) => m.day <= today);
 }
 
-// ── ⚠ PROTOTYPE #85 — RESTOCK BEFORE THE ACCEPT ──────────────────────────────────────────────────
+// ── RESTOCK BEFORE THE ACCEPT — the worked restocks (#85, served since 2026-11-19) ─────────────────────
+//
+// The accepted prototype's figures (the-restock-before-the-accept-prototype-is-accepted), kept as the facts the inventory
+// stub answers Restock from while a story asks for them (.storybook/inventoryMetricsFixtures.ts `workedRestocks`), so the
+// live stories draw the pictures the owner accepted. inventory_service folds the same steps (restock_metric_fold.go).
 
 /** A restock's state: where it goes, its lines (product → units) and the shipping its team paid. */
 interface RestockState {
@@ -295,8 +303,9 @@ function orderedOf(state: RestockState): Map<string, { units: number; value: num
 /**
  * One restock's facts, each step on its own day: ordered units and value on the create day; an edit's DIFFERENCE on the
  * edit day — a warehouse change takes it out under the old warehouse and puts it in under the new one that day; a cancel
- * takes the ordered back on its day (⚠ the build's default, asked at the accept); lost on the lost day, taken back on the
- * day a lost box turns up (⚠ the build's default, asked at the accept); at the accept the accepted four as served —
+ * takes the ordered back on its day (a-cancelled-restock-takes-its-ordered-back-on-its-day); lost on the lost day, taken
+ * back on the day a lost box turns up (a-lost-box-that-turns-up-takes-its-lost-back-on-its-day); at the accept the
+ * accepted four as served —
  * accepted units at the landed price ((shipping + COD) / units added to each unit), broken, missing — and the COD, spread
  * like the shipping. Read by the seller and the warehouse the fact is under (and root).
  */
@@ -431,7 +440,7 @@ function build(): Record<string, Fact[]> {
     // Served by selling_service; the Storybook stub answers them from these facts.
     "metrics/warehouse_fee": [],
     "metrics/orders/moves": [],
-    // ⚠ PROTOTYPES (catalogue.ts PROTOTYPE_METRICS) — read only while a story shows them.
+    // Served by inventory_service; the inventory stub answers a story asking for the worked restocks from these facts.
     "metrics/inventory/restock": [...SAMPLE_RESTOCKS_OCTOBER, ...backgroundRestocks(jakartaToday())].flatMap((r) =>
       restockFacts(r, jakartaToday()),
     ),

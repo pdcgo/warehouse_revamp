@@ -34,6 +34,7 @@ import { resetCategoryStub } from "./categoryStub";
 import { resetProductStub } from "./productStub";
 import { resetRestockStub } from "./restockStub";
 import { resetWarehouseTransferStub } from "./warehouseTransferStub";
+import { resetCustomShipmentStub } from "./customShipmentStub";
 import { resetOpnameStub } from "./opnameStub";
 import { resetFoundRequestStub } from "./foundRequestStub";
 import { resetExpenseStub } from "./expenseStub";
@@ -424,6 +425,8 @@ const preview: Preview = {
     // …and the restocks, which every create, edit, sign-for, accept, lost and cancel writes to.
     resetRestockStub();
     resetWarehouseTransferStub();
+    // …and the custom shipments (and what their stub heard and said — customShipmentScenario.ts).
+    resetCustomShipmentStub();
     // …and the stock count, which every count, send-back and finalize writes to.
     resetOpnameStub();
     // …and the found requests, which an Adjust found, an approval or a rejection writes to.

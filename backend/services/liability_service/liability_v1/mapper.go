@@ -45,6 +45,10 @@ const (
 	// SourceID is the TRANSFER — its own type for SourceTypeReturnIncidentalFee's reason: a transfer id and a restock id
 	// can be the same number.
 	SourceTypeTransferFee
+	// What the warehouse paid the courier for a CUSTOM SHIPMENT it handed over, when the selling team picked *Gudang
+	// bayar* (the-courier-is-paid-by-the-team-or-by-the-warehouse). SourceID is the CUSTOM SHIPMENT — its own type for
+	// SourceTypeTransferFee's reason: a parcel id, a transfer id and a restock id can be the same number.
+	SourceTypeCustomShipmentFee
 )
 
 // The text stored in `liability_logs.source_type`. No DB CHECK guards these (the mapper and the
@@ -62,6 +66,9 @@ const (
 	sourceReturnIncidentalFee = "return_incidental_fee"
 	// The courier's ask at a transfer's receiving door (a-transfer-charge-is-a-transfer-fee).
 	sourceTransferFee = "transfer_fee"
+	// What the warehouse paid the courier for a custom shipment (*Gudang bayar*) — the business word
+	// (the-ledger-speaks-the-business-words).
+	sourceCustomShipmentFee = "custom_shipment_fee"
 )
 
 // sourceTypeText maps to storage. An UNSPECIFIED source returns "" and PostEntry refuses it: an entry
@@ -86,6 +93,8 @@ func sourceTypeText(t SourceType) string {
 		return sourceReturnIncidentalFee
 	case SourceTypeTransferFee:
 		return sourceTransferFee
+	case SourceTypeCustomShipmentFee:
+		return sourceCustomShipmentFee
 	default:
 		return ""
 	}
@@ -114,6 +123,8 @@ func sourceTypeProto(text string) liabilityv1.LiabilitySourceType {
 		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_RETURN_INCIDENTAL_FEE
 	case sourceTransferFee:
 		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_TRANSFER_FEE
+	case sourceCustomShipmentFee:
+		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_CUSTOM_SHIPMENT_FEE
 	default:
 		return liabilityv1.LiabilitySourceType_LIABILITY_SOURCE_TYPE_UNSPECIFIED
 	}
@@ -141,6 +152,8 @@ func sourceTypeFromText(text string) SourceType {
 		return SourceTypeReturnIncidentalFee
 	case sourceTransferFee:
 		return SourceTypeTransferFee
+	case sourceCustomShipmentFee:
+		return SourceTypeCustomShipmentFee
 	default:
 		return SourceTypeUnspecified
 	}

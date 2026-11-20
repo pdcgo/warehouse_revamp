@@ -123,6 +123,14 @@ type Order struct {
 	// open failed, is dead-lettered, or never ran — the order committed all the same. Never written by placement.
 	SettlementOpenedAt *time.Time
 
+	// CETAK ULANG LABEL's two stamps (00054, a-changed-label-asks-the-warehouse-to-reprint). LabelPrintedAt is when the
+	// print page's Print last put this order's label in its PDF (OrderLabels with record_print) — nil = never printed
+	// there; the order page's label viewer does not count. ReceiptChangedAt is when Edit Resi (OrderReceiptUpdate) last
+	// changed the number or the file — nil = never; a request naming only what is there writes nothing. The mark is a
+	// change after the print, on a parcel still in the building (selling_v1.needsReprint, reprintLabelCondition).
+	LabelPrintedAt   *time.Time
+	ReceiptChangedAt *time.Time
+
 	// HOW MANY UNITS — the sum of the lines' quantities (the-warehouse-row-fills-from-shop-and-user-by-ids). Not a
 	// column: OrderList selects it with a subquery, and OrderDetail sums the lines it loads. Read-only to GORM.
 	ItemQuantity int64 `gorm:"->;-:migration"`

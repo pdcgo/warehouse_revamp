@@ -16,6 +16,12 @@
 //     last day, an id row and the headline at the window's last day, never a day still to come — and add across keys;
 //   · Transfer's sides each on their own day (a-transfer-counts-each-side-on-its-own-day): sent under the sender on the
 //     create day, received under the receiver on the accept day, in transit under the receiver in between.
+//   · Restock from the raise to the count (the-restock-before-the-accept-prototype-is-accepted): a simulated restock is
+//     raised and counted in on one day, so its ordered is its lot on that day; a warehouse is given the courier's COD.
+//
+// THE WORKED RESTOCKS: a story about Restock before the accept asks for the accepted prototype's seven October restocks
+// (sample.ts SAMPLE_RESTOCKS_OCTOBER and its background) with `workedRestocks.on = true` in its beforeEach (and back to
+// false in the cleanup) — Restock is then answered from them instead of the simulation; the other three never change.
 
 import { type TableGroup, type TimeGroup, isTimeGroup } from "../src/features/analytic/catalogue";
 import { type MetricBody, type ReportFilters, type ReportKey, type SortDirection, bucketOfDay } from "../src/features/analytic/provider";
@@ -34,9 +40,19 @@ type MetricKey = "restock" | "transfer" | "return" | "ready";
 const METRIC: Record<string, { key: MetricKey; fields: string[]; positions: Set<string>; sellerMoney: Set<string> }> = {
   [RESTOCK_ID]: {
     key: "restock",
-    fields: ["accepted_count", "accepted_value", "broken_count", "missing_count"],
+    fields: [
+      "ordered_count",
+      "ordered_value",
+      "lost_count",
+      "lost_value",
+      "accepted_count",
+      "accepted_value",
+      "broken_count",
+      "missing_count",
+      "cod_amount",
+    ],
     positions: new Set(),
-    sellerMoney: new Set(["accepted_value"]),
+    sellerMoney: new Set(["ordered_value", "lost_value", "accepted_value"]),
   },
   [TRANSFER_ID]: {
     key: "transfer",
@@ -189,6 +205,9 @@ function simulate(): Facts {
           const accepted = lot - broken - missing;
           put(w, p, accepted);
           fact(out.restock, day, p, w, {
+            // Raised and counted in the same day: its lot is ordered that day (no shipping in the simulation).
+            ordered_count: lot,
+            ordered_value: lot * price,
             accepted_count: accepted,
             accepted_value: accepted * price,
             broken_count: broken,
@@ -256,7 +275,26 @@ function simulate(): Facts {
 
 let cache: Facts | undefined;
 
+/**
+ * THE KNOB for Restock's own stories: on, Restock is answered from the worked October restocks (sample.ts) — create,
+ * edit, cancel, lost, turned up, accept and COD each on its day — instead of the simulation. A story's beforeEach sets
+ * it and its cleanup puts it back, so every other story reads the simulation.
+ */
+export const workedRestocks = { on: false };
+
 function factsOf(metric: MetricKey): Fact[] {
+  if (metric === "restock" && workedRestocks.on) {
+    // Every worked fact names its product, supplier, seller and warehouse (sample.ts restockFacts).
+    return sampleFacts(RESTOCK_ID).map((f) => ({
+      day: f.day,
+      product: f.product!,
+      supplier: f.supplier!,
+      team: f.team!,
+      warehouse: f.warehouse!,
+      values: f.values,
+    }));
+  }
+
   cache ??= simulate();
 
   return cache[metric];
@@ -330,7 +368,7 @@ export function isInventoryMetric(metricId: string): boolean {
   return metricId in METRIC;
 }
 
-/** Is `field` of `metricId` a figure a warehouse is not given (its value on Restock, Transfer, Returned stock)? */
+/** Is `field` of `metricId` a figure a warehouse is not given (its values on Restock, Transfer, Returned stock)? */
 export function hiddenFromWarehouse(metricId: string, field: string): boolean {
   return METRIC[metricId]?.sellerMoney.has(field) ?? false;
 }

@@ -13,33 +13,36 @@ import (
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	sellingv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_event"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
 )
 
 // ORDER STATUS MOVES (the-order-status-moves-prototype-is-accepted): one metric, a count per status an order moved TO —
-// Confirmed · Back to pending · Picked · Handed over · Shipped · Problem · Completed — each move on its own Jakarta day,
-// under the order's creator, read by the seller, the warehouse that ships it and root, and nobody else; counts only.
+// Confirmed · Back to pending · Picked · Handed over · Shipped · Problem · Completed — and Disputes resolved beside
+// Completed for a resolve (its 2026-11-20 line), each move on its own Jakarta day, under the order's creator, read by the
+// seller, the warehouse that ships it and root, and nobody else; counts only.
 
 const metricMoves = "metrics/orders/moves"
 
-// moveFields is the seven counts in the proto's order.
+// moveFields is the eight counts in the proto's order.
 var moveFields = []string{
 	"confirmed_count", "back_to_pending_count", "picked_count", "handed_over_count", "shipped_count", "problem_count",
-	"completed_count",
+	"completed_count", "disputes_resolved_count",
 }
 
-// moveCounts is a moves message as the seven counts, by field name.
+// moveCounts is a moves message as the eight counts, by field name.
 func moveCounts(m *sellingv1.OrderMovesMetric) map[string]int64 {
 	return map[string]int64{
-		"confirmed_count":       m.GetConfirmedCount(),
-		"back_to_pending_count": m.GetBackToPendingCount(),
-		"picked_count":          m.GetPickedCount(),
-		"handed_over_count":     m.GetHandedOverCount(),
-		"shipped_count":         m.GetShippedCount(),
-		"problem_count":         m.GetProblemCount(),
-		"completed_count":       m.GetCompletedCount(),
+		"confirmed_count":         m.GetConfirmedCount(),
+		"back_to_pending_count":   m.GetBackToPendingCount(),
+		"picked_count":            m.GetPickedCount(),
+		"handed_over_count":       m.GetHandedOverCount(),
+		"shipped_count":           m.GetShippedCount(),
+		"problem_count":           m.GetProblemCount(),
+		"completed_count":         m.GetCompletedCount(),
+		"disputes_resolved_count": m.GetDisputesResolvedCount(),
 	}
 }
 
@@ -134,8 +137,9 @@ FROM order_daily_reports WHERE metric LIKE 'moves\_%'`).Scan(&sums).Error
 // EVERY MOVE IS NAMED BY WHERE THE ORDER WENT (the-order-metric-ids-name-what-moved), through the real moves: order A
 // is confirmed, picked, handed back from picked, confirmed and picked again, handed over, shipped, a problem and resolved;
 // order B is confirmed, handed back from processed, confirmed, picked, handed over, shipped and completed. Every move
-// published OrderStatusChanged; folded, the resolve is a Completed, both hand backs are a Back to pending, and the two
-// placements' own pending rows are NONE of them. No move row carries money, and a redelivery counts nothing.
+// published OrderStatusChanged; folded, the resolve is a Completed AND a Disputes resolved (B's shipped → completed a
+// Completed only), both hand backs are a Back to pending, and the two placements' own pending rows are NONE of them. No
+// move row carries money, and a redelivery counts nothing.
 func TestOrderMovesFold_EveryMoveIsNamedByWhereTheOrderWent(t *testing.T) {
 	db := san_testdb.DB(t)
 	rec := &moveRecorder{}
@@ -192,7 +196,7 @@ func TestOrderMovesFold_EveryMoveIsNamedByWhereTheOrderWent(t *testing.T) {
 
 	wantMoves(t, "team 2's moves", todaysData(t, analytic, 2, metricMoves)[0].GetMovesSummary(), map[string]int64{
 		"confirmed_count": 4, "back_to_pending_count": 2, "picked_count": 3, "handed_over_count": 2,
-		"shipped_count": 2, "problem_count": 1, "completed_count": 2,
+		"shipped_count": 2, "problem_count": 1, "completed_count": 2, "disputes_resolved_count": 1,
 	})
 
 	total, mp := movesMoney(t, db)
@@ -213,7 +217,7 @@ func TestOrderMovesFold_EveryMoveIsNamedByWhereTheOrderWent(t *testing.T) {
 
 	wantMoves(t, "after the redeliveries", todaysData(t, analytic, 2, metricMoves)[0].GetMovesSummary(), map[string]int64{
 		"confirmed_count": 4, "back_to_pending_count": 2, "picked_count": 3, "handed_over_count": 2,
-		"shipped_count": 2, "problem_count": 1, "completed_count": 2,
+		"shipped_count": 2, "problem_count": 1, "completed_count": 2, "disputes_resolved_count": 1,
 	})
 }
 
@@ -297,8 +301,9 @@ func TestOrderMovesFold_EachMoveOnItsOwnDayUnderTheCreator(t *testing.T) {
 }
 
 // THE WAREHOUSE READS THE ORDERS IT SHIPS — EVERY COUNT (a-warehouse-reads-the-orders-it-ships,
-// a-warehouse-sees-no-seller-money: none of these is money): Gudang 900 is given exactly the seller's figures and may
-// rank by any of them; root reads them too; another seller and another warehouse are given nothing.
+// a-warehouse-sees-no-seller-money: none of these is money): Gudang 900 is given exactly the seller's figures — the
+// resolve's Disputes resolved too — and may rank by any of them; root reads them too; another seller and another
+// warehouse are given nothing.
 func TestOrderMovesData_EachReaderReadsItsOwn(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithFees(t, db, knownCosts(), &fakeFees{percent: 2.5})
@@ -306,13 +311,14 @@ func TestOrderMovesData_EachReaderReadsItsOwn(t *testing.T) {
 	analytic := selling_v1.NewAnalytic(db, fakeTeamTypes{testWarehouse: true, otherWarehouse: true})
 	orderID := pricedOrder(t, svc, insertShop(t, db, 2, "Shop", "S1", "shopee"))
 
-	for i, to := range []string{"processed", "picked", "shipping", "shipped", "problem"} {
+	for i, to := range []string{"processed", "picked", "shipping", "shipped", "problem", "completed"} {
 		at := moveDay(20 + i)
 		foldEvent(t, analytic, movedBy(orderID, timelineMove(t, db, orderID, to, at), "", to, 55, at))
 	}
 
 	every := map[string]int64{
 		"confirmed_count": 1, "picked_count": 1, "handed_over_count": 1, "shipped_count": 1, "problem_count": 1,
+		"completed_count": 1, "disputes_resolved_count": 1,
 	}
 
 	wantMoves(t, "the seller", movesSummary(t, analytic, 2), every)
@@ -341,21 +347,35 @@ func TestOrderMovesData_EachReaderReadsItsOwn(t *testing.T) {
 
 	wantMoves(t, "the warehouse's row for its seller", datas[0].GetMovesById().GetItems()[2], every)
 
-	for _, team := range []uint64{3, otherWarehouse} {
-		nothing, err := metricSearch(analytic, team, analytic_basev1.GroupType_GROUP_TYPE_TEAM, metricMoves, "confirmed_count")
-		if err != nil {
-			t.Fatalf("team %d's search: %v", team, err)
-		}
+	// …and by its sellers' resolved disputes too.
+	resolved, err := metricSearch(analytic, testWarehouse, analytic_basev1.GroupType_GROUP_TYPE_TEAM, metricMoves,
+		"disputes_resolved_count")
+	if err != nil {
+		t.Fatalf("the warehouse's search by disputes resolved: %v", err)
+	}
 
-		if ids := nothing.GetKeys().GetIds().GetIds(); len(ids) != 0 {
-			t.Fatalf("team %d ranked %v, want nothing — not its orders", team, ids)
+	if ids := resolved.GetKeys().GetIds().GetIds(); len(ids) != 1 || ids[0] != 2 {
+		t.Fatalf("the warehouse's sellers by disputes resolved %v, want [2]", ids)
+	}
+
+	for _, team := range []uint64{3, otherWarehouse} {
+		for _, field := range []string{"confirmed_count", "disputes_resolved_count"} {
+			nothing, err := metricSearch(analytic, team, analytic_basev1.GroupType_GROUP_TYPE_TEAM, metricMoves, field)
+			if err != nil {
+				t.Fatalf("team %d's search by %s: %v", team, field, err)
+			}
+
+			if ids := nothing.GetKeys().GetIds().GetIds(); len(ids) != 0 {
+				t.Fatalf("team %d ranked %v by %s, want nothing — not its orders", team, ids, field)
+			}
 		}
 	}
 }
 
 // THE HEADLINE IS THE SUM OF ITS ROWS (the-headline-is-the-sum-of-its-rows): three orders over two shops and two
-// creators, their moves over three days. Grouped by every key the metric offers, each count summed over the rows the
-// search lists equals the headline — so the search lists every key with ANY move, not only the sorted count's.
+// creators, their moves over three days — one of them a resolve, a Completed and a Disputes resolved. Grouped by every
+// key the metric offers, each count summed over the rows the search lists equals the headline — so the search lists
+// every key with ANY move, not only the sorted count's.
 func TestOrderMovesData_TheHeadlineIsTheSumOfItsRows(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithFees(t, db, knownCosts(), &fakeFees{percent: 2.5})
@@ -381,16 +401,18 @@ func TestOrderMovesData_TheHeadlineIsTheSumOfItsRows(t *testing.T) {
 		{ani, "processed", 20}, {ani, "picked", 20}, {ani, "shipping", 21}, {ani, "shipped", 22}, {ani, "completed", 22},
 		{budi.Msg.GetOrder().GetId(), "processed", 21}, {budi.Msg.GetOrder().GetId(), "pending", 21},
 		{budi.Msg.GetOrder().GetId(), "processed", 22},
-		// Only a completed on its day for this one — the search must still list the 22nd's shop and creator.
-		{other, "completed", 22},
+		// Only a problem, then its resolve on its day, for this one — the search must still list the 22nd's shop and
+		// creator.
+		{other, "problem", 21}, {other, "completed", 22},
 	} {
 		at := moveDay(m.day)
 		foldEvent(t, analytic, movedBy(m.order, timelineMove(t, db, m.order, m.to, at), "", m.to, 55, at))
 	}
 
 	headline := moveCounts(movesSummary(t, analytic, 2))
-	if headline["confirmed_count"] != 3 || headline["completed_count"] != 2 || headline["back_to_pending_count"] != 1 {
-		t.Fatalf("headline = %v, want 3 confirmed, 1 back to pending, 2 completed", headline)
+	if headline["confirmed_count"] != 3 || headline["completed_count"] != 2 || headline["back_to_pending_count"] != 1 ||
+		headline["disputes_resolved_count"] != 1 {
+		t.Fatalf("headline = %v, want 3 confirmed, 1 back to pending, 2 completed, 1 dispute resolved", headline)
 	}
 
 	for _, group := range []analytic_basev1.GroupType{
@@ -449,9 +471,10 @@ WHERE id = (SELECT MIN(id) FROM order_timeline_logs WHERE order_id = ? AND statu
 }
 
 // THE RE-FOLD REBUILDS THE MOVES AS THE FOLD WROTE THEM (a-wrong-day-is-refolded-from-the-log): one day of an order's
-// whole way out, the placement's own pending row on that day too. Folded, wiped, two move events lost: the re-fold
-// writes back exactly what the fold had, claims the two, and never counts the placement's row as a Back to pending; the
-// late redeliveries fold nothing, and a second run rewrites nothing.
+// whole way out, the placement's own pending row on that day too. Folded, wiped, two move events lost — one of them the
+// resolve: the re-fold writes back exactly what the fold had, its Completed AND its Disputes resolved from the one lost
+// event, claims the two, and never counts the placement's row as a Back to pending; the late redeliveries fold nothing,
+// and a second run rewrites nothing.
 func TestOrderDayRefold_RebuildsTheMovesAsTheFoldWould(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithFees(t, db, knownCosts(), &fakeFees{percent: 2.5})
@@ -474,7 +497,7 @@ func TestOrderDayRefold_RebuildsTheMovesAsTheFoldWould(t *testing.T) {
 
 	want := map[string]int64{
 		"moves_confirmed": 2, "moves_back_to_pending": 1, "moves_picked": 1, "moves_handed_over": 1,
-		"moves_shipped": 1, "moves_problem": 1, "moves_completed": 1,
+		"moves_shipped": 1, "moves_problem": 1, "moves_completed": 1, "moves_disputes_resolved": 1,
 	}
 
 	for metric, n := range want {
@@ -513,6 +536,13 @@ func TestOrderDayRefold_RebuildsTheMovesAsTheFoldWould(t *testing.T) {
 		}
 	}
 
+	// The resolve's claim keeps its event as the move announced it: into completed, FROM problem.
+	resolve := claimedEvent(t, db, events[7].GetEventId()).GetOrderStatusChanged()
+	if resolve.GetFromStatus() != "problem" || resolve.GetToStatus() != "completed" {
+		t.Fatalf("the re-fold claimed the resolve as %q → %q, want problem → completed", resolve.GetFromStatus(),
+			resolve.GetToStatus())
+	}
+
 	foldEvent(t, analytic, events[1])
 	foldEvent(t, analytic, events[7])
 	wantFigures(t, "after the late redeliveries", dayFigures(t, db, 2, refoldDay), folded)
@@ -529,6 +559,25 @@ func TestOrderDayRefold_RebuildsTheMovesAsTheFoldWould(t *testing.T) {
 			t.Fatalf("row %s was rewritten by a run that changed nothing", key)
 		}
 	}
+}
+
+// claimedEvent is the event a claim stored as `raw`.
+func claimedEvent(t *testing.T, db *gorm.DB, eventID string) *eventsv1.Event {
+	t.Helper()
+
+	var raw []byte
+
+	err := db.Raw(`SELECT raw FROM order_event_logs WHERE id = ?`, eventID).Row().Scan(&raw)
+	if err != nil {
+		t.Fatalf("the claim of %s: %v", eventID, err)
+	}
+
+	event, err := san_event.Unmarshal(raw)
+	if err != nil {
+		t.Fatalf("the claim of %s: %v", eventID, err)
+	}
+
+	return event
 }
 
 // rowShop is the order's shop now.

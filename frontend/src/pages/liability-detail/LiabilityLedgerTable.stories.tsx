@@ -103,8 +103,23 @@ const productFee = create(LiabilityLogSchema, {
   createdAtUnix: 1_756_050_000n,
 });
 
+// …and the courier a warehouse paid at a custom shipment's handover (*Gudang bayar*, backlog #88): `custom_shipment_fee`,
+// keyed by the parcel — named by the parcel's own screen title, so the reader finds the record.
+const customShipmentFee = create(LiabilityLogSchema, {
+  id: 597n,
+  teamId: 11n,
+  counterpartyId: 12n,
+  amount: 12_000,
+  sourceType: LiabilitySourceType.CUSTOM_SHIPMENT_FEE,
+  sourceId: 804n,
+  reversal: false,
+  groupId: 13n,
+  balanceAfter: 12_000,
+  createdAtUnix: 1_756_040_000n,
+});
+
 export const EveryCauseReadsInItsBusinessWords: Story = {
-  args: { rows: [productFee, ...rows] },
+  args: { rows: [productFee, customShipmentFee, ...rows] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const table = canvas.getByTestId("liability-ledger-table");
@@ -115,6 +130,7 @@ export const EveryCauseReadsInItsBusinessWords: Story = {
       "Courier at a restock · restock #7001",
       "Courier at a return · order #8811",
       "Courier on a transfer · transfer #3101",
+      "Courier on a custom shipment · parcel #804",
       "Goods broken · movement #6001",
       "Goods lost · movement #6101",
       "Goods found again · movement #6102",
@@ -126,6 +142,20 @@ export const EveryCauseReadsInItsBusinessWords: Story = {
     // The find and the cancelled order's fee give money back, and say so.
     await expect(canvas.getByTestId("liability-detail-reversal-507")).toBeInTheDocument();
     await expect(canvas.getByTestId("liability-detail-reversal-509")).toBeInTheDocument();
+  },
+};
+
+// …in Indonesian too: *Biaya kurir kirim paket · paket #804* — the warehouse's word for the courier money (*Biaya kurir …*,
+// as the restock's, the return's and the transfer's) and the parcel by its screen's own name (*Kirim Paket*, *Paket #N*).
+export const ACustomShipmentsCourierReadsInIndonesian: Story = {
+  name: "A custom shipment's courier reads in Indonesian",
+  args: { rows: [customShipmentFee] },
+  globals: { locale: "id" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId(`liability-detail-entry-${customShipmentFee.id}`)).toHaveTextContent(
+      "Biaya kurir kirim paket · paket #804",
+    );
   },
 };
 

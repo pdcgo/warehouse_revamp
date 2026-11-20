@@ -43,18 +43,20 @@ import { API_URL } from "./env";
 // - `warehouse prints new label` — the crew's print page for the order, Print: ONE OrderLabels, the order included, ONE
 //   PDF opened — and that PDF is the NEW label: its page count is the new file's (a 1-page Shopee label), not the old
 //   one's (a 2-page Lazada label).
-// - 🚧 `warehouse told to reprint label` — no such notice exists; its check is its own test, LAST in the file, as
-//   test.fail (a then's test.fail flips its whole test, so it shares a test with no other then). Field-agnostic: after
-//   the seller replaced the wrong label of a picked order whose label was already printed, the crew's row on the Picked
-//   tab and the order's own page must say, in any words, that the label is to be printed again.
+// - `warehouse told to reprint label` — built by #98 (a-changed-label-asks-the-warehouse-to-reprint): after the seller
+//   replaced the wrong label of a picked order whose label the warehouse already printed, the crew's row on the Picked
+//   tab carries *Reprint label* (order-reprint-label-<id>) and the order's pick page its line (pick-reprint-label-line);
+//   the order read as the warehouse says reprint_label. Read in each role's own test, on the order that role changed.
+//   (Until #98 it was a 🚧 test.fail of its own; the whole flow — print clears it, handover refused — is
+//   the_changed_label_is_reprinted.spec.ts.)
 //
 // GROUND (beforeAll, as root, through the API): a selling team of its own (root owns it) with a user per selling role, a
 // Shopee shop (root and the CS on it), a warehouse it returns to with a warehouse:staff user, 20 units of one product
 // accepted onto a rack there. Per role, four orders of 1 unit, each with an OLD tracking number and an OLD label file (a
 // 2-page Lazada label, uploaded for real): `pending`; `processed` (the warehouse confirmed it); `picked` (confirmed and
-// picked); `printed` (its label printed once — OrderLabels as the warehouse — then confirmed and picked). Plus the 🚧
-// test's own `printed`-like order (`tell`) and a `shipping` order for the regression. Seeded in beforeAll so a worker
-// restarted after a failure seeds its own.
+// picked); `printed` (its label printed once — OrderLabels as the warehouse, `recordPrint` as the print page's Print
+// sends it, so the print is recorded — then confirmed and picked). Plus a `shipping` order for the regression. Seeded in
+// beforeAll so a worker restarted after a failure seeds its own.
 
 const RPC = "/warehouse.selling.v1.OrderService";
 const SUFFIX = Date.now().toString().slice(-6);
@@ -72,12 +74,11 @@ type Key = (typeof ROLES)[number]["key"];
 // The givens' orders, by kind.
 type Kind = "pending" | "processed" | "picked" | "printed";
 const KINDS: Kind[] = ["pending", "processed", "picked", "printed"];
-const CODE: Record<Kind | "tell" | "shipping", string> = {
+const CODE: Record<Kind | "shipping", string> = {
   pending: "PN",
   processed: "PR",
   picked: "PK",
   printed: "PP",
-  tell: "TL",
   shipping: "SH",
 };
 
@@ -189,6 +190,8 @@ type OrderRecord = {
   receiptCode?: string;
   receipt?: { documentId?: string; filename?: string; mimeType?: string };
   timelineLogs?: { note?: string; status?: string }[];
+  // Cetak ulang label — printed, then changed after the print, still in the building (a-changed-label-asks-the-warehouse-to-reprint).
+  reprintLabel?: boolean;
 };
 
 // The order as the server keeps it, read in `teamId` (the seller's, or the warehouse's).
@@ -379,7 +382,6 @@ async function seed(browser: Browser) {
     walks[slotOf("picked", r.key)] = { to: ["PROCESSED", "PICKED"] };
     walks[slotOf("printed", r.key)] = { to: ["PROCESSED", "PICKED"], print: true };
   }
-  walks[CODE.tell] = { to: ["PROCESSED", "PICKED"], print: true };
   walks[CODE.shipping] = { to: ["PROCESSED", "PICKED", "SHIPPING"] };
 
   for (const [slot, walk] of Object.entries(walks)) {
@@ -404,7 +406,8 @@ async function seed(browser: Browser) {
       const printed = await ok<{ results: { orderId: string; included?: boolean; reason?: string }[] }>(
         page,
         "selling.v1.OrderService/OrderLabels",
-        { teamId: ground.warehouse, orderIds: [id] },
+        // A RECORDED print, as the print page's Print makes it — the label printed (a-changed-label-asks-the-warehouse-to-reprint).
+        { teamId: ground.warehouse, orderIds: [id], recordPrint: true },
       );
       expect(printed.results[0]?.included, `first print of #${id}: ${printed.results[0]?.reason}`).toBe(true);
     }
@@ -631,16 +634,17 @@ test("From handover on the resi is not edited — no Edit Resi, FailedPreconditi
 
 test.describe("selling:all wants to fix an order's resi (status: picked · label printed · wrong label uploaded · new label file)", () => {
   for (const r of ROLES) {
-    test(`${r.label} edit resi order`, async ({ page }) => {
+    test(`${r.label} edit resi order`, async ({ page, browser }) => {
       const slot = slotOf("printed", r.key);
       const orderId = ground.orders[slot]!;
       const code = oldResiOf(slot);
       await signInAs(page, r.key);
 
-      // GIVEN — picked, its (wrong) label already printed by the warehouse.
+      // GIVEN — picked, its (wrong) label already printed by the warehouse (a recorded print), so nothing is marked yet.
       const before = await orderOf(page, orderId);
       expect(before.status).toBe("ORDER_STATUS_PICKED");
       expect(before.receipt?.filename).toBe(oldFileOf(slot));
+      expect(before.reprintLabel ?? false, "printed, nothing changed since").toBe(false);
 
       // WHEN — Edit Resi: the right label file picked.
       await editResi(page, orderId, code, { file: newFileOf(slot) });
@@ -649,44 +653,28 @@ test.describe("selling:all wants to fix an order's resi (status: picked · label
         await expectLabelChanged(page, orderId, slot, code);
         expect.soft((await orderOf(page, orderId)).status).toBe("ORDER_STATUS_PICKED");
       });
+
+      const wh = await crewPage(browser);
+      try {
+        await test.step("then: warehouse told to reprint label", async () => {
+          // The crew's row on Picked carries Reprint label, beside the status.
+          await wh.goto(`/warehouse-orders?step=picked&q=${refOf(slot)}`);
+          await expect(wh.getByTestId("pick-tab-picked")).toHaveAttribute("aria-selected", "true");
+          const row = wh.getByTestId(`pick-queue-row-${orderId}`);
+          await expect(row).toBeVisible({ timeout: 15_000 });
+          await expect.soft(row.getByTestId(`order-reprint-label-${orderId}`)).toHaveText("Reprint label");
+
+          // The order's pick page says why, with the way to print it again.
+          await wh.goto(`/warehouse-orders/${orderId}`);
+          await expect(wh.getByTestId("order-status-5").first()).toBeVisible({ timeout: 15_000 });
+          await expect.soft(wh.getByTestId("pick-reprint-label-line")).toContainText("Print the new label before packing");
+          await expect.soft(wh.getByTestId("pick-reprint-label-print")).toBeVisible();
+
+          expect.soft((await orderOf(wh, orderId, ground.warehouse)).reprintLabel, "the order as the warehouse reads it").toBe(true);
+        });
+      } finally {
+        await wh.close();
+      }
     });
   }
-
-  // 🚧 — its own test, LAST in the file, so the expected failure hides none of the thens above (see the head of this file).
-  test("selling:owner edit resi order: warehouse told to reprint label", async ({ page, browser }) => {
-    test.fail(
-      true,
-      "🚧 unimplemented (docs/acceptances/inventory/order.md) — nothing tells the warehouse to print an order's label again after its seller replaced it",
-    );
-
-    const slot = CODE.tell;
-    const orderId = ground.orders[slot]!;
-    const code = oldResiOf(slot);
-    await signInAs(page, "own");
-    expect((await orderOf(page, orderId)).status).toBe("ORDER_STATUS_PICKED");
-
-    // WHEN — Edit Resi: the right label over the wrong one already printed.
-    await editResi(page, orderId, code, { file: newFileOf(slot) });
-    expect((await orderOf(page, orderId)).receipt?.filename).toBe(newFileOf(slot));
-
-    const wh = await crewPage(browser);
-    try {
-      await test.step("then: warehouse told to reprint label", async () => {
-        // Field-agnostic: in any words, the label is to be printed again — on the crew's row and on the order's page.
-        const told = /reprint|re-print|print (it |the label |the new label )?again|cetak ulang|label (has )?changed|label (diganti|berubah)/i;
-
-        await wh.goto(`/warehouse-orders?step=picked&q=${refOf(slot)}`);
-        await expect(wh.getByTestId("pick-tab-picked")).toHaveAttribute("aria-selected", "true");
-        const row = wh.getByTestId(`pick-queue-row-${orderId}`);
-        await expect(row).toBeVisible({ timeout: 15_000 });
-        await expect.soft(row, "the crew's row says so").toContainText(told, { timeout: 3_000 });
-
-        await wh.goto(`/warehouse-orders/${orderId}`);
-        await expect(wh.getByTestId("order-status-5").first()).toBeVisible({ timeout: 15_000 });
-        await expect(wh.locator("body"), "the order's page says so").toContainText(told, { timeout: 3_000 });
-      });
-    } finally {
-      await wh.close();
-    }
-  });
 });

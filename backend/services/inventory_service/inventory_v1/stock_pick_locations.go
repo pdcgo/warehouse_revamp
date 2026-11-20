@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 )
@@ -41,25 +42,12 @@ func (s *Service) StockPickLocations(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.StockPickLocationsRequest],
 ) (*connect.Response[inventoryv1.StockPickLocationsResponse], error) {
-	var rows []pickLocationRow
-
 	takes := req.Msg.GetTransactionIds()
 	if len(takes) == 0 {
 		takes = []uint64{req.Msg.GetTransactionId()}
 	}
 
-	err := s.db.
-		WithContext(ctx).
-		Table("product_placement_logs AS l").
-		Select("l.transaction_id AS transaction_id, l.product_id AS product_id, l.placement_id AS rack_id, "+
-			"r.code AS rack_code, SUM(-l.stock_change) AS quantity").
-		Joins("JOIN placements r ON r.id = l.placement_id").
-		Where("l.transaction_id IN ? AND l.warehouse_id = ?", takes, req.Msg.GetWarehouseId()).
-		Group("l.transaction_id, l.product_id, l.placement_id, r.code").
-		Having("SUM(-l.stock_change) > 0").
-		Order("l.transaction_id, l.product_id, r.code").
-		Scan(&rows).
-		Error
+	rows, err := takeRackUnits(s.db.WithContext(ctx), takes, req.Msg.GetWarehouseId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -84,4 +72,29 @@ func (s *Service) StockPickLocations(
 	}
 
 	return connect.NewResponse(&inventoryv1.StockPickLocationsResponse{Locations: out}), nil
+}
+
+// takeRackUnits is THE TAKE'S RACKS — per take, product and rack, the units it drew there, netted with any rollback, in
+// the warehouse named only (a take of another building adds nothing). What the pick page walks (StockPickLocations) and
+// what a parcel's goods-missing note may name (CustomShipmentMissingReport: a rack the sample's take drew, at most what
+// it drew there) — one reading, so the dialog's racks and the server's check cannot disagree. One statement.
+func takeRackUnits(db *gorm.DB, takes []uint64, warehouseID uint64) ([]pickLocationRow, error) {
+	var rows []pickLocationRow
+
+	err := db.
+		Table("product_placement_logs AS l").
+		Select("l.transaction_id AS transaction_id, l.product_id AS product_id, l.placement_id AS rack_id, "+
+			"r.code AS rack_code, SUM(-l.stock_change) AS quantity").
+		Joins("JOIN placements r ON r.id = l.placement_id").
+		Where("l.transaction_id IN ? AND l.warehouse_id = ?", takes, warehouseID).
+		Group("l.transaction_id, l.product_id, l.placement_id, r.code").
+		Having("SUM(-l.stock_change) > 0").
+		Order("l.transaction_id, l.product_id, r.code").
+		Scan(&rows).
+		Error
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
 }

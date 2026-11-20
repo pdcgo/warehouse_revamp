@@ -31,6 +31,7 @@ each old heading there now points here.
 | [the-print-page-and-the-courier-count-prototype-is-accepted](#the-print-page-and-the-courier-count-prototype-is-accepted) | the print page (Cetak Resi → chosen orders, confirm after printing ON each time) and the handover's count per courier are accepted as drawn |
 | [the-unboxing-warning-is-one-sentence-on-each-label](#the-unboxing-warning-is-one-sentence-on-each-label) | the unboxing switch prints one fixed sentence — *Wajib video unboxing saat membuka paket* (🔄 A) on every label page; the switch is remembered on the device |
 | [a-rows-print-label-opens-the-print-page](#a-rows-print-label-opens-the-print-page) | a list row's Print Label opens the print page with that one order (printing confirms it); the order page's label card only views the file |
+| [the-reprint-label-prototype-is-accepted](#the-reprint-label-prototype-is-accepted) | the Cetak ulang label design is accepted, with the filter and on Daftar Ambil |
 
 ## the-two-ends-are-two-screens
 
@@ -671,3 +672,46 @@ The list's search box stays a search, not a scan field. ⚠ Not built.
 **The verdict.** The list row's ⋯ **Print Label** opens the **print page with that one order** — the same page, switches and rules as the bulk bar's *Cetak Resi* (confirm after printing ON; a reprint keeps its step). The **order page's label card** stays a viewer: it opens the file and moves nothing. ⛔ Not built — backlog #79.
 
 ✅ **Built 2026-11-18.** The list row's ⋯ *Print Label* (`pick-queue-print-<id>`, still off for an order with no label attached) opens `/warehouse-orders/print?ids=<that id>` with the way back to the list, where Print runs the bar's rules; the order page's label card (`ReceiptCard`, `useOrderLabels().openLabel`) is unchanged — it opens the file and moves nothing. Story `PrintLabelOpensThePrintPageWithItsOrder` (Pages/Warehouse/PickQueuePage).
+
+---
+
+## the-reprint-label-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended — the second and last question of the #98 prototype's accept (pictures `D:/hermes/profiles/revamp_dev/accepts/accept98/` 01–14, README there): *"Should the warehouse list get a Perlu cetak ulang filter? **A** add the filter, so the crew can tick every marked order and print them all with one Cetak Resi — the design is approved as drawn, and the badge also goes on the Daftar Ambil (bulk pick) list; **B** no filter, badge only — the rest approved as drawn; **C** change something first."* The message listed what *as drawn* means (below). The first question: [a-parcel-marked-for-reprint-is-not-handed-over](../../business/inventory/order_decision.md#a-parcel-marked-for-reprint-is-not-handed-over).
+
+**The verdict.** The *Cetak ulang label* design ([a-changed-label-asks-the-warehouse-to-reprint](../../business/inventory/order_decision.md#a-changed-label-asks-the-warehouse-to-reprint)) is accepted as drawn, with:
+- the warehouse list (`/warehouse-orders`, `pages/pick-queue`): the badge beside the status (desktop row; a line of its own in the phone block), and a **Perlu cetak ulang** filter (server-side, in the URL; the tab counts follow it);
+- the **Daftar Ambil** (bulk pick, `/warehouse-orders/bulk-pick`) order blocks carry the badge too;
+- the pick page: a line under the title — the badge, why, and **Cetak Resi** opening the print page with that one order;
+- the print page (#79): the badge under the order's label and *N perlu cetak ulang* on the list line; its Print clears the badge everywhere;
+- the seller's Edit Resi: one line when the label was already printed (*saving asks the warehouse to print again*).
+
+*(As drawn — listed to the owner in the accept message:)*
+
+| | |
+| --- | --- |
+| when it shows | pending, processed, picked (where Edit Resi is offered); nothing from shipping on |
+| what counts as a print | only the print page's Print, for each order the PDF included; viewing the label on the order page does not count |
+| the seller | one line in Edit Resi; nothing on the seller's list or order page; no notification |
+| a label file removed | the badge stays until a new file is attached (the print page names it *No label*) |
+| a change after the reprint | marks it again; a change before any print shows nothing |
+| a reprint | writes no timeline row; keeps the order's step |
+
+Wording: README's table (en / id) — *Cetak ulang label* is the decision's own words; the rest is the prototype's.
+
+⚠ Not built — go-live is backlog #98.
+
+✅ **Built 2026-11-20 (backlog #98) — live, the prototype deleted.** The pieces are [ReprintLabel.tsx](../../../frontend/src/features/orders/ReprintLabel.tsx), each drawing the server's `reprint_label` only:
+
+| where | how | testid |
+| --- | --- | --- |
+| warehouse list, desktop row | the badge beside the status, one line (`StatusWithReprint`) | `order-reprint-label-<id>` |
+| warehouse list, phone block | a line of its own under the first (`ReprintLabelBlockLine`) | `order-reprint-label-<id>` |
+| *Perlu cetak ulang* | a checkbox in its own FilterField; `?reprint=1`; sent as `OrderListFilter.reprint_label` / `OrderStatFilter.reprint_label`, so the tab counts follow | `warehouse-orders-reprint-filter`, `-field` |
+| Daftar Ambil (Per pesanan) | the badge in the order's head (desktop), its own line (phone); `OrderPick.reprint_label` | `bulk-pick-reprint-label-<id>` |
+| pick page | the line under the title: badge, why, *Cetak Resi* → the print page with this order | `pick-reprint-label-line`, `pick-reprint-label`, `pick-reprint-label-print` |
+| print page | the badge under the label, *N to reprint* on the list line; Print sends `record_print: true` and re-reads every order query | `print-receipts-reprint-<id>` |
+| handover scan | *Cetak ulang label dulu*, the wrong sound, no move asked | `handover-entry-<resi>` `data-state="reprint"`, `handover-reprint-<resi>` |
+| seller's Edit Resi | one line when `label_printed_at_unix` > 0 | `edit-receipt-reprint-hint` |
+
+Stories (the prototype's, folded live): `Pages/Warehouse/PickQueuePage/ReprintLabel`, `Pages/Order/PickOrderPage/ReprintLabel`, `Pages/Warehouse/PrintReceipts/ReprintLabel`, `Features/Orders/EditReceiptDialog/ReprintLabel`, and new `Pages/Warehouse/BulkPick/ReprintLabel` (Daftar Ambil); the stub keeps the two stamps and the rule in `.storybook/reprintLabelScenario.ts`.

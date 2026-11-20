@@ -45,6 +45,10 @@ var receiptEditable = map[string]bool{
 // THE RECORD is a note row — no status, from `selling` — naming the old and the new. Not a status row: the status
 // did not move, and a row into the current status would reset the list's status date (Order.status_at_unix).
 // A request that names only what is already there writes nothing.
+//
+// THE STAMP (a-changed-label-asks-the-warehouse-to-reprint): a change writes `receipt_changed_at` in the same UPDATE,
+// under the same lock. After the label's last print, that marks the order Cetak ulang label until the print page prints
+// it again — and the handover refuses it meanwhile (a-parcel-marked-for-reprint-is-not-handed-over).
 func (s *Service) OrderReceiptUpdate(
 	ctx context.Context,
 	req *connect.Request[sellingv1.OrderReceiptUpdateRequest],
@@ -94,8 +98,22 @@ func (s *Service) OrderReceiptUpdate(
 			return nil
 		}
 
-		now := time.Now()
+		// THE CHANGE IS STAMPED (a-changed-label-asks-the-warehouse-to-reprint): `receipt_changed_at`, which marks the
+		// order Cetak ulang label when it falls after the last print. ONE CLOCK for that comparison — the database's, as
+		// OrderLabels stamps the print — so whichever server made each, a change after a print reads as after it.
+		// clock_timestamp(), not now(): it moves inside a transaction.
+		var now time.Time
+
+		clockErr := tx.
+			Raw("SELECT clock_timestamp()").
+			Scan(&now).
+			Error
+		if clockErr != nil {
+			return clockErr
+		}
+
 		changes["updated_at"] = now
+		changes["receipt_changed_at"] = now
 
 		updateErr := tx.
 			Model(&selling_service_models.Order{}).
@@ -107,6 +125,7 @@ func (s *Service) OrderReceiptUpdate(
 		}
 
 		order.UpdatedAt = now
+		order.ReceiptChangedAt = &now
 
 		return recordTimelineLogs(tx, []selling_service_models.OrderTimelineLog{{
 			OrderID: order.ID,

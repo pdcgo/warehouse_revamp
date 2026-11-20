@@ -4,6 +4,7 @@ import { Button, Field, HStack, Icon, IconButton, Menu, Portal, Stack } from "@c
 import { Ban, MoreHorizontal, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { rpcError } from "../../api/clients";
 import { useCanWrite } from "../team/TeamContext";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
@@ -11,7 +12,7 @@ import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { FinancialAccountSelect } from "../../components/pickers/FinancialAccountSelect";
 import type { CustomShipment, SellingAction } from "./customShipments";
 import { sellingActions } from "./customShipments";
-import { useCustomShipmentPrototype } from "./customShipmentPrototype";
+import { useCancelCustomShipment, useSetCustomShipmentCost } from "./queries";
 
 const LOOK: Record<SellingAction, { icon: LucideIcon; labelKey: string; slug: string; danger?: boolean }> = {
   editCost: { icon: Wallet, labelKey: "customShipment.actions.editCost", slug: "edit-cost" },
@@ -21,7 +22,8 @@ const LOOK: Record<SellingAction, { icon: LucideIcon; labelKey: string; slug: st
 // THE SELLING TEAM'S ACTS ON ITS PARCEL — the matrix in customShipments.ts `sellingActions`, read by the list's ⋯ and the
 // detail's header, as SellingTransferActions is for a transfer. Nothing renders when the status allows nothing, or while
 // the admin team monitors the team (the-admin-team-monitors-read-only). Picking and the handover are the warehouse's,
-// and never appear here.
+// and never appear here. Each act is the owning team's RPC (CustomShipmentCostSet / CustomShipmentCancel, as the parcel's
+// `team_id`); a refusal says the server's sentence and the screen re-reads the parcel as it now is.
 export function SellingCustomShipmentActions({
   shipment,
   variant,
@@ -97,7 +99,7 @@ export function SellingCustomShipmentActions({
 }
 
 // The stored cost exactly (the-backend-never-rounds-money) — saving untouched never moves it.
-const digitsOf = (n: number) => (n > 0 ? String(n) : "");
+const digitsOf = (n: number | undefined) => (n !== undefined && n > 0 ? String(n) : "");
 const amountOf = (digits: string) => (digits === "" ? 0 : Number(digits));
 
 // UBAH ONGKIR — *Kami bayar*: the team's account and its cost, until the handover
@@ -106,17 +108,17 @@ const amountOf = (digits: string) => (digits === "" ? 0 : Number(digits));
 // *Kami bayar* is the team paying from one of its accounts.
 function EditCostDialog({ shipment, onClose }: { shipment: CustomShipment; onClose: () => void }) {
   const { t } = useTranslation();
-  const prototype = useCustomShipmentPrototype();
+  const costSet = useSetCustomShipmentCost();
   const [cost, setCost] = useState(digitsOf(shipment.shippingCost));
   const [accountId, setAccountId] = useState(shipment.financeAccountId);
 
   async function confirm() {
-    const ok = prototype?.costSet(shipment.id, accountId, amountOf(cost)) ?? false;
-    toaster.create(
-      ok
-        ? { type: "success", title: t("customShipment.toast.costSaved") }
-        : { type: "error", title: t("customShipment.toast.refused") },
-    );
+    try {
+      await costSet.mutateAsync({ teamId: shipment.teamId, id: shipment.id, financeAccountId: accountId, shippingCost: amountOf(cost) });
+      toaster.create({ type: "success", title: t("customShipment.toast.costSaved") });
+    } catch (err) {
+      toaster.create({ type: "error", title: t("customShipment.toast.refused"), description: rpcError(err) });
+    }
   }
 
   return (
@@ -157,15 +159,15 @@ function EditCostDialog({ shipment, onClose }: { shipment: CustomShipment; onClo
 // taken from; a reship's broken units are free for another reship.
 function CancelDialog({ shipment, onClose }: { shipment: CustomShipment; onClose: () => void }) {
   const { t } = useTranslation();
-  const prototype = useCustomShipmentPrototype();
+  const cancel = useCancelCustomShipment();
 
   async function confirm() {
-    const ok = prototype?.cancel(shipment.id) ?? false;
-    toaster.create(
-      ok
-        ? { type: "success", title: t("customShipment.toast.cancelled") }
-        : { type: "error", title: t("customShipment.toast.refused") },
-    );
+    try {
+      await cancel.mutateAsync({ teamId: shipment.teamId, id: shipment.id });
+      toaster.create({ type: "success", title: t("customShipment.toast.cancelled") });
+    } catch (err) {
+      toaster.create({ type: "error", title: t("customShipment.toast.refused"), description: rpcError(err) });
+    }
   }
 
   return (

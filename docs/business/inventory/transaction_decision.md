@@ -595,6 +595,8 @@ by a rollback"*).
 
 🔄 *(2026-11-19)* A **parcel** sample's take IS undone when the selling team cancels it while *Diminta*: the owner's later [a-custom-shipment-is-cancelled-only-while-requested](../custom_shipments/context_decision.md#a-custom-shipment-is-cancelled-only-while-requested) puts its units back on the racks they left. The *never rolled back* above still holds for a sample handed over at the warehouse ([a-handed-over-sample-is-final](./placement_decision.md#a-handed-over-sample-is-final)) and for a parcel once picked.
 
+✅ Built 2026-11-19 (backlog #88 P3) — the 🔄 above: a parcel sample's take is undone by its own `RollbackParcelSample`, reached only through a custom shipment that is still Diminta (a picked one, a reship, or a parcel pointing at another take are refused); `RollbackTake`'s guard is untouched and still refuses every `sample`, so a sample handed over at the warehouse stays final. Test `TestRollbackParcelSample_OnlyARequestedParcelsSample`.
+
 ## revaluation-and-opname-are-transaction-types
 
 > Owner, in chat (2026-10-16): *"yes, i added it"* — answering [transaction_clarify Q5](./transaction_clarify.md#question),

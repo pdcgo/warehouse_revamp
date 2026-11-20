@@ -3,7 +3,7 @@ import type { Browser, Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
-import { expectMoveCounted, expectMovesOffered } from "./order_moves_metric";
+import { expectMoveCounted, expectMoveCounts, expectMovesOffered } from "./order_moves_metric";
 
 // ── resolve dispute order — the checks behind docs/acceptances/inventory/order.md (## problem and lost) ─────────────────
 //
@@ -47,7 +47,9 @@ import { expectMoveCounted, expectMovesOffered } from "./order_moves_metric";
 //   selling:owner: Add Metric › Order offers Order status moves, and Analytic by shop over the last 7 days, filtered to
 //   that shop, reads `created_count` 2 (the fold landed) and `completed_count` exactly 1 — the untouched order, still a
 //   problem, adds nothing (order_moves_metric.ts). (Every earlier move — confirmed, picked, handed over, shipped,
-//   problem — happened to BOTH orders; none of them was a Completed.)
+//   problem — happened to BOTH orders; none of them was a Completed.) Since #97 the resolve is ALSO its own count: the
+//   same row's `disputes_resolved_count` reads exactly 1 while `completed_count` still reads 1 — a resolve counts once
+//   in each (the-order-status-moves-prototype-is-accepted's 🔄 2026-11-20; analytic/order_metric.md given 14).
 //
 // GROUND (beforeAll, as root, through the API): a selling team of its own (root owns it) with a user per selling role, a
 // Shopee shop (root and the CS on it), a warehouse it returns to with a warehouse:staff user, 10 units of one product
@@ -447,6 +449,9 @@ test.describe(`selling:all wants to resolve a dispute (${COND})`, () => {
       // Order status moves is offered under Order, and the shop's Completed reads the ONE resolve.
       await expectMovesOffered(page);
       await expectMoveCounted(page, shop, "completed_count");
+      // #97: the resolve is ALSO its own count — Disputes resolved reads the same one resolve, on the same day; the
+      // resolve still counts once in Completed (analytic/order_metric.md given 14, `disputes resolved shown`).
+      await expectMoveCounts(page, shop, { completed_count: "1", disputes_resolved_count: "1" });
     });
   });
 });

@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Badge,
@@ -37,6 +37,11 @@ import { ReportFoundFromOrderDialog } from "../../features/inventory/ReportFound
 import { canReportFound } from "../../lib/roles";
 import { ItemScan } from "./components/ItemScan";
 import { PICK_ORDER_PENDING } from "./pending";
+// CETAK ULANG LABEL (a-changed-label-asks-the-warehouse-to-reprint): the line under the title when the server marks the
+// order — the badge, why, and Cetak Resi (the-reprint-label-prototype-is-accepted).
+import { ReprintLabelPickLine } from "../../features/orders/ReprintLabel";
+import { fromHere } from "../../lib/cameFrom";
+import { printReceiptsPath } from "../print-receipts/path";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -78,6 +83,7 @@ export function PickOrderPage() {
   const { current } = useTeam();
   const { orderId: rawOrderId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
 
   const orderId = parseOrderId(rawOrderId);
@@ -262,6 +268,11 @@ export function PickOrderPage() {
           </Button>
         )}
       </Flex>
+      {/* The print page with this one order, opened with the way back here (a-rows-print-label-opens-the-print-page). */}
+      <ReprintLabelPickLine
+        order={order}
+        onPrint={() => navigate(printReceiptsPath([order.id]), { state: fromHere(location) })}
+      />
       {forceReturn.dialog}
       {order.status === OrderStatus.LOST && warehouseId !== undefined && order.warehouseId === warehouseId && (
         <ReportFoundFromOrderDialog

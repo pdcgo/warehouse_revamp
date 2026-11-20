@@ -31,9 +31,10 @@ const (
 // handler behind five subscriptions — one per topic — because a subscription reads one topic.
 //
 // Every OrderStatusChanged counts for one metric now: a move into return or lost for the five's, every other move along
-// the order's way out for one count of Order status moves (the-order-status-moves-prototype-is-accepted). A status no
-// metric counts and any other variant are ACKED: redelivering a message nothing here will ever count is a loop, not a
-// retry.
+// the order's way out for one count of Order status moves (the-order-status-moves-prototype-is-accepted) — and a resolve
+// (problem → completed) for a second count beside its Completed, Disputes resolved (the accept's 2026-11-20 line). A
+// status no metric counts and any other variant are ACKED: redelivering a message nothing here will ever count is a
+// loop, not a retry.
 func (a *Analytic) FoldHandler() event_source.PushHandler {
 	return func(ctx context.Context, event *eventsv1.Event) error {
 		// A FIX OF THE ORDER'S SHOP is not one metric's move: it carries every metric the order had counted over to the
@@ -86,8 +87,8 @@ func foldTarget(event *eventsv1.Event) foldMove {
 		}
 
 		// ORDER STATUS MOVES — named by the status the order moved TO (the-order-metric-ids-name-what-moved): a resolve
-		// is a Completed, a hand back from processed or picked a Back to pending. The placement publishes OrderPlaced,
-		// never this, so a move into pending here is always a hand back.
+		// is a Completed (and a Disputes resolved beside it — fold), a hand back from processed or picked a Back to
+		// pending. The placement publishes OrderPlaced, never this, so a move into pending here is always a hand back.
 		report, ok := moveReportOf(moved.GetToStatus())
 		if ok {
 			return foldMove{metric: report, orderID: moved.GetOrderId(), logID: moved.GetTimelineLogId()}
@@ -106,6 +107,11 @@ func foldTarget(event *eventsv1.Event) foldMove {
 // the count alone, no money (moveFigures). Its SHOP can be fixed
 // (an-orders-shop-is-fixed-and-counted-on-the-day), so the move counts under the shop the order was in at the move
 // (shopAsOf) — a late event never lands on a shop the order only moved to later.
+//
+// A RESOLVE counts twice (the-order-status-moves-prototype-is-accepted, its 2026-11-20 line): a move into completed
+// whose previous status row on the timeline is problem (resolvedAt — the re-fold's and a shop fix's own rule) adds +1 to
+// Disputes resolved too, on the same day under the same keys, as the transaction's second lock after the Completed row
+// (metricLockRank). Its Completed is counted exactly as before.
 //
 // ⚠ ONE TRANSACTION for the claim and the upsert. A failure rolls the claim back with the figures, so the redelivery
 // genuinely reprocesses rather than being recognised as "already done" with nothing counted.
@@ -169,6 +175,10 @@ func (a *Analytic) fold(ctx context.Context, event *eventsv1.Event, target foldM
 		err = addToReport(tx, day, metric, &order, moveFigures(metric, order.TotalCost, order.PlatformTotal))
 		if err != nil {
 			return fmt.Errorf("order metrics: %s into %s on %s: %w", event.GetEventId(), metric, day, err)
+		}
+
+		if metric == reportMovesCompleted {
+			return addTheResolve(tx, event, day, &order, target.logID)
 		}
 
 		fee, ok := feeMove(metric, order.WarehouseFee)
@@ -248,6 +258,27 @@ func (a *Analytic) foldShopFix(ctx context.Context, event *eventsv1.Event, fixed
 
 		return nil
 	})
+}
+
+// addTheResolve counts a Completed's SECOND count when it is a resolve (resolvedAt): +1 Disputes resolved on the same
+// day under the same keys. Any other completed adds nothing more. A completed touches no fee row.
+func addTheResolve(tx *gorm.DB, event *eventsv1.Event, day string, order *selling_service_models.Order, logID uint64) error {
+	resolve, err := resolvedAt(tx, logID)
+	if err != nil {
+		return fmt.Errorf("order metrics: is %s a resolve: %w", event.GetEventId(), err)
+	}
+
+	if !resolve {
+		return nil
+	}
+
+	err = addToReport(tx, day, reportMovesDisputesResolved, order,
+		moveFigures(reportMovesDisputesResolved, order.TotalCost, order.PlatformTotal))
+	if err != nil {
+		return fmt.Errorf("order metrics: %s into %s on %s: %w", event.GetEventId(), reportMovesDisputesResolved, day, err)
+	}
+
+	return nil
 }
 
 // feeMove is what a move does to Warehouse Fee: a placement adds its order's fee, a cancel takes it back; no other move

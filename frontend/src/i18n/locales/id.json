@@ -43,6 +43,7 @@
     "discoverSupplier": "Temukan Pemasok",
     "supplierReport": "Laporan Pemasok",
     "warehouseTransfer": "Transfer Stok",
+    "customShipments": "Kirim Paket",
     "sectionOperations": "Operasional",
     "sectionFinance": "Keuangan",
     "sectionTeam": "Tim",
@@ -220,6 +221,7 @@
     "requestSent": "Anda meminta {{name}} membayar {{amount}} pada {{date}}.",
     "causeReturnIncidentalFee": "Biaya kurir retur · pesanan #{{id}}",
     "causeTransferFee": "Biaya kurir transfer · transfer #{{id}}",
+    "causeCustomShipmentFee": "Biaya kurir kirim paket · paket #{{id}}",
     "recordNotePlaceholder": "Contoh: transfer BCA tanggal 7 Nov",
     "tabAll": "Semua",
     "emptyAll": "Tidak ada perubahan saldo antara Anda dalam rentang ini.",
@@ -1254,6 +1256,17 @@
       "back": "Kembali",
       "confirm": "Pindahkan pesanan #{{id}} dari {{from}} ke {{to}}? Settlement-nya ikut pindah, jadi statement {{to}} bisa diimpor.",
       "saved": "Toko diubah"
+    },
+    "reprintLabel": {
+      "badge": "Cetak ulang label",
+      "badgeHint": "Penjual mengganti nomor resi atau label setelah dicetak — cetak lagi.",
+      "pickHint": "Penjual mengganti nomor resi atau label pesanan ini setelah dicetak. Cetak label baru sebelum dikemas.",
+      "filter": "Perlu cetak ulang",
+      "printLine_one": "{{count}} perlu cetak ulang",
+      "printLine_other": "{{count}} perlu cetak ulang",
+      "handover": "Cetak ulang label dulu",
+      "handoverHint": "Pesanan #{{id}}: labelnya diganti setelah dicetak — cetak yang baru lalu tempel.",
+      "sellerHint": "Gudang sudah mencetak label ini. Perubahan yang disimpan meminta gudang mencetak ulang label."
     }
   },
   "orderDetail": {
@@ -3173,6 +3186,11 @@
       "capZero": "Batas atas 0 berarti tidak ada biaya — kosongkan untuk tanpa batas.",
       "frozen": "Setiap pesanan menyimpan biaya saat pesanan dibuat, dan itulah yang ditagihkan ledger. Perubahan di sini berlaku untuk pesanan berikutnya, tidak untuk pesanan yang sudah dibuat.",
       "saved": "Biaya gudang disimpan"
+    },
+    "noAnswer": {
+      "title": "Tidak ada jawaban dari server — Anda masih masuk.",
+      "help": "Sesi masuk Anda belum bisa diperiksa, jadi tetap disimpan. Tekan Coba Lagi, atau halaman ini memeriksa lagi sendiri saat koneksi kembali.",
+      "tryAgain": "Coba Lagi"
     }
   },
   "picking": {
@@ -3681,7 +3699,52 @@
     },
     "cancelAccount": "{{net}} kembali ke {{account}}.",
     "cancelNoAccount": "Biaya ini tidak menyebut rekening, jadi tidak ada saldo yang berubah.",
-    "recordedBy": "Dicatat oleh {{name}}"
+    "recordedBy": "Dicatat oleh {{name}}",
+    "types": {
+      "choose": "Pilih jenis",
+      "type": {
+        "adsMarketplace": "Iklan marketplace",
+        "contentEndorse": "Konten · endorse",
+        "basicSalary": "Gaji pokok",
+        "bonus": "Bonus",
+        "contributions": "Iuran (BPJS)",
+        "electricity": "Listrik",
+        "internet": "Internet · paket data",
+        "kitchen": "Dapur · makan tim",
+        "tools": "Alat",
+        "equipment": "Perlengkapan",
+        "bankFee": "Biaya bank",
+        "discrepancy": "Selisih · transaksi tak tercatat",
+        "outsideDebtPaid": "Utang luar dibayar",
+        "outsideReceivableReceived": "Piutang luar diterima",
+        "prive": "Prive · ambil modal",
+        "capitalDeposit": "Setoran modal",
+        "otherOut": "Uang keluar lain",
+        "otherIn": "Uang masuk lain"
+      },
+      "noType": "Tanpa jenis",
+      "allOf": "Semua {{group}}",
+      "in": "Masuk",
+      "capital": "Modal",
+      "moneyIn": "Uang masuk",
+      "moneyOut": "Uang keluar",
+      "inLine": "Jumlahnya tetap positif — menambah saldo rekening dan mengurangi total bulan ini.",
+      "outLine": "Jumlahnya tetap positif — keluar dari rekening.",
+      "priveLine": "Dicatat sebagai modal (prive) di riwayat rekening — sama dengan Tarik Modal di halaman akun. Satu catatan, tampil di kedua halaman; tidak pernah dihitung sebagai biaya di laba.",
+      "depositLine": "Dicatat sebagai modal (setoran) di riwayat rekening — sama dengan Setor Modal di halaman akun. Satu catatan, tampil di kedua halaman; tidak pernah dihitung sebagai pendapatan di laba.",
+      "receivedInto": "Masuk ke",
+      "takenFrom": "Diambil dari",
+      "receivedIntoHelp": "Rekening operasional tim yang menerima uang ini.",
+      "capitalAccountHelp": "Rekening tim mana pun — seperti Setor / Tarik Modal di halaman akun.",
+      "fromAccountPage": "Dicatat di halaman akun",
+      "spending": "Biaya",
+      "capitalNet": "Modal (prive − setoran)",
+      "capitalHint": "Bukan biaya di laba",
+      "monthTotal": "Total bulan ini",
+      "monthTotalHint": "biaya − uang masuk + modal",
+      "viaExpenses": "dari Biaya #{{id}} · {{name}}",
+      "capitalOnExpenses": "Juga tampil di Biaya — Tarik sebagai Prive, Setor sebagai Setoran modal. Satu catatan."
+    }
   },
   "periodGrain": {
     "label": "Kelompokkan per",
@@ -5366,7 +5429,8 @@
         "handed_over_count": "Sudah diserahkan",
         "shipped_count": "Dikirim",
         "problem_count": "Bermasalah",
-        "completed_count": "Selesai"
+        "completed_count": "Selesai",
+        "disputes_resolved_count": "Sengketa selesai"
       },
       "financialAccounts": {
         "opening_balance": "Saldo awal",
@@ -5877,7 +5941,6 @@
     "title": "Kirim Paket",
     "titleWarehouse": "Paket untuk Dikirim",
     "new": "Paket Baru",
-    "unavailable": "Kirim Paket masih prototipe — belum tersedia.",
     "sellingOnly": "Kirim Paket dibuat oleh tim penjual.",
     "warehouseOnly": "Halaman ini milik gudang pengirim.",
     "teamRef": "Tim #{{id}}",
@@ -5970,6 +6033,8 @@
       "brokenNote": "Rusak: {{note}}",
       "brokenLeft": "sisa {{count}} rusak",
       "brokenLeftAfterSent": "sisa {{count}} · {{broken}} rusak, {{sent}} sudah di paket lain",
+      "brokenLeftAfterSentGone": "sisa {{count}} · {{broken}} rusak, {{sent}} di paket lain, {{gone}} tidak ketemu",
+      "brokenLeftAfterGone": "sisa {{count}} · {{broken}} rusak, {{gone}} tidak ketemu",
       "recipient": "Penerima",
       "prefilled": "Diisi dari data supplier {{name}} — ubah bila perlu.",
       "prefilledPartly": "Diisi dari data supplier {{name}}, yang belum punya kontak atau alamat — isi yang kurang.",
@@ -6082,11 +6147,47 @@
     },
     "toast": {
       "created": "Paket dibuat",
+      "createFailed": "Paket tidak dibuat",
       "cancelled": "Paket dibatalkan",
       "costSaved": "Ongkir disimpan",
       "picked": "Paket diambil",
       "handedOver": "Diserahkan ke kurir",
       "refused": "Tidak bisa pada status ini"
+    },
+    "goodsMissing": {
+      "action": "Barang Tidak Ketemu",
+      "badge": "Barang tidak ketemu",
+      "badgeHint_one": "{{count}} unit tidak ketemu di gudang — tim yang memutuskan",
+      "badgeHint_other": "{{count}} unit tidak ketemu di gudang — tim yang memutuskan",
+      "title": "Barang Tidak Ketemu · Paket #{{id}}",
+      "warning": "Paket tetap Diminta — {{team}} yang memutuskan: membatalkan atau menunggu. Gudang tidak membatalkan, dan stok tidak berubah: hitung stok yang menemukan kekurangannya.",
+      "warningReship": "Paket tetap Diminta — {{team}} yang memutuskan: membatalkan atau menunggu. Gudang tidak membatalkan; stok rak tidak berubah.",
+      "otherRack": "Ada di rak lain? Ambil saja dari sana — hitung stok berikutnya merapikan raknya. Catat di sini hanya yang tidak ada di rak mana pun.",
+      "brokenHint": "Unit rusak restok #{{id}} — tidak pernah di rak. Catat unit yang tidak ketemu atau sudah dibuang.",
+      "ofBroken": "×{{count}} rusak",
+      "missing": "Tidak ketemu",
+      "missingOf": "Tidak ketemu — {{name}}",
+      "note": "Catatan untuk tim",
+      "notePlaceholder": "Contoh: sudah cek A-01-1 dan rak di sebelahnya",
+      "total_one": "{{count}} unit tidak ketemu",
+      "total_other": "{{count}} unit tidak ketemu",
+      "waiting": "Isi berapa yang tidak ketemu",
+      "confirm": "Catat Barang Tidak Ketemu",
+      "toast": "Barang tidak ketemu dicatat",
+      "toastDetail": "{{team}} melihatnya di paket ini dan memutuskan.",
+      "lineRack": "{{name}} ×{{count}} · rak {{rack}}",
+      "lineNoRack": "{{name}} ×{{count}} · tidak ada rak tercatat",
+      "lineBroken": "{{name}} ×{{count}} · rusak, tidak pernah di rak",
+      "trailTitle": "Barang tidak ketemu",
+      "trailWarehouse": "Paket tetap Diminta — {{team}} yang memutuskan: batalkan atau tunggu.",
+      "trailSelling": "Dari {{warehouse}} · paket tetap Diminta — batalkan, atau tunggu.",
+      "notice": {
+        "sellingTitle": "{{warehouse}} tidak menemukan barangnya",
+        "sellingSample": "Paket tetap Diminta. Batalkan bila tidak bisa menunggu — unitnya kembali tercatat di rak asalnya, dan hitung stok gudang menemukan kekurangannya.",
+        "sellingReship": "Paket tetap Diminta. Batalkan bila tidak bisa menunggu — stok rak tidak berubah.",
+        "warehouseTitle": "Barang tidak ketemu sudah dicatat · {{when}}",
+        "warehouse": "Menunggu keputusan {{team}} — batalkan, atau tunggu. Ternyata ketemu? Pindai seperti biasa."
+      }
     }
   }
 }

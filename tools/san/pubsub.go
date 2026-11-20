@@ -386,6 +386,33 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "warehouse-transfer-cancelled",
 			Filter: `attributes.event_type = "warehouse.events.v1.WarehouseTransferCancelled"`,
 		},
+		// financial_account_service's custom-shipment courier listener — mirrors
+		// financial_account_service.CustomShipment*Subscription (the-courier-is-paid-by-the-team-or-by-the-warehouse,
+		// *Kami bayar*): the team's courier cost out of its account as `expense`, the difference or the move on an edit,
+		// the refund on cancel — as a transfer's shipping.
+		{
+			ID:     "financial-account-custom-shipment-created",
+			Topic:  "custom-shipment-created",
+			Filter: `attributes.event_type = "warehouse.events.v1.CustomShipmentCreated"`,
+		},
+		{
+			ID:     "financial-account-custom-shipment-cost-updated",
+			Topic:  "custom-shipment-cost-updated",
+			Filter: `attributes.event_type = "warehouse.events.v1.CustomShipmentCostUpdated"`,
+		},
+		{
+			ID:     "financial-account-custom-shipment-cancelled",
+			Topic:  "custom-shipment-cancelled",
+			Filter: `attributes.event_type = "warehouse.events.v1.CustomShipmentCancelled"`,
+		},
+		// liability_service's courier charge at a CUSTOM SHIPMENT's handover — mirrors
+		// liability_service.CustomShipmentHandedOverSubscription (*Gudang bayar*): the selling team owes the warehouse it
+		// shipped from what it paid the courier, a `custom_shipment_fee`.
+		{
+			ID:     "liability-custom-shipment-handed-over",
+			Topic:  "custom-shipment-handed-over",
+			Filter: `attributes.event_type = "warehouse.events.v1.CustomShipmentHandedOver"`,
+		},
 		// inventory_service's compensation listener — mirrors inventory_service.InventoryTxCancelSubscription
 		// (the-compensation-event-is-inventory-tx-cancel, inventory-tx-cancel-is-an-order-event): the take of an order
 		// create that failed after it is released by its key. Its only subscriber. Its dead-letter is what catches a

@@ -48,6 +48,11 @@ export interface OrderFilters {
    * preview of the order list sets it until its design is accepted.
    */
   settlementNotOpened?: boolean;
+  /**
+   * PERLU CETAK ULANG — only the orders marked Cetak ulang label (`OrderListFilter.reprint_label`,
+   * the-reprint-label-prototype-is-accepted): the warehouse list's filter. Absent or false = no filter.
+   */
+  reprintLabel?: boolean;
 }
 
 export const NO_ORDER_FILTERS: OrderFilters = {
@@ -71,6 +76,7 @@ const filterKey = (f: OrderFilters) => ({
   warehouseId: (f.warehouseId ?? 0n).toString(),
   dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
   settlementNotOpened: f.settlementNotOpened ?? false,
+  reprintLabel: f.reprintLabel ?? false,
 });
 
 const filterMsg = (f: OrderFilters) => orderListFilterMsg(f);
@@ -88,6 +94,7 @@ export const orderListFilterMsg = (f: OrderFilters) => ({
   warehouseId: f.warehouseId ?? 0n,
   dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
   settlementNotOpened: f.settlementNotOpened ?? false,
+  reprintLabel: f.reprintLabel ?? false,
 });
 
 export function useOrders(args: {

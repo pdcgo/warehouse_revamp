@@ -26,7 +26,7 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_service_models"
 )
 
-const figWindow = 31 * 24 * time.Hour
+const figReplayWindow = 31 * 24 * time.Hour
 
 // figParkingBroker is the fold's subscription for a replay that PARKS inside its seek — the range deleted, the lock
 // still held. With park false it seeks at once.
@@ -46,7 +46,7 @@ func figNewBroker(park bool, delay time.Duration) *figParkingBroker {
 }
 
 func (b *figParkingBroker) ReplayWindow(context.Context) (time.Duration, error) {
-	return figWindow, nil
+	return figReplayWindow, nil
 }
 
 func (b *figParkingBroker) Seek(_ context.Context, to time.Time) error {
@@ -99,7 +99,7 @@ func figIsLocked(err error) bool {
 func TestInterleave_Replay_WaitsForAFoldInFlight(t *testing.T) {
 	h := figHarness(t)
 	ctx := context.Background()
-	broker := &fakeBroker{window: figWindow}
+	broker := &fakeBroker{window: figReplayWindow}
 	pool := figService(h.DB(), broker)
 	start := jakartaDay(5)
 

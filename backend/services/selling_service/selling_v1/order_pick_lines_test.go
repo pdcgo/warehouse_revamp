@@ -220,6 +220,8 @@ func TestOrderPickLines_CarriesNoMoney(t *testing.T) {
 		"warehouse.selling.v1.OrderPick": {
 			"order_id", "transaction_id", "status", "shop_id", "order_external_ref_id", "shipment_channel_id",
 			"receipt_code", "lines",
+			// Cetak ulang label (a-changed-label-asks-the-warehouse-to-reprint) — a flag, not money.
+			"reprint_label",
 		},
 		"warehouse.selling.v1.OrderPickLine": {"product_id", "product_code", "name", "quantity"},
 	}

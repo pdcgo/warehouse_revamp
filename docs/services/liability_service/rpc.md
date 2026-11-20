@@ -130,6 +130,46 @@ sequenceDiagram
 ⚠ **The route is an open webhook**, as the restock's is: restrict `/event/liability-warehouse-transfer-accepted/push` at
 the ingress to Pub/Sub's push.
 
+## The courier at a custom shipment's handover — `ChargeCustomShipmentCourier`
+
+The restock's twin at a **custom shipment**'s handover, for a *Gudang bayar* parcel
+([the-courier-is-paid-by-the-team-or-by-the-warehouse](../../business/custom_shipments/context_decision.md#the-courier-is-paid-by-the-team-or-by-the-warehouse),
+*as a restock's courier charge*; its own type per
+[a-transfer-charge-is-a-transfer-fee](../../business/balance/context_decision.md#a-transfer-charge-is-a-transfer-fee)):
+the warehouse pays the courier on the spot, types the real cost at the handover (0 allowed), and liability posts the
+debt when *Custom Shipment Handed Over* arrives. A *Kami bayar* parcel's courier is an expense on the team's own account
+(financial_account's custom-shipment listener) and never reaches Team Balance. Built 2026-11-19 (backlog #88 P4).
+
+```mermaid
+sequenceDiagram
+    participant W as the warehouse
+    participant I as inventory_service
+    participant PS as Pub/Sub
+    participant S as liability_service
+
+    W->>I: CustomShipmentHandover - picked to handed over, the courier cost when the warehouse pays
+    I->>PS: Custom Shipment Handed Over - after every handover, payer and warehouse_cost
+    PS->>S: push to /event/liability-custom-shipment-handed-over/push
+    S->>S: a TEAM payer posts nothing - acked
+    S->>S: ChargeCustomShipmentCourier - custom_shipment_fee keyed by the parcel, two legs
+```
+
+| | |
+| --- | --- |
+| who owes whom | the parcel's selling team (`team_id`) owes the warehouse it shipped from (`warehouse_id`) |
+| the source | **`custom_shipment_fee`** (`LIABILITY_SOURCE_TYPE_CUSTOM_SHIPMENT_FEE = 11`, the business word per the-ledger-speaks-the-business-words), `source_id` = the custom shipment — never `incidental_fee` nor `transfer_fee`: parcel 41 beside restock 41 or transfer 41 for the same pair would be swallowed as a redelivery. Proved by `TestChargeCustomShipmentCourier_DoesNotCollideWithARestockOrATransferOfTheSameNumber` |
+| only *Gudang bayar* | the push handler posts only `payer = WAREHOUSE`; a TEAM (or unknown) payer's handover posts nothing even if it carried a cost — the team's courier money never lands in the warehouse's books (`TestPushHandler_ATeamPaidHandoverPostsNothingInTheWarehousesBooks`, the-custom-shipments-prototype-is-accepted) |
+| the amount | `warehouse_cost`, a double as inventory stores it, posted exact (the-backend-never-rounds-money) |
+| 0 | posts nothing, acked — the warehouse may type 0 |
+| to oneself | nothing — skipped before `PostEntry`, as the transfer's |
+| a redelivery | posts nothing new — `ErrAlreadyPosted` is the normal answer; 8 deliveries at once post once, and beside a restock's and a transfer's charge of the same number all three post with no deadlock (`custom_shipment_courier_charge_race_test.go`) |
+| actor | the event's `actor_id` (who handed it over) and `actor_is_override`, stamped on both legs |
+| the screens | the history reads it as `CUSTOM_SHIPMENT_FEE` with the parcel's id; `LiabilityDaily`'s `by_source` carries it under key 11 — the daily statement's one courier column adds it to the restock's, the return's and the transfer's (frontend, backlog #88 P5) |
+| no reversal | a parcel is never cancelled after the pick (a-custom-shipment-is-cancelled-only-while-requested), so a handed-over charge is never reversed |
+
+⚠ **The route is an open webhook**, as the others are: restrict `/event/liability-custom-shipment-handed-over/push` at
+the ingress to Pub/Sub's push.
+
 ## How the two services are joined
 
 `inventory_service` declares `LiabilityPoster` in its own terms and imports nothing from liability; the adapter lives in

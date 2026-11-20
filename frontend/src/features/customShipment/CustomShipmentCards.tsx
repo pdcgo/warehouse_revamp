@@ -10,7 +10,7 @@ import { TeamItem } from "../../components/entity/TeamItem";
 import { ShipmentChannelBadge } from "../../components/badges/ShipmentChannelBadge";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
-import type { CustomShipment } from "./customShipments";
+import type { CustomShipment, CustomShipmentPick } from "./customShipments";
 import { unitsOf } from "./customShipments";
 import { CustomShipmentKindBadge, payerKey } from "./CustomShipmentBadges";
 
@@ -38,17 +38,20 @@ export function ParcelCard({ shipment, side }: { shipment: CustomShipment; side:
   // THE ONGKIR, as this reader may know it. The team's own (*Kami bayar*): its account and cost, the cost editable until
   // the handover. The warehouse's (*Gudang bayar*): typed at the handover — "—" until then, then the amount and who owes
   // it back. A warehouse reading a *Kami bayar* parcel learns only that it must not pay the courier.
+  // The cost is read only where the server SENT it: a warehouse reading a *Kami bayar* parcel receives none
+  // (a-warehouse-sees-no-seller-money) and is never shown one.
+  const cost = shipment.shippingCost ?? 0;
   const ongkir =
     shipment.payer === "TEAM"
       ? side === "selling"
-        ? shipment.shippingCost > 0
-          ? formatRupiahNumber(shipment.shippingCost)
+        ? cost > 0
+          ? formatRupiahNumber(cost)
           : t("customShipment.detail.costNotYet")
         : t("customShipment.detail.doNotPay")
       : handedOver
         ? side === "selling"
-          ? t("customShipment.detail.owedToWarehouse", { amount: formatRupiahNumber(shipment.shippingCost) })
-          : t("customShipment.detail.owedByTeam", { amount: formatRupiahNumber(shipment.shippingCost), team: owner })
+          ? t("customShipment.detail.owedToWarehouse", { amount: formatRupiahNumber(cost) })
+          : t("customShipment.detail.owedByTeam", { amount: formatRupiahNumber(cost), team: owner })
         : t("customShipment.detail.costAtHandover");
 
   return (
@@ -134,20 +137,22 @@ export function ParcelCard({ shipment, side }: { shipment: CustomShipment; side:
 }
 
 /**
- * The lines. `showValue` — the selling team's sample value (the batch value its take drew). `showPicks` — the warehouse's
- * pick list: a sample's racks, as the order pick page's (every rack its units came from, each with its count); a reship's
- * units were never on a rack (a-restocks-broken-units-are-just-broken-for-now), so it says where they come from instead.
+ * The lines. `showValue` — the selling team's sample value (the batch value its take drew). `picks` — the warehouse's
+ * pick list: a sample's racks as StockPickLocations answered them for its take, as the order pick page's (every rack its
+ * units came from, each with its count); a reship's units were never on a rack
+ * (a-restocks-broken-units-are-just-broken-for-now), so it says where they come from instead. No `picks` — not the pick list.
  */
 export function LinesCard({
   shipment,
   showValue,
-  showPicks,
+  picks,
 }: {
   shipment: CustomShipment;
   showValue: boolean;
-  showPicks: boolean;
+  picks?: CustomShipmentPick[];
 }) {
   const { t } = useTranslation();
+  const showPicks = picks !== undefined;
   const reship = shipment.kind === "RESTOCK_RESHIP";
   const value = showValue && !reship;
 
@@ -174,7 +179,7 @@ export function LinesCard({
           </Table.Header>
           <Table.Body>
             {shipment.items.map((item) => {
-              const racks = shipment.picks.filter((pick) => pick.productId === item.productId);
+              const racks = (picks ?? []).filter((pick) => pick.productId === item.productId);
 
               return (
                 <Table.Row key={item.id.toString()} data-testid={`custom-shipment-line-${item.productId}`}>
@@ -207,7 +212,8 @@ export function LinesCard({
                               gap="2"
                               data-testid={`custom-shipment-rack-${item.productId}-${pick.rackId}`}
                             >
-                              <Badge colorPalette="brand">{pick.rackCode}</Badge>
+                              {/* Rack 0 is the UNPLACED pile — a place, said in words (the order pick page's #135). */}
+                              <Badge colorPalette="brand">{pick.rackId === 0n ? t("picking.table.unplaced") : pick.rackCode}</Badge>
                               <Text fontSize="sm">×{pick.quantity.toString()}</Text>
                             </Flex>
                           ))}
@@ -222,7 +228,7 @@ export function LinesCard({
                   )}
                   {value && (
                     <Table.Cell textAlign="end" whiteSpace="nowrap" data-testid={`custom-shipment-value-${item.productId}`}>
-                      {formatRupiahNumber(item.total)}
+                      {formatRupiahNumber(item.total ?? 0)}
                     </Table.Cell>
                   )}
                 </Table.Row>
@@ -232,7 +238,7 @@ export function LinesCard({
         </Table.Root>
         <Flex justify="space-between" mt="card" fontWeight="bold" data-testid="custom-shipment-lines-total">
           <Span>{t("customShipment.table.units", { count: Number(unitsOf(shipment)) })}</Span>
-          {value && <Span data-testid="custom-shipment-total">{formatRupiahNumber(shipment.total)}</Span>}
+          {value && <Span data-testid="custom-shipment-total">{formatRupiahNumber(shipment.total ?? 0)}</Span>}
         </Flex>
       </Card.Body>
     </Card.Root>

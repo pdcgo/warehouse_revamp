@@ -3,7 +3,7 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { describe, expect, it } from "vitest";
 
 import { AuthService } from "../../gen/warehouse/user/v1/user_pb";
-import { serverRefusedTheToken } from "./tokenVerdict";
+import { checkRetry, nextCheckDelay, serverRefusedTheToken } from "./tokenVerdict";
 
 // WHICH FAILED CheckAccess DROPS THE TOKEN — read off the REAL browser transport over a `fetch` the test decides, so if
 // Connect-ES ever changes how it surfaces an abort or a dropped connection, this fails instead of signing people out.
@@ -79,5 +79,47 @@ describe("serverRefusedTheToken — anything else keeps it", () => {
   it("an error that is not Connect's keeps it", () => {
     expect(serverRefusedTheToken(new Error("boom"))).toBe(false);
     expect(serverRefusedTheToken(undefined)).toBe(false);
+  });
+});
+
+// #96 — A CHECK WITH NO VERDICT IS SENT AGAIN, a bounded number of times, before the gate says the server gave no answer.
+// The provider's side (no Sign in while it waits, the panel after) is AuthContext.stories.tsx.
+describe("nextCheckDelay — a check with no verdict is sent again, three times over about ten seconds", () => {
+  it("waits 1 s, then 3 s, then 6 s", () => {
+    expect([0, 1, 2].map((failures) => nextCheckDelay(failures))).toEqual([1000, 3000, 6000]);
+  });
+
+  it("stops after the third: the gate shows its no-answer panel", () => {
+    expect(nextCheckDelay(3)).toBeNull();
+    expect(nextCheckDelay(10)).toBeNull();
+  });
+
+  it("is bounded — three tries, about ten seconds in all", () => {
+    expect(checkRetry.delaysMs).toHaveLength(3);
+    const total = checkRetry.delaysMs.reduce((sum, ms) => sum + ms, 0);
+    expect(total).toBeGreaterThanOrEqual(8000);
+    expect(total).toBeLessThanOrEqual(12000);
+  });
+
+  it("reads the waits it is given (a story shortens them)", () => {
+    expect(nextCheckDelay(0, [40, 40])).toBe(40);
+    expect(nextCheckDelay(2, [40, 40])).toBeNull();
+    expect(nextCheckDelay(-1)).toBeNull();
+  });
+
+  it("every check of a load aborted: three re-sends, then the panel — never a verdict", async () => {
+    // The load's checks, one after another, all aborted by the browser (the e2e's route.abort): each is no verdict.
+    const steps: (number | null)[] = [];
+    for (let failures = 0; failures < 5; failures++) {
+      const err = await checkAccessThrows(() =>
+        Promise.reject(new DOMException("The user aborted a request.", "AbortError")),
+      );
+      expect(serverRefusedTheToken(err)).toBe(false);
+      const wait = nextCheckDelay(failures);
+      steps.push(wait);
+      if (wait === null) break;
+    }
+
+    expect(steps).toEqual([1000, 3000, 6000, null]);
   });
 });

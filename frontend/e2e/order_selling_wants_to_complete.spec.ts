@@ -3,7 +3,7 @@ import type { Browser, Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
-import { expectMoveCounted, expectMovesOffered } from "./order_moves_metric";
+import { NOT_COUNTED, expectMoveCounted, expectMoveCounts, expectMovesOffered } from "./order_moves_metric";
 
 // ── complete order — the checks behind docs/acceptances/inventory/order.md (### process: delivery) ──────────────────────
 //
@@ -47,7 +47,8 @@ import { expectMoveCounted, expectMovesOffered } from "./order_moves_metric";
 //   orders of which the test completes ONE, read as selling:owner: Add Metric › Order offers Order status moves, and
 //   Analytic by shop over the last 7 days, filtered to that shop, reads `created_count` 2 (the fold landed) and
 //   `completed_count` exactly 1 — the untouched order, still shipped, adds nothing (order_moves_metric.ts). (Every
-//   earlier move — confirmed, picked, handed over, shipped — happened to BOTH orders.)
+//   earlier move — confirmed, picked, handed over, shipped — happened to BOTH orders.) A `regression:` step reads the
+//   same row's Disputes resolved (#97) as 0 / unset: only problem → completed counts there, never shipped → completed.
 //
 // GROUND (beforeAll, as root, through the API): a selling team of its own (root owns it) with a user per selling role, a
 // Shopee shop (root and the CS on it), a warehouse it returns to with a warehouse:staff user, 10 units of one product
@@ -435,6 +436,11 @@ test.describe(`selling:all wants to complete an order (${COND})`, () => {
       // Order status moves is offered under Order, and the shop's Completed reads the ONE complete.
       await expectMovesOffered(page);
       await expectMoveCounted(page, shop, "completed_count");
+    });
+
+    await test.step("regression: a complete is no dispute resolved", async () => {
+      // #97: Disputes resolved counts only problem → completed — a shipped → completed reaches Completed alone.
+      await expectMoveCounts(page, shop, { completed_count: "1", disputes_resolved_count: NOT_COUNTED });
     });
   });
 });

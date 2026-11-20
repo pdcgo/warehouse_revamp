@@ -42,6 +42,16 @@ import { AdjustExpenseDialog } from "./components/AdjustExpenseDialog";
 import { RecordExpenseDialog } from "./components/RecordExpenseDialog";
 import { useExpenseAccountNames } from "./components/accountName";
 import { useAdjustExpense, useExpenses } from "./queries";
+// ⚠ #99 PROTOTYPE (expense types) — every part below draws today's screen unless a story mounts the prototype.
+import { useExpenseTypes } from "../../features/expense/expenseTypesPrototype";
+import {
+  ExpenseKindText,
+  ExpenseOriginLine,
+  ExpenseTypeFilter,
+  ExpenseTypeMarks,
+  ExpenseTypeTotals,
+  amountTone,
+} from "../../features/expense/ExpenseTypesParts";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -86,8 +96,11 @@ export function ExpensesPage() {
 
   const query = useExpenses({ teamId, month, kind, page, pageSize });
   const adjustExpense = useAdjustExpense();
+  // #99 PROTOTYPE: null live. In a story it plays ExpenseList (types, money in, capital) in memory.
+  const types = useExpenseTypes();
+  const proto = types?.list({ teamId, month, kind, page, pageSize });
 
-  const expenses = query.data?.expenses ?? [];
+  const expenses = proto?.expenses ?? query.data?.expenses ?? [];
   const totals = query.data?.totals;
 
   // THE PAYING ACCOUNT, BY NAME (an-expense-must-name-the-account-that-paid) — the accounts' own read, one per page. An
@@ -104,9 +117,9 @@ export function ExpensesPage() {
   const creators = useActors(expenses.map((e) => e.createdBy)).data;
   const creatorOf = (cost: ExpenseRecord) =>
     personName(creators?.get(cost.createdBy.toString()), `#${cost.createdBy}`);
-  const totalItems = query.data?.totalItems ?? 0;
-  const loading = query.isPending;
-  const error = query.isError ? rpcError(query.error) : "";
+  const totalItems = proto?.totalItems ?? query.data?.totalItems ?? 0;
+  const loading = proto ? false : query.isPending;
+  const error = proto ? "" : query.isError ? rpcError(query.error) : "";
 
   // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in its
   // loading state — a fire-and-forget `mutate` would resolve instantly and the dialog would close
@@ -120,7 +133,7 @@ export function ExpensesPage() {
     if (teamId === undefined) return;
 
     try {
-      await adjustExpense.mutateAsync({
+      await (types?.adjust ?? adjustExpense.mutateAsync)({
         teamId,
         expenseId: cost.id,
         amount: -cost.netAmount,
@@ -270,7 +283,15 @@ export function ExpensesPage() {
     />
   );
 
-  const kindFilter = (
+  const kindFilter = types ? (
+    <ExpenseTypeFilter
+      kind={kind}
+      onKindChange={(k) => {
+        setKind(k);
+        setPage(1);
+      }}
+    />
+  ) : (
     <ExpenseKindSelect
       filter
       testId="expenses-kind-filter"
@@ -304,7 +325,10 @@ export function ExpensesPage() {
             >
               <Stack gap="0.5" flex="1" minW="0">
                 <HStack gap="2" wrap="wrap">
-                  <Text fontWeight="medium">{expenseKindLabel(t, cost.kind)}</Text>
+                  <Text fontWeight="medium">
+                    <ExpenseKindText cost={cost} />
+                  </Text>
+                  <ExpenseTypeMarks cost={cost} />
                   {isAdjustment && adjustmentBadge(cost)}
                 </HStack>
                 {/* The day, then the account that paid — one muted line. */}
@@ -325,6 +349,7 @@ export function ExpensesPage() {
                     {cost.note}
                   </Text>
                 )}
+                <ExpenseOriginLine cost={cost} />
                 <Text fontSize="xs" color="fg.muted" data-testid={`expense-by-${cost.id}`}>
                   <ActorName
                     name={t("expenses.recordedBy", { name: creatorOf(cost) })}
@@ -334,7 +359,7 @@ export function ExpensesPage() {
                 </Text>
               </Stack>
 
-              <Stack gap="0" align="end" flexShrink={0}>
+              <Stack gap="0" align="end" flexShrink={0} color={amountTone(types, cost)}>
                 {amountOf(cost, isAdjustment)}
               </Stack>
 
@@ -383,7 +408,8 @@ export function ExpensesPage() {
                 </Table.Cell>
                 <Table.Cell>
                   <HStack gap="2" wrap="wrap">
-                    {expenseKindLabel(t, cost.kind)}
+                    <ExpenseKindText cost={cost} />
+                    <ExpenseTypeMarks cost={cost} />
                     {isAdjustment && adjustmentBadge(cost)}
                   </HStack>
                   {/* The shop under the kind — an Ads expense's, or an older row's. */}
@@ -392,13 +418,16 @@ export function ExpensesPage() {
                       {shopOf(cost)}
                     </Text>
                   )}
+                  <ExpenseOriginLine cost={cost} />
                 </Table.Cell>
                 <Table.Cell whiteSpace="nowrap">{accountOf(cost)}</Table.Cell>
                 <Table.Cell>{cost.note}</Table.Cell>
                 <Table.Cell data-testid={`expense-by-${cost.id}`}>
                   <ActorName name={creatorOf(cost)} isOverride={cost.isOverride} />
                 </Table.Cell>
-                <Table.Cell textAlign="end">{amountOf(cost, isAdjustment)}</Table.Cell>
+                <Table.Cell textAlign="end" color={amountTone(types, cost)}>
+                  {amountOf(cost, isAdjustment)}
+                </Table.Cell>
 
                 <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
                   {!isAdjustment && mayMove && rowActions(cost)}
@@ -439,7 +468,10 @@ export function ExpensesPage() {
 
       {/* The summary — per kind and in total, for the WHOLE month rather than the page below. The
           server computes them (#168) precisely so this cannot drift into a page-derived figure. */}
-      {!loading && totals && (
+      {/* #99 PROTOTYPE: the month by group with its types under it — nothing live. */}
+      {proto && <ExpenseTypeTotals rows={proto.month} isMobile={isMobile} />}
+
+      {!loading && totals && !proto && (
         <Card.Root data-testid="expenses-totals" size={isMobile ? "sm" : undefined}>
           <Card.Body>
             {isMobile ? (

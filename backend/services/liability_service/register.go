@@ -49,6 +49,10 @@ func NewRegister(
 		// …and at a TRANSFER's receiving door — a `transfer_fee` keyed by the transfer
 		// (a-transfer-charge-is-a-transfer-fee). The same ingress restriction applies.
 		mux.Handle("/event/"+WarehouseTransferAcceptedSubscription+"/push", push)
+		// …and at a CUSTOM SHIPMENT's handover when the warehouse paid the courier (*Gudang bayar*) — a
+		// `custom_shipment_fee` keyed by the parcel (the-courier-is-paid-by-the-team-or-by-the-warehouse). The same
+		// ingress restriction applies.
+		mux.Handle("/event/"+CustomShipmentHandedOverSubscription+"/push", push)
 
 		return san_grpc.ServiceReflectNames{
 			liabilityv1connect.LiabilityServiceName,

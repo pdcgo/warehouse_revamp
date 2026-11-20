@@ -2,17 +2,21 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { create } from "@bufbuild/protobuf";
-import { Box, Button, Card, Flex, Heading, Icon, IconButton, Spacer, Stack, Text } from "@chakra-ui/react";
+import { Box, Button, Card, Flex, Heading, Icon, IconButton, Spacer, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ArrowLeft, StickyNote, Truck } from "lucide-react";
 
+import { rpcError } from "../../api/clients";
 import { OrderItemSchema } from "../../gen/warehouse/selling/v1/order_pb";
+import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { CUSTOM_SHIPMENTS_PATH } from "../../features/customShipment/customShipments";
-import { useCustomShipmentPrototype } from "../../features/customShipment/customShipmentPrototype";
+import { useCustomShipmentPick, useMarkCustomShipmentPicked } from "../../features/customShipment/queries";
 import { CustomShipmentKindBadge, CustomShipmentStatusBadge } from "../../features/customShipment/CustomShipmentBadges";
 import { LinesCard, ParcelCard } from "../../features/customShipment/CustomShipmentCards";
 import { CustomShipmentTimeline } from "../../features/customShipment/CustomShipmentTimeline";
 import { HandoverDialog } from "../../features/customShipment/HandoverDialog";
+// Barang Tidak Ketemu (backlog #88 P6) — the warehouse's goods-missing note while Diminta, and the open note's notice.
+import { GoodsMissingAction, GoodsMissingNotice } from "../../features/customShipment/GoodsMissing";
 import { ItemScan } from "../pick-order/components/ItemScan";
 import { toaster } from "../../components/feedback/Toaster";
 import { useIsMobile } from "../../layouts/shell";
@@ -39,28 +43,23 @@ export function parseShipmentId(raw: string | undefined): bigint {
 //
 // The team's note sits ABOVE the list, as an order's notes do — an instruction is read before the walk starts. The
 // warehouse sees no seller money (a-warehouse-sees-no-seller-money): no values, and of a *Kami bayar* ongkir only that it
-// must not pay the courier (the-warehouse-sees-the-ongkir-it-paid).
+// must not pay the courier (the-warehouse-sees-the-ongkir-it-paid) — the server sends it none, and the page draws what
+// it was sent. The racks are the sample's take as StockPickLocations answers it (useCustomShipmentPick).
 export function CustomShipmentPickPage() {
   const { t } = useTranslation();
   const { shipmentId } = useParams();
   const navigate = useNavigate();
   const { current } = useTeam();
   const isMobile = useIsMobile();
-  const prototype = useCustomShipmentPrototype();
   const [handing, setHanding] = useState(false);
+  const picked = useMarkCustomShipmentPicked();
 
   const id = parseShipmentId(shipmentId);
   const back = () => navigate(CUSTOM_SHIPMENTS_PATH);
+  const warehouse = current?.teamType === TeamType.WAREHOUSE;
+  const query = useCustomShipmentPick({ warehouseId: warehouse ? current?.teamId : undefined, id });
 
-  if (!prototype) {
-    return (
-      <Text color="fg.muted" data-testid="custom-shipment-unavailable">
-        {t("customShipment.unavailable")}
-      </Text>
-    );
-  }
-
-  if (!current || prototype.side !== "warehouse") {
+  if (!current || !warehouse) {
     return (
       <Text color="fg.muted" data-testid="custom-shipment-wrong-team">
         {t("customShipment.warehouseOnly")}
@@ -68,13 +67,28 @@ export function CustomShipmentPickPage() {
     );
   }
 
-  const shipment = prototype.detail(id);
+  const shipment = query.data?.shipment ?? null;
   const backButton = (
     <Button size="xs" variant="ghost" alignSelf="flex-start" data-testid="custom-shipment-back" onClick={back}>
       <Icon as={ArrowLeft} boxSize="4" />
       {t("customShipment.detail.backToQueue")}
     </Button>
   );
+
+  if (id > 0n && query.isPending) {
+    return <Spinner colorPalette="brand" data-testid="custom-shipment-loading" />;
+  }
+
+  if (query.isError) {
+    return (
+      <Stack gap="section">
+        {backButton}
+        <Text color="error.fg" data-testid="custom-shipment-error">
+          {rpcError(query.error)}
+        </Text>
+      </Stack>
+    );
+  }
 
   if (!shipment) {
     return (
@@ -96,11 +110,13 @@ export function CustomShipmentPickPage() {
     </Button>
   );
 
-  function setPicked() {
-    const ok = prototype?.picked(id) ?? false;
-    toaster.create(
-      ok ? { type: "success", title: t("customShipment.toast.picked") } : { type: "error", title: t("customShipment.toast.refused") },
-    );
+  async function setPicked() {
+    try {
+      await picked.mutateAsync({ teamId: current!.teamId, id });
+      toaster.create({ type: "success", title: t("customShipment.toast.picked") });
+    } catch (err) {
+      toaster.create({ type: "error", title: t("customShipment.toast.refused"), description: rpcError(err) });
+    }
   }
 
   return (
@@ -117,6 +133,7 @@ export function CustomShipmentPickPage() {
             <CustomShipmentStatusBadge status={shipment.status} />
           </Box>
           <CustomShipmentKindBadge kind={shipment.kind} />
+          <GoodsMissingAction shipment={shipment} picks={query.data?.picks ?? []} variant="icon" />
         </Flex>
       ) : (
         <>
@@ -131,11 +148,13 @@ export function CustomShipmentPickPage() {
             <CustomShipmentKindBadge kind={shipment.kind} />
             <Spacer />
             {handover}
+            <GoodsMissingAction shipment={shipment} picks={query.data?.picks ?? []} variant="button" />
           </Flex>
         </>
       )}
       {/* On a phone the one step is a full-width button under the title — the thumb's reach, as the pick page's. */}
       {isMobile && handover && <Box>{handover}</Box>}
+      <GoodsMissingNotice shipment={shipment} side="warehouse" />
 
       {shipment.note && (
         <Card.Root borderColor="warning.emphasized" borderWidth="1px" data-testid="custom-shipment-pick-note">
@@ -153,7 +172,7 @@ export function CustomShipmentPickPage() {
         </Card.Root>
       )}
 
-      <LinesCard shipment={shipment} showValue={false} showPicks />
+      <LinesCard shipment={shipment} showValue={false} picks={query.data?.picks ?? []} />
 
       {/* THE ITEM SCANS (the-item-scans-live-on-the-page) — the order pick page's own component, fed the parcel's lines. */}
       {scanning && (
@@ -168,7 +187,7 @@ export function CustomShipmentPickPage() {
               quantity: Number(item.quantity),
             }),
           )}
-          setting={false}
+          setting={picked.isPending}
           onSetPicked={setPicked}
         />
       )}

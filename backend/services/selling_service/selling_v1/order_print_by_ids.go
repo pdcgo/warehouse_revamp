@@ -33,7 +33,11 @@ func (s *Service) OrderPrintByIds(
 	query := s.db.
 		WithContext(ctx).
 		Model(&selling_service_models.Order{}).
-		Select("id", "status", "shop_id", "order_external_ref_id", "shipment_channel_id", "receipt", "receipt_document_id").
+		Select(
+			"id", "status", "shop_id", "order_external_ref_id", "shipment_channel_id", "receipt", "receipt_document_id",
+			// Cetak ulang label's two stamps (needsReprint).
+			"label_printed_at", "receipt_changed_at",
+		).
 		Where("id IN ?", ids)
 
 	if !readsEveryTeam(teamID) {
@@ -80,5 +84,8 @@ func orderPrintToProto(order *selling_service_models.Order) *sellingv1.OrderPrin
 		ShipmentChannelId:  order.ShipmentChannelID,
 		ReceiptCode:        order.Receipt,
 		HasLabel:           order.ReceiptDocumentID != "",
+		// Marked under its label and counted on the list line; the page's Print clears it
+		// (a-changed-label-asks-the-warehouse-to-reprint).
+		ReprintLabel: needsReprint(order),
 	}
 }

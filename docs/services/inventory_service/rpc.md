@@ -837,6 +837,291 @@ on the first one's lock.
 
 ---
 
+## Custom shipments — `CustomShipmentService` (P1 + P2 + P3 + P6 built 2026-11-19, backlog #88)
+
+A parcel the warehouse sends that is **not a marketplace order**: a **sample** of the owning team's units to someone, or a
+**restock reship** — a received restock's broken units back to its supplier
+([a-custom-shipment-is-a-parcel-that-is-not-an-order](../../business/custom_shipments/context_decision.md#a-custom-shipment-is-a-parcel-that-is-not-an-order)).
+The owning selling team creates it, the warehouse it ships from picks, packs and hands it to the courier
+([the-selling-team-asks-the-warehouse-ships](../../business/custom_shipments/context_decision.md#the-selling-team-asks-the-warehouse-ships)).
+Messages in `proto/warehouse/inventory/v1/custom_shipment.proto`; handlers `inventory_v1/custom_shipment_*.go`, the sample's
+take `inventory_mutations/post_parcel_sample.go`; tables `custom_shipments`, `custom_shipment_items`,
+`custom_shipment_logs`, `custom_shipment_missing_lines` (database-schema.md *Custom shipments*). All 9 RPCs are built:
+P1 Create and Detail, P2 the two lists, P3 the four moves, P6 the goods-missing note.
+
+| RPC | who (proto policy) | status | what |
+| --- | --- | --- | --- |
+| `CustomShipmentCreate` | Root, Administrator, selling Owner / Admin / CS — the roles that create an order (the build's default) | → requested | below |
+| `CustomShipmentDetail` | every selling and warehouse role; a READ | — | the owning team in full; the shipping warehouse with **no seller money**; the root team any; another team NotFound |
+| `CustomShipmentList` | every selling and warehouse role; a READ | — | P2, [below](#the-lists-p2): the selling team its own, the shipping warehouse its own with **no seller money**, the root team every one; paged |
+| `CustomShipmentReshipOptions` | Root, Administrator, selling Owner / Admin / CS; a READ | — | P2, [below](#the-lists-p2): the team's received restocks with broken units still free; paged |
+| `CustomShipmentCostSet` / `Cancel` | Root, Administrator, selling Owner / Admin / CS (the build's default, as a transfer's) | requested / picked, status kept · requested → cancelled | P3, [below](#the-moves--costset-cancel-picked-handover-p3-built-2026-11-19): the owning team only |
+| `CustomShipmentPicked` / `Handover` | Root, Administrator, warehouse Owner / Admin / Staff (the build's default, as a transfer's) | requested → picked → handed_over | P3, [below](#the-moves--costset-cancel-picked-handover-p3-built-2026-11-19): the shipping warehouse only |
+| `CustomShipmentMissingReport` | the same warehouse roles — the picking roles; a write, never a monitor | requested, status kept | P6, [below](#barang-tidak-ketemu--customshipmentmissingreport-p6-built-2026-11-19): the shipping warehouse only; one trail row, nothing else |
+
+- **A sample takes its stock AT CREATE** — the take a transfer's out-leg writes (`postSystemPickedTake`, shared with
+  `PostTransferOut`): the team's batches oldest first, the racks holding the fewest first, a rack a count holds never
+  taken from; typed `sample`, the recipient's name on the transaction
+  ([a-sample-is-a-stock-out-at-batch-value](../../business/inventory/transaction_decision.md#a-sample-is-a-stock-out-at-batch-value),
+  [a-sample-keeps-its-recipient](../../business/inventory/transaction_decision.md#a-sample-keeps-its-recipient)). Each
+  line carries the batch value the take drew; the parcel's `total` is their sum. The pick page reads the racks through
+  `StockPickLocations(warehouse_id, transaction_id)` — nothing stored twice. The in-person sample stays `RackSample`.
+- **A reship takes no stock** — broken units never entered a batch or a rack. Per restock line it sends at most the
+  line's broken units at Terima less what another reship that is not cancelled already carries, judged **under the
+  restock row's lock** (the lock its accept, cancel and Koreksi Jumlah Terima take), so two reships of one restock queue
+  and the second sees the first; a refusal names every line over (FailedPrecondition). Only the team's own **accepted**
+  restock (another team's NotFound, not received FailedPrecondition), its own lines, its warehouse; **one supplier per
+  parcel** — every line naming the same supplier, a line naming none its own group (InvalidArgument). The line's code,
+  name and broken note are copied.
+- **The courier** ([the-courier-is-paid-by-the-team-or-by-the-warehouse](../../business/custom_shipments/context_decision.md#the-courier-is-paid-by-the-team-or-by-the-warehouse)):
+  TEAM names one of its ACTIVE accounts — operational or not, as a transfer's shipping — and an optional cost; WAREHOUSE
+  names neither (the warehouse types it at the handover, P3). The account is asked of financial_account_service before
+  the transaction (FailedPrecondition naming it).
+- **The key** `idempotency_key` is unique per team (`custom_shipments_idempotency_key`): a used key is refused as
+  AlreadyExists before any take — never answered with that parcel (the order's shape).
+- **What the warehouse receives** ([a-warehouse-sees-no-seller-money](../../business/order/order_statistic_metric_decision.md#a-warehouse-sees-no-seller-money),
+  [the-custom-shipments-prototype-is-accepted](../../business/custom_shipments/context_decision.md#the-custom-shipments-prototype-is-accepted)):
+  `total`, each item's `total`, `finance_account_id` and a TEAM payer's `shipping_cost` are left **unset** (optional
+  fields, not 0); a WAREHOUSE payer's `shipping_cost` — the ongkir it pays — is sent. Pinned by
+  `TestCustomShipmentDetail_TheWarehouseReceivesNoSellerMoney` (a reflective walk of every field the reader receives).
+- **Events**: `CustomShipmentCreated` (event 409, `custom-shipment-created:<id>`) after commit — a TEAM payer's account
+  and cost, 0 and 0 for a WAREHOUSE payer. `CostUpdated` / `Cancelled` / `HandedOver` (410–412) are published by the
+  moves (P3, [below](#the-moves--costset-cancel-picked-handover-p3-built-2026-11-19)); their listeners (financial_account's
+  expense, liability's `CUSTOM_SHIPMENT_FEE`) are P4.
+- **Volume** (`custom_shipment_perf_test.go`, perfaudit: the ledger background — 50 000 takes, 10 000 accepted restocks —
+  plus 30 000 parcels, 110 000 parcel lines): Create a sample 10.3 ms (1 line) / 20.1 ms (20 lines), 18 queries either
+  way; Create a reship 10.0 / 7.4 ms, 11 queries either way; Detail 1.2 ms owner / 1.3 ms warehouse, 3 queries. No N+1.
+  The partial index `custom_shipment_items_restock_item_idx` (00057) serves the reship's *units on live reships* sum:
+  0.13 ms against a 9.4 ms sequential scan without it (create 10.0 → 14.8 ms at 1 line, 7.4 → 18.0 ms at 20, the scan
+  growing with every parcel line ever written). Fast — no audit file.
+
+```mermaid
+sequenceDiagram
+    participant S as Selling team
+    participant H as CustomShipmentCreate
+    participant F as financial_account_service
+    participant DB as Postgres - one tx
+    participant E as Pub/Sub
+
+    S->>H: kind, warehouse or restock, lines, recipient, courier, payer + account + cost, key
+    H->>H: payer rules, the kind's shape, a line twice → InvalidArgument
+    H->>F: TEAM payer - ask the account in-process, archived or not the team's → FailedPrecondition
+    alt a sample
+        H->>H: ask product_service - a product not the team's own → InvalidArgument
+        H->>DB: custom_shipments row, requested - a used key → AlreadyExists
+        H->>DB: lock the team's batches of every line in product order, and count them
+        alt any line short
+            H-->>S: FailedPrecondition naming every short line - the whole transaction rolls back
+        else enough
+            H->>DB: inventory_transactions - sample, the recipient's name
+            H->>DB: batch_logs oldest first - then product_placement_logs fewest racks first
+            H->>DB: items with the taken value, transaction_id and total on the parcel, the first trail row
+        end
+    else a reship
+        H->>DB: SELECT restock WHERE id AND team_id FOR UPDATE - another team's → NotFound
+        H->>H: not accepted → FailedPrecondition, another warehouse or line, two suppliers → InvalidArgument
+        H->>DB: its broken rows, and the units live reships of its lines carry
+        alt a line over its broken units left
+            H-->>S: FailedPrecondition naming every line over
+        else within
+            H->>DB: custom_shipments row, items with the restock line and its broken note, the first trail row
+        end
+    end
+    H--)E: after COMMIT, Custom Shipment Created - the account and the cost
+    H-->>S: the parcel as the team reads it
+```
+
+### The lists (P2)
+
+`inventory_v1/custom_shipment_list.go`, `custom_shipment_reship_options.go`; tests `custom_shipment_list_test.go`,
+`custom_shipment_reship_options_test.go`, perf `custom_shipment_list_perf_test.go` (perfaudit).
+
+- **`CustomShipmentList`** reads the reader's parcels with the WHERE Detail reads — the root team every one, any other
+  team `(team_id = X OR warehouse_id = X)` (a team is one side only) — so a listed row always opens. Newest first
+  (`id DESC`), `CommonPagination` + `PageInfo`, the count and the page from ONE scope. Each row is
+  `customShipmentToProto` without the trail — Detail's mapper and money rule, row by row: the shipping warehouse
+  receives no `total`, no line `total`, no `finance_account_id`, no TEAM payer's `shipping_cost` (unset, not 0); a
+  WAREHOUSE payer's `shipping_cost` is sent. Pinned by `TestCustomShipmentList_TheWarehouseListReceivesNoSellerMoney`
+  (a reflective walk of the whole response) and `…_ARowIsTheDetailWithoutTheTrail` (every reader's row equals its
+  Detail minus the logs).
+- **The filter** is the accepted list screen's: ONE `status` (its tabs), ONE `kind`, `warehouse_id` (the selling side's
+  lens — it narrows, never widens) and `q` over the number (a whole id, with or without its #), the recipient and a
+  line's product code or name (an EXISTS, so a parcel counts once). Three statements: count, page, the page's lines.
+- **`CustomShipmentReshipOptions`** offers exactly what `CustomShipmentCreate` accepts for a reship: the team's
+  **accepted** restocks with at least one BROKEN problem row whose units are not all on a reship that is not cancelled
+  (a cancelled reship's units are offered again —
+  [a-custom-shipment-is-cancelled-only-while-requested](../../business/custom_shipments/context_decision.md#a-custom-shipment-is-cancelled-only-while-requested) —
+  except those a goods-missing note named, gone since P6: `not_found`,
+  [below](#barang-tidak-ketemu--customshipmentmissingreport-p6-built-2026-11-19)),
+  newest accept first (`accepted_at DESC NULLS LAST, id DESC`), each with only its lines that still have units free:
+  `broken`, `already_sent` (the create's own `reshipUnitsSent`), the Terima note, the line's `supplier_id` /
+  `supplier_channel_id` (the form resolves names and prefills the recipient through `SupplierByIds` — no
+  inventory→supplier seam). It keys on the broken rows, never on the *Barang rusak* tag (what takes the tag off is the
+  owner's parked restock-problem context). `q` matches the restock's number or a FREE broken line's code or name.
+  Pinned by `TestCustomShipmentReshipOptions_OffersWhatCreateAccepts` (each offered line takes a reship of its free units
+  and refuses one more).
+- **The options' shape is measured**: the EXISTS carries `OFFSET 0`, keeping it a probe per restock of the team (the
+  problem rows' and lines' keys) — flattened, the planner hashed EVERY team's broken rows joined to a scan of every
+  team's restock lines, so the cost followed the platform, not the team. The page carries its count
+  (`COUNT(*) OVER ()`, a page past the end counts alone), so each restock is probed once.
+
+**Volume** (perfaudit; 70 000 parcels — a busy warehouse shipping 35 000 over three years, its queue 50 requested + ~40
+old stragglers; restocks: a team of 10 000 with 1 000 broken among 60 000 platform-wide), median wall:
+
+| read | before | after |
+| --- | --- | --- |
+| the warehouse's queue (requested tab), page 1 | 7.2 ms (generic plan 11.7) | 1.8 ms (1.4) — `00058` status indexes |
+| the picked tab · a selling team's requested tab | 7.1 · 7.9 ms | 1.8 · 1.8 ms — `00058` |
+| the all tab · page 500 of a 30 000 book · root | 6–10 ms | unchanged (the count reads the scope) |
+| free text of 3+ characters over the busy warehouse (`budi`, `sku-42`, a number) | 144–241 ms | 19–40 ms — `00058` trigram index on the lines |
+| free text of 1–2 characters | ~200 ms | ~200–237 ms — no trigram to look up, the old plan ([audit](../../../audits/services/inventory_service/performances/CustomShipmentList.md)) |
+| ReshipOptions, the 10 000-restock team, page 1 | 100–150 ms (flattened, count + page) | 27–48 ms (OFFSET 0, one statement) |
+| ReshipOptions, a team of 2 000 restocks · a team with none | 63 · 39 ms | 3.4 · 0.5 ms |
+
+Queries: List 3, ReshipOptions 3 (1 when nothing is offered). No N+1.
+
+### The moves — CostSet, Cancel, Picked, Handover (P3 built 2026-11-19)
+
+```
+requested ──Picked (warehouse)──▶ picked ──Handover (warehouse)──▶ handed_over
+    │                               │
+    └──Cancel (selling team)──▶ cancelled        CostSet (selling team, TEAM payer): requested or picked, status kept
+```
+
+Every move starts by locking the ONE `custom_shipments` row `FOR UPDATE` **as its side** — the owning selling team
+(`team_id`) for CostSet and Cancel, the warehouse it ships from (`warehouse_id`) for Picked and Handover; the other side
+and any other team read **NotFound** (`custom_shipment_moves.go` `lockCustomShipment`). Two moves of one parcel queue on
+that lock and the second judges what the first committed; a move from a status it does not allow is FailedPrecondition.
+Each status move stamps its `*_by_user_id` / `*_at` and writes one `custom_shipment_logs` row (actor + override).
+
+| RPC | who (proto policy — the build's default) | moves | what |
+| --- | --- | --- | --- |
+| `CustomShipmentCostSet` | selling Owner / Admin / CS + Root / Administrator — the order-create roles, as `WarehouseTransferUpdate` | requested / picked, status kept | *Ubah Ongkir*: TEAM payer only (a WAREHOUSE payer → FailedPrecondition); a CHANGED account must be one of the team's ACTIVE accounts (asked before the tx, judged under the lock; an unchanged one is not re-asked); an edit that moved money bumps `cost_revision`, writes a from = to trail row `Rp 15.000 → Rp 20.000` and publishes `CustomShipmentCostUpdated` (410, `custom-shipment-cost-updated:<id>:<rev>`, old + new account and amount). An edit that changes neither writes and publishes nothing |
+| `CustomShipmentCancel` | the same selling roles, as `WarehouseTransferCancel` | requested → cancelled | a SAMPLE's take undone in the same `StockTransaction` by `inventory_mutations.RollbackParcelSample` — units back on the batches and racks they left, `is_rollback` set; a rack a count holds refuses the whole cancel (FailedPrecondition naming the count). A RESHIP moves no stock: its broken units drop out of the live-reships sum. Publishes `CustomShipmentCancelled` (411): a TEAM payer's account + cost to give back, 0 / 0 for a WAREHOUSE payer |
+| `CustomShipmentPicked` | warehouse Owner / Admin / Staff + Root / Administrator — the transfer's warehouse-act roles (`WarehouseTransferProcess` / `Ship`) | requested → picked | nothing moves in the ledgers (a sample's units left at create); no event; from here there is no cancel |
+| `CustomShipmentHandover` | the same warehouse roles | picked → handed_over | WAREHOUSE payer: `shipping_cost` REQUIRED (unset → InvalidArgument; 0 allowed) and stored; TEAM payer: a cost is refused (InvalidArgument), the team's stands; `resi` optional (trimmed). Publishes `CustomShipmentHandedOver` (412): `warehouse_cost` = the warehouse's cost, 0 for a TEAM payer |
+
+- **The undo's own guard** ([a-rollback-only-undoes-a-take](../../business/inventory/transaction_decision.md#a-rollback-only-undoes-a-take),
+  its 🔄 2026-11-19 line): `RollbackParcelSample(tx, shipmentID, actor)` reaches a take only THROUGH the parcel — the
+  parcel row locked, it must be a `sample` still `requested` with a take; the take must be a `sample` of the parcel's
+  team and warehouse — else `ErrNotARequestedParcelSample`. `RollbackTake`'s guard (order / transfer_out only) is
+  untouched, so an in-person sample stays final ([a-handed-over-sample-is-final](../../business/inventory/placement_decision.md#a-handed-over-sample-is-final)).
+  Both share the reversal itself (`reverseTake`: batch rows, then rack rows, then `is_rollback`).
+- **The warehouse never reads the team's figures**: a cost edit's trail row reaches a reader without money (the shipping
+  warehouse) with its description left empty — it reads *that* the cost was edited, not *what to*
+  (`customShipmentToProto`; pinned by `TestCustomShipmentCostSet_TheWarehouseNeverReadsTheTeamsFigures`).
+- **Events after commit**, never inside it; a failed publish is logged with its `event_id` (the create's rule). Their
+  listeners — financial_account's expense legs, liability's `CUSTOM_SHIPMENT_FEE` — are P4.
+- **Lock order** — no new order: the cancel is the transfer cancel's (parcel row → the take's row → batches → racks →
+  stock reports last); the other three lock only the parcel row
+  ([lock-order.md *Custom shipments — the moves*](../../../audits/services/inventory_service/concurrency/lock-order.md#custom-shipments--the-moves-2026-11-19)).
+- **Volume** (`custom_shipment_moves_perf_test.go`, perfaudit, the P1 background): CostSet 2.7 ms, Picked 3.1 ms, Handover 3.2 ms, Cancel a reship 2.1 ms — 7
+  queries each (the row lock, the write, the trail row, and the parcel read back in 3); Cancel a sample 12.2 ms (1
+  line) / 20.3 ms (20 lines), 20 queries either way (the undo's reads and writes are set-based). No N+1. Fast — no
+  audit file.
+
+```mermaid
+sequenceDiagram
+    participant S as Selling team
+    participant W as Warehouse
+    participant H as the move
+    participant DB as Postgres - one tx
+    participant E as Pub/Sub
+
+    S->>H: Cancel - team_id, id
+    H->>DB: SELECT custom_shipments WHERE id AND team_id FOR UPDATE - another team NotFound
+    H->>H: not requested → FailedPrecondition
+    alt a sample
+        H->>DB: RollbackParcelSample - the parcel row again, its take FOR UPDATE
+        H->>DB: batch rows reversed, batches by id - then rack rows reversed, racks by id
+        H->>DB: a rack a count holds → FailedPrecondition, everything rolls back
+        H->>DB: inventory_transactions is_rollback
+    end
+    H->>DB: status cancelled, cancelled_by and at, the trail row, the stock reports last
+    H--)E: after COMMIT, Custom Shipment Cancelled - a team payer's account and cost back
+
+    W->>H: Picked - team_id = the warehouse, id
+    H->>DB: SELECT custom_shipments WHERE id AND warehouse_id FOR UPDATE
+    H->>DB: requested → picked, picked_by and at, the trail row
+
+    S->>H: CostSet - account, cost
+    H->>H: ask the account before the tx, team payer and requested or picked under the lock
+    H->>DB: cost_revision + 1, the account and cost, a from = to trail row
+    H--)E: after COMMIT, Custom Shipment Cost Updated - old and new sides
+
+    W->>H: Handover - cost when the warehouse pays, resi
+    H->>DB: picked → handed_over, the cost and resi, the trail row
+    H--)E: after COMMIT, Custom Shipment Handed Over - the warehouse's cost
+```
+
+### *Barang Tidak Ketemu* — CustomShipmentMissingReport (P6 built 2026-11-19)
+
+`inventory_v1/custom_shipment_missing_report.go`; tests `custom_shipment_missing_report_test.go`, race
+`custom_shipment_missing_race_test.go` (raceaudit), perf `custom_shipment_missing_perf_test.go` (perfaudit); migration
+`00059`. The shipping warehouse notes goods it cannot find on a parcel still Diminta
+([missing-goods-leave-a-note-on-the-custom-shipment](../../business/custom_shipments/context_decision.md#missing-goods-leave-a-note-on-the-custom-shipment),
+the dialog as drawn — [the-goods-missing-prototype-is-accepted](../../business/custom_shipments/context_decision.md#the-goods-missing-prototype-is-accepted)).
+
+- **One trail row, nothing else**: a `custom_shipment_logs` row of kind `goods_missing` (from = to = requested, the
+  warehouse's optional note ≤ 200 as its description) and its `custom_shipment_missing_lines`. The parcel's row is not
+  written, no ledger, no event, no money — the status stays and the owning team decides (cancel, or wait). It may be
+  recorded again while requested; each note is its own row.
+- **Who**: the warehouse it ships from (`lockCustomShipment` as the shipper — the owning team and any other team read
+  **NotFound**); only while `requested` (FailedPrecondition after the pick, the handover or a cancel).
+- **The lines** (InvalidArgument, one sentence each): a line of this parcel, a line and rack once; a SAMPLE line names a
+  rack its take drew this line's product from, at most what it drew there (`takeRackUnits` — `StockPickLocations`' own
+  reading of the take's rack rows, extracted and shared), rack 0 only for a line the take recorded no rack for; a RESHIP
+  line names no rack (broken units were never on one), at most the line's units.
+- **What the readers see**: every trail row carries `kind` (STATUS / COST_EDIT / GOODS_MISSING; a cost edit and a note
+  are both from = to) and a note's row its `missing` lines (code, name and the rack's code read at read time). The
+  parcel's `goods_missing` is the **open** note — the latest while requested, absent once picked or cancelled — on
+  Detail AND on every List row, for the team and the warehouse alike
+  ([the-goods-missing-badge-is-on-both-lists](../../business/custom_shipments/context_decision.md#the-goods-missing-badge-is-on-both-lists)).
+  No money in it: the warehouse's note reaches it unblanked, as the team reads it (a cost edit's row stays blanked).
+- **Named reship units are gone** ([missing-reship-units-are-not-offered-again](../../business/custom_shipments/context_decision.md#missing-reship-units-are-not-offered-again)):
+  once a noted reship is cancelled, the units its notes named — per line, the most any ONE note named — count against
+  the restock line like a live reship's. The create's *units on live reships* (`reshipUnitsSent`) and the choices'
+  `reshipLineFree` share `reshipItemLive` / `reshipItemGone` / `reshipItemHeld`, so the cap and the offer read one
+  sum, under the restock row's lock; `ReshipLine.not_found` carries the gone units beside `already_sent`, and a refusal
+  names them.
+- **Lock order — no new order**: the note locks only the parcel row, Picked's and Cancel's lock, so a note racing the
+  pick or the cancel queues and is judged on what committed (pinned ×12 each: no note after a pick or a cancel; a cancel
+  after a note keeps the named units gone; a reship created after the cancel never reaches them).
+- **Volume** (perfaudit, P2's 70 000 parcels with ~870 notes — every second requested parcel noted, one in four twice,
+  one in fifty of the history), median wall, custom / generic plan:
+
+| read | P2 | P6 |
+| --- | --- | --- |
+| the warehouse's queue (requested tab), page 1 | 1.8 ms (1.4), 3 queries | 4.1 ms (3.1), 5 queries — the open notes, one more for their lines |
+| a selling team's requested tab | 1.8 ms | 3.9 ms (3.0), 5 queries |
+| a page with no requested parcel (picked tab, handed over p50) | 1.8 ms · — | 2.1 · 7.9 ms, 3 queries — no note read |
+| Detail of a noted parcel (2 notes), warehouse | 1.3 ms, 3 queries | 1.9 ms, 4 queries |
+| MissingReport, one line | — | 6.2 ms, 9 queries |
+| ReshipOptions, the 10 000-restock team with 333 noted lines, page 1 | 27–48 ms | 91 ms custom (≈25 ms of it JIT) / 33 ms generic, 3 queries |
+| ReshipOptions' count, same run, P2 query vs P6 query (old/new/new/old) | 47.6 · 29.7 ms | 55.0 · 36.9 ms — inside the noise |
+
+  The open notes read the trail's key (`custom_shipment_logs_shipment_idx`); a partial index on
+  `kind = 'goods_missing'` measured 543 µs → 552 µs for a queue page — no gain, not added. No N+1; no rewrite.
+
+```mermaid
+sequenceDiagram
+    participant W as Warehouse - pick page
+    participant H as CustomShipmentMissingReport
+    participant DB as Postgres - one tx
+    participant S as Selling team
+
+    W->>H: team_id = the warehouse, id, lines - item, rack, quantity, note
+    H->>DB: SELECT custom_shipments WHERE id AND warehouse_id FOR UPDATE - anyone else NotFound
+    H->>H: not requested → FailedPrecondition
+    H->>DB: the parcel's lines - a sample's take racks too
+    H->>H: a line twice, a rack the take did not draw, too many → InvalidArgument
+    H->>DB: one custom_shipment_logs row - kind goods_missing, requested to requested
+    H->>DB: its custom_shipment_missing_lines
+    H-->>W: the parcel as the warehouse reads it - goods_missing set, no money
+    S->>DB: List and Detail - goods_missing on the row, the note on the trail
+    S->>S: Batalkan, or wait - a cancelled reship's named units never offered again
+```
+
 ## Stock lives on the decided ledgers — and what that changes about reads
 
 Every reader reads the ledgers ([database-schema.md § The decided ledgers](../../database-schema.md#the-decided-ledgers-00025-00026)),
@@ -2318,7 +2603,7 @@ asked order). The screens are not wired yet.
 
 | metric (`metric_id`, oneof prefix) | fields — `field_stat_type` | its day | warehouse · seller · supplier |
 | --- | --- | --- | --- |
-| **Restock** `metrics/inventory/restock`, `restock_` | `accepted_count` QTY · `accepted_value` CURRENCY (*optional*) · `broken_count` QTY · `missing_count` QTY | the accept's Jakarta day | the receiving warehouse · the restocking team · the line's supplier |
+| **Restock** `metrics/inventory/restock`, `restock_` | `ordered_count` QTY · `ordered_value` CURRENCY (*opt.*) · `lost_count` QTY · `lost_value` CURRENCY (*opt.*) · `accepted_count` QTY · `accepted_value` CURRENCY (*optional*) · `broken_count` QTY · `missing_count` QTY · `cod_amount` CURRENCY (since #85, 2026-11-19 — [below](#restock-before-the-accept--ordered-lost-on-the-way-and-the-couriers-cod-built-2026-11-19-backlog-85)) | ordered: the create day, each edit's difference on its day, a cancel taking it back on its; lost: the lost day, taken back the day a lost box is signed for; the accepted four and the COD: the accept's Jakarta day | the warehouse the restock goes to (it received, for the accepted four) · the restocking team · the line's supplier |
 | **Transfer** `metrics/inventory/transfer`, `transfer_` | `sent_count` QTY · `sent_value` CURRENCY (*opt.*) · `received_count` QTY · `received_value` CURRENCY (*opt.*) · `in_transit_count` **QTY_POSITION** · `in_transit_value` POSITION (*opt.*) | sent: the create day, under the SENDER (a cancel takes it back on the cancel day); received (good units): the accept day, under the RECEIVER; in transit: every day from the create to the day before the accept or cancel, under the RECEIVER | as said · the batch's owner · the batch's |
 | **Returned stock** `metrics/inventory/return`, `return_` | `back_count` QTY · `back_value` CURRENCY (*opt.*) · `broken_count` QTY · `missing_count` QTY | the return accept's Jakarta day | the return warehouse · the ordering team (a borrowed line under its own mapped product) · the layer's batch's |
 | **Ready stock** `metrics/inventory/ready`, `ready_` | `on_hand_count` **QTY_POSITION** · `on_hand_value` POSITION | the end of each Jakarta day | where it sits · the batch's owner · the batch's |
@@ -2328,11 +2613,11 @@ asked order). The screens are not wired yet.
 | groups / filters | Lost stock's: summary, daily–yearly, product, supplier, team (the owning seller), warehouse / date range (required, ≤ 366 days), team, warehouse, product, supplier — no shop, no user |
 | answers | MetricData's oneof `<prefix>_by_id` (map uint64 → the metric), `<prefix>_by_day` (map of a period's FIRST Jakarta day `YYYY-MM-DD`), `<prefix>_summary` — every asked key, all zero when nothing. `as_of_unix` = the read's time (every report is written in its change's own transaction) |
 | reader | Lost stock's: `warehouse_id = T OR team_id = T` of the request's `team_id` — the warehouse where it happened and the seller owning the goods; root every team's; any other team nothing. Roles: root, administrator, selling owner / admin / CS, warehouse owner / admin / staff |
-| a warehouse caller | a WAREHOUSE role (`isWarehouseRole` of the caller's role) gets Restock's, Transfer's and Returned stock's value fields **unset** (optional — absent, not 0) and cannot sort by one (InvalidArgument); Ready stock's value it reads ([a-warehouse-sees-ready-value-but-a-shelf-only-units](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-ready-value-but-a-shelf-only-units)) |
+| a warehouse caller | a WAREHOUSE role (`isWarehouseRole` of the caller's role) gets Restock's (ordered, lost and accepted), Transfer's and Returned stock's value fields **unset** (optional — absent, not 0) and cannot sort by one (InvalidArgument); Restock's courier COD it reads ([the-warehouse-sees-the-cod-it-paid](../../technical/frontend/restock_decision.md#the-warehouse-sees-the-cod-it-paid)), and Ready stock's value ([a-warehouse-sees-ready-value-but-a-shelf-only-units](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-ready-value-but-a-shelf-only-units)) |
 | movements | the window's sum (headline = the sum of its rows) |
 | **positions** (Ready's two fields, in transit) | read at an EDGE, never summed over time: the headline and an id row at the window's last day; a time row at its period's last day — both cut by the window's end and by today; keys add up. Ready is read **backwards from today**: Σ batches now (key) − Σ changes after the edge (key) — a window ending today reads the batches alone. In transit is read live from `warehouse_transfers` × the out-leg's `batch_logs` (⚠ a box set lost stays in transit until it turns up and is accepted) |
 | search | MetricSearch ranks every key of the scope with any figure, in Go, the key DESC breaking ties, `has_next` past the page; key 0 (a batch naming no supplier) counts everywhere but is never a Supplier row. A position's time search ranks every period of the window up to today |
-| source | `inventory_stock_daily_changes` (00042: day × warehouse × owner × product × supplier × `change_type`, the signed units and value of every `batch_logs` row) — Restock = `restock` + `restock_correction`, Transfer = `transfer_out` negated / `transfer_in` + `transfer_correction` (a received-count correction on its own day, signed), Returned stock = `return`, Ready = all; `inventory_door_daily_reports` (00042: a restock's or a return's broken / missing). Both folded by `inventory_ledgers.StockTransaction` ([database-schema.md](../../database-schema.md#the-four-inventory-metrics-reports-00042)) |
+| source | `inventory_stock_daily_changes` (00042: day × warehouse × owner × product × supplier × `change_type`, the signed units and value of every `batch_logs` row) — Restock = `restock` + `restock_correction`, Transfer = `transfer_out` negated / `transfer_in` + `transfer_correction` (a received-count correction on its own day, signed), Returned stock = `return`, Ready = all; `inventory_door_daily_reports` (00042: a restock's or a return's broken / missing; 00056: a restock's ordered, lost and COD). Both folded by `inventory_ledgers.StockTransaction` ([database-schema.md](../../database-schema.md#the-four-inventory-metrics-reports-00042)) |
 
 ```mermaid
 sequenceDiagram
@@ -2362,6 +2647,54 @@ statements, committed median +0.5 ms at one line, +0.9 ms at twenty
 ([OrderTransactionCreate.md](../../../audits/services/inventory_service/performances/OrderTransactionCreate.md#after-the-ready-fold-2026-11-12)).
 
 ---
+
+
+### Restock before the accept — ordered, lost on the way and the courier's COD (built 2026-11-19, backlog #85)
+
+[the-restock-before-the-accept-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-restock-before-the-accept-prototype-is-accepted),
+[a-cancelled-restock-takes-its-ordered-back-on-its-day](../../business/analytic/rpc_provide_decision.md#a-cancelled-restock-takes-its-ordered-back-on-its-day),
+[a-lost-box-that-turns-up-takes-its-lost-back-on-its-day](../../business/analytic/rpc_provide_decision.md#a-lost-box-that-turns-up-takes-its-lost-back-on-its-day) —
+`inventory_v1/restock_metric_fold.go`, `inventory_ledgers.NoteRestockFacts`, migration `00056`. Every restock write now
+runs in `StockTransaction` and adds its facts to the restock's door rows, keyed like the accept's (the restock's
+warehouse and team, the line's product and supplier), on the transaction's Jakarta day — its `TxNow` also stamps the
+write's own time (`created_at`, the edit's trail row, `cancelled_at`, `lost_at`, `arrived_at`), so a step and its figure
+share one day:
+
+| write | adds to Restock |
+| --- | --- |
+| `RestockRequestCreate` | + ordered, every line |
+| `RestockRequestUpdate` (ongoing or arrived) | − ordered as stored, + ordered as written — read under the restock's row lock; they net per key: an unchanged line adds nothing, changed shipping moves every line's share, a warehouse change leaves the old warehouse and reaches the new one that day |
+| `RestockRequestCancel` | − ordered, every line |
+| `RestockRequestMarkLost` | + lost on the way, every line as ordered |
+| `RestockRequestArrive` from **lost** | − lost on the way (an ordinary sign adds nothing) |
+| `RestockRequestAccept` | + courier COD, Terima's final figure, beside the door's broken / missing |
+
+A line's value is its share of the restock's total — `total + shipment_cost × count / Σ count`, the landed price's spread
+over the units ORDERED; the COD spreads the same way — so a product's or a supplier's row adds up to the headline
+(`TestRestockBeforeAccept_TheHeadlineIsTheSumOfItsRows`). The accepted four read as before. Counted from the build — no
+history replayed (as `00042`'s door rows and Lost stock); a restock raised before it shows only its later steps.
+
+```mermaid
+sequenceDiagram
+  participant s as Selling team or warehouse
+  participant inv as inventory_service
+  participant db as inventory DB
+  s->>inv: create, edit, cancel, mark lost, sign, accept
+  inv->>db: StockTransaction - lock the restock row FOR UPDATE, write it as before
+  inv->>inv: note the facts - ordered, an edit's old minus new plus, lost, the COD
+  inv->>db: same tx, last - upsert the restock's door rows, keys sorted, a key netting to nothing skipped
+  s->>inv: MetricData or MetricSearch, Restock
+  inv->>db: the accept's change rows UNION the door rows - one statement
+```
+
+Pinned by `restock_metric_before_accept_test.go` (the accepted prototype's seven worked restocks R1–R7 through the real
+writes, every October day as the owner accepted it; the cancel's and the turned-up box's take-backs; the warehouse
+change; a warehouse's DATA carrying no value in any group and refusing a value sort, the COD read; another seller and
+warehouse nothing; the headline the sum of its rows in five groups) and `restock_metric_race_test.go` (an edit racing the
+accept, two edits at once — the report's ordered always the lines as they stand). Lock order:
+[lock-order.md](../../../audits/services/inventory_service/concurrency/lock-order.md#restock-before-the-accept-on-the-door-report-2026-11-19).
+Performance: every Restock read still ONE statement, before → after within noise; the door report's growth measured —
+nothing added ([MetricData.md](../../../audits/services/inventory_service/performances/MetricData.md#restock-before-the-accept--85-2026-11-19)).
 
 ## The warehouse's product picker — `WarehouseProductSearch`
 

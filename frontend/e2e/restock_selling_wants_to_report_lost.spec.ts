@@ -28,12 +28,14 @@ import { SUFFIX, login, api, ongoingOf, inboundRow } from "./restock_helpers";
 // - `operational account balance unchanged` — nothing is posted, so nothing arrives to wait for: the balance is read again
 //   and again for ten seconds after the mark and never moves, and the account's history holds no new line for the restock.
 //
-// `lost recorded in analytic metric` is 🚧 unimplemented — no analytic metric records a restock given up as lost (Restock
-// counts what an accept puts on the racks: accepted, broken, missing). Its check is its own test, marked `test.fail` with
-// the status (guide.md): its own test, so the expected failure never hides a broken then of the others. It marks its own
-// restock lost as selling:owner and asks Restock by product, filtered to the product, for ANY figure reading its 10 units
-// — field-agnostic, since how a lost restock will be shown is not built. The day it turns red, the then is built: ask the
-// owner, then run it as every selling role and point it at the field that was built.
+// `lost recorded in analytic metric` — built by #85 (the-restock-before-the-accept-prototype-is-accepted: Units / Value
+// lost on the way count on the LOST day). It is checked in every role's test, on the restock that role marked lost, as
+// that role: Analytic › Inventory › Restock by product, this week, filtered to the product: `lost_count` = the 10 units,
+// `lost_value` = their Rp 100.000 (the restock's whole total, no shipping), and `ordered_count` keeps its 10 — a lost box
+// is not a cancel, so nothing takes the ordered back. Then, as a regression of
+// a-lost-box-that-turns-up-takes-its-lost-back-on-its-day, its own test, on its own restock marked lost by selling:owner:
+// the same box turns up, its warehouse signs for it as arrived (a-late-lost-box-is-signed-for-as-arrived), and the week's
+// lost nets back to 0 while the ordered stays 10.
 test.describe("selling:all wants to report a lost restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -43,7 +45,7 @@ test.describe("selling:all wants to report a lost restock", () => {
     { given: "selling:admin", role: "ROLE_SELLING_ADMIN", key: "adm" },
     { given: "selling:cs", role: "ROLE_SELLING_CS", key: "cs" },
   ] as const;
-  // The 🚧 check's own restock — raised for, and marked lost by, selling:owner.
+  // The regression test's own restock — raised for, and marked lost by, selling:owner.
   const METRIC = "met";
   const COND = "status: ongoing · reason given · 1 product · 1 warehouse · operational account";
 
@@ -63,7 +65,7 @@ test.describe("selling:all wants to report a lost restock", () => {
     team: "",
     supplier: "",
     couriers: {} as Record<string, string>,
-    // Per role (and the 🚧 check's own): its warehouse, that warehouse's staff user, the paying account, the product and
+    // Per role (and the analytic check's own): its warehouse, that warehouse's staff user, the paying account, the product and
     // the restock.
     warehouses: {} as Record<string, string>,
     warehouseUsers: {} as Record<string, string>,
@@ -205,6 +207,19 @@ test.describe("selling:all wants to report a lost restock", () => {
     await expect(page.getByTestId("confirm-action")).toHaveCount(0);
   }
 
+  // Restock by product, this week, filtered to the product, as `page`'s user: its lost units and value, and its ordered,
+  // re-read until they land.
+  async function restockReads(page: Page, product: string, lost: number) {
+    await expect
+      .soft(async () => {
+        await page.goto(`/analytic?g=product&m=metrics/inventory/restock&r=7d&product=${product}`);
+        await expect(page.getByTestId(`analytic-cell-${product}-lost_count`)).toHaveText(String(lost), { timeout: 3_000 });
+        await expect(page.getByTestId(`analytic-cell-${product}-lost_value`)).toHaveText(rupiah(lost === 0 ? 0 : TOTAL));
+        await expect(page.getByTestId(`analytic-cell-${product}-ordered_count`)).toHaveText(String(UNITS));
+      })
+      .toPass({ timeout: 30_000 });
+  }
+
   for (const r of ROLES) {
     test(`${r.given} mark lost restock (${COND})`, async ({ page }) => {
       const id = ground.restocks[r.key];
@@ -261,6 +276,10 @@ test.describe("selling:all wants to report a lost restock", () => {
         }
         await expect.soft(restockLines(page, id)).toHaveCount(linesBefore);
       });
+      // Lost on the lost day, read by this role: the 10 units and their Rp 100.000, the ordered still 10.
+      await test.step("then: lost recorded in analytic metric", async () => {
+        await restockReads(page, ground.products[r.key], UNITS);
+      });
 
       // THEN — as the warehouse: its inbound list and the restock's page, and its queue's totals.
       await signIn(page, warehouseUser, warehouse);
@@ -278,27 +297,25 @@ test.describe("selling:all wants to report a lost restock", () => {
     });
   }
 
-  // 🚧 — its own test, so the expected failure hides none of the thens above (see the head of this file).
-  test(`selling:owner mark lost restock (${COND}): lost recorded in analytic metric`, async ({ page }) => {
-    test.fail(
-      true,
-      "🚧 unimplemented (docs/acceptances/inventory/restock.md) — no analytic metric records a restock given up as lost",
-    );
-
+  // Its own test, on its own restock (see the head of this file): lost on the lost day, taken back when the box turns up.
+  test(`selling:owner mark lost restock (${COND}): a lost box signed for as arrived takes its lost back`, async ({ page }) => {
     const id = ground.restocks[METRIC];
     const product = ground.products[METRIC];
     await signIn(page, username("own"), ground.team);
     await markLost(page, id, reason(METRIC));
     await expect(page.getByTestId("restock-detail-status").getByTestId(`restock-status-${LOST}`)).toBeVisible();
 
-    // Restock by product, this week, filtered to the product: any figure reading its 10 units. Re-read until it lands.
-    await test.step("then: lost recorded in analytic metric", async () => {
-      await expect(async () => {
-        await page.goto(`/analytic?g=product&m=metrics/inventory/restock&r=7d&product=${product}`);
-        await expect(
-          page.locator(`[data-testid^="analytic-cell-${product}-"]`).filter({ hasText: new RegExp(`^${UNITS}$`) }),
-        ).not.toHaveCount(0, { timeout: 2_000 });
-      }).toPass({ timeout: 20_000 });
+    await test.step("regression: lost recorded on the lost day", async () => {
+      await restockReads(page, product, UNITS);
+    });
+
+    // Regression (a-lost-box-that-turns-up-takes-its-lost-back-on-its-day): the box turns up and its warehouse signs for
+    // it as arrived — the week's lost nets back to 0, the ordered keeps its 10.
+    await signIn(page, ground.warehouseUsers[METRIC], ground.warehouses[METRIC]);
+    await api(page, "inventory.v1.RestockRequestService/RestockRequestArrive", { teamId: ground.warehouses[METRIC], requestId: id });
+    await signIn(page, username("own"), ground.team);
+    await test.step("regression: a lost box signed for as arrived takes its lost back", async () => {
+      await restockReads(page, product, 0);
     });
   });
 });

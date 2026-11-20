@@ -401,6 +401,8 @@ erDiagram
         bigint      transaction_id      "the inventory transaction its stock take wrote (00036) - no FK, another service's id. NULL = none recorded, no backfill"
         bigint      return_transaction_id "the inventory return transaction its accepted return was put back on the shelf in (00049) - no FK, another service's id. NULL = not accepted back, no backfill. Partial index orders_return_transaction_idx on the non-NULLs (00050)"
         timestamptz settlement_opened_at "when its settlement account opened (00040) - stamped once by settlement in-process at the first initial_total. NULL = NOT YET. Partial index orders_settlement_not_opened_idx on the NULLs"
+        timestamptz label_printed_at   "when the print page's Print last put its label in a PDF (00054) - OrderLabels record_print, included orders only. NULL = never printed there; no backfill"
+        timestamptz receipt_changed_at "when Edit Resi last changed its number or file (00054). NULL = never. After label_printed_at, on pending/processed/picked = Cetak ulang label (partial index orders_reprint_label_idx)"
         bigint      created_by_user_id  "who created it — from the TOKEN at placement, never the request (00013). settlement copies it onto the account; 0 = not recorded"
         boolean     is_override         "the creator was Root or the Administrator, not a member - set at placement, never updated (00033)"
         text        receipt_document_id "the shipping receipt — an opaque document_service id, no FK; '' = none"
@@ -539,7 +541,7 @@ erDiagram
     order_daily_reports {
         bigserial        id           PK
         date             day          "the move s Jakarta day (00030)"
-        text             metric       "created, cancelled, return_created, return_arrived, lost_created, warehouse_fee (00038), moves_confirmed, moves_back_to_pending, moves_picked, moves_handed_over, moves_shipped, moves_problem, moves_completed (00052)"
+        text             metric       "created, cancelled, return_created, return_arrived, lost_created, warehouse_fee (00038), moves_confirmed, moves_back_to_pending, moves_picked, moves_handed_over, moves_shipped, moves_problem, moves_completed (00052), moves_disputes_resolved (00053)"
         bigint           team_id      "the seller - UNIQUE with day, metric, shop, warehouse, user"
         bigint           shop_id
         bigint           warehouse_id
@@ -692,6 +694,19 @@ erDiagram
   order with an `initial_total` in settlement's `settlement_logs` gets that row's earliest `created_at`, so NULL means
   missing on a dev database too — a one-off READ of settlement's table, guarded by `to_regclass` so a fresh database
   (selling migrated before settlement) applies it as a no-op. The Down drops the index and the column.
+- **`orders.label_printed_at`**, **`orders.receipt_changed_at`** (`00054`) — *Cetak ulang label*
+  ([a-changed-label-asks-the-warehouse-to-reprint](business/inventory/order_decision.md#a-changed-label-asks-the-warehouse-to-reprint)).
+  `TIMESTAMPTZ NULL` both, both the database's clock. `label_printed_at` is the print page's Print (`OrderLabels` with
+  `record_print`) on each order its PDF included — the moment the label files were read, never moved back;
+  `receipt_changed_at` is `OrderReceiptUpdate` changing the number or the file. An order is marked while
+  `label_printed_at IS NOT NULL AND receipt_changed_at > label_printed_at AND status IN ('pending', 'processed',
+  'picked')` — on the wire `Order.reprint_label`, and the handover refuses it
+  ([a-parcel-marked-for-reprint-is-not-handed-over](business/inventory/order_decision.md#a-parcel-marked-for-reprint-is-not-handed-over)).
+  **No backfill**: nothing printed before `00054` carries a record, so nothing is marked until a print is recorded.
+  **`orders_reprint_label_idx`** — `(id) WHERE` that condition, partial: it holds only the marked orders, newest first, so
+  OrderList's `reprint_label` filter reads 3.7 ms instead of 27.3 ms over 50 000 orders with 38 marked (OrderStat 10.7 →
+  1.5 ms; [OrderList](../audits/services/selling_service/performances/OrderList.md) History). The Down drops the index
+  and both columns.
 - **`orders_return_team_idx`** (`00034`) — `(team_id) WHERE status IN ('return', 'return_completed')`, partial: the index of
   the third reader every order read now has, the selling team's configured return warehouse, which reads that team's
   returns only (`orderReaders`, [a-return-may-land-in-another-warehouse](business/order/context_decision.md#a-return-may-land-in-another-warehouse)).
@@ -945,13 +960,16 @@ erDiagram
   - **A move counts under the shop the order was in AT the move** (00051): the from-shop of the first
     `order_shop_changes` row after the move's timeline row, else `orders.shop_id` — so a fix of the order's shop never
     re-files a past day, in the fold or the re-fold.
-  - **`moves_*` rows are Order status moves' seven COUNTS** (00052 widens the `metric` CHECK;
+  - **`moves_*` rows are Order status moves' eight COUNTS** (00052 widens the `metric` CHECK, 00053 adds
+    `moves_disputes_resolved`;
     [the-order-status-moves-prototype-is-accepted](business/analytic/rpc_provide_decision.md#the-order-status-moves-prototype-is-accepted)):
     one value per status an order moved INTO — `moves_confirmed` (processed), `moves_back_to_pending` (pending, after the
     placement's own row), `moves_picked`, `moves_handed_over` (shipping), `moves_shipped`, `moves_problem`,
-    `moves_completed` (from shipped or a resolved problem) — folded from `OrderStatusChanged` on the move's own day under
+    `moves_completed` (from shipped or a resolved problem), and `moves_disputes_resolved` (00053 — a resolve, problem →
+    completed, counted BESIDE its `moves_completed`, which keeps every resolve; the previous status row on the order's
+    timeline tells a resolve) — folded from `OrderStatusChanged` on the move's own day under
     the order's creator; `order_count` the moves, `total` and `mp_total` always 0 (counts only). Same key and indexes as
-    the five; not backfilled — a move made before 00052 has no row
+    the five; not backfilled — a move made before 00052 has no row, a resolve before 00053 its `moves_completed` only
     ([the-order-metrics-count-from-the-fold-onward](business/order/order_statistic_metric_decision.md#the-order-metrics-count-from-the-fold-onward)).
 - **`order_shop_changes`** (00051) — one row per FIX OF AN ORDER'S SHOP
   ([an-orders-shop-is-fixed-and-counted-on-the-day](business/order/context_decision.md#an-orders-shop-is-fixed-and-counted-on-the-day),
@@ -2000,6 +2018,169 @@ erDiagram
 - **Delete** locks the tag `FOR UPDATE` and removes it; the cascade takes it off every restock. A put-on holds the tag
   `FOR KEY SHARE` first, so a delete waits for it and takes that row off too — never a row left on a deleted tag.
 - No trail rows: putting a tag on or taking it off is not an edit of the restock (its row says who and when).
+
+### Restock before the accept, on the door report (`00056`)
+
+Built 2026-11-19, backlog #85 —
+[the-restock-before-the-accept-prototype-is-accepted](business/analytic/rpc_provide_decision.md#the-restock-before-the-accept-prototype-is-accepted),
+[a-cancelled-restock-takes-its-ordered-back-on-its-day](business/analytic/rpc_provide_decision.md#a-cancelled-restock-takes-its-ordered-back-on-its-day),
+[a-lost-box-that-turns-up-takes-its-lost-back-on-its-day](business/analytic/rpc_provide_decision.md#a-lost-box-that-turns-up-takes-its-lost-back-on-its-day).
+Analytic's Restock reads a restock's facts that are not stock — what is ORDERED, what is LOST ON THE WAY, the courier's
+COD — from the door report `00042` already keeps for the accept, keyed the same (day × warehouse × owning team × product
+× supplier × `source`): no second report, no second fold. `00056` adds five columns, all 0 on the rows already there.
+
+```mermaid
+erDiagram
+    inventory_door_daily_reports {
+        date        day           PK "the restock write's Jakarta day - its stock transaction's clock"
+        bigint      warehouse_id  PK "where the restock goes - an edit moving it writes the old and the new"
+        bigint      team_id       PK "the restocking team"
+        bigint      product_id    PK
+        bigint      supplier_id   PK "the restock line's, 0 when none"
+        text        source        PK "restock return - the five columns below are 0 on a return row - CHECK"
+        bigint      broken_count  "the accept's door"
+        bigint      missing_count "the accept's door, signed since 00043"
+        bigint      ordered_count "signed - create plus, each edit its difference, a cancel minus"
+        double      ordered_value "signed - the lines' share of the restock's total, goods and shipping"
+        bigint      lost_count    "signed - mark lost plus, a lost box signed for as arrived minus"
+        double      lost_value    "signed - as ordered"
+        double      cod_amount    "the accept's courier charge, Terima's final figure - CHECK 0 or more"
+        timestamptz last_updated
+    }
+    restocks ||--o{ inventory_door_daily_reports : "create, edit, cancel, lost, sign, accept add to"
+```
+
+- **Who writes**: `RestockRequestCreate` (+ ordered), `RestockRequestUpdate` (− ordered as stored, + as written — they
+  net per key, so an unchanged line adds nothing and a warehouse change moves the line from the old warehouse's row to
+  the new one's, both on the edit day), `RestockRequestCancel` (− ordered), `RestockRequestMarkLost` (+ lost),
+  `RestockRequestArrive` from lost (− lost), `RestockRequestAccept` (+ COD, beside broken / missing). Each now runs in
+  `inventory_ledgers.StockTransaction` and notes its facts (`NoteRestockFacts`), written as the transaction's last
+  statement — one upsert, keys sorted; a key that nets to nothing is not written.
+- **A line's value** is its share of the restock's total: its goods plus the shipping over the units ORDERED
+  (`total + shipment_cost × count / Σ count`), the landed price's spread; the COD spreads the same way, so the lines of
+  one restock add up to its total and every Restock row's sum is the headline. Never the courier's charge in the total
+  (`the-couriers-charge-stays-out-of-total`). Exact doubles.
+- **No history replayed**: like the door rows of `00042` and Lost stock (`lost-stock-is-not-backfilled`), the five count
+  from the build — a restock raised before it and edited, cancelled, lost or accepted after shows only that later step.
+- **No index added**: Restock reads its door rows through the same `(warehouse_id, day)` / `(team_id, day)` indexes
+  (perf: [MetricData.md](../audits/services/inventory_service/performances/MetricData.md)).
+
+### Custom shipments (`00057`, `00058`, `00059`)
+
+Built 2026-11-19, backlog #88 P1 (the tables), P2 (the lists' indexes, `00058`) and P6 (the goods-missing note, `00059`) —
+[a-custom-shipment-is-a-parcel-that-is-not-an-order](business/custom_shipments/context_decision.md#a-custom-shipment-is-a-parcel-that-is-not-an-order),
+[the-selling-team-asks-the-warehouse-ships](business/custom_shipments/context_decision.md#the-selling-team-asks-the-warehouse-ships),
+[the-courier-is-paid-by-the-team-or-by-the-warehouse](business/custom_shipments/context_decision.md#the-courier-is-paid-by-the-team-or-by-the-warehouse),
+[the-custom-shipments-prototype-is-accepted](business/custom_shipments/context_decision.md#the-custom-shipments-prototype-is-accepted).
+A parcel the warehouse sends that is not a marketplace order: a **sample** of the owning team's units, or a **reship** of
+a received restock's broken units back to its supplier. Three new tables; no existing table altered.
+
+```mermaid
+erDiagram
+    custom_shipments ||--o{ custom_shipment_items : "custom_shipment_id"
+    custom_shipments ||--o{ custom_shipment_logs : "custom_shipment_id"
+    custom_shipment_logs ||--o{ custom_shipment_missing_lines : "a goods-missing row's lines - custom_shipment_log_id"
+    custom_shipment_items ||--o{ custom_shipment_missing_lines : "custom_shipment_item_id"
+    inventory_transactions |o--o| custom_shipments : "a sample's take - transaction_id"
+    restock_items |o--o{ custom_shipment_items : "a reship's line - restock_item_id"
+
+    custom_shipments {
+        bigserial   id                     PK
+        bigint      team_id                "the owning selling team - custom_shipments_team_idx (team_id, id DESC), custom_shipments_team_status_idx (team_id, status, id DESC)"
+        bigint      warehouse_id           "ships from, a reship's is its restock's - custom_shipments_warehouse_idx (warehouse_id, id DESC), custom_shipments_warehouse_status_idx (warehouse_id, status, id DESC)"
+        text        kind                   "sample / restock_reship - CHECK"
+        text        status                 "requested / picked / handed_over / cancelled - CHECK"
+        bigint      restock_id             "a reship's restock, 0 on a sample - CHECK by kind"
+        bigint      supplier_id            "a reship's lines' supplier, 0 = none, 0 on a sample"
+        text        recipient_name         "free text, required"
+        text        recipient_phone
+        text        recipient_address
+        bigint      shipment_channel_id    "the courier - shipment_service's, no FK"
+        text        payer                  "team / warehouse - CHECK"
+        bigint      finance_account_id     "team payer's account, required - 0 for warehouse (CHECK)"
+        double      shipping_cost          "team - its cost, warehouse - typed at the handover"
+        bigint      cost_revision          "bumped by each money-moving cost edit"
+        text        resi
+        text        note
+        bigint      transaction_id         "FK inventory_transactions - a sample's take, NULL on a reship"
+        double      total                  "a sample's taken value, 0 on a reship"
+        text        idempotency_key        "unique per team - custom_shipments_idempotency_key"
+        bigint      created_by_user_id
+        bigint      picked_by_user_id
+        timestamptz picked_at
+        bigint      handed_over_by_user_id
+        timestamptz handed_over_at
+        bigint      cancelled_by_user_id
+        timestamptz cancelled_at
+        timestamptz updated_at
+        timestamptz created_at
+    }
+    custom_shipment_items {
+        bigserial   id                 PK
+        bigint      custom_shipment_id "FK - unique with product_id"
+        bigint      product_id
+        text        product_code       "snapshot at create - custom_shipment_items_search_trgm_idx, GIN trigram on LOWER(product_code), LOWER(name)"
+        text        name               "snapshot at create"
+        bigint      quantity           "above 0"
+        double      total              "a sample line's taken value, 0 on a reship"
+        bigint      restock_item_id    "FK restock_items - a reship's line, partial index where set"
+        text        broken_note        "the line's Terima note, copied"
+        timestamptz created_at
+    }
+    custom_shipment_logs {
+        bigserial   id                 PK
+        bigint      custom_shipment_id "FK - custom_shipment_logs_shipment_idx (custom_shipment_id, id)"
+        text        from_status        "empty on the create's row - CHECK"
+        text        to_status          "CHECK - a cost edit has from = to"
+        text        kind               "status / cost_edit / goods_missing - 00059, CHECK custom_shipment_logs_kind_shape"
+        bigint      actor_user_id
+        boolean     is_override        "Root or the Administrator from outside"
+        text        description        "a goods-missing row - the warehouse's optional note"
+        timestamptz created_at
+    }
+    custom_shipment_missing_lines {
+        bigserial   id                      PK
+        bigint      custom_shipment_log_id  "FK custom_shipment_logs - unique with item and rack"
+        bigint      custom_shipment_item_id "FK custom_shipment_items - custom_shipment_missing_lines_item_idx"
+        bigint      rack_id                 "the take's rack, 0 - a reship's line, never on a rack"
+        bigint      quantity                "above 0 - at most what the take drew there, a reship at most the line"
+        timestamptz created_at
+    }
+```
+
+- **A sample's stock is NOT here**: its units leave in ITS `sample` transaction at create (`transaction_id`) — the
+  ledgers hold the batches and racks it drew, `StockPickLocations` reads the racks back. `total` and each line's `total`
+  are what the take drew (a-sample-is-a-stock-out-at-batch-value).
+- **A reship moves no ledger**: broken units never entered a batch or a rack. A line is counted against its restock
+  line's broken row; `custom_shipment_items_restock_item_idx (restock_item_id) WHERE restock_item_id IS NOT NULL`
+  serves the create's *units live reships carry* sum, taken under the restock row's lock.
+- **CHECKs carry the shape**: a sample names no restock and no supplier; a reship names its restock and has no take and
+  no value (`custom_shipments_kind_shape`); a team payer names its account, a warehouse payer none
+  (`custom_shipments_payer_account`).
+- **One key per team** (`custom_shipments_idempotency_key`, unique `(team_id, idempotency_key)`): a double tap cannot take
+  a sample's stock twice — the create refuses the used key (AlreadyExists) before any take.
+- **List indexes**: each side's newest first, the transfer's shape (`(team_id, id DESC)`, `(warehouse_id, id DESC)`).
+  `00058` (P2, a-pure-index-is-added-without-asking, measured in `custom_shipment_list_perf_test.go` at 70 000 parcels)
+  adds the status to both keys — `(team_id, status, id DESC)`, `(warehouse_id, status, id DESC)` — so a status tab's
+  count reads only that tab (the warehouse's queue 7.2 → 1.8 ms; without them the count seq-scanned the table), and a
+  pg_trgm GIN index over the lines' `LOWER(product_code)`, `LOWER(name)` for the list's free text (3+ characters
+  144–241 → 19–40 ms; a shorter term has no trigram and keeps the old plan —
+  [audit](../audits/services/inventory_service/performances/CustomShipmentList.md)). `CREATE EXTENSION IF NOT EXISTS
+  pg_trgm` — the database's extension, which selling `00048` may have made first; its Down keeps it.
+- **The goods-missing note (`00059`, P6 —
+  [missing-goods-leave-a-note-on-the-custom-shipment](business/custom_shipments/context_decision.md#missing-goods-leave-a-note-on-the-custom-shipment))**
+  is a trail row of its own kind and nothing else: the parcel stays `requested`, no stock, no status, no money. A cost
+  edit and a note are both from = to, so `custom_shipment_logs.kind` says which — back-filled from the shape (from = to →
+  `cost_edit`, every other row `status`), held by `custom_shipment_logs_kind_shape` (a step moves, a cost edit does not,
+  a note only `requested → requested`). Its lines are `custom_shipment_missing_lines`, one per parcel line and rack
+  (`custom_shipment_missing_lines_once`); codes and names are read from the line and the placement at read time.
+- **A cancelled reship's noted units are gone**
+  ([missing-reship-units-are-not-offered-again](business/custom_shipments/context_decision.md#missing-reship-units-are-not-offered-again)):
+  the create's cap and the reship choices add, per restock line, the most any one note on a CANCELLED reship named of
+  it — `custom_shipment_missing_lines_item_idx (custom_shipment_item_id)`, read under the restock row's lock. The list's
+  open note (the latest goods-missing row of a requested parcel) reads the trail's own key
+  `custom_shipment_logs_shipment_idx`; a partial index on `kind = 'goods_missing'` was measured and gave nothing
+  (543 vs 552 µs a queue page) — not added.
 
 ---
 

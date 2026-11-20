@@ -14,6 +14,7 @@ import {
   SimpleGrid,
   Span,
   Spacer,
+  Spinner,
   Stack,
   Text,
   Textarea,
@@ -21,6 +22,7 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 
+import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeamsByIds } from "../../features/teams/queries";
@@ -33,7 +35,8 @@ import type {
   ReshipSupplier,
 } from "../../features/customShipment/customShipments";
 import { CUSTOM_SHIPMENTS_PATH, customShipmentPath, reshipLeft } from "../../features/customShipment/customShipments";
-import { useCustomShipmentPrototype } from "../../features/customShipment/customShipmentPrototype";
+import { useCreateCustomShipment, useReshipOptions } from "../../features/customShipment/queries";
+import { wireKind, wirePayer } from "../../features/customShipment/adapt";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { OwnStockedProductPicker } from "../../components/products/OwnStockedProductPicker";
 import type { PickedProduct } from "../../components/products/ProductSelect";
@@ -57,7 +60,7 @@ interface SampleLine {
 const countOf = (raw: string) => (/^\d+$/.test(raw) ? BigInt(raw) : 0n);
 const EMPTY_RECIPIENT: CustomShipmentRecipient = { name: "", phone: "", address: "" };
 /** The supplier key of a reship line — its supplier's id, or "none" for a line that named none. */
-const supplierKey = (line: ReshipLine) => line.supplier?.id.toString() ?? "none";
+const supplierKey = (line: ReshipLine) => (line.supplierId > 0n ? line.supplierId.toString() : "none");
 
 // PAKET BARU — the selling team asks its warehouse to send a parcel that is not an order
 // (the-selling-team-asks-the-warehouse-ships). The form asks only what the TEAM decides — what goes, to whom, by which
@@ -79,13 +82,20 @@ const supplierKey = (line: ReshipLine) => line.supplier?.id.toString() ?? "none"
 //               until it is picked.
 //   Catatan     for the warehouse.
 // One ready line over the button (a-save-button-says-what-it-waits-for).
+//
+// It sends CustomShipmentCreate as the team: a sample names its warehouse and each product with its count; a reship its
+// restock and each broken line (restock line + product) with its count — the server copies the codes, names, broken notes
+// and the supplier from its own rows. *Gudang bayar* sends account 0 and cost 0; *Kami bayar* the account, the cost as
+// typed (empty = 0). One key per form (`idempotency_key`): a double tap cannot take a sample's stock twice.
 export function CustomShipmentFormPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { current } = useTeam();
-  const prototype = useCustomShipmentPrototype();
-  const teamId = current?.teamId;
+  const selling = current?.teamType === TeamType.SELLING;
+  const teamId = selling ? current?.teamId : undefined;
+  const create = useCreateCustomShipment();
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   const [kind, setKind] = useState<CustomShipmentKind>("SAMPLE");
   // SAMPLE
@@ -110,7 +120,8 @@ export function CustomShipmentFormPage() {
   });
   const availableOf = (id: bigint) => availability.data?.get(id.toString());
 
-  const options = prototype?.reshipOptions ?? [];
+  const reshipOptions = useReshipOptions({ teamId, enabled: kind === "RESTOCK_RESHIP" });
+  const options = useMemo(() => reshipOptions.data?.options ?? [], [reshipOptions.data]);
   const option = options.find((o) => o.restockId === restockId);
   const teams = useTeamsByIds({ ids: options.map((o) => o.warehouseId) });
   const warehouseName = (id: bigint) => teams.data?.[id.toString()]?.name || t("customShipment.teamRef", { id: id.toString() });
@@ -145,15 +156,7 @@ export function CustomShipmentFormPage() {
 
   const back = () => navigate(cameFrom(location) ?? CUSTOM_SHIPMENTS_PATH);
 
-  if (!prototype) {
-    return (
-      <Text color="fg.muted" data-testid="custom-shipment-unavailable">
-        {t("customShipment.unavailable")}
-      </Text>
-    );
-  }
-
-  if (teamId === undefined || prototype.side !== "selling") {
+  if (teamId === undefined) {
     return (
       <Text color="fg.muted" data-testid="custom-shipment-wrong-team">
         {t("customShipment.sellingOnly")}
@@ -244,25 +247,29 @@ export function CustomShipmentFormPage() {
   if (courierId === 0n) missing.push({ id: "courier", label: t("customShipment.form.missing.courier") });
   if (payer === "TEAM" && accountId === 0n) missing.push({ id: "account", label: t("customShipment.form.missing.account") });
 
-  function submit() {
-    if (teamId === undefined || !prototype) return;
+  async function submit() {
+    if (teamId === undefined) return;
 
-    const created = prototype.create({
-      teamId,
-      kind,
-      warehouseId: kind === "SAMPLE" ? warehouseId : (option?.warehouseId ?? 0n),
-      restockId: kind === "SAMPLE" ? 0n : restockId,
-      supplierId: kind === "SAMPLE" ? 0n : (chosenSupplier?.id ?? 0n),
-      lines: sending,
-      recipient: { name: recipient.name.trim(), phone: recipient.phone.trim(), address: recipient.address.trim() },
-      shipmentChannelId: courierId,
-      payer,
-      financeAccountId: payer === "TEAM" ? accountId : 0n,
-      shippingCost: payer === "TEAM" && cost !== "" ? Number(cost) : 0,
-      note: note.trim(),
-    });
-    toaster.create({ type: "success", title: t("customShipment.toast.created") });
-    navigate(customShipmentPath(created.id));
+    try {
+      const created = await create.mutateAsync({
+        teamId,
+        kind: wireKind(kind),
+        warehouseId: kind === "SAMPLE" ? warehouseId : (option?.warehouseId ?? 0n),
+        restockId: kind === "SAMPLE" ? 0n : restockId,
+        lines: sending.map((l) => ({ productId: l.productId, restockItemId: l.restockItemId, quantity: l.quantity })),
+        recipient: { name: recipient.name.trim(), phone: recipient.phone.trim(), address: recipient.address.trim() },
+        shipmentChannelId: courierId,
+        payer: wirePayer(payer),
+        financeAccountId: payer === "TEAM" ? accountId : 0n,
+        shippingCost: payer === "TEAM" && cost !== "" ? Number(cost) : 0,
+        note: note.trim(),
+        idempotencyKey,
+      });
+      toaster.create({ type: "success", title: t("customShipment.toast.created") });
+      if (created) navigate(customShipmentPath(created.id));
+    } catch (err) {
+      toaster.create({ type: "error", title: t("customShipment.toast.createFailed"), description: rpcError(err) });
+    }
   }
 
   const setField = (field: keyof CustomShipmentRecipient) => (value: string) => setRecipient((r) => ({ ...r, [field]: value }));
@@ -406,7 +413,13 @@ export function CustomShipmentFormPage() {
                   {t("customShipment.form.restock")}
                   <Field.RequiredIndicator />
                 </Field.Label>
-                {options.length === 0 ? (
+                {reshipOptions.isPending ? (
+                  <Spinner size="sm" colorPalette="brand" data-testid="custom-shipment-form-restock-loading" />
+                ) : reshipOptions.isError ? (
+                  <Text color="error.fg" data-testid="custom-shipment-form-restock-error">
+                    {rpcError(reshipOptions.error)}
+                  </Text>
+                ) : options.length === 0 ? (
                   <Text color="fg.muted" data-testid="custom-shipment-form-no-restock">
                     {t("customShipment.form.noRestock")}
                   </Text>
@@ -500,13 +513,29 @@ export function CustomShipmentFormPage() {
                             testId={`custom-shipment-form-broken-count-${line.productId}`}
                           />
                           <Span fontSize="xs" color={over ? "error.fg" : "fg.muted"} data-testid={`custom-shipment-form-broken-left-${line.productId}`}>
-                            {line.alreadySent > 0n
-                              ? t("customShipment.form.brokenLeftAfterSent", {
-                                  count: left.toString(),
-                                  broken: line.broken.toString(),
-                                  sent: line.alreadySent.toString(),
-                                })
-                              : t("customShipment.form.brokenLeft", { count: left.toString() })}
+                            {/* The sentence adds up: what is left, of the broken units, after those on a live reship and
+                                those a goods-missing note named on a cancelled one (the-reship-line-counts-the-units-not-found)
+                                — each part only when it holds a unit. */}
+                            {line.notFound > 0n
+                              ? line.alreadySent > 0n
+                                ? t("customShipment.form.brokenLeftAfterSentGone", {
+                                    count: left.toString(),
+                                    broken: line.broken.toString(),
+                                    sent: line.alreadySent.toString(),
+                                    gone: line.notFound.toString(),
+                                  })
+                                : t("customShipment.form.brokenLeftAfterGone", {
+                                    count: left.toString(),
+                                    broken: line.broken.toString(),
+                                    gone: line.notFound.toString(),
+                                  })
+                              : line.alreadySent > 0n
+                                ? t("customShipment.form.brokenLeftAfterSent", {
+                                    count: left.toString(),
+                                    broken: line.broken.toString(),
+                                    sent: line.alreadySent.toString(),
+                                  })
+                                : t("customShipment.form.brokenLeft", { count: left.toString() })}
                           </Span>
                         </Stack>
                       </Flex>
@@ -667,7 +696,13 @@ export function CustomShipmentFormPage() {
             <Spacer />
             <Stack gap="1" align={{ base: "stretch", sm: "end" }}>
               <ReadyLine missing={missing} readyLabel={t("customShipment.form.ready")} testId="custom-shipment-form" />
-              <Button colorPalette="brand" disabled={missing.length > 0} data-testid="custom-shipment-form-submit" onClick={submit}>
+              <Button
+                colorPalette="brand"
+                disabled={missing.length > 0}
+                loading={create.isPending}
+                data-testid="custom-shipment-form-submit"
+                onClick={submit}
+              >
                 <Icon as={Plus} boxSize="4" />
                 {t("customShipment.form.submit")}
               </Button>

@@ -232,6 +232,8 @@ flowchart LR
   W -.->|"today"| S["order status shipped"]
 ```
 
+🔄 *(2026-11-20)* The owner's later word: his acceptance checklist ([inventory/order.md](../../acceptances/inventory/order.md) given 67, 2026-11-17) has the parcel's tracking **shown on the order**. Showing it is agreed; where the tracking comes from is still open, so it stays deferred (backlog *Later*).
+
 ---
 
 ## the-channel-list-needs-no-login

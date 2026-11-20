@@ -21,6 +21,8 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [a-label-scan-reads-the-ref-or-the-receipt](#a-label-scan-reads-the-ref-or-the-receipt) | the label carries several barcodes; a scan of it finds the order by `order_external_ref_id` OR by `receipt`, whichever was scanned | chat, 2026-10-16 — the owner's note |
 | [two-orders-on-one-label-are-shown-not-chosen](#two-orders-on-one-label-are-shown-not-chosen) | a label code matching several orders still in play lists them all; the staff ask the selling team or the warehouse admin which one is processed and which cancelled | chat, 2026-10-16 — answers Q12, against my *the picker chooses* |
 | [the-reserve-is-read-once-for-every-line](#the-reserve-is-read-once-for-every-line) | the reserve check reads every borrowed line's owner stock in ONE grouped query, served by its own index on `batches (team_id, product_id)` — the take and the quote alike | chat, 2026-10-26 — answers the StockTakeQuote audit's open question, as recommended |
+| [a-changed-label-asks-the-warehouse-to-reprint](#a-changed-label-asks-the-warehouse-to-reprint) | a label changed after its print shows Cetak ulang label to the warehouse | owner, as recommended, 2026-11-20 |
+| [a-parcel-marked-for-reprint-is-not-handed-over](#a-parcel-marked-for-reprint-is-not-handed-over) | a parcel still marked Cetak ulang label is refused at the handover | owner, as recommended, 2026-11-20 |
 
 ---
 
@@ -588,3 +590,27 @@ flowchart LR
 | unchanged | the comparison (`stock ≥ reserve`, the quantity wanted not counted), the refusal (*Product Not Allowed*, every line named), the same-second overlap |
 | measured | 20 reserved borrowed lines: **21 → 2 queries, 10.64 → 1.57 ms**; the reserve read's plan touches 4 buffers, was 163 per line |
 | ✅ built *(2026-10-26)* | `notAllowedLines` gathers the pairs and calls `ownerTotalStocks` once; `TestOrderTransactionCreate_TheReserveIsReadOnceForEveryLine` pins one reserved line and three costing the same statements, and a product stocked nowhere being refused |
+
+---
+
+## a-changed-label-asks-the-warehouse-to-reprint
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended — to: *"a seller changes an order's resi after the warehouse has already printed its label; today nothing tells the warehouse to print it again — only a note in the order's history. **A** a *Cetak ulang label* badge on that order's row in the warehouse list and on the pick page, until the label is printed again (a small Storybook design first for your OK); **B** keep only the history note, as today; **C** send the warehouse a notification (needs designing first)."* His acceptance checklist asks the same: [inventory/order.md](../../acceptances/inventory/order.md) given 26, *warehouse told to reprint label*.
+
+**The verdict.** The system records when an order's label is printed. A resi or label change made **after** that print ([the-seller-edits-the-resi-until-handover](../../technical/frontend/order_list_decision.md#the-seller-edits-the-resi-until-handover)) puts a **Cetak ulang label** badge on the order's row in the warehouse's order list and on its pick page; the badge clears when the label is printed again. A change before any print shows nothing — the first print takes the new label anyway.
+
+⚠ Not built — a Storybook prototype first, for the owner's design accept (backlog #98).
+
+✅ **Built 2026-11-20 (backlog #98).** Selling `00054` adds `orders.label_printed_at` and `orders.receipt_changed_at` (no backfill — nothing printed before it is marked) and the partial index `orders_reprint_label_idx`. The print page's Print asks `OrderLabels` with `record_print`, which stamps `label_printed_at` on every order the PDF **included** — at the moment the label files were read, under `FOR SHARE`, so a print that read the old file never clears a newer change; the order page's viewer asks without it. `OrderReceiptUpdate` stamps `receipt_changed_at` (`clock_timestamp()`) when the number or the file actually changes. The rule — printed, changed after, and `pending`/`processed`/`picked` — is `needsReprint` / `reprintLabelCondition` ([reprint_label.go](../../../backend/services/selling_service/selling_v1/reprint_label.go)), carried as `reprint_label` on `Order`, `OrderPrint` and `OrderPick`, and as the list's and the stat's `reprint_label` filter. Tests `TestReprintLabel_*` (11), races `TestRace_ReprintLabel_*` / `TestInterleave_ReprintLabel_*` (`raceaudit`), perf `TestPerf_OrderList_ReprintLabel` (`perfaudit`). The screens: [the-reprint-label-prototype-is-accepted](../../technical/frontend/warehouse_order_list_decision.md#the-reprint-label-prototype-is-accepted).
+
+---
+
+## a-parcel-marked-for-reprint-is-not-handed-over
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended — the first question of the #98 prototype's accept (pictures `D:/hermes/profiles/revamp_dev/accepts/accept98/`, the handover scan `12_handover_scan_desktop_id.png`): *"What should happen when the crew scans a parcel that is still marked Cetak ulang label at handover? **A** refuse it with 'Cetak ulang label dulu', the same way a parcel at the wrong step is refused today — a parcel with an old label can never leave; **B** warn, but still hand it over; **C** do nothing at handover — the badge shows only on the list and the pick page."*
+
+**The verdict.** An order marked *Cetak ulang label* ([a-changed-label-asks-the-warehouse-to-reprint](#a-changed-label-asks-the-warehouse-to-reprint)) is **not handed over** until its label is printed again. The *Serah ke Kurir* scan refuses it as *Cetak ulang label dulu* (the wrong sound, as a parcel at another step), and the server refuses the move picked → shipping from every door — the scan, the bar's *Serah Kurir*, the pick page's *Tandai Diserahkan* — each order with its own reason.
+
+⚠ Not built (backlog #98).
+
+✅ **Built 2026-11-20 (backlog #98).** `OrderStatusChange` refuses picked → shipping for a marked order (`refuseMove`, reason *the label changed after it was printed — print the new label first*), each order in a batch on its own; the edit and the move both lock the order, so an edit landing just before the handover still keeps the parcel back (`TestRace_ReprintLabel_AnEditAfterThePrintAgainstTheHandover`). The scan refuses a marked parcel before it asks (`HandoverScanDialog`, state `reprint`); the bar's *Serah Kurir* and the pick page's move show the server's reason. Test `TestReprintLabel_TheHandoverRefusesAMarkedParcel`.

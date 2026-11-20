@@ -15,6 +15,10 @@ import type { Page } from "@playwright/test";
 //   problem_count          shipped → problem                 mark problem order
 //   completed_count        shipped → completed               complete order
 //                          problem → completed               resolve dispute order
+//   disputes_resolved_count  problem → completed             resolve dispute order (#97 — its own count as well)
+//
+// A resolve counts ONCE IN EACH of Completed and Disputes resolved (the-order-status-moves-prototype-is-accepted's
+// 🔄 2026-11-20, acceptance analytic/order_metric.md given 14); a shipped → completed counts only in Completed.
 //
 // Each move counts on its own Jakarta day under the order's shop (a-fact-counts-on-the-day-it-happened), counted from
 // the fold onward; a warehouse reads every count of the orders it ships (a-warehouse-reads-the-orders-it-ships), so the
@@ -30,7 +34,11 @@ export type OrderMoveField =
   | "handed_over_count"
   | "shipped_count"
   | "problem_count"
-  | "completed_count";
+  | "completed_count"
+  | "disputes_resolved_count";
+
+/** A count no move of the shop's reached: the cell reads 0, or "—" when the service left it unset. */
+export const NOT_COUNTED = /^(0|—)$/;
 
 /** The composer's Add Metric › Order offers Order status moves to the signed-in reader. */
 export async function expectMovesOffered(page: Page): Promise<void> {
@@ -64,5 +72,25 @@ export async function expectMoveCounted(page: Page, shop: string, field: OrderMo
     await page.goto(url);
     await expect(created).toHaveText("2", { timeout: 3_000 });
     await expect(moved).toHaveText(want, { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
+}
+
+/**
+ * The same shop read as expectMoveCounted (its row already standing — call that first), every count named in `want`
+ * read on ONE page load: a string is the exact figure, NOT_COUNTED a count no move reached.
+ */
+export async function expectMoveCounts(
+  page: Page,
+  shop: string,
+  want: Partial<Record<OrderMoveField, string | RegExp>>,
+): Promise<void> {
+  const url = `/analytic?g=shop&m=metrics/orders/created,${ORDER_MOVES}&r=7d&shop=${shop}`;
+  const created = page.getByTestId(`analytic-cell-${shop}-created_count`);
+  await expect(async () => {
+    await page.goto(url);
+    await expect(created).toHaveText("2", { timeout: 3_000 });
+    for (const [field, figure] of Object.entries(want)) {
+      await expect(page.getByTestId(`analytic-cell-${shop}-${field}`)).toHaveText(figure!, { timeout: 3_000 });
+    }
   }).toPass({ timeout: 30_000 });
 }

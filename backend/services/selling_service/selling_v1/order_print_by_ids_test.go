@@ -246,6 +246,8 @@ func TestOrderPrintByIds_CarriesNoMoney(t *testing.T) {
 
 	want := []string{
 		"order_id", "status", "shop_id", "order_external_ref_id", "shipment_channel_id", "receipt_code", "has_label",
+		// Cetak ulang label (a-changed-label-asks-the-warehouse-to-reprint) — a flag, not money.
+		"reprint_label",
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("OrderPrint fields = %v, want exactly %v", got, want)

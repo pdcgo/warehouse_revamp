@@ -2,13 +2,13 @@ package inventory_v1
 
 import (
 	"context"
-	"time"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
+	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_ledgers"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 )
 
@@ -18,14 +18,15 @@ import (
 // Only while ongoing. A box already in the building is not lost — a unit missing from it is a problem row at the count
 // — and a counted or called-off restock is closed. A lost box that turns up after all is signed for as arrived
 // (a-late-lost-box-is-signed-for-as-arrived). Nothing moves money here: the parcel was paid for, and giving it up
-// returns nothing.
+// returns nothing. Analytic's Restock counts it LOST ON THE WAY on this day (the-restock-before-the-accept-prototype-is-
+// accepted) — every line as ordered, noted on the stock transaction's report and written as its last statement.
 func (s *Service) RestockRequestMarkLost(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RestockRequestMarkLostRequest],
 ) (*connect.Response[inventoryv1.RestockRequestMarkLostResponse], error) {
 	var rr inventory_service_models.Restock
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := inventory_ledgers.StockTransaction(s.db.WithContext(ctx), func(tx *gorm.DB) error {
 		loadErr := tx.
 			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("id = ? AND team_id = ?", req.Msg.GetRequestId(), req.Msg.GetTeamId()).
@@ -39,7 +40,8 @@ func (s *Service) RestockRequestMarkLost(
 			return errRestockNotOngoing
 		}
 
-		now := time.Now()
+		// The transaction's clock, so the trail's lost step and the lost on Analytic share one day.
+		now := inventory_ledgers.TxNow(tx)
 		actor := actorFrom(ctx)
 
 		rr.Status = restockStatusLost
@@ -70,7 +72,13 @@ func (s *Service) RestockRequestMarkLost(
 			return logErr
 		}
 
-		return tx.Where("restock_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
+		itemsErr := tx.Where("restock_id = ?", rr.ID).Order("id").Find(&rr.Items).Error
+		if itemsErr != nil {
+			return itemsErr
+		}
+
+		// Lost on the way: every line's units and its share of the total, as ordered now (a lost restock is never edited).
+		return inventory_ledgers.NoteRestockFacts(tx, restockShareFacts(&rr, rr.Items, restockLost, 1)...)
 	})
 	if err != nil {
 		return nil, restockErr(err)

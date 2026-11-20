@@ -22,8 +22,8 @@ import { StatementTable } from "./StatementTable";
 //       the warehouse's own word for the courier's money, as on its restock screens
 //       (the-warehouse-statement-says-ongkir-cod, the-warehouse-sees-the-cod-it-paid)
 //
-// The courier column sums the three ledger types Team Balance already names as the courier's (a restock's, a return's,
-// a transfer's — `courierAsks`), the same money Team Balance's ledger shows as *Biaya kurir …* rows.
+// The courier column sums the four ledger types Team Balance already names as the courier's (a restock's, a return's,
+// a transfer's, a custom shipment's — `courierAsks`), the same money Team Balance's ledger shows as *Biaya kurir …* rows.
 
 const ROW: StatementRow = {
   bucket: "2026-11-10",
@@ -55,19 +55,19 @@ const LIABILITY = create(LiabilityDailyTotalsSchema, {
 
 const EXPENSES = create(ExpenseTotalsSchema, { total: 5_000, byKind: { [ExpenseKind.OPERATIONAL]: 5_000 } });
 
-function WarehouseStatement() {
+function WarehouseStatement({ liability = LIABILITY }: { liability?: typeof LIABILITY }) {
   return (
     <Stack gap="section">
       <StatementSummary
         mode="warehouse"
         grain="day"
         income={30_000}
-        liability={LIABILITY}
+        liability={liability}
         expenses={EXPENSES}
         buckets={1}
         loading={false}
       />
-      <StatementTable mode="warehouse" grain="day" rows={[ROW]} income={30_000} liability={LIABILITY} expenses={EXPENSES} />
+      <StatementTable mode="warehouse" grain="day" rows={[ROW]} income={30_000} liability={liability} expenses={EXPENSES} />
     </Stack>
   );
 }
@@ -123,5 +123,31 @@ export const TheStatementSpeaksTheDecidedWordsInIndonesian: Story = {
 
     await expect(canvasElement).not.toHaveTextContent(/penanganan/i);
     await expect(canvasElement).not.toHaveTextContent(/\bcourier charges\b|biaya kurir/i);
+  },
+};
+
+// A CUSTOM SHIPMENT'S COURIER IS COURIER MONEY TOO (backlog #88): the courier the warehouse paid at a *Gudang bayar*
+// parcel's handover (`custom_shipment_fee`) joins the restock's, the return's and the transfer's in the one courier
+// column — owed back, never income (the-courier-is-paid-by-the-team-or-by-the-warehouse: *as a restock's courier charge*).
+export const ACustomShipmentsCourierCountsInTheCourierColumn: Story = {
+  name: "A custom shipment's courier counts in the courier column",
+  args: {
+    liability: create(LiabilityDailyTotalsSchema, {
+      net: 47_000,
+      bySource: {
+        [LiabilitySourceType.ORDER_FEE]: 30_000,
+        [LiabilitySourceType.INCIDENTAL_FEE]: 10_000,
+        [LiabilitySourceType.TRANSFER_FEE]: 5_000,
+        [LiabilitySourceType.CUSTOM_SHIPMENT_FEE]: 2_000,
+      },
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("statement-cod-notice")).toHaveTextContent(
+      `${formatRupiah(17_000)} in Courier COD is owed back to you but is NOT counted as income`,
+    );
+    await expect(canvas.getByTestId("statement-footer")).toHaveTextContent(formatRupiah(17_000));
   },
 };

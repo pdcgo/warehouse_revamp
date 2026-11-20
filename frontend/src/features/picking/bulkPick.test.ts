@@ -21,6 +21,7 @@ function order(id: bigint, lines: [bigint, string, number][]): BulkPickOrder {
     orderExternalRefId: `SP-${id}`,
     shipmentChannelId: 91n,
     receiptCode: "",
+    reprintLabel: false,
     lines: lines.map(([productId, name, quantity]) => ({ productId, name, productCode: `P-${productId}`, quantity })),
   };
 }
@@ -152,6 +153,8 @@ describe("the reads, as the page holds them", () => {
           orderExternalRefId: "LZ-4471902",
           shipmentChannelId: 95n,
           receiptCode: "JP0001",
+          // Cetak ulang label (a-changed-label-asks-the-warehouse-to-reprint) — carried to the order's block.
+          reprintLabel: true,
           lines: [{ productId: 302n, productCode: "KPP-L", name: "Kaos Putih", quantity: 2 }],
         }),
         create(OrderPickSchema, { orderId: 103n, transactionId: 70_103n, shopId: 99n, lines: [] }),
@@ -168,10 +171,11 @@ describe("the reads, as the page holds them", () => {
       orderExternalRefId: "LZ-4471902",
       shipmentChannelId: 95n,
       receiptCode: "JP0001",
+      reprintLabel: true,
       lines: [{ productId: 302n, productCode: "KPP-L", name: "Kaos Putih", quantity: 2 }],
     });
-    // A shop whose name has not landed reads blank, never another shop's.
-    expect(answer.orders[1]).toMatchObject({ shopName: "", marketplace: Marketplace.UNSPECIFIED });
+    // A shop whose name has not landed reads blank, never another shop's; an unmarked order reads unmarked.
+    expect(answer.orders[1]).toMatchObject({ shopName: "", marketplace: Marketplace.UNSPECIFIED, reprintLabel: false });
     expect(answer.locations).toEqual([{ transactionId: 70_104n, productId: 302n, rackId: 43n, rackCode: "B-02-1", quantity: 2n }]);
     expect(groupByOrder(answer)[0]!.lines[0]!.racks).toEqual([{ rackId: 43n, rackCode: "B-02-1", quantity: 2 }]);
   });

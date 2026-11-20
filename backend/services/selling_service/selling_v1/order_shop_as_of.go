@@ -64,6 +64,8 @@ type shopMoveCounts struct {
 	Shipped       int64
 	Problem       int64
 	Completed     int64
+	// The resolves among the Completed (resolveSQL) — each counted in both, as the fold counts it.
+	DisputesResolved int64
 }
 
 // ofMove is the count of one Order status moves report value.
@@ -83,6 +85,8 @@ func (c shopMoveCounts) ofMove(report string) int64 {
 		return c.Problem
 	case reportMovesCompleted:
 		return c.Completed
+	case reportMovesDisputesResolved:
+		return c.DisputesResolved
 	default:
 		return 0
 	}
@@ -90,8 +94,8 @@ func (c shopMoveCounts) ofMove(report string) int64 {
 
 // shopMoveCountsColumns counts a timeline's rows (alias l) into each counted status — the rows each metric's event was
 // built from (order_analytic_refold.go's log), so a fix carries over what the fold counted. A row into pending counts
-// only after the placement's own (afterThePlacement). Shared by the fold's per-fix read and the re-fold's per-fix
-// lateral, so the two cannot disagree.
+// only after the placement's own (afterThePlacement), and a resolve counts as a Completed AND a Disputes resolved
+// (resolveSQL). Shared by the fold's per-fix read and the re-fold's per-fix lateral, so the two cannot disagree.
 var shopMoveCountsColumns = `COUNT(*) FILTER (WHERE l.status = @cancel)  AS cancelled,
        COUNT(*) FILTER (WHERE l.status = @return)  AS return_created,
        COUNT(*) FILTER (WHERE l.status = @arrived) AS return_arrived,
@@ -102,7 +106,8 @@ var shopMoveCountsColumns = `COUNT(*) FILTER (WHERE l.status = @cancel)  AS canc
        COUNT(*) FILTER (WHERE l.status = @shipping)  AS handed_over,
        COUNT(*) FILTER (WHERE l.status = @shipped)   AS shipped,
        COUNT(*) FILTER (WHERE l.status = @problem)   AS problem,
-       COUNT(*) FILTER (WHERE l.status = @completed) AS completed`
+       COUNT(*) FILTER (WHERE l.status = @completed) AS completed,
+       COUNT(*) FILTER (WHERE ` + isAResolve("l") + `) AS disputes_resolved`
 
 // shopMoveCountsSQL is the counts of one order's timeline before the fix's note row.
 var shopMoveCountsSQL = `
@@ -161,7 +166,9 @@ var metricLockRank = map[string]int{
 	reportMovesShipped:       9,
 	reportMovesProblem:       10,
 	reportMovesCompleted:     11,
-	reportWarehouseFee:       12,
+	// After the Completed row, as the fold writes a resolve's two rows.
+	reportMovesDisputesResolved: 12,
+	reportWarehouseFee:          13,
 }
 
 // shopMoveRows is the fix's report rows: for each metric the order had been counted in, −n under the old shop and +n

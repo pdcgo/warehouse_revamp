@@ -9,18 +9,21 @@ import { RootTeamBadge } from "../../components/entity/ActorName";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import type { CustomShipment, CustomShipmentLog, CustomShipmentStatus } from "./customShipments";
+import { noteOfLog } from "./customShipments";
 import { CustomShipmentStatusBadge } from "./CustomShipmentBadges";
+import { GoodsMissingStep } from "./GoodsMissing";
 
 // THE TRAIL — `shipment.logs`, oldest first, as the transfer's (TransferTimeline): who moved it, when, and from which
 // status. People from two teams move one parcel — the selling team creates it, edits its ongkir, cancels it; the
 // warehouse picks it and hands it over — and this is where "who handed it over, and what did the courier cost" is read.
 // The steps are requested → picked → handed over (its end), or cancelled; the step not taken yet ends the trail, muted,
-// while it still can be.
+// while it still can be. The warehouse's *Barang tidak ketemu* note (backlog #88 P6) is a row of its own kind — from = to
+// as a cost edit, so its `kind` (never its statuses) says what it is — drawn by GoodsMissingStep.
 
 type Kind = "created" | "edit" | "status";
 
 const kindOf = (log: CustomShipmentLog): Kind =>
-  log.fromStatus === "NONE" ? "created" : log.fromStatus === log.toStatus ? "edit" : "status";
+  log.fromStatus === "NONE" ? "created" : log.kind === "COST_EDIT" || log.fromStatus === log.toStatus ? "edit" : "status";
 
 const STATUS_LOOK: Partial<Record<CustomShipmentStatus, { icon: LucideIcon; titleKey: string; palette: string }>> = {
   PICKED: { icon: PackageCheck, titleKey: "customShipment.timeline.picked", palette: "purple" },
@@ -51,15 +54,19 @@ export function CustomShipmentTimeline({
       </Card.Header>
       <Card.Body>
         <Timeline.Root size="lg" variant="subtle">
-          {shipment.logs.map((log) => (
-            <Step
-              key={log.id.toString()}
-              log={log}
-              shipment={shipment}
-              side={side}
-              actor={actors.data?.get(log.actorUserId.toString())}
-            />
-          ))}
+          {shipment.logs.map((log) =>
+            log.kind === "GOODS_MISSING" ? (
+              <GoodsMissingStep key={`missing-${log.id}`} note={noteOfLog(log)} shipment={shipment} side={side} />
+            ) : (
+              <Step
+                key={log.id.toString()}
+                log={log}
+                shipment={shipment}
+                side={side}
+                actor={actors.data?.get(log.actorUserId.toString())}
+              />
+            ),
+          )}
 
           {awaitingKey && (
             <Timeline.Item data-testid="custom-shipment-timeline-awaiting">
@@ -108,7 +115,7 @@ function Step({
     kind === "status" && log.toStatus === "HANDED_OVER"
       ? [
           shipment.payer === "WAREHOUSE"
-            ? t("customShipment.timeline.warehousePaid", { amount: formatRupiahNumber(shipment.shippingCost) })
+            ? t("customShipment.timeline.warehousePaid", { amount: formatRupiahNumber(shipment.shippingCost ?? 0) })
             : t(side === "selling" ? "customShipment.timeline.teamPaid" : "customShipment.timeline.teamPaidForWarehouse"),
           shipment.resi ? t("customShipment.timeline.resi", { resi: shipment.resi }) : "",
         ].filter(Boolean)

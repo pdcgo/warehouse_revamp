@@ -16,6 +16,8 @@ import type { MessageOptions, Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_descriptor, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { ExpenseKind } from "../../expense/v1/expense_pb";
 import { file_warehouse_expense_v1_expense } from "../../expense/v1/expense_pb";
+import type { CustomShipmentKind, CustomShipmentPayer } from "../../inventory/v1/custom_shipment_pb";
+import { file_warehouse_inventory_v1_custom_shipment } from "../../inventory/v1/custom_shipment_pb";
 import type { Identity } from "../../role_base/v1/role_pb";
 import { file_warehouse_role_base_v1_role } from "../../role_base/v1/role_pb";
 import type { SettlementType, SourceType } from "../../settlement/v1/settlement_pb";
@@ -26,7 +28,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/events/v1/event.proto.
  */
 export const file_warehouse_events_v1_event: GenFile = /*@__PURE__*/
-  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJIpIOCgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjwKDm1lbWJlcl9yZW1vdmVkGGQgASgLMiIud2FyZWhvdXNlLmV2ZW50cy52MS5NZW1iZXJSZW1vdmVkSAASOQoMb3JkZXJfcGxhY2VkGMgBIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRIABI/Cg9vcmRlcl9jYW5jZWxsZWQYyQEgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlckNhbmNlbGxlZEgAEkgKFG9yZGVyX3N0YXR1c19jaGFuZ2VkGMoBIAEoCzInLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJTdGF0dXNDaGFuZ2VkSAASSgoVb3JkZXJfcmV0dXJuX2FjY2VwdGVkGMsBIAEoCzIoLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJSZXR1cm5BY2NlcHRlZEgAEkYKE2ludmVudG9yeV90eF9jYW5jZWwYzAEgASgLMiYud2FyZWhvdXNlLmV2ZW50cy52MS5JbnZlbnRvcnlUeENhbmNlbEgAEkQKEm9yZGVyX3Nob3BfY2hhbmdlZBjNASABKAsyJS53YXJlaG91c2UuZXZlbnRzLnYxLk9yZGVyU2hvcENoYW5nZWRIABJKChVzZXR0bGVtZW50X2xvZ19wb3N0ZWQYrAIgASgLMigud2FyZWhvdXNlLmV2ZW50cy52MS5TZXR0bGVtZW50TG9nUG9zdGVkSAASQQoQcmVzdG9ja19hY2NlcHRlZBiQAyABKAsyJC53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tBY2NlcHRlZEgAEj8KD3Jlc3RvY2tfY3JlYXRlZBiRAyABKAsyIy53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tDcmVhdGVkSAASQwoRcmVzdG9ja19jYW5jZWxsZWQYkgMgASgLMiUud2FyZWhvdXNlLmV2ZW50cy52MS5SZXN0b2NrQ2FuY2VsbGVkSAASPwoPcmVzdG9ja191cGRhdGVkGJMDIAEoCzIjLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja1VwZGF0ZWRIABJUChp3YXJlaG91c2VfdHJhbnNmZXJfY3JlYXRlZBiUAyABKAsyLS53YXJlaG91c2UuZXZlbnRzLnYxLldhcmVob3VzZVRyYW5zZmVyQ3JlYXRlZEgAElQKGndhcmVob3VzZV90cmFuc2Zlcl91cGRhdGVkGJUDIAEoCzItLndhcmVob3VzZS5ldmVudHMudjEuV2FyZWhvdXNlVHJhbnNmZXJVcGRhdGVkSAASWAocd2FyZWhvdXNlX3RyYW5zZmVyX2NhbmNlbGxlZBiWAyABKAsyLy53YXJlaG91c2UuZXZlbnRzLnYxLldhcmVob3VzZVRyYW5zZmVyQ2FuY2VsbGVkSAASVgobd2FyZWhvdXNlX3RyYW5zZmVyX2FjY2VwdGVkGJcDIAEoCzIuLndhcmVob3VzZS5ldmVudHMudjEuV2FyZWhvdXNlVHJhbnNmZXJBY2NlcHRlZEgAEl8KIHJlc3RvY2tfcmVjZWl2ZWRfY291bnRfY29ycmVjdGVkGJgDIAEoCzIyLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja1JlY2VpdmVkQ291bnRDb3JyZWN0ZWRIABJUChpsaWFiaWxpdHlfcGF5bWVudF9hY2NlcHRlZBj0AyABKAsyLS53YXJlaG91c2UuZXZlbnRzLnYxLkxpYWJpbGl0eVBheW1lbnRBY2NlcHRlZEgAEj8KD2V4cGVuc2VfY3JlYXRlZBjYBCABKAsyIy53YXJlaG91c2UuZXZlbnRzLnYxLkV4cGVuc2VDcmVhdGVkSAASQQoQZXhwZW5zZV9hZGp1c3RlZBjZBCABKAsyJC53YXJlaG91c2UuZXZlbnRzLnYxLkV4cGVuc2VBZGp1c3RlZEgAGi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4AUIQCgdtZXNzYWdlEgW6SAIIASJZCg1NZW1iZXJSZW1vdmVkEg8KB3RlYW1faWQYASABKAQSDwoHdXNlcl9pZBgCIAEoBBIQCghhY3Rvcl9pZBgDIAEoBDoUirUYEAoObWVtYmVyLXJlbW92ZWQi0QMKE1NldHRsZW1lbnRMb2dQb3N0ZWQSDgoGbG9nX2lkGAEgASgEEhEKCXVuaXF1ZV9pZBgCIAEoCRIQCghvcmRlcl9pZBgDIAEoBBIPCgdzaG9wX2lkGAQgASgEEg8KB3RlYW1faWQYBSABKAQSEAoIYWN0b3JfaWQYBiABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYESABKAgSIAoYb3JkZXJfY3JlYXRlZF9ieV91c2VyX2lkGAcgASgEEkAKD3NldHRsZW1lbnRfdHlwZRgIIAEoDjInLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNldHRsZW1lbnRUeXBlEjgKC3NvdXJjZV90eXBlGAkgASgOMiMud2FyZWhvdXNlLnNldHRsZW1lbnQudjEuU291cmNlVHlwZRIOCgZjaGFuZ2UYCiABKAESDwoHYmFsYW5jZRgLIAEoARIRCglwb3N0ZWRfb24YDCABKAkSEwoLb2NjdXJyZWRfb24YDSABKAkSEwoLcmV2ZXJzZXNfaWQYDiABKAQSDAoEbm90ZRgPIAEoCRIPCgd1c2VyX2lkGBAgASgEOhuKtRgXChVzZXR0bGVtZW50LWxvZy1wb3N0ZWQikAMKC09yZGVyUGxhY2VkEg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSEgoKZ29vZHNfY29zdBgEIAEoARISCgpjb3N0X2tub3duGAYgASgIEhQKDHdhcmVob3VzZV9pZBgHIAEoBBIzCgVsaW5lcxgIIAMoCzIkLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRMaW5lEhAKCGFjdG9yX2lkGAkgASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGA0gASgIEg8KB3Nob3BfaWQYCiABKAQSFgoOcGxhdGZvcm1fdG90YWwYCyABKAESGgoNd2FyZWhvdXNlX2ZlZRgMIAEoAUgAiAEBEhcKD2lkZW1wb3RlbmN5X2tleRgOIAEoCRIWCg50cmFuc2FjdGlvbl9pZBgPIAEoBDoSirUYDgoMb3JkZXItcGxhY2VkQhAKDl93YXJlaG91c2VfZmVlSgQIAxAESgQIBRAGUgdyZXZlbnVlUg1zaGlwcGluZ19jb3N0InEKD09yZGVyUGxhY2VkTGluZRISCgpwcm9kdWN0X2lkGAEgASgEEhYKDm93bmluZ190ZWFtX2lkGAIgASgEEhAKCHF1YW50aXR5GAMgASgNEhEKCXVuaXRfY29zdBgEIAEoARINCgV0b3RhbBgFIAEoASK3AQoOT3JkZXJDYW5jZWxsZWQSDwoHdGVhbV9pZBgBIAEoBBIQCghvcmRlcl9pZBgCIAEoBBIQCghhY3Rvcl9pZBgDIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgFIAEoCBIPCgdzaG9wX2lkGAQgASgEEhcKD2lkZW1wb3RlbmN5X2tleRgGIAEoCRIUCgx3YXJlaG91c2VfaWQYByABKAQ6FYq1GBEKD29yZGVyLWNhbmNlbGxlZCKlAQoRSW52ZW50b3J5VHhDYW5jZWwSIwoPaWRlbXBvdGVuY3lfa2V5GAEgASgJQgq6SAdyBRABGIABEhgKB3RlYW1faWQYAiABKARCB7pIBDICIAASFAoMd2FyZWhvdXNlX2lkGAMgASgEEhAKCGFjdG9yX2lkGAQgASgEEg4KBnJlYXNvbhgFIAEoCToZirUYFQoTaW52ZW50b3J5LXR4LWNhbmNlbCKmAQoST3JkZXJTdGF0dXNDaGFuZ2VkEg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSEwoLZnJvbV9zdGF0dXMYAyABKAkSEQoJdG9fc3RhdHVzGAQgASgJEhAKCGFjdG9yX2lkGAUgASgEEhcKD3RpbWVsaW5lX2xvZ19pZBgGIAEoBDoairUYFgoUb3JkZXItc3RhdHVzLWNoYW5nZWQi5gEKE09yZGVyUmV0dXJuQWNjZXB0ZWQSDwoHdGVhbV9pZBgBIAEoBBIQCghvcmRlcl9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSEAoIYWN0b3JfaWQYBCABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYBSABKAgSFwoPdGltZWxpbmVfbG9nX2lkGAYgASgEEhYKDmNvdXJpZXJfY2hhcmdlGAcgASgBEhsKE2NvdXJpZXJfY2hhcmdlX25vdGUYCCABKAk6G4q1GBcKFW9yZGVyLXJldHVybi1hY2NlcHRlZCLSAQoQT3JkZXJTaG9wQ2hhbmdlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhQKDGZyb21fc2hvcF9pZBgDIAEoBBISCgp0b19zaG9wX2lkGAQgASgEEhEKCWNoYW5nZV9pZBgFIAEoBBIXCg90aW1lbGluZV9sb2dfaWQYBiABKAQSEAoIYWN0b3JfaWQYByABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYCCABKAg6GIq1GBQKEm9yZGVyLXNob3AtY2hhbmdlZCLZAgoPUmVzdG9ja0FjY2VwdGVkEhIKCnJlc3RvY2tfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSEwoLc3VwcGxpZXJfaWQYBCABKAQSEwoLYWNjZXB0ZWRfb24YBSABKAkSNwoFbGluZXMYBiADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tBY2NlcHRlZExpbmUSGAoQYWNjZXB0ZWRfYXRfdW5peBgHIAEoAxIhChl3YXJlaG91c2VfYWRkaXRpb25hbF9jb3N0GAggASgBEiYKHndhcmVob3VzZV9hZGRpdGlvbmFsX2Nvc3Rfbm90ZRgJIAEoCRIQCghhY3Rvcl9pZBgKIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgLIAEoCDoWirUYEgoQcmVzdG9jay1hY2NlcHRlZCLdAQoTUmVzdG9ja0FjY2VwdGVkTGluZRIPCgdpdGVtX2lkGAEgASgEEhIKCnByb2R1Y3RfaWQYAiABKAQSFQoNb3JkZXJlZF9jb3VudBgDIAEoAxITCgt0b3RhbF9wcmljZRgEIAEoARIWCg5hY2NlcHRlZF9jb3VudBgFIAEoAxIUCgxicm9rZW5fY291bnQYBiABKAMSFQoNbWlzc2luZ19jb3VudBgHIAEoAxITCgtzdXBwbGllcl9pZBgIIAEoBBIbChNzdXBwbGllcl9jaGFubmVsX2lkGAkgASgEIsYCCh1SZXN0b2NrUmVjZWl2ZWRDb3VudENvcnJlY3RlZBISCgpyZXN0b2NrX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhMKC3N1cHBsaWVyX2lkGAQgASgEEhQKDGNvcnJlY3RlZF9vbhgFIAEoCRI3CgVsaW5lcxgGIAMoCzIoLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja0FjY2VwdGVkTGluZRIZChFjb3JyZWN0ZWRfYXRfdW5peBgHIAEoAxIWCg50cmFuc2FjdGlvbl9pZBgIIAEoBBIQCghhY3Rvcl9pZBgJIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgKIAEoCDomirUYIgogcmVzdG9jay1yZWNlaXZlZC1jb3VudC1jb3JyZWN0ZWQiuQEKDlJlc3RvY2tDcmVhdGVkEhIKCnJlc3RvY2tfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIUCgx3YXJlaG91c2VfaWQYAyABKAQSGgoSZmluYW5jZV9hY2NvdW50X2lkGAQgASgEEg4KBmFtb3VudBgFIAEoARIQCghhY3Rvcl9pZBgGIAEoBBIXCg9jcmVhdGVkX2F0X3VuaXgYByABKAM6FYq1GBEKD3Jlc3RvY2stY3JlYXRlZCLBAQoQUmVzdG9ja0NhbmNlbGxlZBISCgpyZXN0b2NrX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSGgoSZmluYW5jZV9hY2NvdW50X2lkGAMgASgEEg4KBmFtb3VudBgEIAEoARIWCg5tb25leV9yZXR1cm5lZBgFIAEoCBIQCghhY3Rvcl9pZBgGIAEoBBIZChFjYW5jZWxsZWRfYXRfdW5peBgHIAEoAzoXirUYEwoRcmVzdG9jay1jYW5jZWxsZWQi3wEKDlJlc3RvY2tVcGRhdGVkEhIKCnJlc3RvY2tfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIeChZvbGRfZmluYW5jZV9hY2NvdW50X2lkGAMgASgEEh4KFm5ld19maW5hbmNlX2FjY291bnRfaWQYBCABKAQSEgoKb2xkX2Ftb3VudBgFIAEoARISCgpuZXdfYW1vdW50GAYgASgBEhAKCGFjdG9yX2lkGAcgASgEEhcKD3VwZGF0ZWRfYXRfdW5peBgIIAEoAzoVirUYEQoPcmVzdG9jay11cGRhdGVkIu0BChhXYXJlaG91c2VUcmFuc2ZlckNyZWF0ZWQSEwoLdHJhbnNmZXJfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIZChFmcm9tX3dhcmVob3VzZV9pZBgDIAEoBBIXCg90b193YXJlaG91c2VfaWQYBCABKAQSGgoSZmluYW5jZV9hY2NvdW50X2lkGAUgASgEEg4KBmFtb3VudBgGIAEoARIQCghhY3Rvcl9pZBgHIAEoBBIXCg9jcmVhdGVkX2F0X3VuaXgYCCABKAM6IIq1GBwKGndhcmVob3VzZS10cmFuc2Zlci1jcmVhdGVkIvUBChhXYXJlaG91c2VUcmFuc2ZlclVwZGF0ZWQSEwoLdHJhbnNmZXJfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIeChZvbGRfZmluYW5jZV9hY2NvdW50X2lkGAMgASgEEh4KFm5ld19maW5hbmNlX2FjY291bnRfaWQYBCABKAQSEgoKb2xkX2Ftb3VudBgFIAEoARISCgpuZXdfYW1vdW50GAYgASgBEhAKCGFjdG9yX2lkGAcgASgEEhcKD3VwZGF0ZWRfYXRfdW5peBgIIAEoAzogirUYHAoad2FyZWhvdXNlLXRyYW5zZmVyLXVwZGF0ZWQivwEKGldhcmVob3VzZVRyYW5zZmVyQ2FuY2VsbGVkEhMKC3RyYW5zZmVyX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSGgoSZmluYW5jZV9hY2NvdW50X2lkGAMgASgEEg4KBmFtb3VudBgEIAEoARIQCghhY3Rvcl9pZBgFIAEoBBIZChFjYW5jZWxsZWRfYXRfdW5peBgGIAEoAzoiirUYHgocd2FyZWhvdXNlLXRyYW5zZmVyLWNhbmNlbGxlZCKPAgoZV2FyZWhvdXNlVHJhbnNmZXJBY2NlcHRlZBITCgt0cmFuc2Zlcl9pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhkKEWZyb21fd2FyZWhvdXNlX2lkGAMgASgEEhcKD3RvX3dhcmVob3VzZV9pZBgEIAEoBBIhChl3YXJlaG91c2VfYWRkaXRpb25hbF9jb3N0GAUgASgBEiYKHndhcmVob3VzZV9hZGRpdGlvbmFsX2Nvc3Rfbm90ZRgGIAEoCRIQCghhY3Rvcl9pZBgHIAEoBBIYChBhY2NlcHRlZF9hdF91bml4GAggASgDOiGKtRgdCht3YXJlaG91c2UtdHJhbnNmZXItYWNjZXB0ZWQi7gEKGExpYWJpbGl0eVBheW1lbnRBY2NlcHRlZBISCgpwYXltZW50X2lkGAEgASgEEhUKDXBheWVyX3RlYW1faWQYAiABKAQSGAoQY3JlZGl0b3JfdGVhbV9pZBgDIAEoBBIOCgZhbW91bnQYBCABKAESFwoPZnJvbV9hY2NvdW50X2lkGAUgASgEEhUKDXRvX2FjY291bnRfaWQYBiABKAQSEAoIYWN0b3JfaWQYByABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYCCABKAg6IIq1GBwKGmxpYWJpbGl0eS1wYXltZW50LWFjY2VwdGVkIpUCCg5FeHBlbnNlQ3JlYXRlZBISCgpleHBlbnNlX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSLwoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgEIAEoBBIOCgZhbW91bnQYBSABKAESEwoLb2NjdXJyZWRfb24YBiABKAkSDwoHc2hvcF9pZBgHIAEoBBIQCghhY3Rvcl9pZBgIIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgJIAEoCBIXCg9jcmVhdGVkX2F0X3VuaXgYCiABKAM6FYq1GBEKD2V4cGVuc2UtY3JlYXRlZCKuAgoPRXhwZW5zZUFkanVzdGVkEhUKDWFkanVzdG1lbnRfaWQYASABKAQSEgoKZXhwZW5zZV9pZBgCIAEoBBIPCgd0ZWFtX2lkGAMgASgEEi8KBGtpbmQYBCABKA4yIS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlS2luZBIaChJmaW5hbmNlX2FjY291bnRfaWQYBSABKAQSDgoGYW1vdW50GAYgASgBEhMKC29jY3VycmVkX29uGAcgASgJEg8KB3Nob3BfaWQYCCABKAQSEAoIYWN0b3JfaWQYCSABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYCiABKAgSFwoPY3JlYXRlZF9hdF91bml4GAsgASgDOhaKtRgSChBleHBlbnNlLWFkanVzdGVkOmYKDGV2ZW50X2NvbmZpZxIfLmdvb2dsZS5wcm90b2J1Zi5NZXNzYWdlT3B0aW9ucxjRhgMgASgLMiAud2FyZWhvdXNlLmV2ZW50cy52MS5FdmVudENvbmZpZ1ILZXZlbnRDb25maWdCTFpKZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9ldmVudHMvdjE7ZXZlbnRzdjFiBnByb3RvMw", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_expense_v1_expense, file_warehouse_role_base_v1_role, file_warehouse_settlement_v1_settlement]);
+  fileDesc("Ch93YXJlaG91c2UvZXZlbnRzL3YxL2V2ZW50LnByb3RvEhN3YXJlaG91c2UuZXZlbnRzLnYxIhwKC0V2ZW50Q29uZmlnEg0KBXRvcGljGAEgASgJIuYQCgVFdmVudBIZCghldmVudF9pZBgBIAEoCUIHukgEcgIQARI3CgtvY2N1cnJlZF9hdBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARIdCgxhZ2dyZWdhdGVfaWQYAyABKAlCB7pIBHICEAESUgoIbWV0YWRhdGEYBCADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnlCFrpIE5oBEBBkIgVyAyiAAioFcgMogAgSMgoIaWRlbnRpdHkYBSABKAsyIC53YXJlaG91c2Uucm9sZV9iYXNlLnYxLklkZW50aXR5EjwKDm1lbWJlcl9yZW1vdmVkGGQgASgLMiIud2FyZWhvdXNlLmV2ZW50cy52MS5NZW1iZXJSZW1vdmVkSAASOQoMb3JkZXJfcGxhY2VkGMgBIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJQbGFjZWRIABI/Cg9vcmRlcl9jYW5jZWxsZWQYyQEgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5PcmRlckNhbmNlbGxlZEgAEkgKFG9yZGVyX3N0YXR1c19jaGFuZ2VkGMoBIAEoCzInLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJTdGF0dXNDaGFuZ2VkSAASSgoVb3JkZXJfcmV0dXJuX2FjY2VwdGVkGMsBIAEoCzIoLndhcmVob3VzZS5ldmVudHMudjEuT3JkZXJSZXR1cm5BY2NlcHRlZEgAEkYKE2ludmVudG9yeV90eF9jYW5jZWwYzAEgASgLMiYud2FyZWhvdXNlLmV2ZW50cy52MS5JbnZlbnRvcnlUeENhbmNlbEgAEkQKEm9yZGVyX3Nob3BfY2hhbmdlZBjNASABKAsyJS53YXJlaG91c2UuZXZlbnRzLnYxLk9yZGVyU2hvcENoYW5nZWRIABJKChVzZXR0bGVtZW50X2xvZ19wb3N0ZWQYrAIgASgLMigud2FyZWhvdXNlLmV2ZW50cy52MS5TZXR0bGVtZW50TG9nUG9zdGVkSAASQQoQcmVzdG9ja19hY2NlcHRlZBiQAyABKAsyJC53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tBY2NlcHRlZEgAEj8KD3Jlc3RvY2tfY3JlYXRlZBiRAyABKAsyIy53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tDcmVhdGVkSAASQwoRcmVzdG9ja19jYW5jZWxsZWQYkgMgASgLMiUud2FyZWhvdXNlLmV2ZW50cy52MS5SZXN0b2NrQ2FuY2VsbGVkSAASPwoPcmVzdG9ja191cGRhdGVkGJMDIAEoCzIjLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja1VwZGF0ZWRIABJUChp3YXJlaG91c2VfdHJhbnNmZXJfY3JlYXRlZBiUAyABKAsyLS53YXJlaG91c2UuZXZlbnRzLnYxLldhcmVob3VzZVRyYW5zZmVyQ3JlYXRlZEgAElQKGndhcmVob3VzZV90cmFuc2Zlcl91cGRhdGVkGJUDIAEoCzItLndhcmVob3VzZS5ldmVudHMudjEuV2FyZWhvdXNlVHJhbnNmZXJVcGRhdGVkSAASWAocd2FyZWhvdXNlX3RyYW5zZmVyX2NhbmNlbGxlZBiWAyABKAsyLy53YXJlaG91c2UuZXZlbnRzLnYxLldhcmVob3VzZVRyYW5zZmVyQ2FuY2VsbGVkSAASVgobd2FyZWhvdXNlX3RyYW5zZmVyX2FjY2VwdGVkGJcDIAEoCzIuLndhcmVob3VzZS5ldmVudHMudjEuV2FyZWhvdXNlVHJhbnNmZXJBY2NlcHRlZEgAEl8KIHJlc3RvY2tfcmVjZWl2ZWRfY291bnRfY29ycmVjdGVkGJgDIAEoCzIyLndhcmVob3VzZS5ldmVudHMudjEuUmVzdG9ja1JlY2VpdmVkQ291bnRDb3JyZWN0ZWRIABJOChdjdXN0b21fc2hpcG1lbnRfY3JlYXRlZBiZAyABKAsyKi53YXJlaG91c2UuZXZlbnRzLnYxLkN1c3RvbVNoaXBtZW50Q3JlYXRlZEgAElcKHGN1c3RvbV9zaGlwbWVudF9jb3N0X3VwZGF0ZWQYmgMgASgLMi4ud2FyZWhvdXNlLmV2ZW50cy52MS5DdXN0b21TaGlwbWVudENvc3RVcGRhdGVkSAASUgoZY3VzdG9tX3NoaXBtZW50X2NhbmNlbGxlZBibAyABKAsyLC53YXJlaG91c2UuZXZlbnRzLnYxLkN1c3RvbVNoaXBtZW50Q2FuY2VsbGVkSAASVQobY3VzdG9tX3NoaXBtZW50X2hhbmRlZF9vdmVyGJwDIAEoCzItLndhcmVob3VzZS5ldmVudHMudjEuQ3VzdG9tU2hpcG1lbnRIYW5kZWRPdmVySAASVAoabGlhYmlsaXR5X3BheW1lbnRfYWNjZXB0ZWQY9AMgASgLMi0ud2FyZWhvdXNlLmV2ZW50cy52MS5MaWFiaWxpdHlQYXltZW50QWNjZXB0ZWRIABI/Cg9leHBlbnNlX2NyZWF0ZWQY2AQgASgLMiMud2FyZWhvdXNlLmV2ZW50cy52MS5FeHBlbnNlQ3JlYXRlZEgAEkEKEGV4cGVuc2VfYWRqdXN0ZWQY2QQgASgLMiQud2FyZWhvdXNlLmV2ZW50cy52MS5FeHBlbnNlQWRqdXN0ZWRIABovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCEAoHbWVzc2FnZRIFukgCCAEiWQoNTWVtYmVyUmVtb3ZlZBIPCgd0ZWFtX2lkGAEgASgEEg8KB3VzZXJfaWQYAiABKAQSEAoIYWN0b3JfaWQYAyABKAQ6FIq1GBAKDm1lbWJlci1yZW1vdmVkItEDChNTZXR0bGVtZW50TG9nUG9zdGVkEg4KBmxvZ19pZBgBIAEoBBIRCgl1bmlxdWVfaWQYAiABKAkSEAoIb3JkZXJfaWQYAyABKAQSDwoHc2hvcF9pZBgEIAEoBBIPCgd0ZWFtX2lkGAUgASgEEhAKCGFjdG9yX2lkGAYgASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGBEgASgIEiAKGG9yZGVyX2NyZWF0ZWRfYnlfdXNlcl9pZBgHIAEoBBJACg9zZXR0bGVtZW50X3R5cGUYCCABKA4yJy53YXJlaG91c2Uuc2V0dGxlbWVudC52MS5TZXR0bGVtZW50VHlwZRI4Cgtzb3VyY2VfdHlwZRgJIAEoDjIjLndhcmVob3VzZS5zZXR0bGVtZW50LnYxLlNvdXJjZVR5cGUSDgoGY2hhbmdlGAogASgBEg8KB2JhbGFuY2UYCyABKAESEQoJcG9zdGVkX29uGAwgASgJEhMKC29jY3VycmVkX29uGA0gASgJEhMKC3JldmVyc2VzX2lkGA4gASgEEgwKBG5vdGUYDyABKAkSDwoHdXNlcl9pZBgQIAEoBDobirUYFwoVc2V0dGxlbWVudC1sb2ctcG9zdGVkIpADCgtPcmRlclBsYWNlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhIKCmdvb2RzX2Nvc3QYBCABKAESEgoKY29zdF9rbm93bhgGIAEoCBIUCgx3YXJlaG91c2VfaWQYByABKAQSMwoFbGluZXMYCCADKAsyJC53YXJlaG91c2UuZXZlbnRzLnYxLk9yZGVyUGxhY2VkTGluZRIQCghhY3Rvcl9pZBgJIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgNIAEoCBIPCgdzaG9wX2lkGAogASgEEhYKDnBsYXRmb3JtX3RvdGFsGAsgASgBEhoKDXdhcmVob3VzZV9mZWUYDCABKAFIAIgBARIXCg9pZGVtcG90ZW5jeV9rZXkYDiABKAkSFgoOdHJhbnNhY3Rpb25faWQYDyABKAQ6Eoq1GA4KDG9yZGVyLXBsYWNlZEIQCg5fd2FyZWhvdXNlX2ZlZUoECAMQBEoECAUQBlIHcmV2ZW51ZVINc2hpcHBpbmdfY29zdCJxCg9PcmRlclBsYWNlZExpbmUSEgoKcHJvZHVjdF9pZBgBIAEoBBIWCg5vd25pbmdfdGVhbV9pZBgCIAEoBBIQCghxdWFudGl0eRgDIAEoDRIRCgl1bml0X2Nvc3QYBCABKAESDQoFdG90YWwYBSABKAEitwEKDk9yZGVyQ2FuY2VsbGVkEg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSEAoIYWN0b3JfaWQYAyABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYBSABKAgSDwoHc2hvcF9pZBgEIAEoBBIXCg9pZGVtcG90ZW5jeV9rZXkYBiABKAkSFAoMd2FyZWhvdXNlX2lkGAcgASgEOhWKtRgRCg9vcmRlci1jYW5jZWxsZWQipQEKEUludmVudG9yeVR4Q2FuY2VsEiMKD2lkZW1wb3RlbmN5X2tleRgBIAEoCUIKukgHcgUQARiAARIYCgd0ZWFtX2lkGAIgASgEQge6SAQyAiAAEhQKDHdhcmVob3VzZV9pZBgDIAEoBBIQCghhY3Rvcl9pZBgEIAEoBBIOCgZyZWFzb24YBSABKAk6GYq1GBUKE2ludmVudG9yeS10eC1jYW5jZWwipgEKEk9yZGVyU3RhdHVzQ2hhbmdlZBIPCgd0ZWFtX2lkGAEgASgEEhAKCG9yZGVyX2lkGAIgASgEEhMKC2Zyb21fc3RhdHVzGAMgASgJEhEKCXRvX3N0YXR1cxgEIAEoCRIQCghhY3Rvcl9pZBgFIAEoBBIXCg90aW1lbGluZV9sb2dfaWQYBiABKAQ6Goq1GBYKFG9yZGVyLXN0YXR1cy1jaGFuZ2VkIuYBChNPcmRlclJldHVybkFjY2VwdGVkEg8KB3RlYW1faWQYASABKAQSEAoIb3JkZXJfaWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhAKCGFjdG9yX2lkGAQgASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGAUgASgIEhcKD3RpbWVsaW5lX2xvZ19pZBgGIAEoBBIWCg5jb3VyaWVyX2NoYXJnZRgHIAEoARIbChNjb3VyaWVyX2NoYXJnZV9ub3RlGAggASgJOhuKtRgXChVvcmRlci1yZXR1cm4tYWNjZXB0ZWQi0gEKEE9yZGVyU2hvcENoYW5nZWQSDwoHdGVhbV9pZBgBIAEoBBIQCghvcmRlcl9pZBgCIAEoBBIUCgxmcm9tX3Nob3BfaWQYAyABKAQSEgoKdG9fc2hvcF9pZBgEIAEoBBIRCgljaGFuZ2VfaWQYBSABKAQSFwoPdGltZWxpbmVfbG9nX2lkGAYgASgEEhAKCGFjdG9yX2lkGAcgASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGAggASgIOhiKtRgUChJvcmRlci1zaG9wLWNoYW5nZWQi2QIKD1Jlc3RvY2tBY2NlcHRlZBISCgpyZXN0b2NrX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhMKC3N1cHBsaWVyX2lkGAQgASgEEhMKC2FjY2VwdGVkX29uGAUgASgJEjcKBWxpbmVzGAYgAygLMigud2FyZWhvdXNlLmV2ZW50cy52MS5SZXN0b2NrQWNjZXB0ZWRMaW5lEhgKEGFjY2VwdGVkX2F0X3VuaXgYByABKAMSIQoZd2FyZWhvdXNlX2FkZGl0aW9uYWxfY29zdBgIIAEoARImCh53YXJlaG91c2VfYWRkaXRpb25hbF9jb3N0X25vdGUYCSABKAkSEAoIYWN0b3JfaWQYCiABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYCyABKAg6Foq1GBIKEHJlc3RvY2stYWNjZXB0ZWQi3QEKE1Jlc3RvY2tBY2NlcHRlZExpbmUSDwoHaXRlbV9pZBgBIAEoBBISCgpwcm9kdWN0X2lkGAIgASgEEhUKDW9yZGVyZWRfY291bnQYAyABKAMSEwoLdG90YWxfcHJpY2UYBCABKAESFgoOYWNjZXB0ZWRfY291bnQYBSABKAMSFAoMYnJva2VuX2NvdW50GAYgASgDEhUKDW1pc3NpbmdfY291bnQYByABKAMSEwoLc3VwcGxpZXJfaWQYCCABKAQSGwoTc3VwcGxpZXJfY2hhbm5lbF9pZBgJIAEoBCLGAgodUmVzdG9ja1JlY2VpdmVkQ291bnRDb3JyZWN0ZWQSEgoKcmVzdG9ja19pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhQKDHdhcmVob3VzZV9pZBgDIAEoBBITCgtzdXBwbGllcl9pZBgEIAEoBBIUCgxjb3JyZWN0ZWRfb24YBSABKAkSNwoFbGluZXMYBiADKAsyKC53YXJlaG91c2UuZXZlbnRzLnYxLlJlc3RvY2tBY2NlcHRlZExpbmUSGQoRY29ycmVjdGVkX2F0X3VuaXgYByABKAMSFgoOdHJhbnNhY3Rpb25faWQYCCABKAQSEAoIYWN0b3JfaWQYCSABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYCiABKAg6Joq1GCIKIHJlc3RvY2stcmVjZWl2ZWQtY291bnQtY29ycmVjdGVkIrkBCg5SZXN0b2NrQ3JlYXRlZBISCgpyZXN0b2NrX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgEIAEoBBIOCgZhbW91bnQYBSABKAESEAoIYWN0b3JfaWQYBiABKAQSFwoPY3JlYXRlZF9hdF91bml4GAcgASgDOhWKtRgRCg9yZXN0b2NrLWNyZWF0ZWQiwQEKEFJlc3RvY2tDYW5jZWxsZWQSEgoKcmVzdG9ja19pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgDIAEoBBIOCgZhbW91bnQYBCABKAESFgoObW9uZXlfcmV0dXJuZWQYBSABKAgSEAoIYWN0b3JfaWQYBiABKAQSGQoRY2FuY2VsbGVkX2F0X3VuaXgYByABKAM6F4q1GBMKEXJlc3RvY2stY2FuY2VsbGVkIt8BCg5SZXN0b2NrVXBkYXRlZBISCgpyZXN0b2NrX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSHgoWb2xkX2ZpbmFuY2VfYWNjb3VudF9pZBgDIAEoBBIeChZuZXdfZmluYW5jZV9hY2NvdW50X2lkGAQgASgEEhIKCm9sZF9hbW91bnQYBSABKAESEgoKbmV3X2Ftb3VudBgGIAEoARIQCghhY3Rvcl9pZBgHIAEoBBIXCg91cGRhdGVkX2F0X3VuaXgYCCABKAM6FYq1GBEKD3Jlc3RvY2stdXBkYXRlZCLtAQoYV2FyZWhvdXNlVHJhbnNmZXJDcmVhdGVkEhMKC3RyYW5zZmVyX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSGQoRZnJvbV93YXJlaG91c2VfaWQYAyABKAQSFwoPdG9fd2FyZWhvdXNlX2lkGAQgASgEEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgFIAEoBBIOCgZhbW91bnQYBiABKAESEAoIYWN0b3JfaWQYByABKAQSFwoPY3JlYXRlZF9hdF91bml4GAggASgDOiCKtRgcChp3YXJlaG91c2UtdHJhbnNmZXItY3JlYXRlZCL1AQoYV2FyZWhvdXNlVHJhbnNmZXJVcGRhdGVkEhMKC3RyYW5zZmVyX2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSHgoWb2xkX2ZpbmFuY2VfYWNjb3VudF9pZBgDIAEoBBIeChZuZXdfZmluYW5jZV9hY2NvdW50X2lkGAQgASgEEhIKCm9sZF9hbW91bnQYBSABKAESEgoKbmV3X2Ftb3VudBgGIAEoARIQCghhY3Rvcl9pZBgHIAEoBBIXCg91cGRhdGVkX2F0X3VuaXgYCCABKAM6IIq1GBwKGndhcmVob3VzZS10cmFuc2Zlci11cGRhdGVkIr8BChpXYXJlaG91c2VUcmFuc2ZlckNhbmNlbGxlZBITCgt0cmFuc2Zlcl9pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgDIAEoBBIOCgZhbW91bnQYBCABKAESEAoIYWN0b3JfaWQYBSABKAQSGQoRY2FuY2VsbGVkX2F0X3VuaXgYBiABKAM6Ioq1GB4KHHdhcmVob3VzZS10cmFuc2Zlci1jYW5jZWxsZWQijwIKGVdhcmVob3VzZVRyYW5zZmVyQWNjZXB0ZWQSEwoLdHJhbnNmZXJfaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIZChFmcm9tX3dhcmVob3VzZV9pZBgDIAEoBBIXCg90b193YXJlaG91c2VfaWQYBCABKAQSIQoZd2FyZWhvdXNlX2FkZGl0aW9uYWxfY29zdBgFIAEoARImCh53YXJlaG91c2VfYWRkaXRpb25hbF9jb3N0X25vdGUYBiABKAkSEAoIYWN0b3JfaWQYByABKAQSGAoQYWNjZXB0ZWRfYXRfdW5peBgIIAEoAzohirUYHQobd2FyZWhvdXNlLXRyYW5zZmVyLWFjY2VwdGVkIuECChVDdXN0b21TaGlwbWVudENyZWF0ZWQSGgoSY3VzdG9tX3NoaXBtZW50X2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSFAoMd2FyZWhvdXNlX2lkGAMgASgEEjgKBGtpbmQYBCABKA4yKi53YXJlaG91c2UuaW52ZW50b3J5LnYxLkN1c3RvbVNoaXBtZW50S2luZBI6CgVwYXllchgFIAEoDjIrLndhcmVob3VzZS5pbnZlbnRvcnkudjEuQ3VzdG9tU2hpcG1lbnRQYXllchIaChJmaW5hbmNlX2FjY291bnRfaWQYBiABKAQSDgoGYW1vdW50GAcgASgBEhAKCGFjdG9yX2lkGAggASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGAkgASgIEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAzodirUYGQoXY3VzdG9tLXNoaXBtZW50LWNyZWF0ZWQimgIKGUN1c3RvbVNoaXBtZW50Q29zdFVwZGF0ZWQSGgoSY3VzdG9tX3NoaXBtZW50X2lkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSHgoWb2xkX2ZpbmFuY2VfYWNjb3VudF9pZBgDIAEoBBIeChZuZXdfZmluYW5jZV9hY2NvdW50X2lkGAQgASgEEhIKCm9sZF9hbW91bnQYBSABKAESEgoKbmV3X2Ftb3VudBgGIAEoARIQCghhY3Rvcl9pZBgHIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgIIAEoCBIXCg91cGRhdGVkX2F0X3VuaXgYCSABKAM6Ioq1GB4KHGN1c3RvbS1zaGlwbWVudC1jb3N0LXVwZGF0ZWQi5wIKF0N1c3RvbVNoaXBtZW50Q2FuY2VsbGVkEhoKEmN1c3RvbV9zaGlwbWVudF9pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhQKDHdhcmVob3VzZV9pZBgDIAEoBBI4CgRraW5kGAQgASgOMioud2FyZWhvdXNlLmludmVudG9yeS52MS5DdXN0b21TaGlwbWVudEtpbmQSOgoFcGF5ZXIYBSABKA4yKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLkN1c3RvbVNoaXBtZW50UGF5ZXISGgoSZmluYW5jZV9hY2NvdW50X2lkGAYgASgEEg4KBmFtb3VudBgHIAEoARIQCghhY3Rvcl9pZBgIIAEoBBIZChFhY3Rvcl9pc19vdmVycmlkZRgJIAEoCBIZChFjYW5jZWxsZWRfYXRfdW5peBgKIAEoAzofirUYGwoZY3VzdG9tLXNoaXBtZW50LWNhbmNlbGxlZCLYAgoYQ3VzdG9tU2hpcG1lbnRIYW5kZWRPdmVyEhoKEmN1c3RvbV9zaGlwbWVudF9pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEhQKDHdhcmVob3VzZV9pZBgDIAEoBBI4CgRraW5kGAQgASgOMioud2FyZWhvdXNlLmludmVudG9yeS52MS5DdXN0b21TaGlwbWVudEtpbmQSOgoFcGF5ZXIYBSABKA4yKy53YXJlaG91c2UuaW52ZW50b3J5LnYxLkN1c3RvbVNoaXBtZW50UGF5ZXISFgoOd2FyZWhvdXNlX2Nvc3QYBiABKAESEAoIYWN0b3JfaWQYByABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYCCABKAgSGwoTaGFuZGVkX292ZXJfYXRfdW5peBgJIAEoAzohirUYHQobY3VzdG9tLXNoaXBtZW50LWhhbmRlZC1vdmVyIu4BChhMaWFiaWxpdHlQYXltZW50QWNjZXB0ZWQSEgoKcGF5bWVudF9pZBgBIAEoBBIVCg1wYXllcl90ZWFtX2lkGAIgASgEEhgKEGNyZWRpdG9yX3RlYW1faWQYAyABKAQSDgoGYW1vdW50GAQgASgBEhcKD2Zyb21fYWNjb3VudF9pZBgFIAEoBBIVCg10b19hY2NvdW50X2lkGAYgASgEEhAKCGFjdG9yX2lkGAcgASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGAggASgIOiCKtRgcChpsaWFiaWxpdHktcGF5bWVudC1hY2NlcHRlZCKVAgoORXhwZW5zZUNyZWF0ZWQSEgoKZXhwZW5zZV9pZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEi8KBGtpbmQYAyABKA4yIS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlS2luZBIaChJmaW5hbmNlX2FjY291bnRfaWQYBCABKAQSDgoGYW1vdW50GAUgASgBEhMKC29jY3VycmVkX29uGAYgASgJEg8KB3Nob3BfaWQYByABKAQSEAoIYWN0b3JfaWQYCCABKAQSGQoRYWN0b3JfaXNfb3ZlcnJpZGUYCSABKAgSFwoPY3JlYXRlZF9hdF91bml4GAogASgDOhWKtRgRCg9leHBlbnNlLWNyZWF0ZWQirgIKD0V4cGVuc2VBZGp1c3RlZBIVCg1hZGp1c3RtZW50X2lkGAEgASgEEhIKCmV4cGVuc2VfaWQYAiABKAQSDwoHdGVhbV9pZBgDIAEoBBIvCgRraW5kGAQgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSGgoSZmluYW5jZV9hY2NvdW50X2lkGAUgASgEEg4KBmFtb3VudBgGIAEoARITCgtvY2N1cnJlZF9vbhgHIAEoCRIPCgdzaG9wX2lkGAggASgEEhAKCGFjdG9yX2lkGAkgASgEEhkKEWFjdG9yX2lzX292ZXJyaWRlGAogASgIEhcKD2NyZWF0ZWRfYXRfdW5peBgLIAEoAzoWirUYEgoQZXhwZW5zZS1hZGp1c3RlZDpmCgxldmVudF9jb25maWcSHy5nb29nbGUucHJvdG9idWYuTWVzc2FnZU9wdGlvbnMY0YYDIAEoCzIgLndhcmVob3VzZS5ldmVudHMudjEuRXZlbnRDb25maWdSC2V2ZW50Q29uZmlnQkxaSmdpdGh1Yi5jb20vcGRjZ28vd2FyZWhvdXNlX3JldmFtcC9iYWNrZW5kL2dlbi93YXJlaG91c2UvZXZlbnRzL3YxO2V2ZW50c3YxYgZwcm90bzM", [file_buf_validate_validate, file_google_protobuf_descriptor, file_google_protobuf_timestamp, file_warehouse_expense_v1_expense, file_warehouse_inventory_v1_custom_shipment, file_warehouse_role_base_v1_role, file_warehouse_settlement_v1_settlement]);
 
 /**
  * EventConfig declares, ON THE VARIANT ITSELF, which Pub/Sub topic that event belongs to. The topic
@@ -229,6 +231,30 @@ export type Event = Message<"warehouse.events.v1.Event"> & {
      */
     value: RestockReceivedCountCorrected;
     case: "restockReceivedCountCorrected";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.CustomShipmentCreated custom_shipment_created = 409;
+     */
+    value: CustomShipmentCreated;
+    case: "customShipmentCreated";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.CustomShipmentCostUpdated custom_shipment_cost_updated = 410;
+     */
+    value: CustomShipmentCostUpdated;
+    case: "customShipmentCostUpdated";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.CustomShipmentCancelled custom_shipment_cancelled = 411;
+     */
+    value: CustomShipmentCancelled;
+    case: "customShipmentCancelled";
+  } | {
+    /**
+     * @generated from field: warehouse.events.v1.CustomShipmentHandedOver custom_shipment_handed_over = 412;
+     */
+    value: CustomShipmentHandedOver;
+    case: "customShipmentHandedOver";
   } | {
     /**
      * @generated from field: warehouse.events.v1.LiabilityPaymentAccepted liability_payment_accepted = 500;
@@ -1700,6 +1726,285 @@ export const WarehouseTransferAcceptedSchema: GenMessage<WarehouseTransferAccept
   messageDesc(file_warehouse_events_v1_event, 20);
 
 /**
+ * CustomShipmentCreated announces a parcel CREATED by its selling team — and, for a TEAM payer, the courier cost typed
+ * with it (0 = typed later, or never). A WAREHOUSE payer's carries no account and 0: nothing is posted until the
+ * handover. `event_id` is `custom-shipment-created:<custom_shipment_id>`.
+ *
+ * @generated from message warehouse.events.v1.CustomShipmentCreated
+ */
+export type CustomShipmentCreated = Message<"warehouse.events.v1.CustomShipmentCreated"> & {
+  /**
+   * @generated from field: uint64 custom_shipment_id = 1;
+   */
+  customShipmentId: bigint;
+
+  /**
+   * The owning selling team — the one that pays.
+   *
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * The warehouse it ships from.
+   *
+   * @generated from field: uint64 warehouse_id = 3;
+   */
+  warehouseId: bigint;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.CustomShipmentKind kind = 4;
+   */
+  kind: CustomShipmentKind;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.CustomShipmentPayer payer = 5;
+   */
+  payer: CustomShipmentPayer;
+
+  /**
+   * TEAM payer: the account that pays and the cost, rupiah; a listener posts nothing for 0. WAREHOUSE payer: 0 and 0.
+   *
+   * @generated from field: uint64 finance_account_id = 6;
+   */
+  financeAccountId: bigint;
+
+  /**
+   * @generated from field: double amount = 7;
+   */
+  amount: number;
+
+  /**
+   * Who created it — read from the stored parcel — and whether as Root or the Administrator from outside the team
+   * (an-override-is-stamped-in-every-service).
+   *
+   * @generated from field: uint64 actor_id = 8;
+   */
+  actorId: bigint;
+
+  /**
+   * @generated from field: bool actor_is_override = 9;
+   */
+  actorIsOverride: boolean;
+
+  /**
+   * @generated from field: int64 created_at_unix = 10;
+   */
+  createdAtUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.events.v1.CustomShipmentCreated.
+ * Use `create(CustomShipmentCreatedSchema)` to create a new message.
+ */
+export const CustomShipmentCreatedSchema: GenMessage<CustomShipmentCreated> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 21);
+
+/**
+ * CustomShipmentCostUpdated announces *Ubah Ongkir* — a TEAM payer's edit that changed the cost or the account, until the
+ * handover. Not sent for an edit that changed neither. Both sides are carried, as WarehouseTransferUpdated: the same
+ * account means post new − old; a different account means the old one gets old_amount back and the new one pays
+ * new_amount. `event_id` is `custom-shipment-cost-updated:<custom_shipment_id>:<cost_revision>` — one per edit that
+ * moved money.
+ *
+ * @generated from message warehouse.events.v1.CustomShipmentCostUpdated
+ */
+export type CustomShipmentCostUpdated = Message<"warehouse.events.v1.CustomShipmentCostUpdated"> & {
+  /**
+   * @generated from field: uint64 custom_shipment_id = 1;
+   */
+  customShipmentId: bigint;
+
+  /**
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 old_finance_account_id = 3;
+   */
+  oldFinanceAccountId: bigint;
+
+  /**
+   * @generated from field: uint64 new_finance_account_id = 4;
+   */
+  newFinanceAccountId: bigint;
+
+  /**
+   * @generated from field: double old_amount = 5;
+   */
+  oldAmount: number;
+
+  /**
+   * @generated from field: double new_amount = 6;
+   */
+  newAmount: number;
+
+  /**
+   * @generated from field: uint64 actor_id = 7;
+   */
+  actorId: bigint;
+
+  /**
+   * @generated from field: bool actor_is_override = 8;
+   */
+  actorIsOverride: boolean;
+
+  /**
+   * @generated from field: int64 updated_at_unix = 9;
+   */
+  updatedAtUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.events.v1.CustomShipmentCostUpdated.
+ * Use `create(CustomShipmentCostUpdatedSchema)` to create a new message.
+ */
+export const CustomShipmentCostUpdatedSchema: GenMessage<CustomShipmentCostUpdated> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 22);
+
+/**
+ * CustomShipmentCancelled announces a parcel called off by its selling team while REQUESTED
+ * (a-custom-shipment-is-cancelled-only-while-requested): a TEAM payer's posted cost comes back to the account that paid;
+ * a WAREHOUSE payer had nothing posted. `event_id` is `custom-shipment-cancelled:<custom_shipment_id>` — a parcel is
+ * cancelled once.
+ *
+ * @generated from message warehouse.events.v1.CustomShipmentCancelled
+ */
+export type CustomShipmentCancelled = Message<"warehouse.events.v1.CustomShipmentCancelled"> & {
+  /**
+   * @generated from field: uint64 custom_shipment_id = 1;
+   */
+  customShipmentId: bigint;
+
+  /**
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * @generated from field: uint64 warehouse_id = 3;
+   */
+  warehouseId: bigint;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.CustomShipmentKind kind = 4;
+   */
+  kind: CustomShipmentKind;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.CustomShipmentPayer payer = 5;
+   */
+  payer: CustomShipmentPayer;
+
+  /**
+   * The account that paid and the amount it gets back; 0 = nothing was posted.
+   *
+   * @generated from field: uint64 finance_account_id = 6;
+   */
+  financeAccountId: bigint;
+
+  /**
+   * @generated from field: double amount = 7;
+   */
+  amount: number;
+
+  /**
+   * @generated from field: uint64 actor_id = 8;
+   */
+  actorId: bigint;
+
+  /**
+   * @generated from field: bool actor_is_override = 9;
+   */
+  actorIsOverride: boolean;
+
+  /**
+   * @generated from field: int64 cancelled_at_unix = 10;
+   */
+  cancelledAtUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.events.v1.CustomShipmentCancelled.
+ * Use `create(CustomShipmentCancelledSchema)` to create a new message.
+ */
+export const CustomShipmentCancelledSchema: GenMessage<CustomShipmentCancelled> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 23);
+
+/**
+ * CustomShipmentHandedOver announces the warehouse handed the parcel to the courier — final. For a WAREHOUSE payer it
+ * carries the real cost the warehouse paid on the spot, typed at the handover (0 allowed): the selling team owes the
+ * warehouse that through Team Balance, nothing for 0, as a restock's courier charge at the door
+ * (the-warehouse-cost-is-the-couriers-charge-at-the-door) — under a source type of its own, since a parcel's id collides
+ * with a restock's or a transfer's (a-transfer-charge-is-a-transfer-fee). A TEAM payer's carries 0: its cost was posted
+ * as an expense already. `event_id` is `custom-shipment-handed-over:<custom_shipment_id>` — a parcel is handed over once.
+ *
+ * @generated from message warehouse.events.v1.CustomShipmentHandedOver
+ */
+export type CustomShipmentHandedOver = Message<"warehouse.events.v1.CustomShipmentHandedOver"> & {
+  /**
+   * @generated from field: uint64 custom_shipment_id = 1;
+   */
+  customShipmentId: bigint;
+
+  /**
+   * The selling team — the debtor of a WAREHOUSE payer's cost.
+   *
+   * @generated from field: uint64 team_id = 2;
+   */
+  teamId: bigint;
+
+  /**
+   * The warehouse that shipped it — the creditor of a WAREHOUSE payer's cost.
+   *
+   * @generated from field: uint64 warehouse_id = 3;
+   */
+  warehouseId: bigint;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.CustomShipmentKind kind = 4;
+   */
+  kind: CustomShipmentKind;
+
+  /**
+   * @generated from field: warehouse.inventory.v1.CustomShipmentPayer payer = 5;
+   */
+  payer: CustomShipmentPayer;
+
+  /**
+   * WAREHOUSE payer: the courier cost the warehouse paid, rupiah; 0 = it paid nothing. TEAM payer: 0.
+   *
+   * @generated from field: double warehouse_cost = 6;
+   */
+  warehouseCost: number;
+
+  /**
+   * Who handed it over — read from the stored parcel, never from the envelope's identity.
+   *
+   * @generated from field: uint64 actor_id = 7;
+   */
+  actorId: bigint;
+
+  /**
+   * @generated from field: bool actor_is_override = 8;
+   */
+  actorIsOverride: boolean;
+
+  /**
+   * @generated from field: int64 handed_over_at_unix = 9;
+   */
+  handedOverAtUnix: bigint;
+};
+
+/**
+ * Describes the message warehouse.events.v1.CustomShipmentHandedOver.
+ * Use `create(CustomShipmentHandedOverSchema)` to create a new message.
+ */
+export const CustomShipmentHandedOverSchema: GenMessage<CustomShipmentHandedOver> = /*@__PURE__*/
+  messageDesc(file_warehouse_events_v1_event, 24);
+
+/**
  * LiabilityPaymentAccepted announces that a CREDITOR accepted a team payment — they looked at their bank and the
  * money was there (a-team-payment-posts-on-accept). Published by liability_service after LiabilityPaymentConfirm
  * commits; the financial accounts post one `team_payment` row out of `from_account_id` and one into
@@ -1769,7 +2074,7 @@ export type LiabilityPaymentAccepted = Message<"warehouse.events.v1.LiabilityPay
  * Use `create(LiabilityPaymentAcceptedSchema)` to create a new message.
  */
 export const LiabilityPaymentAcceptedSchema: GenMessage<LiabilityPaymentAccepted> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 21);
+  messageDesc(file_warehouse_events_v1_event, 25);
 
 /**
  * ExpenseCreated announces an expense a person typed, and the account that paid it (an-expense-must-name-the-account-that-paid).
@@ -1848,7 +2153,7 @@ export type ExpenseCreated = Message<"warehouse.events.v1.ExpenseCreated"> & {
  * Use `create(ExpenseCreatedSchema)` to create a new message.
  */
 export const ExpenseCreatedSchema: GenMessage<ExpenseCreated> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 22);
+  messageDesc(file_warehouse_events_v1_event, 26);
 
 /**
  * ExpenseAdjusted announces a correction of an expense — an adjustment, or the screen's Batalkan, which is an adjustment
@@ -1935,7 +2240,7 @@ export type ExpenseAdjusted = Message<"warehouse.events.v1.ExpenseAdjusted"> & {
  * Use `create(ExpenseAdjustedSchema)` to create a new message.
  */
 export const ExpenseAdjustedSchema: GenMessage<ExpenseAdjusted> = /*@__PURE__*/
-  messageDesc(file_warehouse_events_v1_event, 23);
+  messageDesc(file_warehouse_events_v1_event, 27);
 
 /**
  * 50001 — the number warehouse.event_base.v1 held before it was removed

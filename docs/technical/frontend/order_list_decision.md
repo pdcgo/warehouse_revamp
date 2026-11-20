@@ -639,6 +639,10 @@ flowchart LR
 | ⚠ my reading, not asked | **the record is a NOTE row** (no status, from `selling`), reading `Resi: JNE-OLD → JNE-NEW · Label: old.pdf → new.pdf`, `—` for an empty side. *"The status unchanged"* was not taken as a row INTO the current status: that would reset the list's status date (`Order.status_at_unix`) on every edit. The note text is the server's, in neither language's sentence form, because a note row is shown as written |
 | 🔄 *(2026-10-29)* | [rowActions.ts](../../../frontend/src/features/orders/rowActions.ts) offered Edit Resi to **either** end; it is now the selling team's only, as **who** above says. No warning is shown when the number and the file disagree, which stays open as written above |
 
+🔄 *(2026-11-20)* An edit made after the warehouse printed the label now also tells the warehouse: a *Cetak ulang label* badge on its row and pick page until the next print — [a-changed-label-asks-the-warehouse-to-reprint](../../business/inventory/order_decision.md#a-changed-label-asks-the-warehouse-to-reprint).
+
+✅ **Built 2026-11-20 (backlog #98).** A change stamps `orders.receipt_changed_at` (selling `00054`) — a request that changes nothing stamps nothing — and the dialog says so in one line (`edit-receipt-reprint-hint`) when the label was already printed (`Order.label_printed_at_unix`); a marked parcel is refused at the handover ([a-parcel-marked-for-reprint-is-not-handed-over](../../business/inventory/order_decision.md#a-parcel-marked-for-reprint-is-not-handed-over)).
+
 ---
 
 ## the-seller-list-filters-by-warehouse

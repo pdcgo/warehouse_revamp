@@ -1,0 +1,600 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// CustomShipmentService — a parcel the warehouse sends that is NOT a marketplace order (backlog #88,
+// docs/business/custom_shipments/context_decision.md).
+//
+//   - a-custom-shipment-is-a-parcel-that-is-not-an-order: two kinds — a SAMPLE of the owning team's units to someone (the
+//     parcel form of the in-person sample, which stays on Rack detail), or a RESTOCK RESHIP: a received restock's broken
+//     units back to its supplier;
+//   - the-selling-team-asks-the-warehouse-ships: the owning selling team creates it; the warehouse it ships from picks,
+//     packs and hands it to the courier;
+//   - the-courier-is-paid-by-the-team-or-by-the-warehouse (+ its 🔄 A): the team picks the way at create — TEAM (*Kami
+//     bayar*: its account and its cost, editable until the handover, an expense as a transfer's shipping) or WAREHOUSE
+//     (*Gudang bayar*: the warehouse types the real cost at the handover, 0 allowed, owed back through Team Balance);
+//   - a-custom-shipment-is-cancelled-only-while-requested: the selling team cancels, only while REQUESTED;
+//   - the-custom-shipments-prototype-is-accepted: a sample leaves stock AT CREATE, oldest batch first, from racks the
+//     system picks, valued at the batch value the team sees; a reship sends only a received restock's broken units, at
+//     most the broken count less the units already on another live reship, one supplier per parcel, no rack stock; the
+//     warehouse receives no seller money in any field.
+//
+// Built in phases (the #88 scoping): P1 = Create + Detail and the events' definitions; List and ReshipOptions are P2;
+// CostSet, Cancel, Picked and Handover are P3 — declared here, answering Unimplemented until built.
+//
+// Money is `double`, rupiah as stored (money-is-double-in-the-api-too). A field the WAREHOUSE must not see is
+// `optional` and left UNSET for a warehouse reader (a-warehouse-sees-no-seller-money).
+service CustomShipmentService {
+  // The owning selling team creates a parcel. A SAMPLE takes its stock in the same transaction — the team's batches
+  // oldest first, the racks holding the fewest first, the code a transfer's out-leg uses — and too few in the warehouse
+  // fails the create, writing nothing. A RESHIP takes nothing: its units are a received restock's broken ones, counted
+  // against the line's broken row under the restock row's lock.
+  rpc CustomShipmentCreate(CustomShipmentCreateRequest) returns (CustomShipmentCreateResponse);
+  // P2. Every side lists: the selling team its own parcels, a warehouse the ones it ships (money unset). Paged.
+  rpc CustomShipmentList(CustomShipmentListRequest) returns (CustomShipmentListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // One parcel in full — its lines and its trail — for the selling team that owns it, the warehouse that ships it
+  // (no seller money), or the root team. Any other team reads NotFound.
+  rpc CustomShipmentDetail(CustomShipmentDetailRequest) returns (CustomShipmentDetailResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // P3. *Ubah Ongkir* — the selling team's account and cost, TEAM payer only, until handed over.
+  rpc CustomShipmentCostSet(CustomShipmentCostSetRequest) returns (CustomShipmentCostSetResponse);
+  // P3. The selling team calls it off, only while REQUESTED — a sample's take goes back on the racks it left.
+  rpc CustomShipmentCancel(CustomShipmentCancelRequest) returns (CustomShipmentCancelResponse);
+  // P3. The warehouse has picked and packed it: REQUESTED → PICKED. From here on there is no cancel.
+  rpc CustomShipmentPicked(CustomShipmentPickedRequest) returns (CustomShipmentPickedResponse);
+  // P3. The warehouse hands it to the courier: PICKED → HANDED_OVER — the cost it paid when the payer is WAREHOUSE.
+  rpc CustomShipmentHandover(CustomShipmentHandoverRequest) returns (CustomShipmentHandoverResponse);
+  // P2. What a reship can send: the team's received restocks with broken units still free, newest accept first. Paged.
+  rpc CustomShipmentReshipOptions(CustomShipmentReshipOptionsRequest) returns (CustomShipmentReshipOptionsResponse) {
+    // A READ (an-agent-only-reads-for-now, the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // P6. *Barang Tidak Ketemu* — the shipping warehouse notes goods it cannot find, only while REQUESTED
+  // (missing-goods-leave-a-note-on-the-custom-shipment): ONE trail row of its own kind, with its lines and note. The
+  // parcel STAYS requested — no status move, no stock write, nothing posts; the owning team decides (cancel, or wait).
+  // May be recorded again while requested; each note is its own row, the latest is the open one.
+  rpc CustomShipmentMissingReport(CustomShipmentMissingReportRequest) returns (CustomShipmentMissingReportResponse);
+}
+
+// What a parcel is (a-custom-shipment-is-a-parcel-that-is-not-an-order). APPEND ONLY.
+enum CustomShipmentKind {
+  CUSTOM_SHIPMENT_KIND_UNSPECIFIED = 0;
+  // The owning team's units sent to someone, taken from stock at create.
+  CUSTOM_SHIPMENT_KIND_SAMPLE = 1;
+  // A received restock's broken units sent back to its supplier — no stock moves.
+  CUSTOM_SHIPMENT_KIND_RESTOCK_RESHIP = 2;
+}
+
+// Where a parcel is. APPEND ONLY.
+enum CustomShipmentStatus {
+  CUSTOM_SHIPMENT_STATUS_UNSPECIFIED = 0;
+  // Asked by the selling team; nobody has touched the goods. Only here may the team cancel.
+  CUSTOM_SHIPMENT_STATUS_REQUESTED = 1;
+  // The warehouse picked and packed it.
+  CUSTOM_SHIPMENT_STATUS_PICKED = 2;
+  // Handed to the courier. Final.
+  CUSTOM_SHIPMENT_STATUS_HANDED_OVER = 3;
+  // Called off by the selling team while requested.
+  CUSTOM_SHIPMENT_STATUS_CANCELLED = 4;
+}
+
+// Who pays the courier (the-courier-is-paid-by-the-team-or-by-the-warehouse). APPEND ONLY.
+enum CustomShipmentPayer {
+  CUSTOM_SHIPMENT_PAYER_UNSPECIFIED = 0;
+  // *Kami bayar* — the selling team, from one of its active accounts, posted as an expense.
+  CUSTOM_SHIPMENT_PAYER_TEAM = 1;
+  // *Gudang bayar* — the warehouse, on the spot; the cost is typed at the handover and owed back through Team Balance.
+  CUSTOM_SHIPMENT_PAYER_WAREHOUSE = 2;
+}
+
+// Who receives the parcel — free text, all three. A reship's is prefilled from the supplier on the form.
+message CustomShipmentRecipient {
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+  string phone = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+  }];
+  string address = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 500
+  }];
+}
+
+// One line of a parcel: one product (a sample) or one restock line (a reship), once per parcel.
+message CustomShipmentItem {
+  uint64 id = 1;
+  uint64 product_id = 2;
+  // Snapshots at create — a sample's from product_service, a reship's from the restock line.
+  string product_code = 3;
+  string name = 4;
+  uint64 quantity = 5;
+  // A sample line's value at the batches its take drew from (a-sample-is-a-stock-out-at-batch-value); 0 on a reship.
+  // UNSET for a warehouse reader (a-warehouse-sees-no-seller-money).
+  optional double total = 6;
+  // A reship's restock line; 0 on a sample.
+  uint64 restock_item_id = 7;
+  // A reship line's broken note, as the warehouse wrote it at Terima; "" on a sample.
+  string broken_note = 8;
+}
+
+// What a trail row is (P6 — a goods-missing note is from = to = REQUESTED, so from and to alone no longer say it).
+// APPEND ONLY.
+enum CustomShipmentLogKind {
+  CUSTOM_SHIPMENT_LOG_KIND_UNSPECIFIED = 0;
+  // The create (from UNSPECIFIED) or a status move.
+  CUSTOM_SHIPMENT_LOG_KIND_STATUS = 1;
+  // *Ubah Ongkir* — from equals to; its description names the team's cost, EMPTY for a warehouse reader.
+  CUSTOM_SHIPMENT_LOG_KIND_COST_EDIT = 2;
+  // *Barang tidak ketemu* — the warehouse's goods-missing note (missing-goods-leave-a-note-on-the-custom-shipment): from =
+  // to = REQUESTED, its lines in `missing`, its note the description. No money: both sides read it whole.
+  CUSTOM_SHIPMENT_LOG_KIND_GOODS_MISSING = 3;
+}
+
+// One line of a goods-missing note: a sample's line on one rack its take drew from, or a reship's line (no rack).
+message CustomShipmentMissingItem {
+  // The parcel's line (CustomShipmentItem.id).
+  uint64 item_id = 1;
+  uint64 product_id = 2;
+  string product_code = 3;
+  string name = 4;
+  // The rack the take drew it from — 0 on a reship line (its broken units were never on a rack,
+  // a-restocks-broken-units-are-just-broken-for-now) or on a sample line whose take recorded no rack.
+  uint64 rack_id = 5;
+  // The rack's code as it reads now; "" with rack 0.
+  string rack_code = 6;
+  uint64 quantity = 7;
+}
+
+// A goods-missing note as the parcel carries it while it waits on the team — what the badge and the notices read.
+message CustomShipmentGoodsMissing {
+  // Its trail row (CustomShipmentLog.id).
+  uint64 log_id = 1;
+  repeated CustomShipmentMissingItem lines = 2;
+  // The warehouse's optional note; "" when none.
+  string note = 3;
+  uint64 actor_user_id = 4;
+  int64 at_unix = 5;
+  // Root or the Administrator inside the warehouse (an-override-is-stamped-in-every-service).
+  bool is_override = 6;
+}
+
+// One row of the trail — its `kind` says what it is: a step, a cost edit (from equals to) or a goods-missing note.
+message CustomShipmentLog {
+  uint64 id = 1;
+  // UNSPECIFIED on the create's row.
+  CustomShipmentStatus from_status = 2;
+  CustomShipmentStatus to_status = 3;
+  // user_service id; resolved to a name at read time.
+  uint64 actor_user_id = 4;
+  int64 at_unix = 5;
+  // THIS ROW'S ACTOR WAS AN OVERRIDE — Root or the Administrator inside a team they hold no role in
+  // (an-override-is-stamped-in-every-service); the screen shows the "by Root team" badge
+  // (an-override-shows-a-platform-badge).
+  bool is_override = 6;
+  // A cost edit's "Rp 15.000 → Rp 20.000" (empty for the warehouse), a goods-missing note's note; "" otherwise.
+  string description = 7;
+  CustomShipmentLogKind kind = 8;
+  // A GOODS_MISSING row's lines, in the order recorded; empty on any other row.
+  repeated CustomShipmentMissingItem missing = 9;
+}
+
+message CustomShipment {
+  uint64 id = 1;
+  // The owning selling team.
+  uint64 team_id = 2;
+  // Where it ships from — a reship's is its restock's warehouse.
+  uint64 warehouse_id = 3;
+  CustomShipmentKind kind = 4;
+  CustomShipmentStatus status = 5;
+  // A reship's restock and supplier (its lines'; 0 = the lines named none); 0 on a sample.
+  uint64 restock_id = 6;
+  uint64 supplier_id = 7;
+  CustomShipmentRecipient recipient = 8;
+  // The courier — a shipment_service channel id, opaque here.
+  uint64 shipment_channel_id = 9;
+  CustomShipmentPayer payer = 10;
+  // TEAM payer only — the team's account. 0 (unset) for a warehouse reader and on a WAREHOUSE payer.
+  uint64 finance_account_id = 11;
+  // TEAM payer: the team's cost — UNSET for a warehouse reader. WAREHOUSE payer: the cost the warehouse typed at the
+  // handover, 0 until then (the-warehouse-sees-the-ongkir-it-paid).
+  optional double shipping_cost = 12;
+  // The courier's receipt number, typed at the handover — optional.
+  string resi = 13;
+  // The selling team's note, for the warehouse.
+  string note = 14;
+  repeated CustomShipmentItem items = 15;
+  // A sample's stock take — its racks are StockPickLocations(warehouse_id, transaction_id); 0 on a reship.
+  uint64 transaction_id = 16;
+  // A sample's value, Σ its lines; 0 on a reship. UNSET for a warehouse reader (a-warehouse-sees-no-seller-money).
+  optional double total = 17;
+  // The trail, oldest first. DETAIL ONLY.
+  repeated CustomShipmentLog logs = 18;
+  // Who did what, and when — user_service ids, 0 = not yet; unix seconds, 0 = not yet.
+  uint64 created_by_user_id = 19;
+  int64 created_at_unix = 20;
+  uint64 picked_by_user_id = 21;
+  int64 picked_at_unix = 22;
+  uint64 handed_over_by_user_id = 23;
+  int64 handed_over_at_unix = 24;
+  uint64 cancelled_by_user_id = 25;
+  int64 cancelled_at_unix = 26;
+  // P6. The OPEN goods-missing note — the latest GOODS_MISSING row while the parcel is REQUESTED; UNSET once it is
+  // picked, handed over or cancelled (the trail keeps the row). On LIST rows too, which carry no trail: the badge on both
+  // lists (the-goods-missing-badge-is-on-both-lists). No money in it — the warehouse and the team are sent the same.
+  CustomShipmentGoodsMissing goods_missing = 27;
+}
+
+// ── Create ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+// One line to send: a SAMPLE names a product of the team's own; a RESHIP names a restock line (its product may be sent
+// too, and must then be the line's).
+message CustomShipmentLine {
+  uint64 product_id = 1;
+  uint64 restock_item_id = 2;
+  uint64 quantity = 3 [(buf.validate.field).uint64 = {
+    gt: 0
+    lte: 1000000
+  }];
+}
+
+message CustomShipmentCreateRequest {
+  // The roles that create an order (the-selling-team-asks-the-warehouse-ships: the build's default until asked).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // The owning selling team.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  CustomShipmentKind kind = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  // A SAMPLE: the warehouse its units leave — required. A RESHIP: its restock's warehouse; 0 or that one.
+  uint64 warehouse_id = 3;
+  // A RESHIP's restock — required, the team's own, received; 0 on a sample.
+  uint64 restock_id = 4;
+  // At least one line; a product (sample) or a restock line (reship) once per parcel — the handler checks the once.
+  repeated CustomShipmentLine lines = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+  CustomShipmentRecipient recipient = 6 [(buf.validate.field).required = true];
+  // The courier — required (the form's courier picker).
+  uint64 shipment_channel_id = 7 [(buf.validate.field).uint64.gt = 0];
+  CustomShipmentPayer payer = 8 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  // TEAM payer: required — one of the team's ACTIVE accounts, operational or not, as a transfer's shipping
+  // (a-transfers-shipping-is-paid-from-any-active-account). WAREHOUSE payer: 0.
+  uint64 finance_account_id = 9;
+  // TEAM payer: optional now, editable until the handover. WAREHOUSE payer: 0 — the warehouse types it at the handover.
+  double shipping_cost = 10 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  string note = 11 [(buf.validate.field).string.max_len = 1000];
+  // The form's key for this one create (a double tap would otherwise take a sample's stock twice). UNIQUE per team: a
+  // key already on a parcel is REFUSED as AlreadyExists, never answered with that parcel — as an order
+  // (the-order-refuses-a-used-key).
+  string idempotency_key = 12 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+}
+
+message CustomShipmentCreateResponse {
+  CustomShipment custom_shipment = 1;
+}
+
+// ── List and detail ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+message CustomShipmentListRequest {
+  // Every side — the selling team that owns it, the warehouse that ships it.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  CustomShipmentListFilter filter = 2;
+  // A GROWING list (HARD RULE 9).
+  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
+}
+
+message CustomShipmentListFilter {
+  // ONE status; UNSPECIFIED = all.
+  CustomShipmentStatus status = 1 [(buf.validate.field).enum.defined_only = true];
+  // ONE kind; UNSPECIFIED = both.
+  CustomShipmentKind kind = 2 [(buf.validate.field).enum.defined_only = true];
+  // Free text over its number, the recipient and a line's product code or name.
+  string q = 3 [(buf.validate.field).string.max_len = 100];
+  // Selling side only: the warehouse it ships from; 0 = any.
+  uint64 warehouse_id = 4;
+}
+
+message CustomShipmentListResponse {
+  // Newest first. No logs.
+  repeated CustomShipment custom_shipments = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+message CustomShipmentDetailRequest {
+  // Every side, as List. A parcel the team is no side of reads as NotFound.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message CustomShipmentDetailResponse {
+  CustomShipment custom_shipment = 1;
+}
+
+// ── The selling team's acts (P3) ────────────────────────────────────────────────────────────────────────────────────
+
+message CustomShipmentCostSetRequest {
+  // The owning SELLING team, TEAM payer only, until handed over.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
+  // A full replace of the two: the account (required) and the cost.
+  uint64 finance_account_id = 3 [(buf.validate.field).uint64.gt = 0];
+  double shipping_cost = 4 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+}
+
+message CustomShipmentCostSetResponse {
+  CustomShipment custom_shipment = 1;
+}
+
+message CustomShipmentCancelRequest {
+  // The owning SELLING team, only while requested (a-custom-shipment-is-cancelled-only-while-requested).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message CustomShipmentCancelResponse {
+  CustomShipment custom_shipment = 1;
+}
+
+// ── The warehouse's acts (P3) ───────────────────────────────────────────────────────────────────────────────────────
+
+message CustomShipmentPickedRequest {
+  // The SHIPPING warehouse, any member.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse — must be the parcel's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+message CustomShipmentPickedResponse {
+  CustomShipment custom_shipment = 1;
+}
+
+message CustomShipmentHandoverRequest {
+  // The SHIPPING warehouse, any member.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse — must be the parcel's.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
+  // REQUIRED when the payer is WAREHOUSE (0 allowed, empty is not 0); refused when it is TEAM.
+  optional double shipping_cost = 3 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  // The courier's receipt number — optional.
+  string resi = 4 [(buf.validate.field).string.max_len = 100];
+}
+
+message CustomShipmentHandoverResponse {
+  CustomShipment custom_shipment = 1;
+}
+
+// ── What a reship can send (P2) ─────────────────────────────────────────────────────────────────────────────────────
+
+message CustomShipmentReshipOptionsRequest {
+  // The owning SELLING team — only its own restocks are offered.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Free text over the restock's number and a broken line's product code or name.
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+  // A GROWING list (HARD RULE 9) — every problem restock the team ever received.
+  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
+}
+
+// One broken line of a received restock — what a reship can send of it.
+message CustomShipmentReshipLine {
+  uint64 restock_item_id = 1;
+  uint64 product_id = 2;
+  string product_code = 3;
+  string name = 4;
+  // The line's broken units at Terima (its broken problem row's count).
+  uint64 broken = 5;
+  // Units of it a reship that is not cancelled already carries.
+  uint64 already_sent = 6;
+  string broken_note = 7;
+  // The line's supplier and store — supplier_service ids the form resolves (SupplierByIds); 0 = the line named none.
+  uint64 supplier_id = 8;
+  uint64 supplier_channel_id = 9;
+  // P6. Units of it a goods-missing note named on a reship that was then CANCELLED — gone, never offered again
+  // (missing-reship-units-are-not-offered-again). What is still free is broken − already_sent − not_found.
+  uint64 not_found = 10;
+}
+
+// A received restock with broken units — tagged *Barang rusak* by Terima (a-restock-problem-is-a-system-tag).
+message CustomShipmentReshipOption {
+  uint64 restock_id = 1;
+  uint64 team_id = 2;
+  uint64 warehouse_id = 3;
+  int64 accepted_at_unix = 4;
+  repeated CustomShipmentReshipLine lines = 5;
+}
+
+message CustomShipmentReshipOptionsResponse {
+  // Newest accept first.
+  repeated CustomShipmentReshipOption options = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// ── Goods missing (P6) ──────────────────────────────────────────────────────────────────────────────────────────────
+
+// One line the warehouse cannot find.
+message CustomShipmentMissingLine {
+  // A line of THIS parcel.
+  uint64 item_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // A SAMPLE line: a rack its take drew this line from — or 0 only when the take recorded no rack for it. A RESHIP line:
+  // 0 (its broken units were never on a rack).
+  uint64 rack_id = 2;
+  // At most what the take drew from that rack (a sample), or the line's quantity (a reship).
+  uint64 quantity = 3 [(buf.validate.field).uint64 = {
+    gt: 0
+    lte: 1000000
+  }];
+}
+
+message CustomShipmentMissingReportRequest {
+  // The SHIPPING warehouse's roles that pick — as CustomShipmentPicked (the build's default, the prototype's accept).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse — must be the parcel's; the owning team and any other warehouse read NotFound.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
+  // At least one; a line and rack once per note — the handler checks the once and each line's most.
+  repeated CustomShipmentMissingLine lines = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 400
+  }];
+  // Optional — the lines already say what and from which rack.
+  string note = 4 [(buf.validate.field).string.max_len = 200];
+}
+
+message CustomShipmentMissingReportResponse {
+  // As the warehouse reads it — no seller money.
+  CustomShipment custom_shipment = 1;
+}

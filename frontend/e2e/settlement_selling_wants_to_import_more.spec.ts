@@ -195,7 +195,7 @@ test.describe("selling:all wants to record the platform's payouts — import set
         await page.goto("/orders");
       }
       // The page the person landed on, settled — signed in, its load's CheckAccess answered. Navigating on while that
-      // call is still in flight aborts it, and an aborted CheckAccess drops the token (reported to revamp_dev).
+      // call is still in flight aborts it (before #92/#96 that dropped the token; now the app keeps it and retries).
       await expect(reader.getByTestId("current-user")).toHaveText(g.usernames[r.key]);
       await reader.waitForLoadState("networkidle");
 

@@ -19,12 +19,14 @@ import { pickTeam } from "./pickers";
 // pays from its OWN account, so a balance read in one test is never moved by another test's event. The ground is seeded
 // in beforeAll, so a worker restarted after a failure seeds its own instead of reading a moved SUFFIX.
 //
-// `restock recorded in analytic metric` is 🚧 unimplemented — no analytic metric counts a restock when it is raised (Restock
-// counts what an ACCEPT puts on the racks) — so its check is its own test per given, marked `test.fail` with the status
-// (guide.md#acceptances-are-markdown): its own test, so the expected failure never hides a broken then of the others. It
-// reads Restock by product as selling:owner and asks for ANY figure of the raised product to read its 10 units — field-
-// agnostic, since how the raise will be shown is not built. The day it turns red, the then is built: ask the owner, then
-// run it as every selling role and point it at the field that was built.
+// `restock recorded in analytic metric` — built by #85 (the-restock-before-the-accept-prototype-is-accepted: Restock counts
+// a restock from the day it is RAISED, its Units / Value ordered on the create day). It is checked in every role's test,
+// on the restock that role raised (each role and case its own products), as that role: Analytic › Inventory › Restock by
+// product, this week, filtered to each raised product: `ordered_count` = the line's 10 units, `ordered_value` = the line's
+// share of the restock's total — its goods plus the shipping its team paid, spread over the units ordered as the landed
+// price spreads it (the (shipping cost) case's one line takes the whole Rp 15.000: Rp 115.000). Then the TARGET WAREHOUSE
+// reads the same metric: its `ordered_count` reads the 10 units and it is given no `ordered_value` at all — no cell, no
+// column, no headline (a warehouse reads the units and the COD it paid, never a value).
 test.describe("selling:all wants to restock", () => {
   test.describe.configure({ timeout: 120_000 });
 
@@ -80,9 +82,9 @@ test.describe("selling:all wants to restock", () => {
   const at = (role: string, kase: string) => `${role}-${kase}`;
   const WH_CODE = `AW${SUFFIX}`;
   const SUPPLIER_NAME = `E2E Acc Supplier ${SUFFIX}`;
-  // The 🚧 analytic check raises its own restock per case, as selling:owner, from its own products and account.
-  const METRIC = "met";
-  const KEYS = [...ROLES.map((r) => r.key), METRIC];
+  const KEYS = ROLES.map((r) => r.key);
+  // Restock by product, this week, filtered to one product.
+  const byProduct = (productId: string) => `/analytic?g=product&m=metrics/inventory/restock&r=7d&product=${productId}`;
   const ground = {
     team: "",
     warehouse: "",
@@ -272,34 +274,49 @@ test.describe("selling:all wants to restock", () => {
             .toPass({ timeout: 30_000 });
         });
 
+        // Restock by product, this week, filtered to each line this role raised: its 10 units, and its share of the
+        // restock's total — its goods plus the shipping spread over the units ordered (every line orders the same 10, so
+        // each takes an equal part). Re-read until it lands.
+        const value = LINE_TOTAL + c.shipping / c.products;
+        await test.step("then: restock recorded in analytic metric", async () => {
+          for (const line of lines) {
+            const product = ground.products[line];
+            await expect
+              .soft(async () => {
+                await page.goto(byProduct(product));
+                await expect(page.getByTestId(`analytic-cell-${product}-ordered_count`)).toHaveText(String(LINE_COUNT), {
+                  timeout: 3_000,
+                });
+                await expect(page.getByTestId(`analytic-cell-${product}-ordered_value`)).toHaveText(rupiah(value));
+              })
+              .toPass({ timeout: 30_000 });
+          }
+        });
+
         // THEN — as the warehouse: on its inbound list, sized as raised.
         await signIn(page, WH_USER, ground.warehouse);
         await test.step(`then: ${c.warehouse}`, async () => {
           await expect.soft(await inboundRow(page, restockId)).toContainText(size);
         });
+
+        // …and on the same metric: the same units, and no value at all — a warehouse never reads a seller's money.
+        await test.step("then: restock recorded in analytic metric (the warehouse reads the units, never a value)", async () => {
+          for (const line of lines) {
+            const product = ground.products[line];
+            await expect
+              .soft(async () => {
+                await page.goto(byProduct(product));
+                await expect(page.getByTestId(`analytic-cell-${product}-ordered_count`)).toHaveText(String(LINE_COUNT), {
+                  timeout: 3_000,
+                });
+                await expect(page.getByTestId(`analytic-cell-${product}-ordered_value`)).toHaveCount(0);
+                await expect(page.getByTestId("analytic-sort-ordered_value")).toHaveCount(0);
+                await expect(page.getByTestId("analytic-headline-ordered_value")).toHaveCount(0);
+              })
+              .toPass({ timeout: 30_000 });
+          }
+        });
       });
     }
-
-    // 🚧 — its own test, so the expected failure hides none of the thens above (see the head of this file).
-    test(`selling:owner create restock (${c.cond}): restock recorded in analytic metric`, async ({ page }) => {
-      test.fail(
-        true,
-        "🚧 unimplemented (docs/acceptances/inventory/restock.md) — no analytic metric records a restock when it is raised",
-      );
-
-      await signIn(page, username("own"), ground.team);
-      const { lines } = await raise(page, METRIC, c, ground.accounts[at(METRIC, c.key)]);
-      const product = ground.products[lines[0]];
-
-      // Restock by product, this week: any figure of the raised product reading its 10 units. Re-read until it lands.
-      await test.step("then: restock recorded in analytic metric", async () => {
-        await expect(async () => {
-          await page.goto(`/analytic?g=product&m=metrics/inventory/restock&r=7d`);
-          await expect(
-            page.locator(`[data-testid^="analytic-cell-${product}-"]`).filter({ hasText: new RegExp(`^${LINE_COUNT}$`) }),
-          ).not.toHaveCount(0, { timeout: 2_000 });
-        }).toPass({ timeout: 20_000 });
-      });
-    });
   }
 });

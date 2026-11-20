@@ -798,7 +798,9 @@ func (x *OrderLostCreatedMetricByDay) GetItems() map[string]*OrderLostCreatedMet
 // along its way out, each named by what happened to the order (the-order-metric-ids-name-what-moved): a resolve
 // (problem → completed) is a Completed, a picked or a processed order handed back (→ pending) is a Back to pending. The
 // placement's own pending row is Order Created's, never a Back to pending. Moves into cancel, return, return_completed
-// and lost are the five metrics' own, not counted here.
+// and lost are the five metrics' own, not counted here. Beside the seven, DISPUTES RESOLVED (the accept's 2026-11-20
+// line, the owner's checklist's *disputes resolved shown*) counts each resolve once more on its own: a resolve is one
+// Completed AND one Disputes resolved on the resolve's day.
 //
 // Each move counts on ITS OWN Jakarta day (a-fact-counts-on-the-day-it-happened), shaped as the five: their filters and
 // groups (the-four-group-by-team-shop-warehouse-user-and-time), USER the order's CREATOR — never the crew member who made
@@ -822,8 +824,11 @@ type OrderMovesMetric struct {
 	ProblemCount int64 `protobuf:"varint,6,opt,name=problem_count,json=problemCount,proto3" json:"problem_count,omitempty"`
 	// Completed: shipped → completed, and a resolved problem → completed.
 	CompletedCount int64 `protobuf:"varint,7,opt,name=completed_count,json=completedCount,proto3" json:"completed_count,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Disputes resolved: problem → completed — the dispute closed (the-order-status-moves-prototype-is-accepted, its
+	// 2026-11-20 line). Each resolve ALSO counts in completed_count, as accepted, so no figure already shown changes.
+	DisputesResolvedCount int64 `protobuf:"varint,8,opt,name=disputes_resolved_count,json=disputesResolvedCount,proto3" json:"disputes_resolved_count,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *OrderMovesMetric) Reset() {
@@ -901,6 +906,13 @@ func (x *OrderMovesMetric) GetProblemCount() int64 {
 func (x *OrderMovesMetric) GetCompletedCount() int64 {
 	if x != nil {
 		return x.CompletedCount
+	}
+	return 0
+}
+
+func (x *OrderMovesMetric) GetDisputesResolvedCount() int64 {
+	if x != nil {
+		return x.DisputesResolvedCount
 	}
 	return 0
 }
@@ -1931,7 +1943,7 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12B\n" +
-	"\x05value\x18\x02 \x01(\v2,.warehouse.selling.v1.OrderLostCreatedMetricR\x05value:\x028\x01\"\xb5\x03\n" +
+	"\x05value\x18\x02 \x01(\v2,.warehouse.selling.v1.OrderLostCreatedMetricR\x05value:\x028\x01\"\xf9\x03\n" +
 	"\x10OrderMovesMetric\x123\n" +
 	"\x0fconfirmed_count\x18\x01 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x0econfirmedCount\x12=\n" +
@@ -1946,7 +1958,9 @@ const file_warehouse_selling_v1_order_analytic_proto_rawDesc = "" +
 	"\rproblem_count\x18\x06 \x01(\x03B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\fproblemCount\x123\n" +
 	"\x0fcompleted_count\x18\a \x01(\x03B\n" +
-	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x0ecompletedCount:/\x9a\xb5\x18+\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x0ecompletedCount\x12B\n" +
+	"\x17disputes_resolved_count\x18\b \x01(\x03B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x02R\x15disputesResolvedCount:/\x9a\xb5\x18+\n" +
 	"\x05\x01\x04\x05\a\b\x12\x01\x01\x1a\t\x01\x02\x03\x04\x05\t\a\v\n" +
 	"\"\x14metrics/orders/moves\"\xc5\x01\n" +
 	"\x14OrderMovesMetricByID\x12K\n" +

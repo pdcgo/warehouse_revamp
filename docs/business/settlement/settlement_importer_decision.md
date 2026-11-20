@@ -31,6 +31,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-source-is-named-importer](#the-source-is-named-importer) | an imported row's `source_type` is `importer` — renamed from `exporter` before the first import writes one |
 | [the-screens-as-built-are-accepted](#the-screens-as-built-are-accepted) | ✅ the frontend as built is accepted — the import screens on the real API, the shop's primary CS, and the report's Withdrawn and Position to date |
 | [two-live-orders-on-a-ref-post-to-the-shop](#two-live-orders-on-a-ref-post-to-the-shop) | a ref on two or more live orders posts to the shop, naming them — as an unmatched ref does |
+| [the-import-pages-tab-note-stays-on-a-phone](#the-import-pages-tab-note-stays-on-a-phone) | on a phone the tab's explanation line stays, on every tab, wrapped whole |
+| [a-phone-import-block-opens-only-its-order-link](#a-phone-import-block-opens-only-its-order-link) | a phone block opens nothing itself; only its order link opens the order |
+| [the-import-detail-phone-prototype-is-accepted](#the-import-detail-phone-prototype-is-accepted) | the import detail page on a phone, as drawn |
 
 ## the-import-is-one-streamed-call
 
@@ -982,3 +985,41 @@ flowchart LR
 
 **What it accepts.** Like an unmatched line, the two orders' Settlement tabs show the sale with nothing received until a
 person settles it by hand; the reason the doubles exist is kept out of this repository, so the system cannot place it.
+
+---
+
+## the-import-pages-tab-note-stays-on-a-phone
+
+> Owner (Heri), in chat (2026-11-19): *"A"*, as recommended — to Q1 of the #94 Storybook prototype (the settlement import detail page on a phone, `pages/settlement-import-detail/stories/Phone.stories.tsx`; screenshots of the Held, Posted and Already there tabs at 390 px, 320 px with a long shop name, the desktop unchanged, and today's page at 390 px as BEFORE): the explanation line under the tabs (e.g. *"Baris ini tidak bisa tercatat… unggah file yang sama lagi"*) takes 2–4 lines on a phone — **A** keep it on every tab, as drawn (on *Ditahan* it is the only place that says how to retry, and it wraps whole); **B** hide it on every tab; **C** keep only *Ditahan*'s line.
+
+**The verdict.** On a phone the import detail page keeps each tab's explanation line under the tab row, on **every** tab, wrapped in full — never cut or hidden.
+
+⚠ Not built — the prototype only (backlog #94).
+
+✅ **Built 2026-11-19** (backlog #94). Live on a phone: the page keeps each tab's note (`lines-note`) under the sliding tab row on all five tabs, wrapped whole — never clamped or hidden (the desktop draws it as before). Code: [index.tsx](../../../frontend/src/pages/settlement-import-detail/index.tsx); story *Pages / Settlement / ImportDetail / Phone* › *Every tab keeps its note* (a one-line clamp fails it).
+
+---
+
+## a-phone-import-block-opens-only-its-order-link
+
+> Owner (Heri), in chat (2026-11-19): *"A"*, as recommended — to Q2 of the #94 Storybook prototype: what does a tap on a statement row's block do on a phone? A block names one order, two (a ref on several live orders) or none (held, skipped, withdrawals). **A** only the order link opens the order, as drawn — the same as the desktop row; **B** a block with exactly one order opens it on a tap (and lights up under the thumb), the others open nothing.
+
+**The verdict.** On a phone a statement row's block opens **nothing** itself and does not light up under the thumb; only its order link(s) open the order — as the desktop row.
+
+⚠ Not built — the prototype only (backlog #94).
+
+✅ **Built 2026-11-19** (backlog #94). Live on a phone: each statement row is a block ([LineBlock.tsx](../../../frontend/src/pages/settlement-import-detail/components/LineBlock.tsx)) with no handler, role, tab stop or pointer of its own; only its order link(s) (`line-order-<id>`, `line-found-order-<id>-<order>`) open the order. Story *Pages / Settlement / ImportDetail / PhoneRows* › *A block opens only its order links* (a pointer on the block fails it).
+
+---
+
+## the-import-detail-phone-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-19): *"A"* to both questions of the #94 Storybook prototype (`pages/settlement-import-detail/stories/Phone.stories.tsx`, screenshots in the accept: Held, Posted to the shop, Posted, Already there at 390 px, 320 px with a long shop name, the desktop at 1366 unchanged, today's page at 390 px as BEFORE) — [the-import-pages-tab-note-stays-on-a-phone](#the-import-pages-tab-note-stays-on-a-phone), then [a-phone-import-block-opens-only-its-order-link](#a-phone-import-block-opens-only-its-order-link) — after being told the phone design would be recorded as accepted with the second answer.
+
+**The verdict.** The import detail page reads on a phone as drawn: the shop as a 20 px title with its badges wrapping and Download as an icon on that row; the tally two a row; the five tabs (Held first, the accepted order) on one row that slides sideways and never shrinks; each statement row as a block — ref and amount (red when money left), the result with its order link(s), the importer's detail, the statement's type → what it was recorded as, the day · sheet; grey skeletons while loading (the next page keeps its rows; another tab never shows the previous tab's); the empty hint; the centred growing pager. Below `md` only — the desktop draws today's page.
+
+*(Not asked — standing rules the go-live applies to the live page, both shells, per the prototype README:)* the growing pager, the empty hint, skeletons instead of a spinner, WIB time and short dates, and a Mobile story — each from its own existing decision.
+
+⚠ Not built — the prototype only (backlog #94).
+
+✅ **Built 2026-11-19** (backlog #94). Live, both shells. Below `md` the page draws the accepted phone design for real — `useIsMobile()`, a JS breakpoint, so one layout mounts; the Storybook-only gate `phonePrototype.tsx` is deleted. The standing rules apply on the desktop too, each from its own decision: one `GrowingPager` (`lines-pager`) in place of the old `Pagination` — 10 / 20 / 50 per page on a desktop, centred with no size on a phone ([every-list-pages-with-the-growing-pager](../../technical/frontend/context_decision.md#every-list-pages-with-the-growing-pager), [a-phone-pager-is-centred-without-a-page-size](../../technical/frontend/context_decision.md#a-phone-pager-is-centred-without-a-page-size)); the `EmptyHint` in place of the table on an empty tab, its title the old sentence and `lines-empty` kept ([an-empty-list-shows-a-hint](../../technical/frontend/context_decision.md#an-empty-list-shows-a-hint)); `ListSkeleton` for the file's and a tab's first load instead of a spinner, `import-detail-loading` / `lines-loading` ([motion-is-small-quick-and-shared](../../technical/frontend/context_decision.md#motion-is-small-quick-and-shared)); the by-line in the app's language and WIB (the full form) and the table's date cells short, *27 Sep* ([a-table-date-is-short-and-every-time-is-wib](../../technical/frontend/context_decision.md#a-table-date-is-short-and-every-time-is-wib)); and a new tab shows its skeleton until its own rows land, never the previous tab's (this decision's guard). Every existing test id kept; the prototype's new ones live as they were. No proto, Go or i18n change. Code: [index.tsx](../../../frontend/src/pages/settlement-import-detail/index.tsx), [LineBlock.tsx](../../../frontend/src/pages/settlement-import-detail/components/LineBlock.tsx); stories *Pages / Settlement / ImportDetail* › Default, **Mobile** right after it ([every-page-has-a-mobile-story](../../technical/frontend/context_decision.md#every-page-has-a-mobile-story)), *…/Phone* (7) and *…/PhoneRows* (10), and the desktop's *Rows*, *File* and *States* gained a story per standing rule.

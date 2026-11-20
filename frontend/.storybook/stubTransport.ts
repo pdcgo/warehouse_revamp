@@ -122,6 +122,8 @@ import { batchStubService } from "./batchStub";
 import { batchRevalue } from "./batchPriceStub";
 import { RestockRequestService } from "../src/gen/warehouse/inventory/v1/restock_request_pb";
 import { warehouseTransferService } from "./warehouseTransferStub";
+import { customShipmentPickLocations, customShipmentService } from "./customShipmentStub";
+import { CustomShipmentService } from "../src/gen/warehouse/inventory/v1/custom_shipment_pb";
 import { opnameService } from "./opnameStub";
 import { OpnameService } from "../src/gen/warehouse/inventory/v1/opname_pb";
 import { batchList, foundOrderNotesOf, foundRequestService, stockAdjust } from "./foundRequestStub";
@@ -132,6 +134,15 @@ import { FoundRequestService } from "../src/gen/warehouse/inventory/v1/found_req
 import { rackService } from "./rackStub";
 import { returnConfigurationService } from "./returnConfigurationStub";
 import { orderReturnAccept, orderStatusChange, readsOrder, returnLabelsOf, scenarioStatus } from "./returnAcceptStub";
+// Cetak ulang label's two stamps and the server's rule over them (a-changed-label-asks-the-warehouse-to-reprint).
+import {
+  labelPrintedAtOf,
+  reprintLabelOf,
+  reprintLabelScenario,
+  resetReprintLabels,
+  stampChanged,
+  stampPrinted,
+} from "./reprintLabelScenario";
 import { orderShopUpdate, resetOrderShopFixes, shopFixNotesOf, shopOf } from "./orderShopStub";
 import { orderPickLines, stockPickLocations as stockPickLocationsOf } from "./bulkPickStub";
 import { orderPrintByIds } from "./orderPrintStub";
@@ -370,6 +381,8 @@ export function resetOrderNotes() {
   nextNoteLogId = 9_000n;
   // …and the shops a story fixed, with their note rows (orderShopStub.ts).
   resetOrderShopFixes();
+  // …and Cetak ulang label's prints and changes (reprintLabelScenario.ts), which a print or an Edit Resi writes.
+  resetReprintLabels();
 }
 
 function channelById(id: bigint): StubChannel {
@@ -864,6 +877,8 @@ type OrderScopeFilter =
       dateField?: OrderDateField;
       // Only orders whose settlement account never opened (a-missing-account-is-found-by-its-opened-at).
       settlementNotOpened?: boolean;
+      // Perlu cetak ulang — only the orders marked Cetak ulang label (the-reprint-label-prototype-is-accepted).
+      reprintLabel?: boolean;
     }
   | undefined;
 
@@ -968,6 +983,8 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     .filter((o) => !filter?.warehouseId || o.warehouseId === filter.warehouseId)
     // settlement_opened_at IS NULL, as scopedOrders reads it.
     .filter((o) => !filter?.settlementNotOpened || o.settlementOpenedAtUnix === 0n)
+    // Perlu cetak ulang, as scopedOrders reads it — printed, changed after, still in the building (reprintLabelOf).
+    .filter((o) => !filter?.reprintLabel || reprintLabelOf(o.id, o.status))
     // Newest first, which is the order the list promises.
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 }
@@ -1179,6 +1196,8 @@ export const transport = createRouterTransport(({ service }) => {
   service(RestockRequestService, restockRequestService);
   // The warehouse transfer — warehouseTransferStub.ts plays the same rules the server keeps (warehouse_transfer_decision.md).
   service(WarehouseTransferService, warehouseTransferService);
+  // Custom shipments (*Kirim Paket*, backlog #88) — customShipmentStub.ts plays the server's rules through the real proto.
+  service(CustomShipmentService, customShipmentService);
   // The stock count — a prototype: opnameStub.ts plays the decided opname rules (opname_decision.md).
   service(OpnameService, opnameService);
   // A found at the shelf waiting for the warehouse Owner or Admin (an-adjust-found-waits-for-the-owner-or-admin):
@@ -1540,8 +1559,9 @@ export const transport = createRouterTransport(({ service }) => {
     // The shelves an order's goods were drawn from, read by the take's TRANSACTION id — the order's `transactionId`
     // (the-placement-page-reads-racks-by-transaction-id). A transaction no fixture order holds answers EMPTY, as the
     // server would — "nothing was drawn" is a real answer, not an error. Many takes at once for the bulk pick list
-    // (the-bulk-pick-list-prototype-is-accepted) — bulkPickStub.ts.
-    stockPickLocations: (req) => stockPickLocationsOf(req),
+    // (the-bulk-pick-list-prototype-is-accepted) — bulkPickStub.ts. A custom shipment's sample take answers its own racks
+    // (customShipmentStub.ts) — the warehouse's pick page reads them by the parcel's transaction, as an order's.
+    stockPickLocations: (req) => customShipmentPickLocations(req) ?? stockPickLocationsOf(req),
 
     // The Adjust dialog (features/inventory/AdjustStockDialog): its write, and the batches Damaged and Lost pick from.
     // FOUND is refused here, as on the server — the dialog reports it through FoundRequestCreate (foundRequestStub.ts).
@@ -1614,6 +1634,9 @@ export const transport = createRouterTransport(({ service }) => {
               ...o,
               itemQuantity: unitsOf(o.id),
               dateEnteredAtUnix: entered === undefined ? 0n : enteredAt(o, entered),
+              // Cetak ulang label, as the server's row carries it (a-changed-label-asks-the-warehouse-to-reprint).
+              reprintLabel: reprintLabelOf(o.id, o.status),
+              labelPrintedAtUnix: labelPrintedAtOf(o.id),
               // A label a story lends the order (orderLabelScenario.labelled) rides on its row, as the server's list
               // carries the order's `receipt` — so the row's ⋯ Print Label is on for it.
               ...(orderLabelScenario.labelled.includes(o.id)
@@ -1651,6 +1674,9 @@ export const transport = createRouterTransport(({ service }) => {
           ...read,
           // The shop a story fixed it to (orderShopStub.ts); the fixture's otherwise.
           shopId: shopOf(read),
+          // Cetak ulang label — the pick page's line, the seller's Edit Resi line (reprintLabelScenario.ts).
+          reprintLabel: reprintLabelOf(read.id, read.status),
+          labelPrintedAtUnix: labelPrintedAtOf(read.id),
           // …and the note a found naming this lost order wrote (a-found-lost-parcel-is-a-found-stock-in, foundRequestStub).
           timelineLogs: [
             ...order.timelineLogs,
@@ -1704,6 +1730,13 @@ export const transport = createRouterTransport(({ service }) => {
       });
 
       const included = results.filter((r) => r.included);
+      // THE PRINT PAGE'S PRINT IS RECORDED (record_print): every included order's label is printed now, which clears its
+      // Cetak ulang label; the order page's viewer asks without it and records nothing.
+      if (req.recordPrint) {
+        if (included.length > 0) stampPrinted(included.map((r) => r.orderId));
+      } else {
+        reprintLabelScenario.viewed.push([...req.orderIds]);
+      }
       const url =
         included.length === 0
           ? ""
@@ -1759,6 +1792,11 @@ export const transport = createRouterTransport(({ service }) => {
       if (!order || order.teamId !== req.teamId) throw new ConnectError("order not found", Code.NotFound);
 
       receiptUpdateScenario.last = { orderId: req.orderId, receiptCode: req.receiptCode, documentId: req.receipt?.documentId };
+
+      // THE CHANGE IS STAMPED, as the server stamps `receipt_changed_at` — only when the number or the file differs.
+      const codeChanged = req.receiptCode !== undefined && req.receiptCode !== order.receiptCode;
+      const fileChanged = req.receipt !== undefined && (req.receipt.documentId ?? "") !== (order.receipt?.documentId ?? "");
+      if (codeChanged || fileChanged) stampChanged(order.id);
 
       return { order };
     },
@@ -2535,13 +2573,16 @@ export const transport = createRouterTransport(({ service }) => {
 
       return pagedColumnar("file", rows, req.page as PageReq);
     },
-    uploadedFileByIds: (req) =>
-      byIds(
+    uploadedFileByIds: async (req) => {
+      if (settlementImportScenario.fileHoldMs > 0) await sleep(settlementImportScenario.fileHoldMs);
+      return byIds(
         "file",
         importsTable.filter((f) => f.teamId === req.teamId),
         req.filter?.ids ?? [],
-      ),
-    uploadedFileLineList: (req) => {
+      );
+    },
+    uploadedFileLineList: async (req) => {
+      if (settlementImportScenario.linesHoldMs > 0) await sleep(settlementImportScenario.linesHoldMs);
       const fileId = req.filter?.uploadedFileId ?? 0n;
       const owned = importsTable.some((f) => f.id === fileId && f.teamId === req.teamId);
       const outcomes = req.filter?.outcomes ?? [];

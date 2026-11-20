@@ -226,6 +226,10 @@ func orderToProto(o *selling_service_models.Order) *sellingv1.Order {
 		ReturnWarehouseId: o.ReturnWarehouseID,
 		// The return transaction its accepted return went back on the shelf in; 0 = not accepted back.
 		ReturnTransactionId: uint64OrZero(o.ReturnTransactionID),
+		// Cetak ulang label — a resi or label change after the last print, still in the building (needsReprint); and when
+		// the label was last printed, 0 = never (a-changed-label-asks-the-warehouse-to-reprint).
+		ReprintLabel:       needsReprint(o),
+		LabelPrintedAtUnix: unixOrZero(o.LabelPrintedAt),
 	}
 }
 

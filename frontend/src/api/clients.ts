@@ -19,6 +19,7 @@ import { InventoryService } from "../gen/warehouse/inventory/v1/inventory_pb";
 import { RackService } from "../gen/warehouse/inventory/v1/rack_pb";
 import { RestockRequestService } from "../gen/warehouse/inventory/v1/restock_request_pb";
 import { WarehouseTransferService } from "../gen/warehouse/inventory/v1/warehouse_transfer_pb";
+import { CustomShipmentService } from "../gen/warehouse/inventory/v1/custom_shipment_pb";
 import { OpnameService } from "../gen/warehouse/inventory/v1/opname_pb";
 import { FoundRequestService } from "../gen/warehouse/inventory/v1/found_request_pb";
 import { SupplierService } from "../gen/warehouse/supplier/v1/supplier_pb";
@@ -83,6 +84,9 @@ export const restockClient = createClient(RestockRequestService, transport);
 // A selling team moving its own stock between two warehouses (docs/business/inventory/warehouse_transfer.md), served by
 // inventory_service on the decided ledgers; Storybook's stub plays the same rules.
 export const warehouseTransferClient = createClient(WarehouseTransferService, transport);
+// A parcel the warehouse sends that is not a marketplace order — a sample, or a restock's broken units back to its
+// supplier (docs/business/custom_shipments), served by inventory_service beside the transfer.
+export const customShipmentClient = createClient(CustomShipmentService, transport);
 // The stock count — a prototype until design_accept: the server answers Unimplemented, Storybook's stub plays it.
 export const opnameClient = createClient(OpnameService, transport);
 // A found at the shelf waiting for the warehouse Owner or Admin (an-adjust-found-waits-for-the-owner-or-admin) — a

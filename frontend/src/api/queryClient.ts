@@ -136,6 +136,9 @@ export const key = {
   // Its OWN prefix, not a filter on `restock`: a transfer is not a purchase, and its writes move stock at two
   // warehouses, so they refresh `inventory` as well (features/warehouseTransfer/queries.ts).
   warehouseTransfer: (teamId: bigint | undefined, params?: Params) => scope("warehouseTransfer", teamId, params),
+  // Custom shipments (*Kirim Paket*). Their own prefix: a sample's create and cancel move stock, so those refresh
+  // `inventory` too (features/customShipment/queries.ts).
+  customShipments: (teamId: bigint | undefined, params?: Params) => scope("customShipments", teamId, params),
   // The stock count's sessions, rows and racks. Its own prefix: a finalize moves stock, so it refreshes `inventory` too.
   opname: (teamId: bigint | undefined, params?: Params) => scope("opname", teamId, params),
   // The found requests waiting for the warehouse Owner or Admin (an-adjust-found-waits-for-the-owner-or-admin). Its own

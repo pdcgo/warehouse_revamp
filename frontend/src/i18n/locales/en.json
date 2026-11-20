@@ -43,6 +43,7 @@
     "discoverSupplier": "Discover Supplier",
     "supplierReport": "Supplier Report",
     "warehouseTransfer": "Transfers",
+    "customShipments": "Custom Shipments",
     "sectionOperations": "Operations",
     "sectionFinance": "Finance",
     "sectionTeam": "Team",
@@ -220,6 +221,7 @@
     "requestSent": "You asked {{name}} to pay {{amount}} on {{date}}.",
     "causeReturnIncidentalFee": "Courier at a return · order #{{id}}",
     "causeTransferFee": "Courier on a transfer · transfer #{{id}}",
+    "causeCustomShipmentFee": "Courier on a custom shipment · parcel #{{id}}",
     "recordNotePlaceholder": "e.g. BCA transfer on 7 Nov",
     "tabAll": "All",
     "emptyAll": "Nothing has moved between you in this range.",
@@ -1266,6 +1268,17 @@
       "back": "Back",
       "confirm": "Move order #{{id}} from {{from}} to {{to}}? Its settlement moves too, so {{to}}'s statement can import it.",
       "saved": "Shop changed"
+    },
+    "reprintLabel": {
+      "badge": "Reprint label",
+      "badgeHint": "The seller changed the tracking number or the label after it was printed — print it again.",
+      "pickHint": "The seller changed this order's tracking number or label after it was printed. Print the new label before packing.",
+      "filter": "Needs reprint",
+      "printLine_one": "{{count}} to reprint",
+      "printLine_other": "{{count}} to reprint",
+      "handover": "Reprint the label first",
+      "handoverHint": "Order #{{id}}: its label changed after it was printed — print the new one and stick it on.",
+      "sellerHint": "The warehouse has already printed this label. Saving a change asks it to print the label again."
     }
   },
   "orderDetail": {
@@ -3189,6 +3202,11 @@
       "capZero": "A cap of 0 would charge nothing — leave it empty for no cap.",
       "frozen": "Each order keeps the fee it was placed at, and that is what the ledger charges. A change here prices the next order, never one already placed.",
       "saved": "Warehouse fee saved"
+    },
+    "noAnswer": {
+      "title": "No answer from the server — you are still signed in.",
+      "help": "Your sign-in could not be checked, so it is kept. Try Again, or this page checks again by itself when the connection comes back.",
+      "tryAgain": "Try Again"
     }
   },
   "picking": {
@@ -3709,7 +3727,52 @@
     },
     "cancelAccount": "{{net}} goes back to {{account}}.",
     "cancelNoAccount": "This expense names no account, so no balance moves.",
-    "recordedBy": "Recorded by {{name}}"
+    "recordedBy": "Recorded by {{name}}",
+    "types": {
+      "choose": "Choose a type",
+      "type": {
+        "adsMarketplace": "Marketplace ads",
+        "contentEndorse": "Content · endorsement",
+        "basicSalary": "Basic salary",
+        "bonus": "Bonus",
+        "contributions": "Contributions (BPJS)",
+        "electricity": "Electricity",
+        "internet": "Internet · data package",
+        "kitchen": "Kitchen · team meals",
+        "tools": "Tools",
+        "equipment": "Equipment",
+        "bankFee": "Bank fee",
+        "discrepancy": "Discrepancy · unrecorded transaction",
+        "outsideDebtPaid": "Outside debt paid",
+        "outsideReceivableReceived": "Outside receivable received",
+        "prive": "Prive · owner takes capital",
+        "capitalDeposit": "Deposit · owner adds capital",
+        "otherOut": "Other money out",
+        "otherIn": "Other money in"
+      },
+      "noType": "No type",
+      "allOf": "All {{group}}",
+      "in": "In",
+      "capital": "Capital",
+      "moneyIn": "Money in",
+      "moneyOut": "Money out",
+      "inLine": "The amount stays positive — it adds to the account and lowers the month's total.",
+      "outLine": "The amount stays positive — it leaves the account.",
+      "priveLine": "Recorded as capital (prive) in the account's history — the same record as Withdraw Capital on the account page. One record, shown on both pages; never an expense in the profit.",
+      "depositLine": "Recorded as capital (deposit) in the account's history — the same record as Add Capital on the account page. One record, shown on both pages; never income in the profit.",
+      "receivedInto": "Received into",
+      "takenFrom": "Taken from",
+      "receivedIntoHelp": "The team's operational account the money came into.",
+      "capitalAccountHelp": "Any of the team's accounts — as Add / Withdraw Capital on the account page.",
+      "fromAccountPage": "Recorded on the account page",
+      "spending": "Spending",
+      "capitalNet": "Capital (prive − deposit)",
+      "capitalHint": "Not an expense in the profit",
+      "monthTotal": "Month total",
+      "monthTotalHint": "spending − money in + capital",
+      "viaExpenses": "from Expenses #{{id}} · {{name}}",
+      "capitalOnExpenses": "Also shown on Expenses — Withdraw as Prive, Add as Deposit. One record."
+    }
   },
   "periodGrain": {
     "label": "Group by",
@@ -5398,7 +5461,8 @@
         "handed_over_count": "Handed over",
         "shipped_count": "Shipped",
         "problem_count": "Problem",
-        "completed_count": "Completed"
+        "completed_count": "Completed",
+        "disputes_resolved_count": "Disputes resolved"
       },
       "financialAccounts": {
         "opening_balance": "Opening balance",
@@ -5913,7 +5977,6 @@
     "title": "Custom Shipments",
     "titleWarehouse": "Parcels to Ship",
     "new": "New Parcel",
-    "unavailable": "Custom shipments are a prototype — not available yet.",
     "sellingOnly": "Custom shipments are created by a selling team.",
     "warehouseOnly": "This page is the shipping warehouse's.",
     "teamRef": "Team #{{id}}",
@@ -6006,6 +6069,8 @@
       "brokenNote": "Broken: {{note}}",
       "brokenLeft": "{{count}} broken left",
       "brokenLeftAfterSent": "{{count}} left · {{broken}} broken, {{sent}} already on a parcel",
+      "brokenLeftAfterSentGone": "{{count}} left · {{broken}} broken, {{sent}} on a parcel, {{gone}} not found",
+      "brokenLeftAfterGone": "{{count}} left · {{broken}} broken, {{gone}} not found",
       "recipient": "Recipient",
       "prefilled": "Filled in from {{name}}'s supplier record — change it if needed.",
       "prefilledPartly": "Filled in from {{name}}'s supplier record, which lacks a contact or an address — type what is missing.",
@@ -6118,11 +6183,47 @@
     },
     "toast": {
       "created": "Parcel created",
+      "createFailed": "Parcel not created",
       "cancelled": "Parcel cancelled",
       "costSaved": "Shipping cost saved",
       "picked": "Parcel picked",
       "handedOver": "Handed over to the courier",
       "refused": "Not allowed in this status"
+    },
+    "goodsMissing": {
+      "action": "Goods Missing",
+      "badge": "Goods missing",
+      "badgeHint_one": "{{count}} unit the warehouse cannot find — yours to decide",
+      "badgeHint_other": "{{count}} units the warehouse cannot find — yours to decide",
+      "title": "Goods Missing · Parcel #{{id}}",
+      "warning": "The parcel stays Requested — {{team}} decides: cancel it, or wait. The warehouse does not cancel, and no stock moves: a stock count finds the shortfall.",
+      "warningReship": "The parcel stays Requested — {{team}} decides: cancel it, or wait. The warehouse does not cancel; no rack stock moves.",
+      "otherRack": "On another rack? Take it from there — the next stock count puts the racks right. Write here only what is on no rack.",
+      "brokenHint": "Broken units of restock #{{id}} — never on a rack. Write the units that cannot be found or were already thrown away.",
+      "ofBroken": "×{{count}} broken",
+      "missing": "Missing",
+      "missingOf": "Missing — {{name}}",
+      "note": "Note for the team",
+      "notePlaceholder": "e.g. checked A-01-1 and the racks beside it",
+      "total_one": "{{count}} unit missing",
+      "total_other": "{{count}} units missing",
+      "waiting": "Type how many are missing",
+      "confirm": "Record Goods Missing",
+      "toast": "Goods missing recorded",
+      "toastDetail": "{{team}} sees it on this parcel and decides.",
+      "lineRack": "{{name}} ×{{count}} · rack {{rack}}",
+      "lineNoRack": "{{name}} ×{{count}} · no rack recorded",
+      "lineBroken": "{{name}} ×{{count}} · broken, never on a rack",
+      "trailTitle": "Goods missing",
+      "trailWarehouse": "The parcel stays Requested — {{team}} decides: cancel, or wait.",
+      "trailSelling": "From {{warehouse}} · the parcel stays Requested — cancel it, or wait.",
+      "notice": {
+        "sellingTitle": "{{warehouse}} cannot find the goods",
+        "sellingSample": "The parcel stays Requested. Cancel it if it cannot wait — its units go back on the book of the racks they left, and the warehouse's stock count finds the shortfall.",
+        "sellingReship": "The parcel stays Requested. Cancel it if it cannot wait — no rack stock moves.",
+        "warehouseTitle": "Goods missing recorded · {{when}}",
+        "warehouse": "Waiting for {{team}} to decide — cancel, or wait. Found after all? Scan it as usual."
+      }
     }
   }
 }
