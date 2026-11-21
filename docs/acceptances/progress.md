@@ -117,3 +117,18 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:owner` · `selling:admin` wants to correct a batch's price · [correct batch price](inventory/batch.md#correct-price) (5 thens: ⬜ 5)
 - `selling:cs` · `warehouse:all` wants to correct a batch's price · [correct batch price](inventory/batch.md#correct-price) (1 then: ⬜ 1)
 - `selling:all` wants to see its batches · [open product](inventory/batch.md#correct-price) (1 then: ⬜ 1)
+
+## 2026-11-21
+
+- `selling:all` · `warehouse:all` wants to know where the money is · [open accounts](financial_account/account.md#accounts) (4 thens: ⬜ 4)
+- `selling:all` · `warehouse:all` wants to know where the money is · [filter accounts](financial_account/account.md#accounts) (3 thens: ⬜ 3)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to add an account · [create account](financial_account/account.md#set-up) (5 thens: ⬜ 5)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to fix an account's details · [edit account](financial_account/account.md#set-up) (1 then: ⬜ 1)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to close an account · [archive account](financial_account/account.md#set-up) (2 thens: ⬜ 2)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to use a closed account again · [restore account](financial_account/account.md#set-up) (1 then: ⬜ 1)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to choose which accounts pay · [mark operational](financial_account/account.md#set-up) (2 thens: ⬜ 2)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to name where a withdrawal landed · [set account](financial_account/account.md#set-up) (4 thens: ⬜ 4)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to a shop's withdrawals to land in an account · [point a shop here](financial_account/account.md#set-up) (1 then: ⬜ 1)
+- `selling:cs` · `warehouse:staff` wants to add an account · [create account](financial_account/account.md#set-up) (2 thens: ⬜ 2)
+- `selling:all` · `warehouse:all` wants to read an account's rows · [open account](financial_account/account.md#account) (1 then: ⬜ 1)
+- `selling:all` · `warehouse:all` wants to read an account's rows · [filter account rows](financial_account/account.md#account) (1 then: ⬜ 1)
