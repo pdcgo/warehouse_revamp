@@ -132,3 +132,7 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:cs` · `warehouse:staff` wants to add an account · [create account](financial_account/account.md#set-up) (2 thens: ⬜ 2)
 - `selling:all` · `warehouse:all` wants to read an account's rows · [open account](financial_account/account.md#account) (1 then: ⬜ 1)
 - `selling:all` · `warehouse:all` wants to read an account's rows · [filter account rows](financial_account/account.md#account) (1 then: ⬜ 1)
+- `selling:owner` · `selling:admin` · `warehouse:owner` wants to move money between accounts · [transfer](financial_account/transfer.md) (12 thens: ⬜ 12)
+- `selling:owner` · `selling:admin` · `warehouse:owner` wants to move money between accounts · [transfer out](financial_account/transfer.md) (2 thens: ⬜ 2)
+- `warehouse:admin` wants to move money between accounts · [transfer](financial_account/transfer.md) (1 then: ⬜ 1)
+- `selling:cs` · `warehouse:staff` wants to move money between accounts · [transfer](financial_account/transfer.md) (1 then: ⬜ 1)
