@@ -13,19 +13,19 @@ The selling team orders goods for a warehouse, and changes the restock while it 
 <tr><td>ongoing stock of 1 product increases</td><td>✅ ok</td></tr>
 <tr><td>operational account balance decreases by product total</td><td>✅ ok</td></tr>
 <tr><td>recorded in operational account history</td><td>✅ ok</td></tr>
-<tr><td>restock recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>restock recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td rowspan="6" valign="top">2</td><td rowspan="6" valign="top"><code>selling:all</code> wants to restock<br>(2 products · 1 warehouse · operational account · no shipping cost)</td><td rowspan="6" valign="top">create restock</td><td>restock created with 2 products</td><td>✅ ok</td></tr>
 <tr><td>2 products recorded at warehouse</td><td>✅ ok</td></tr>
 <tr><td>ongoing stock of 2 products increases</td><td>✅ ok</td></tr>
 <tr><td>operational account balance decreases by product total</td><td>✅ ok</td></tr>
 <tr><td>recorded in operational account history</td><td>✅ ok</td></tr>
-<tr><td>restock recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>restock recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td rowspan="6" valign="top">3</td><td rowspan="6" valign="top"><code>selling:all</code> wants to restock<br>(1 product · 1 warehouse · operational account · shipping cost)</td><td rowspan="6" valign="top">create restock</td><td>restock created with 1 product and shipping cost</td><td>✅ ok</td></tr>
 <tr><td>1 product recorded at warehouse</td><td>✅ ok</td></tr>
 <tr><td>ongoing stock of 1 product increases</td><td>✅ ok</td></tr>
 <tr><td>operational account balance decreases by product total + shipping cost</td><td>✅ ok</td></tr>
 <tr><td>recorded in operational account history</td><td>✅ ok</td></tr>
-<tr><td>restock recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>restock recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td rowspan="8" valign="top">4</td><td rowspan="8" valign="top"><code>selling:all</code> wants to edit a restock<br>(status: ongoing · 1 product · add product · 1 warehouse · operational account)</td><td rowspan="8" valign="top">edit restock</td><td>new product added</td><td>✅ ok</td></tr>
 <tr><td>edit recorded in restock timeline</td><td>⬜ untested</td></tr>
 <tr><td>ongoing total adjusted</td><td>✅ ok</td></tr>
@@ -33,7 +33,7 @@ The selling team orders goods for a warehouse, and changes the restock while it 
 <tr><td>paying account balance adjusted (decrease)</td><td>✅ ok</td></tr>
 <tr><td>edit recorded in account history</td><td>✅ ok</td></tr>
 <tr><td>edit recorded in finance analytic metric</td><td>⬜ untested</td></tr>
-<tr><td>restock analytic metric adjusted</td><td>🚧 unimplemented</td></tr>
+<tr><td>restock analytic metric adjusted</td><td>⬜ untested</td></tr>
 <tr><td rowspan="8" valign="top">5</td><td rowspan="8" valign="top"><code>selling:all</code> wants to edit a restock<br>(status: ongoing · 1 product · change product · 1 warehouse · operational account)</td><td rowspan="8" valign="top">edit restock</td><td>restock shows new count, total and note</td><td>✅ ok</td></tr>
 <tr><td>edit recorded in restock timeline</td><td>⬜ untested</td></tr>
 <tr><td>ongoing total adjusted</td><td>✅ ok</td></tr>
@@ -41,7 +41,7 @@ The selling team orders goods for a warehouse, and changes the restock while it 
 <tr><td>paying account balance adjusted (decrease/increase)</td><td>✅ ok</td></tr>
 <tr><td>edit recorded in account history</td><td>✅ ok</td></tr>
 <tr><td>edit recorded in finance analytic metric</td><td>⬜ untested</td></tr>
-<tr><td>restock analytic metric adjusted</td><td>🚧 unimplemented</td></tr>
+<tr><td>restock analytic metric adjusted</td><td>⬜ untested</td></tr>
 <tr><td rowspan="8" valign="top">6</td><td rowspan="8" valign="top"><code>selling:all</code> wants to edit a restock<br>(status: ongoing · 2 products · remove product · 1 warehouse · operational account)</td><td rowspan="8" valign="top">edit restock</td><td>product removed</td><td>✅ ok</td></tr>
 <tr><td>edit recorded in restock timeline</td><td>⬜ untested</td></tr>
 <tr><td>ongoing total adjusted</td><td>✅ ok</td></tr>
@@ -49,14 +49,14 @@ The selling team orders goods for a warehouse, and changes the restock while it 
 <tr><td>paying account balance adjusted (increase)</td><td>✅ ok</td></tr>
 <tr><td>edit recorded in account history</td><td>✅ ok</td></tr>
 <tr><td>edit recorded in finance analytic metric</td><td>⬜ untested</td></tr>
-<tr><td>restock analytic metric adjusted</td><td>🚧 unimplemented</td></tr>
+<tr><td>restock analytic metric adjusted</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top">7</td><td rowspan="2" valign="top"><code>selling:all</code> wants to edit a restock<br>(status: ongoing · 1 product · change supplier and store · 1 warehouse · operational account)</td><td rowspan="2" valign="top">edit restock</td><td>restock shows new supplier and store</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in restock timeline</td><td>⬜ untested</td></tr>
 <tr><td rowspan="5" valign="top">8</td><td rowspan="5" valign="top"><code>selling:all</code> wants to edit a restock<br>(status: ongoing · 1 product · change warehouse · 2 warehouses · operational account)</td><td rowspan="5" valign="top">edit restock</td><td>restock shows new warehouse</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in restock timeline</td><td>⬜ untested</td></tr>
 <tr><td>recorded at new warehouse</td><td>⬜ untested</td></tr>
 <tr><td>removed from old warehouse</td><td>⬜ untested</td></tr>
-<tr><td>restock analytic metric adjusted</td><td>🚧 unimplemented</td></tr>
+<tr><td>restock analytic metric adjusted</td><td>⬜ untested</td></tr>
 <tr><td rowspan="7" valign="top">9</td><td rowspan="7" valign="top"><code>selling:all</code> wants to edit a restock<br>(status: ongoing · 1 product · change account · 1 warehouse · 2 operational accounts)</td><td rowspan="7" valign="top">edit restock</td><td>restock shows new account</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in restock timeline</td><td>⬜ untested</td></tr>
 <tr><td>old account balance back up</td><td>⬜ untested</td></tr>
@@ -72,7 +72,7 @@ The selling team orders goods for a warehouse, and changes the restock while it 
 <tr><td>paying account balance follows difference</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in account history</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in finance analytic metric</td><td>⬜ untested</td></tr>
-<tr><td>restock analytic metric adjusted</td><td>🚧 unimplemented</td></tr>
+<tr><td>restock analytic metric adjusted</td><td>⬜ untested</td></tr>
 <tr><td rowspan="3" valign="top">12</td><td rowspan="3" valign="top"><code>selling:all</code> wants to edit a restock<br>(status: ongoing · 1 product · change restock note · 1 warehouse · operational account)</td><td rowspan="3" valign="top">edit restock</td><td>restock shows new note</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in restock timeline</td><td>⬜ untested</td></tr>
 <tr><td>target warehouse sees new note</td><td>⬜ untested</td></tr>
@@ -83,7 +83,7 @@ The selling team orders goods for a warehouse, and changes the restock while it 
 <tr><td>paying account balance adjusted (decrease)</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in account history</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in finance analytic metric</td><td>⬜ untested</td></tr>
-<tr><td>restock analytic metric adjusted</td><td>🚧 unimplemented</td></tr>
+<tr><td>restock analytic metric adjusted</td><td>⬜ untested</td></tr>
 <tr><td rowspan="8" valign="top">14</td><td rowspan="8" valign="top"><code>selling:all</code> wants to edit a restock<br>(status: arrived · 1 product · change product · 1 warehouse · operational account)</td><td rowspan="8" valign="top">edit restock</td><td>restock shows new count, total and note</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in restock timeline</td><td>⬜ untested</td></tr>
 <tr><td>ongoing total adjusted</td><td>⬜ untested</td></tr>
@@ -91,7 +91,7 @@ The selling team orders goods for a warehouse, and changes the restock while it 
 <tr><td>paying account balance adjusted (decrease/increase)</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in account history</td><td>⬜ untested</td></tr>
 <tr><td>edit recorded in finance analytic metric</td><td>⬜ untested</td></tr>
-<tr><td>restock analytic metric adjusted</td><td>🚧 unimplemented</td></tr>
+<tr><td>restock analytic metric adjusted</td><td>⬜ untested</td></tr>
 </table>
 
 ## receive
@@ -143,7 +143,7 @@ The warehouse signs for the box, counts it in, and corrects a count found wrong 
 <tr><td>all received recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td rowspan="3" valign="top">24</td><td rowspan="3" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · COD · 1 supplier)</td><td rowspan="3" valign="top">accept restock</td><td>COD recorded on restock</td><td>✅ ok</td></tr>
 <tr><td>COD recorded in liability</td><td>✅ ok</td></tr>
-<tr><td>COD recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>COD recorded in analytic metric</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">25</td><td><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · no COD · multi suppliers)</td><td>accept restock</td><td>recorded at each supplier</td><td>✅ ok</td></tr>
 <tr><td rowspan="9" valign="top">26</td><td rowspan="9" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to correct a received count<br>(status: accepted · all received · received count too high · 1 product · 1 rack · 1 supplier)</td><td rowspan="9" valign="top">correct received count restock</td><td>restock shows corrected received count</td><td>⬜ untested</td></tr>
 <tr><td>correction recorded in restock timeline</td><td>⬜ untested</td></tr>
@@ -192,7 +192,7 @@ The selling team ends a restock before the box arrives: it is called off, or giv
 <tr><td>target warehouse sees restock lost</td><td>⬜ untested</td></tr>
 <tr><td>total warehouse receive decreases</td><td>⬜ untested</td></tr>
 <tr><td>operational account balance unchanged</td><td>⬜ untested</td></tr>
-<tr><td>lost recorded in analytic metric</td><td>🚧 unimplemented</td></tr>
+<tr><td>lost recorded in analytic metric</td><td>⬜ untested</td></tr>
 </table>
 
 ## resolve

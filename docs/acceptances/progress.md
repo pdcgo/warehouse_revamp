@@ -5,15 +5,15 @@ Every action, under the day it was discussed. The counts are the statuses today 
 
 ## 2026-11-11
 
-- `selling:all` wants to restock · [create restock](inventory/restock.md#create) (18 thens: ✅ 15, 🚧 3)
+- `selling:all` wants to restock · [create restock](inventory/restock.md#create) (18 thens: ✅ 15, ⬜ 3)
 - `warehouse:all` wants to receive a restock · [mark arrived restock](inventory/restock.md#receive) (8 thens: ✅ 4, 🚧 1, ⬜ 3)
-- `warehouse:all` wants to accept a restock · [accept restock](inventory/restock.md#receive) (37 thens: ✅ 23, 🚧 2, ⬜ 12)
-- `selling:all` wants to edit a restock · [edit restock](inventory/restock.md#create) (66 thens: ✅ 15, 🚧 7, ⬜ 44)
+- `warehouse:all` wants to accept a restock · [accept restock](inventory/restock.md#receive) (37 thens: ✅ 23, 🚧 1, ⬜ 13)
+- `selling:all` wants to edit a restock · [edit restock](inventory/restock.md#create) (66 thens: ✅ 15, ⬜ 51)
 
 ## 2026-11-14
 
 - `selling:all` wants to cancel a restock · [cancel restock](inventory/restock.md#cancel-and-lost) (14 thens: ⬜ 14)
-- `selling:all` wants to report a lost restock · [mark lost restock](inventory/restock.md#cancel-and-lost) (8 thens: 🚧 1, ⬜ 7)
+- `selling:all` wants to report a lost restock · [mark lost restock](inventory/restock.md#cancel-and-lost) (8 thens: ⬜ 8)
 - `warehouse:owner` · `warehouse:admin` wants to correct a received count · [correct received count restock](inventory/restock.md#receive) (18 thens: ⬜ 18)
 - `selling:all` wants to create an order · [create order](inventory/order.md#create) (56 thens: ⬜ 56)
 - `warehouse:all` wants to confirm an order · [confirm order](inventory/order.md#process-confirm) (8 thens: ⬜ 8)
