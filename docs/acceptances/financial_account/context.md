@@ -8,6 +8,7 @@ the acceptances split it by what a person does. Rules: [guide.md](../guide.md).
 | --- | --- | --- | --- | --- |
 | [account](account.md) | | | | 27 |
 | [expense](expense.md) | | | 52 | 27 |
+| [reconcile](reconcile.md) | | | | 16 |
 | [transfer](transfer.md) | | | | 15 |
 
 An empty row has not been discussed yet.
