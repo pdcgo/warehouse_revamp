@@ -5,15 +5,15 @@ Every action, under the day it was discussed. The counts are the statuses today 
 
 ## 2026-11-11
 
-- `selling:all` wants to restock · [create restock](inventory/restock.md#create) (18 thens: ✅ 18)
+- `selling:all` wants to restock · [create restock](inventory/restock.md#create) (18 thens: ✅ 15, ⬜ 3)
 - `warehouse:all` wants to receive a restock · [mark arrived restock](inventory/restock.md#receive) (8 thens: ✅ 8)
-- `warehouse:all` wants to accept a restock · [accept restock](inventory/restock.md#receive) (37 thens: ✅ 36, 🚧 1)
-- `selling:all` wants to edit a restock · [edit restock](inventory/restock.md#create) (66 thens: ✅ 66)
+- `warehouse:all` wants to accept a restock · [accept restock](inventory/restock.md#receive) (37 thens: ✅ 35, 🚧 1, ⬜ 1)
+- `selling:all` wants to edit a restock · [edit restock](inventory/restock.md#create) (66 thens: ✅ 59, ⬜ 7)
 
 ## 2026-11-14
 
 - `selling:all` wants to cancel a restock · [cancel restock](inventory/restock.md#cancel-and-lost) (14 thens: ✅ 14)
-- `selling:all` wants to report a lost restock · [mark lost restock](inventory/restock.md#cancel-and-lost) (8 thens: ✅ 8)
+- `selling:all` wants to report a lost restock · [mark lost restock](inventory/restock.md#cancel-and-lost) (8 thens: ✅ 7, ⬜ 1)
 - `warehouse:owner` · `warehouse:admin` wants to correct a received count · [correct received count restock](inventory/restock.md#receive) (18 thens: ✅ 18)
 - `selling:all` wants to create an order · [create order](inventory/order.md#create) (56 thens: ✅ 56)
 - `warehouse:all` wants to confirm an order · [confirm order](inventory/order.md#process-confirm) (8 thens: ✅ 8)
@@ -88,9 +88,9 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to see statistics · [view analytic as graph](analytic/report.md) (1 then: ✅ 1)
 - `selling:all` wants to see statistics · [open analytic link](analytic/report.md) (1 then: ✅ 1)
 - `selling:all` wants to see statistics · [change analytic period](analytic/report.md) (1 then: ❌ 1)
-- `selling:all` · `warehouse:all` wants to see statistics · [add analytic metric](analytic/order_metric.md) (17 thens: ✅ 17)
+- `selling:all` · `warehouse:all` wants to see statistics · [add analytic metric](analytic/order_metric.md) (18 thens: ✅ 17, ⬜ 1)
 - `selling:all` wants to see statistics · [add analytic metric](analytic/settlement_metric.md) (4 thens: ✅ 4)
-- `selling:all` · `warehouse:all` wants to see statistics · [add analytic metric](analytic/inventory_metric.md) (17 thens: ✅ 17)
+- `selling:all` · `warehouse:all` wants to see statistics · [add analytic metric](analytic/inventory_metric.md) (18 thens: ✅ 11, ⬜ 7)
 - `selling:all` · `warehouse:all` wants to see statistics · [add analytic metric](analytic/expense_metric.md) (40 thens: ✅ 40)
 
 ## 2026-11-20
@@ -111,3 +111,30 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:all` wants to see what is on a rack · [open rack](inventory/placement.md#rack) (2 thens: ✅ 2)
 - `warehouse:all` wants to tidy the racks · [move goods in rack](inventory/placement.md#rack) (6 thens: ✅ 6)
 - `warehouse:all` wants to give a sample · [record sample](inventory/placement.md#rack) (3 thens: ✅ 3)
+- `warehouse:all` wants to find a batch · [open batches](inventory/batch.md#batches) (6 thens: ⬜ 6)
+- `warehouse:all` wants to find a batch · [filter batches](inventory/batch.md#batches) (3 thens: ⬜ 3)
+- `warehouse:all` wants to see a batch · [open batch](inventory/batch.md#batch) (5 thens: ⬜ 5)
+- `selling:owner` · `selling:admin` wants to correct a batch's price · [correct batch price](inventory/batch.md#correct-price) (6 thens: ⬜ 6)
+- `selling:cs` · `warehouse:all` wants to correct a batch's price · [correct batch price](inventory/batch.md#correct-price) (6 thens: ⬜ 6)
+- `selling:all` wants to see its batches · [open product](inventory/batch.md#correct-price) (1 then: ⬜ 1)
+
+## 2026-11-21
+
+- `selling:all` · `warehouse:all` wants to know where the money is · [open accounts](financial_account/account.md#accounts) (4 thens: ⬜ 4)
+- `selling:all` · `warehouse:all` wants to know where the money is · [filter accounts](financial_account/account.md#accounts) (3 thens: ⬜ 3)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to add an account · [create account](financial_account/account.md#set-up) (7 thens: ⬜ 7)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to fix an account's details · [edit account](financial_account/account.md#set-up) (1 then: ⬜ 1)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to close an account · [archive account](financial_account/account.md#set-up) (2 thens: ⬜ 2)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to use a closed account again · [restore account](financial_account/account.md#set-up) (1 then: ⬜ 1)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to choose which accounts pay · [mark operational](financial_account/account.md#set-up) (2 thens: ⬜ 2)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to name where a withdrawal landed · [set account](financial_account/account.md#set-up) (4 thens: ⬜ 4)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to a shop's withdrawals to land in an account · [point a shop here](financial_account/account.md#set-up) (1 then: ⬜ 1)
+- `selling:cs` · `warehouse:staff` wants to add an account · [create account](financial_account/account.md#set-up) (7 thens: ⬜ 7)
+- `selling:all` · `warehouse:all` wants to read an account's rows · [open account](financial_account/account.md#account) (1 then: ⬜ 1)
+- `selling:all` · `warehouse:all` wants to read an account's rows · [filter account rows](financial_account/account.md#account) (1 then: ⬜ 1)
+- `selling:owner` · `selling:admin` · `warehouse:owner` wants to move money between accounts · [transfer](financial_account/transfer.md) (13 thens: ⬜ 13)
+- `selling:owner` · `selling:admin` · `warehouse:owner` wants to move money between accounts · [transfer out](financial_account/transfer.md) (2 thens: ⬜ 2)
+- `warehouse:admin` wants to move money between accounts · [transfer](financial_account/transfer.md) (13 thens: ⬜ 13)
+- `selling:cs` · `warehouse:staff` wants to move money between accounts · [transfer](financial_account/transfer.md) (13 thens: ⬜ 13)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants the books to match the bank · [match balance](financial_account/reconcile.md) (16 thens: ⬜ 16)
+- `selling:cs` · `warehouse:staff` wants the books to match the bank · [match balance](financial_account/reconcile.md) (16 thens: ⬜ 16)

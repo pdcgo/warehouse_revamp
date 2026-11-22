@@ -7,8 +7,8 @@ date) and *Penyelesaian per jenis* (one column per settlement type) — read by 
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
-<tr><td rowspan="2" valign="top">1</td><td rowspan="2" valign="top"><code>selling:all</code> wants to see statistics<br>(group daily · settlement · sale Rp 1.000.000 · payout Rp 900.000)</td><td rowspan="2" valign="top">add analytic metric</td><td>sales, received, gap and take rate shown on the day learned</td><td>✅ ok</td></tr>
+<tr><td rowspan="2" valign="top">1</td><td rowspan="2" valign="top"><code>selling:all</code> wants to see statistics<br>(<b>group: daily</b> · add <b>type: settlement</b> · sale Rp 1.000.000 · payout Rp 900.000)</td><td rowspan="2" valign="top">add analytic metric</td><td>sales, received, gap and take rate shown on the day learned</td><td>✅ ok</td></tr>
 <tr><td>figures match the settlement report for the same dates</td><td>✅ ok</td></tr>
-<tr><td rowspan="1" valign="top">2</td><td rowspan="1" valign="top"><code>selling:all</code> wants to see statistics<br>(group by shop · settlement · 2 shops)</td><td rowspan="1" valign="top">add analytic metric</td><td>each shop's position shown</td><td>✅ ok</td></tr>
-<tr><td rowspan="1" valign="top">3</td><td rowspan="1" valign="top"><code>selling:all</code> wants to see statistics<br>(group daily · settlement per type · payout and ads fee on one order)</td><td rowspan="1" valign="top">add analytic metric</td><td>payout and ads fee shown in their own columns</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">2</td><td rowspan="1" valign="top"><code>selling:all</code> wants to see statistics<br>(<b>group: shop</b> · add <b>type: settlement</b> · 2 shops)</td><td rowspan="1" valign="top">add analytic metric</td><td>each shop's position shown</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">3</td><td rowspan="1" valign="top"><code>selling:all</code> wants to see statistics<br>(<b>group: daily</b> · add <b>type: settlement per type</b> · payout and ads fee on one order)</td><td rowspan="1" valign="top">add analytic metric</td><td>payout and ads fee shown in their own columns</td><td>✅ ok</td></tr>
 </table>
