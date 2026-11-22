@@ -21,9 +21,10 @@ import type { Page } from "@playwright/test";
 // 🔄 2026-11-20, acceptance analytic/order_metric.md given 14); a shipped → completed counts only in Completed.
 //
 // Each move counts on its own Jakarta day under the order's shop (a-fact-counts-on-the-day-it-happened), counted from
-// the fold onward; a warehouse reads every count of the orders it ships (a-warehouse-reads-the-orders-it-ships), so the
-// warehouse moves are read by warehouse:owner and the selling moves by selling:owner. The fold is asynchronous: every
-// read re-loads the page until it settles.
+// the fold onward; a warehouse reads every count of the orders it ships (a-warehouse-reads-the-orders-it-ships), so each
+// move is read by EVERY role its given names — the warehouse moves by warehouse:owner/admin/staff, the selling moves by
+// selling:owner/admin/cs — each role on a shop of its own. The fold is asynchronous: every read re-loads the page until
+// it settles.
 
 export const ORDER_MOVES = "metrics/orders/moves";
 

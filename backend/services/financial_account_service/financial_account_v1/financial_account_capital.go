@@ -3,7 +3,6 @@ package financial_account_v1
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -24,6 +23,11 @@ var (
 // FinancialAccountCapital records the business owner's own money, put in or taken out — one `capital` row
 // (capital-joins-the-types). The person picks a DIRECTION and a positive amount; the sign is applied here,
 // never typed.
+//
+// THE SECOND DOOR (prive-and-deposit-on-pengeluaran-are-the-accounts-capital): after the commit the row is told to the
+// broker (FinancialAccountCapitalRecorded, capital_recorded.go) — expense_service records a SELLING team's as the same
+// one record on Biaya (Setoran modal / Prive, *Dicatat di halaman akun*) and posts nothing back; a warehouse team's it
+// drops. The row itself, the roles that may make it and the balance moving at once are as they always were.
 func (s *Service) FinancialAccountCapital(
 	ctx context.Context,
 	req *connect.Request[financial_accountv1.FinancialAccountCapitalRequest],
@@ -74,15 +78,10 @@ func (s *Service) FinancialAccountCapital(
 			direction = "out"
 		}
 
-		description := "Capital " + direction
-		if note := strings.TrimSpace(msg.GetNote()); note != "" {
-			description += " — " + note
-		}
-
 		row, err = post(tx, account, entry{
 			changeType:  m.ChangeCapital,
 			change:      sign * msg.GetAmount(),
-			description: description,
+			description: capitalDescription(direction, msg.GetNote()),
 			occurredAt:  occurredAt,
 			actorID:     actor,
 			isOverride:  override,
@@ -93,6 +92,9 @@ func (s *Service) FinancialAccountCapital(
 	if err != nil {
 		return nil, uniqueOrInternal(err)
 	}
+
+	// AFTER the commit: Biaya hears of it (a selling team's shows there — the same one record).
+	s.publishCapital(ctx, capitalRecordedEvent(&row))
 
 	return connect.NewResponse(&financial_accountv1.FinancialAccountCapitalResponse{Log: logToProto(row)}), nil
 }

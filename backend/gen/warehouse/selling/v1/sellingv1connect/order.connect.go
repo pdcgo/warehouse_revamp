@@ -91,6 +91,36 @@ const (
 	// OrderServiceOrderPrintByIdsProcedure is the fully-qualified name of the OrderService's
 	// OrderPrintByIds RPC.
 	OrderServiceOrderPrintByIdsProcedure = "/warehouse.selling.v1.OrderService/OrderPrintByIds"
+	// OrderServiceOrderTagListProcedure is the fully-qualified name of the OrderService's OrderTagList
+	// RPC.
+	OrderServiceOrderTagListProcedure = "/warehouse.selling.v1.OrderService/OrderTagList"
+	// OrderServiceOrderTagManageListProcedure is the fully-qualified name of the OrderService's
+	// OrderTagManageList RPC.
+	OrderServiceOrderTagManageListProcedure = "/warehouse.selling.v1.OrderService/OrderTagManageList"
+	// OrderServiceOrderTagCreateProcedure is the fully-qualified name of the OrderService's
+	// OrderTagCreate RPC.
+	OrderServiceOrderTagCreateProcedure = "/warehouse.selling.v1.OrderService/OrderTagCreate"
+	// OrderServiceOrderTagSystemCreateProcedure is the fully-qualified name of the OrderService's
+	// OrderTagSystemCreate RPC.
+	OrderServiceOrderTagSystemCreateProcedure = "/warehouse.selling.v1.OrderService/OrderTagSystemCreate"
+	// OrderServiceOrderTagRenameProcedure is the fully-qualified name of the OrderService's
+	// OrderTagRename RPC.
+	OrderServiceOrderTagRenameProcedure = "/warehouse.selling.v1.OrderService/OrderTagRename"
+	// OrderServiceOrderTagDeleteProcedure is the fully-qualified name of the OrderService's
+	// OrderTagDelete RPC.
+	OrderServiceOrderTagDeleteProcedure = "/warehouse.selling.v1.OrderService/OrderTagDelete"
+	// OrderServiceOrderTagAddProcedure is the fully-qualified name of the OrderService's OrderTagAdd
+	// RPC.
+	OrderServiceOrderTagAddProcedure = "/warehouse.selling.v1.OrderService/OrderTagAdd"
+	// OrderServiceOrderTagRemoveProcedure is the fully-qualified name of the OrderService's
+	// OrderTagRemove RPC.
+	OrderServiceOrderTagRemoveProcedure = "/warehouse.selling.v1.OrderService/OrderTagRemove"
+	// OrderServiceOrderSystemTagAddProcedure is the fully-qualified name of the OrderService's
+	// OrderSystemTagAdd RPC.
+	OrderServiceOrderSystemTagAddProcedure = "/warehouse.selling.v1.OrderService/OrderSystemTagAdd"
+	// OrderServiceOrderSystemTagRemoveProcedure is the fully-qualified name of the OrderService's
+	// OrderSystemTagRemove RPC.
+	OrderServiceOrderSystemTagRemoveProcedure = "/warehouse.selling.v1.OrderService/OrderSystemTagRemove"
 )
 
 // OrderServiceClient is a client for the warehouse.selling.v1.OrderService service.
@@ -200,6 +230,28 @@ type OrderServiceClient interface {
 	// reads one order; OrderPickLines carries no label. So the chosen orders are read here at once instead of one
 	// OrderDetail each.
 	OrderPrintByIds(context.Context, *connect.Request[v1.OrderPrintByIdsRequest]) (*connect.Response[v1.OrderPrintByIdsResponse], error)
+	// ── ORDER TAGS (backlog #100, orders-have-their-own-tag-list; messages in order_tag.proto) ─────────────────────────
+	//
+	// The orders' OWN tag list — apart from the restocks' — one for every team, system and custom tags.
+	//
+	// The orders' list, every team's — the lists' Tag filter and the order pages' add box.
+	OrderTagList(context.Context, *connect.Request[v1.OrderTagListRequest]) (*connect.Response[v1.OrderTagListResponse], error)
+	// The admins' Kelola tag pesanan: each tag with how many orders carry it.
+	OrderTagManageList(context.Context, *connect.Request[v1.OrderTagManageListRequest]) (*connect.Response[v1.OrderTagManageListResponse], error)
+	// A custom tag; a name already on the orders' list answers that tag, never a twin.
+	OrderTagCreate(context.Context, *connect.Request[v1.OrderTagCreateRequest]) (*connect.Response[v1.OrderTagCreateResponse], error)
+	// A system tag, by an admin; the same one-name-one-tag answer.
+	OrderTagSystemCreate(context.Context, *connect.Request[v1.OrderTagSystemCreateRequest]) (*connect.Response[v1.OrderTagSystemCreateResponse], error)
+	// Rename, the admins' alone.
+	OrderTagRename(context.Context, *connect.Request[v1.OrderTagRenameRequest]) (*connect.Response[v1.OrderTagRenameResponse], error)
+	// Delete, the admins' alone — off every order too.
+	OrderTagDelete(context.Context, *connect.Request[v1.OrderTagDeleteRequest]) (*connect.Response[v1.OrderTagDeleteResponse], error)
+	// A custom tag on / off an order — either side, every role but a monitor, every status.
+	OrderTagAdd(context.Context, *connect.Request[v1.OrderTagAddRequest]) (*connect.Response[v1.OrderTagAddResponse], error)
+	OrderTagRemove(context.Context, *connect.Request[v1.OrderTagRemoveRequest]) (*connect.Response[v1.OrderTagRemoveResponse], error)
+	// An admin's system tag on / off an order.
+	OrderSystemTagAdd(context.Context, *connect.Request[v1.OrderSystemTagAddRequest]) (*connect.Response[v1.OrderSystemTagAddResponse], error)
+	OrderSystemTagRemove(context.Context, *connect.Request[v1.OrderSystemTagRemoveRequest]) (*connect.Response[v1.OrderSystemTagRemoveResponse], error)
 }
 
 // NewOrderServiceClient constructs a client for the warehouse.selling.v1.OrderService service. By
@@ -343,6 +395,68 @@ func NewOrderServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		orderTagList: connect.NewClient[v1.OrderTagListRequest, v1.OrderTagListResponse](
+			httpClient,
+			baseURL+OrderServiceOrderTagListProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderTagList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		orderTagManageList: connect.NewClient[v1.OrderTagManageListRequest, v1.OrderTagManageListResponse](
+			httpClient,
+			baseURL+OrderServiceOrderTagManageListProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderTagManageList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		orderTagCreate: connect.NewClient[v1.OrderTagCreateRequest, v1.OrderTagCreateResponse](
+			httpClient,
+			baseURL+OrderServiceOrderTagCreateProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderTagCreate")),
+			connect.WithClientOptions(opts...),
+		),
+		orderTagSystemCreate: connect.NewClient[v1.OrderTagSystemCreateRequest, v1.OrderTagSystemCreateResponse](
+			httpClient,
+			baseURL+OrderServiceOrderTagSystemCreateProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderTagSystemCreate")),
+			connect.WithClientOptions(opts...),
+		),
+		orderTagRename: connect.NewClient[v1.OrderTagRenameRequest, v1.OrderTagRenameResponse](
+			httpClient,
+			baseURL+OrderServiceOrderTagRenameProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderTagRename")),
+			connect.WithClientOptions(opts...),
+		),
+		orderTagDelete: connect.NewClient[v1.OrderTagDeleteRequest, v1.OrderTagDeleteResponse](
+			httpClient,
+			baseURL+OrderServiceOrderTagDeleteProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderTagDelete")),
+			connect.WithClientOptions(opts...),
+		),
+		orderTagAdd: connect.NewClient[v1.OrderTagAddRequest, v1.OrderTagAddResponse](
+			httpClient,
+			baseURL+OrderServiceOrderTagAddProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderTagAdd")),
+			connect.WithClientOptions(opts...),
+		),
+		orderTagRemove: connect.NewClient[v1.OrderTagRemoveRequest, v1.OrderTagRemoveResponse](
+			httpClient,
+			baseURL+OrderServiceOrderTagRemoveProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderTagRemove")),
+			connect.WithClientOptions(opts...),
+		),
+		orderSystemTagAdd: connect.NewClient[v1.OrderSystemTagAddRequest, v1.OrderSystemTagAddResponse](
+			httpClient,
+			baseURL+OrderServiceOrderSystemTagAddProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderSystemTagAdd")),
+			connect.WithClientOptions(opts...),
+		),
+		orderSystemTagRemove: connect.NewClient[v1.OrderSystemTagRemoveRequest, v1.OrderSystemTagRemoveResponse](
+			httpClient,
+			baseURL+OrderServiceOrderSystemTagRemoveProcedure,
+			connect.WithSchema(orderServiceMethods.ByName("OrderSystemTagRemove")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -368,6 +482,16 @@ type orderServiceClient struct {
 	orderLabels               *connect.Client[v1.OrderLabelsRequest, v1.OrderLabelsResponse]
 	orderPickLines            *connect.Client[v1.OrderPickLinesRequest, v1.OrderPickLinesResponse]
 	orderPrintByIds           *connect.Client[v1.OrderPrintByIdsRequest, v1.OrderPrintByIdsResponse]
+	orderTagList              *connect.Client[v1.OrderTagListRequest, v1.OrderTagListResponse]
+	orderTagManageList        *connect.Client[v1.OrderTagManageListRequest, v1.OrderTagManageListResponse]
+	orderTagCreate            *connect.Client[v1.OrderTagCreateRequest, v1.OrderTagCreateResponse]
+	orderTagSystemCreate      *connect.Client[v1.OrderTagSystemCreateRequest, v1.OrderTagSystemCreateResponse]
+	orderTagRename            *connect.Client[v1.OrderTagRenameRequest, v1.OrderTagRenameResponse]
+	orderTagDelete            *connect.Client[v1.OrderTagDeleteRequest, v1.OrderTagDeleteResponse]
+	orderTagAdd               *connect.Client[v1.OrderTagAddRequest, v1.OrderTagAddResponse]
+	orderTagRemove            *connect.Client[v1.OrderTagRemoveRequest, v1.OrderTagRemoveResponse]
+	orderSystemTagAdd         *connect.Client[v1.OrderSystemTagAddRequest, v1.OrderSystemTagAddResponse]
+	orderSystemTagRemove      *connect.Client[v1.OrderSystemTagRemoveRequest, v1.OrderSystemTagRemoveResponse]
 }
 
 // OrderCreate calls warehouse.selling.v1.OrderService.OrderCreate.
@@ -468,6 +592,56 @@ func (c *orderServiceClient) OrderPickLines(ctx context.Context, req *connect.Re
 // OrderPrintByIds calls warehouse.selling.v1.OrderService.OrderPrintByIds.
 func (c *orderServiceClient) OrderPrintByIds(ctx context.Context, req *connect.Request[v1.OrderPrintByIdsRequest]) (*connect.Response[v1.OrderPrintByIdsResponse], error) {
 	return c.orderPrintByIds.CallUnary(ctx, req)
+}
+
+// OrderTagList calls warehouse.selling.v1.OrderService.OrderTagList.
+func (c *orderServiceClient) OrderTagList(ctx context.Context, req *connect.Request[v1.OrderTagListRequest]) (*connect.Response[v1.OrderTagListResponse], error) {
+	return c.orderTagList.CallUnary(ctx, req)
+}
+
+// OrderTagManageList calls warehouse.selling.v1.OrderService.OrderTagManageList.
+func (c *orderServiceClient) OrderTagManageList(ctx context.Context, req *connect.Request[v1.OrderTagManageListRequest]) (*connect.Response[v1.OrderTagManageListResponse], error) {
+	return c.orderTagManageList.CallUnary(ctx, req)
+}
+
+// OrderTagCreate calls warehouse.selling.v1.OrderService.OrderTagCreate.
+func (c *orderServiceClient) OrderTagCreate(ctx context.Context, req *connect.Request[v1.OrderTagCreateRequest]) (*connect.Response[v1.OrderTagCreateResponse], error) {
+	return c.orderTagCreate.CallUnary(ctx, req)
+}
+
+// OrderTagSystemCreate calls warehouse.selling.v1.OrderService.OrderTagSystemCreate.
+func (c *orderServiceClient) OrderTagSystemCreate(ctx context.Context, req *connect.Request[v1.OrderTagSystemCreateRequest]) (*connect.Response[v1.OrderTagSystemCreateResponse], error) {
+	return c.orderTagSystemCreate.CallUnary(ctx, req)
+}
+
+// OrderTagRename calls warehouse.selling.v1.OrderService.OrderTagRename.
+func (c *orderServiceClient) OrderTagRename(ctx context.Context, req *connect.Request[v1.OrderTagRenameRequest]) (*connect.Response[v1.OrderTagRenameResponse], error) {
+	return c.orderTagRename.CallUnary(ctx, req)
+}
+
+// OrderTagDelete calls warehouse.selling.v1.OrderService.OrderTagDelete.
+func (c *orderServiceClient) OrderTagDelete(ctx context.Context, req *connect.Request[v1.OrderTagDeleteRequest]) (*connect.Response[v1.OrderTagDeleteResponse], error) {
+	return c.orderTagDelete.CallUnary(ctx, req)
+}
+
+// OrderTagAdd calls warehouse.selling.v1.OrderService.OrderTagAdd.
+func (c *orderServiceClient) OrderTagAdd(ctx context.Context, req *connect.Request[v1.OrderTagAddRequest]) (*connect.Response[v1.OrderTagAddResponse], error) {
+	return c.orderTagAdd.CallUnary(ctx, req)
+}
+
+// OrderTagRemove calls warehouse.selling.v1.OrderService.OrderTagRemove.
+func (c *orderServiceClient) OrderTagRemove(ctx context.Context, req *connect.Request[v1.OrderTagRemoveRequest]) (*connect.Response[v1.OrderTagRemoveResponse], error) {
+	return c.orderTagRemove.CallUnary(ctx, req)
+}
+
+// OrderSystemTagAdd calls warehouse.selling.v1.OrderService.OrderSystemTagAdd.
+func (c *orderServiceClient) OrderSystemTagAdd(ctx context.Context, req *connect.Request[v1.OrderSystemTagAddRequest]) (*connect.Response[v1.OrderSystemTagAddResponse], error) {
+	return c.orderSystemTagAdd.CallUnary(ctx, req)
+}
+
+// OrderSystemTagRemove calls warehouse.selling.v1.OrderService.OrderSystemTagRemove.
+func (c *orderServiceClient) OrderSystemTagRemove(ctx context.Context, req *connect.Request[v1.OrderSystemTagRemoveRequest]) (*connect.Response[v1.OrderSystemTagRemoveResponse], error) {
+	return c.orderSystemTagRemove.CallUnary(ctx, req)
 }
 
 // OrderServiceHandler is an implementation of the warehouse.selling.v1.OrderService service.
@@ -577,6 +751,28 @@ type OrderServiceHandler interface {
 	// reads one order; OrderPickLines carries no label. So the chosen orders are read here at once instead of one
 	// OrderDetail each.
 	OrderPrintByIds(context.Context, *connect.Request[v1.OrderPrintByIdsRequest]) (*connect.Response[v1.OrderPrintByIdsResponse], error)
+	// ── ORDER TAGS (backlog #100, orders-have-their-own-tag-list; messages in order_tag.proto) ─────────────────────────
+	//
+	// The orders' OWN tag list — apart from the restocks' — one for every team, system and custom tags.
+	//
+	// The orders' list, every team's — the lists' Tag filter and the order pages' add box.
+	OrderTagList(context.Context, *connect.Request[v1.OrderTagListRequest]) (*connect.Response[v1.OrderTagListResponse], error)
+	// The admins' Kelola tag pesanan: each tag with how many orders carry it.
+	OrderTagManageList(context.Context, *connect.Request[v1.OrderTagManageListRequest]) (*connect.Response[v1.OrderTagManageListResponse], error)
+	// A custom tag; a name already on the orders' list answers that tag, never a twin.
+	OrderTagCreate(context.Context, *connect.Request[v1.OrderTagCreateRequest]) (*connect.Response[v1.OrderTagCreateResponse], error)
+	// A system tag, by an admin; the same one-name-one-tag answer.
+	OrderTagSystemCreate(context.Context, *connect.Request[v1.OrderTagSystemCreateRequest]) (*connect.Response[v1.OrderTagSystemCreateResponse], error)
+	// Rename, the admins' alone.
+	OrderTagRename(context.Context, *connect.Request[v1.OrderTagRenameRequest]) (*connect.Response[v1.OrderTagRenameResponse], error)
+	// Delete, the admins' alone — off every order too.
+	OrderTagDelete(context.Context, *connect.Request[v1.OrderTagDeleteRequest]) (*connect.Response[v1.OrderTagDeleteResponse], error)
+	// A custom tag on / off an order — either side, every role but a monitor, every status.
+	OrderTagAdd(context.Context, *connect.Request[v1.OrderTagAddRequest]) (*connect.Response[v1.OrderTagAddResponse], error)
+	OrderTagRemove(context.Context, *connect.Request[v1.OrderTagRemoveRequest]) (*connect.Response[v1.OrderTagRemoveResponse], error)
+	// An admin's system tag on / off an order.
+	OrderSystemTagAdd(context.Context, *connect.Request[v1.OrderSystemTagAddRequest]) (*connect.Response[v1.OrderSystemTagAddResponse], error)
+	OrderSystemTagRemove(context.Context, *connect.Request[v1.OrderSystemTagRemoveRequest]) (*connect.Response[v1.OrderSystemTagRemoveResponse], error)
 }
 
 // NewOrderServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -716,6 +912,68 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	orderServiceOrderTagListHandler := connect.NewUnaryHandler(
+		OrderServiceOrderTagListProcedure,
+		svc.OrderTagList,
+		connect.WithSchema(orderServiceMethods.ByName("OrderTagList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderTagManageListHandler := connect.NewUnaryHandler(
+		OrderServiceOrderTagManageListProcedure,
+		svc.OrderTagManageList,
+		connect.WithSchema(orderServiceMethods.ByName("OrderTagManageList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderTagCreateHandler := connect.NewUnaryHandler(
+		OrderServiceOrderTagCreateProcedure,
+		svc.OrderTagCreate,
+		connect.WithSchema(orderServiceMethods.ByName("OrderTagCreate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderTagSystemCreateHandler := connect.NewUnaryHandler(
+		OrderServiceOrderTagSystemCreateProcedure,
+		svc.OrderTagSystemCreate,
+		connect.WithSchema(orderServiceMethods.ByName("OrderTagSystemCreate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderTagRenameHandler := connect.NewUnaryHandler(
+		OrderServiceOrderTagRenameProcedure,
+		svc.OrderTagRename,
+		connect.WithSchema(orderServiceMethods.ByName("OrderTagRename")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderTagDeleteHandler := connect.NewUnaryHandler(
+		OrderServiceOrderTagDeleteProcedure,
+		svc.OrderTagDelete,
+		connect.WithSchema(orderServiceMethods.ByName("OrderTagDelete")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderTagAddHandler := connect.NewUnaryHandler(
+		OrderServiceOrderTagAddProcedure,
+		svc.OrderTagAdd,
+		connect.WithSchema(orderServiceMethods.ByName("OrderTagAdd")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderTagRemoveHandler := connect.NewUnaryHandler(
+		OrderServiceOrderTagRemoveProcedure,
+		svc.OrderTagRemove,
+		connect.WithSchema(orderServiceMethods.ByName("OrderTagRemove")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderSystemTagAddHandler := connect.NewUnaryHandler(
+		OrderServiceOrderSystemTagAddProcedure,
+		svc.OrderSystemTagAdd,
+		connect.WithSchema(orderServiceMethods.ByName("OrderSystemTagAdd")),
+		connect.WithHandlerOptions(opts...),
+	)
+	orderServiceOrderSystemTagRemoveHandler := connect.NewUnaryHandler(
+		OrderServiceOrderSystemTagRemoveProcedure,
+		svc.OrderSystemTagRemove,
+		connect.WithSchema(orderServiceMethods.ByName("OrderSystemTagRemove")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.OrderService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case OrderServiceOrderCreateProcedure:
@@ -758,6 +1016,26 @@ func NewOrderServiceHandler(svc OrderServiceHandler, opts ...connect.HandlerOpti
 			orderServiceOrderPickLinesHandler.ServeHTTP(w, r)
 		case OrderServiceOrderPrintByIdsProcedure:
 			orderServiceOrderPrintByIdsHandler.ServeHTTP(w, r)
+		case OrderServiceOrderTagListProcedure:
+			orderServiceOrderTagListHandler.ServeHTTP(w, r)
+		case OrderServiceOrderTagManageListProcedure:
+			orderServiceOrderTagManageListHandler.ServeHTTP(w, r)
+		case OrderServiceOrderTagCreateProcedure:
+			orderServiceOrderTagCreateHandler.ServeHTTP(w, r)
+		case OrderServiceOrderTagSystemCreateProcedure:
+			orderServiceOrderTagSystemCreateHandler.ServeHTTP(w, r)
+		case OrderServiceOrderTagRenameProcedure:
+			orderServiceOrderTagRenameHandler.ServeHTTP(w, r)
+		case OrderServiceOrderTagDeleteProcedure:
+			orderServiceOrderTagDeleteHandler.ServeHTTP(w, r)
+		case OrderServiceOrderTagAddProcedure:
+			orderServiceOrderTagAddHandler.ServeHTTP(w, r)
+		case OrderServiceOrderTagRemoveProcedure:
+			orderServiceOrderTagRemoveHandler.ServeHTTP(w, r)
+		case OrderServiceOrderSystemTagAddProcedure:
+			orderServiceOrderSystemTagAddHandler.ServeHTTP(w, r)
+		case OrderServiceOrderSystemTagRemoveProcedure:
+			orderServiceOrderSystemTagRemoveHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -845,4 +1123,44 @@ func (UnimplementedOrderServiceHandler) OrderPickLines(context.Context, *connect
 
 func (UnimplementedOrderServiceHandler) OrderPrintByIds(context.Context, *connect.Request[v1.OrderPrintByIdsRequest]) (*connect.Response[v1.OrderPrintByIdsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderPrintByIds is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderTagList(context.Context, *connect.Request[v1.OrderTagListRequest]) (*connect.Response[v1.OrderTagListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderTagList is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderTagManageList(context.Context, *connect.Request[v1.OrderTagManageListRequest]) (*connect.Response[v1.OrderTagManageListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderTagManageList is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderTagCreate(context.Context, *connect.Request[v1.OrderTagCreateRequest]) (*connect.Response[v1.OrderTagCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderTagCreate is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderTagSystemCreate(context.Context, *connect.Request[v1.OrderTagSystemCreateRequest]) (*connect.Response[v1.OrderTagSystemCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderTagSystemCreate is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderTagRename(context.Context, *connect.Request[v1.OrderTagRenameRequest]) (*connect.Response[v1.OrderTagRenameResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderTagRename is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderTagDelete(context.Context, *connect.Request[v1.OrderTagDeleteRequest]) (*connect.Response[v1.OrderTagDeleteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderTagDelete is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderTagAdd(context.Context, *connect.Request[v1.OrderTagAddRequest]) (*connect.Response[v1.OrderTagAddResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderTagAdd is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderTagRemove(context.Context, *connect.Request[v1.OrderTagRemoveRequest]) (*connect.Response[v1.OrderTagRemoveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderTagRemove is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderSystemTagAdd(context.Context, *connect.Request[v1.OrderSystemTagAddRequest]) (*connect.Response[v1.OrderSystemTagAddResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderSystemTagAdd is not implemented"))
+}
+
+func (UnimplementedOrderServiceHandler) OrderSystemTagRemove(context.Context, *connect.Request[v1.OrderSystemTagRemoveRequest]) (*connect.Response[v1.OrderSystemTagRemoveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.OrderService.OrderSystemTagRemove is not implemented"))
 }

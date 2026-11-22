@@ -21,6 +21,15 @@ import (
 //     (an-expense-correction-counts-for-who-made-it).
 //   - NEVER A STOCK LOSS (stock-loss-stays-out-of-analytic-expenses): a STOCK_LOSS row, and a correction of one, adds
 //     nothing. The table's CHECK refuses one anyway.
+//   - THE FLOW (expense-types-sit-under-groups): a row counts in its type's flow — spending, money in, capital out
+//     (Prive) or capital in (Setoran modal) — part of the row's key, so `ads · payroll · operational · other` stay each
+//     group's SPENDING and money in and capital are their own fields (ExpensesMetric). The amount is stored as typed
+//     (positive; a correction signed): the flow says the direction, and `total` reads it (metricSums).
+//   - THE TYPE (backlog #107; acceptance analytic/expense_metric.md givens 6–22): the row's ExpenseType is part of the key
+//     too, so each type reads its own field. A row from before the types keeps type 0 — its group and the total only.
+//
+// THE RE-FOLD (metric_refold.go, `san report refold --report expense-daily`) rebuilds a team's day from
+// `expense_records` through metricEntryOf, the very key and amount this fold writes — so a re-fold equals the fold.
 //
 // Why in-process and not from ExpenseCreated / ExpenseAdjusted: those are never published for a STOCK_LOSS or an
 // expense made before *Paid from*, and expense_service owns both tables — one transaction keeps them equal by
@@ -62,31 +71,64 @@ func metricDay(row *expense_service_models.ExpenseRecord) string {
 	return JakartaDay(row.CreatedAt)
 }
 
-// foldMetric adds one just-written row to its report row. `side` is where its team sits (TeamSides).
-func foldMetric(tx *gorm.DB, row *expense_service_models.ExpenseRecord, side TeamSide) error {
+// metricRowKey is one report row's key — what an expense row adds to.
+type metricRowKey struct {
+	Day         string
+	TeamID      uint64
+	SellerID    uint64
+	WarehouseID uint64
+	Kind        int32
+	Flow        int16
+	Type        int32
+	ShopID      uint64
+	UserID      uint64
+}
+
+// metricEntryOf is the report row an expense row counts in and the amount it adds — false for a row Analytic never
+// counts (a stock loss). The fold and the re-fold both read it, so they cannot disagree. `side` is where its team sits
+// (TeamSides).
+func metricEntryOf(row *expense_service_models.ExpenseRecord, side TeamSide) (metricRowKey, float64, bool) {
 	if !typedKind(expensev1.ExpenseKind(row.Kind)) {
-		return nil
+		return metricRowKey{}, 0, false
 	}
 
-	var sellerID, warehouseID uint64
+	key := metricRowKey{
+		Day:    metricDay(row),
+		TeamID: row.TeamID,
+		Kind:   row.Kind,
+		Flow:   flowOf(expensev1.ExpenseType(row.Type)),
+		Type:   row.Type,
+		ShopID: row.ShopID,
+		UserID: row.CreatedBy,
+	}
 
 	switch side {
 	case SideSeller:
-		sellerID = row.TeamID
+		key.SellerID = row.TeamID
 	case SideWarehouse:
-		warehouseID = row.TeamID
+		key.WarehouseID = row.TeamID
 	case SideNeither:
+	}
+
+	return key, row.Amount, true
+}
+
+// foldMetric adds one just-written row to its report row. `side` is where its team sits (TeamSides).
+func foldMetric(tx *gorm.DB, row *expense_service_models.ExpenseRecord, side TeamSide) error {
+	key, amount, counted := metricEntryOf(row, side)
+	if !counted {
+		return nil
 	}
 
 	// The exact signed amount (the-backend-never-rounds-money) — no numeric cast, no rounding.
 	err := tx.Exec(`
 INSERT INTO expense_metric_daily_reports
-    (day, team_id, seller_id, warehouse_id, kind, shop_id, user_id, amount, last_updated)
-VALUES (CAST(? AS date), ?, ?, ?, ?, ?, ?, CAST(? AS double precision), NOW())
-ON CONFLICT (day, team_id, kind, shop_id, user_id) DO UPDATE SET
+    (day, team_id, seller_id, warehouse_id, kind, flow, type, shop_id, user_id, amount, last_updated)
+VALUES (CAST(? AS date), ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS double precision), NOW())
+ON CONFLICT (day, team_id, kind, flow, type, shop_id, user_id) DO UPDATE SET
     amount       = expense_metric_daily_reports.amount + EXCLUDED.amount,
     last_updated = NOW()`,
-		metricDay(row), row.TeamID, sellerID, warehouseID, row.Kind, row.ShopID, row.CreatedBy, row.Amount,
+		key.Day, key.TeamID, key.SellerID, key.WarehouseID, key.Kind, key.Flow, key.Type, key.ShopID, key.UserID, amount,
 	).Error
 	if err != nil {
 		return fmt.Errorf("expense metrics report: %w", err)

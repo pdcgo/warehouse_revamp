@@ -35,14 +35,19 @@ func NewReplayBroker(client *pubsub.Client) settlement_v1.ReplayBroker {
 	return &replayBroker{client: client, subscription: settlement_service.FoldSubscription}
 }
 
-// NewSupplierReplayBroker is supplier_service's — the subscriptions that feed a supplier's figures: the accepts and the
-// received-count corrections (a-received-count-correction-counts-on-its-own-day). A replay deletes the days' rows, so it
-// must seek BOTH, or the corrections' moves would be lost.
+// NewSupplierReplayBroker is supplier_service's — every subscription that feeds a supplier's two reports: the accepts and
+// the received-count corrections (a-received-count-correction-counts-on-its-own-day) for the restock figures, the
+// placements and the cancels for Penjualan (penjualan-is-the-selling-value-on-the-order-day). A replay deletes the days'
+// rows of BOTH reports, so it must seek ALL FOUR, or a report's moves would be lost — and its window is the shortest.
 func NewSupplierReplayBroker(client *pubsub.Client) supplier_v1.ReplayBroker {
 	return &replayBroker{
 		client:       client,
 		subscription: supplier_service.FoldSubscription,
-		also:         []string{supplier_service.CountCorrectedSubscription},
+		also: []string{
+			supplier_service.CountCorrectedSubscription,
+			supplier_service.SalesPlacedSubscription,
+			supplier_service.SalesCancelledSubscription,
+		},
 	}
 }
 

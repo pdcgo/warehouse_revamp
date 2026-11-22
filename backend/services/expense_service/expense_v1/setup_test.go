@@ -135,6 +135,23 @@ func shopFor(kind expensev1.ExpenseKind) uint64 {
 	return 0
 }
 
+// typeFor is the type a helper's expense of a kind is recorded as (expense-types-sit-under-groups) — one money-out type
+// of that group; ADS's is the marketplace's ads, the one type that names a shop (shopFor). STOCK_LOSS has no type.
+func typeFor(kind expensev1.ExpenseKind) expensev1.ExpenseType {
+	switch kind {
+	case expensev1.ExpenseKind_EXPENSE_KIND_ADS:
+		return expensev1.ExpenseType_EXPENSE_TYPE_ADS_MARKETPLACE
+	case expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL:
+		return expensev1.ExpenseType_EXPENSE_TYPE_BASIC_SALARY
+	case expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL:
+		return expensev1.ExpenseType_EXPENSE_TYPE_ELECTRICITY
+	case expensev1.ExpenseKind_EXPENSE_KIND_OTHER:
+		return expensev1.ExpenseType_EXPENSE_TYPE_OTHER_OUT
+	default:
+		return expensev1.ExpenseType_EXPENSE_TYPE_UNSPECIFIED
+	}
+}
+
 func page1() *commonv1.CommonPagination {
 	return &commonv1.CommonPagination{Page: 1, Limit: 50}
 }
@@ -174,7 +191,7 @@ func record(
 	t.Helper()
 
 	res, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: kind, Amount: amount, OccurredAt: on, ShopId: shopFor(kind), FinanceAccountId: payingAccount,
+		TeamId: teamA, Kind: kind, Type: typeFor(kind), Amount: amount, OccurredAt: on, ShopId: shopFor(kind), FinanceAccountId: payingAccount,
 	}))
 	if err != nil {
 		t.Fatalf("ExpenseCreate(%v, %v, %s): %v", kind, amount, on, err)

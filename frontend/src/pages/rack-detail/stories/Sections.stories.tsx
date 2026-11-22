@@ -1,8 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Button } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { routedPage } from "../../../../.storybook/pageStory";
 import { rackStubScenario } from "../../../../.storybook/rackStub";
-import { RACK_DETAIL_META, loaded, openSample, stock, type } from "./kit";
+import { RackDetailPage } from "../index";
+import { RACK_DETAIL_META, loaded, openMove, openSample, pickRack, stock, type } from "./kit";
 
 // RACK DETAIL — the page's shape: one page of sections under a nav (a-rack-page-is-one-page-of-sections), the product
 // page's and the restock pages' — no tabs. The page's stories are grouped by the part of the screen they are about
@@ -17,9 +21,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // THREE SECTIONS ON ONE PAGE, IN THE NAV'S ORDER — what is on the shelf first, then the rack's record, then what has
-// happened to it; none behind a tab, and no pair reading twice: Produk carries the price and the value (for a reader the
-// server gives them to — Shelf / Root reads the value; this staff member reads units only), Riwayat the Penempatan chip.
-// Produk is lit as the page opens.
+// happened to it; none behind a tab, and no pair reading twice: Produk carries the price and the value (this staff member
+// reads them too — the 🔄 2026-11-20 line of a-warehouse-sees-ready-value-but-a-shelf-only-units), Riwayat the Penempatan
+// chip. Produk is lit as the page opens.
 export const OnePageOfSections: Story = {
   name: "One page of sections",
   play: async ({ canvasElement }) => {
@@ -37,11 +41,9 @@ export const OnePageOfSections: Story = {
     }
     await expect(canvas.queryByRole("tablist")).toBeNull();
 
-    // Produk is the shelf; the Harga tab's two columns are its own, but not a warehouse's
-    // (a-warehouse-sees-ready-value-but-a-shelf-only-units) — staff read the units alone.
-    await waitFor(() => expect(stock(canvas).getByTestId("rack-stock-onhand-71")).toHaveTextContent("12"));
-    await expect(stock(canvas).queryByTestId("rack-unit-cost-71")).toBeNull();
-    await expect(stock(canvas).queryByTestId("rack-line-value-71")).toBeNull();
+    // Produk is priced — the Harga tab's two columns are its own.
+    await waitFor(() => expect(stock(canvas).getByTestId("rack-unit-cost-71")).toHaveTextContent(/^Rp/));
+    await expect(stock(canvas).getByTestId("rack-line-value-71")).toHaveTextContent(/^Rp/);
     await expect(canvas.getByTestId("rack-info-code")).toHaveTextContent("A-01-1");
     // Info's three labels are words, never a raw i18n key (`racks.detail.description` was missing from both catalogues).
     const info = canvas.getByTestId("rack-info-panel");
@@ -103,12 +105,13 @@ export const ARefreshKeepsThePageDrawn: Story = {
       await type(await screen.findByTestId("sample-qty-71"), "2");
       await type(screen.getByTestId("sample-recipient"), "Pak Budi");
       await userEvent.click(screen.getByTestId("sample-submit"));
-      await waitFor(() => expect(screen.queryByTestId("record-sample-dialog")).toBeNull());
 
-      // While it waits, the shelf's rows stay under RefreshOverlay — dimmed, a thin bar above them — never a skeleton.
+      // While it waits — the page reads again before the dialog closes (the sample's invalidation is awaited, #120) — the
+      // shelf's rows stay under RefreshOverlay — dimmed, a thin bar above them — never a skeleton.
       await waitFor(() =>
         expect(within(canvas.getByTestId("rack-products-panel")).getByTestId("refresh-overlay")).toHaveAttribute("data-busy", "true"),
       );
+      await waitFor(() => expect(screen.queryByTestId("record-sample-dialog")).toBeNull());
 
       // The re-read landed: the header, the shelf and the history all say so.
       await waitFor(() => expect(canvas.getByTestId("rack-summary-count")).toHaveTextContent("23"));
@@ -122,5 +125,115 @@ export const ARefreshKeepsThePageDrawn: Story = {
     await expect(canvas.getByTestId("rack-detail-page")).toBe(page);
     await expect(canvas.getByTestId("rack-detail-stock")).toBe(shelf);
     await expect(canvas.getByTestId("rack-history-table")).toBe(history);
+  },
+};
+
+// Opened on A-01-1 with a way to change the address to A-01-2 inside the page — the page stays mounted, its rack changes
+// (the same route, another :rackId), as a link from another screen would change it.
+function JumpToRack42() {
+  const navigate = useNavigate();
+
+  return (
+    <Button size="xs" variant="outline" data-testid="story-jump-42" onClick={() => navigate("/inventories/racks/42")}>
+      A-01-2
+    </Button>
+  );
+}
+
+const At41ThenAnother = routedPage(
+  [
+    {
+      path: "/inventories/racks/:rackId",
+      element: (
+        <>
+          <JumpToRack42 />
+          <RackDetailPage />
+        </>
+      ),
+    },
+  ],
+  "/inventories/racks/41",
+);
+
+// ANOTHER RACK IS A FIRST LOAD (HARD RULE 10: a refresh keeps the rows, a different subject does not). The address
+// changes from A-01-1 to A-01-2 with the page mounted: it draws its skeleton, then A-01-2 — and never A-01-1's rows under
+// A-01-2's code, not even while A-01-2's shelf is still on its way (here its header answers at once, its shelf 800 ms
+// later). A-01-1 holds Gula (73), A-01-2 does not (#120: the reads keep previous rows only within the same rack).
+export const AnotherRackIsAFirstLoad: Story = {
+  name: "Another rack is a first load",
+  render: () => <At41ThenAnother />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await expect(stock(canvas).getByTestId("rack-stock-row-73")).toBeInTheDocument();
+
+    // Every skeleton drawn from the jump on, however briefly — and whether A-01-1's Gula is ever on screen under A-01-2.
+    const skeletons: string[] = [];
+    let leaked = false;
+    const watch = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (!(node instanceof Element)) continue;
+          for (const el of [node, ...node.querySelectorAll("[data-testid]")]) {
+            const id = el.getAttribute("data-testid") ?? "";
+            if (id.endsWith("-loading")) skeletons.push(id);
+          }
+        }
+      }
+      const code = canvasElement.querySelector('[data-testid="rack-info-code"]')?.textContent;
+      if (code === "A-01-2" && canvasElement.querySelector('[data-testid="rack-stock-row-73"]')) leaked = true;
+    });
+    watch.observe(canvasElement, { childList: true, subtree: true, characterData: true });
+
+    rackStubScenario.readLatencyOf = { rackStock: 800 };
+
+    try {
+      await userEvent.click(canvas.getByTestId("story-jump-42"));
+
+      // A-01-2's header is drawn while its shelf is still asked for: the shelf shows its skeleton, not A-01-1's rows.
+      await waitFor(() => expect(canvas.getByTestId("rack-info-code")).toHaveTextContent("A-01-2"));
+      await expect(canvas.queryByTestId("rack-stock-row-73")).toBeNull();
+      await expect(canvas.getByTestId("rack-stock-loading")).toBeInTheDocument();
+
+      // Then A-01-2's own: Kopi ×6 and Teh Melati.
+      await waitFor(() => expect(stock(canvas).getByTestId("rack-stock-onhand-71")).toHaveTextContent("6"), { timeout: 3000 });
+      await expect(stock(canvas).getByTestId("rack-stock-row-72")).toBeInTheDocument();
+    } finally {
+      watch.disconnect();
+    }
+
+    await expect(skeletons).toContain("rack-detail-loading");
+    await expect(skeletons).toContain("rack-stock-loading");
+    await expect(leaked).toBe(false);
+    await expect(stock(canvas).queryByTestId("rack-stock-row-73")).toBeNull();
+  },
+};
+
+// A WRITE READS EACH PART ONCE (#120 — the speed audit's after-save storm): a move re-reads the header, the shelf's page
+// and the history, one RackDetail, one RackStock of 20 and one RackHistory — by invalidation, with nothing of the page's
+// own to bump — and NOT the dialog's whole-rack RackStock (its 200, the dialog is closing) nor the pickers' RackList (a
+// move renames no rack). The move's invalidation is awaited before the dialog closes, so nothing else is on its way.
+export const AWriteReadsEachPartOnce: Story = {
+  name: "A write reads each part once",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId("rack-history-table")).toBeInTheDocument());
+
+    await openMove();
+    await pickRack("move-default-to", 42n);
+    await type(screen.getByTestId("move-qty-71-0"), "4");
+
+    // From the click on: what the write makes the page read.
+    rackStubScenario.reads = [];
+    await userEvent.click(screen.getByTestId("move-submit"));
+    await waitFor(() => expect(screen.queryByTestId("move-goods-dialog")).toBeNull());
+
+    // The page read again — the header, the shelf and the history all say so.
+    await waitFor(() => expect(stock(canvas).getByTestId("rack-stock-onhand-71")).toHaveTextContent("8"));
+    await expect(canvas.getByTestId("rack-summary-count")).toHaveTextContent("21");
+    await waitFor(() => expect(canvas.getByTestId("rack-history-table")).toHaveTextContent(/moved/i));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const asked = rackStubScenario.reads.map((read) => (read.method === "rackStock" ? `rackStock:${read.limit}` : read.method));
+    await expect(asked.sort()).toEqual(["rackDetail", "rackHistory", "rackStock:20"]);
   },
 };

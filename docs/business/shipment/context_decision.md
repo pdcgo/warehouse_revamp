@@ -32,6 +32,9 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once](#an-attached-file-is-up-to-15-mb-and-two-checks-run-at-once) | no page limit; attachments up to 15 MB; two label checks at once, the next one is "no check" |
 | [the-label-check-stays-at-2-mb](#the-label-check-stays-at-2-mb) | the label check keeps reading files up to 2 MB; a 2–15 MB label still attaches, is not read, and the numbers are typed |
 | [the-channels-are-what-orders-ship-by](#the-channels-are-what-orders-ship-by) | eight more couriers are seeded — `spx`, `grabexpress`, `jntcargo`, `idexpress`, `lex`, `anteraja`, `gosend`, `pos`; the list is what orders actually ship by, and an aggregator (KiriminAja) is never a channel |
+| [an-orders-resi-links-to-the-couriers-tracking-page](#an-orders-resi-links-to-the-couriers-tracking-page) | for now an order's resi links to its courier's own tracking page; an aggregator showing the tracking on the order comes later |
+| [the-tracking-link-prototype-is-accepted](#the-tracking-link-prototype-is-accepted) | the resi tracking-link design is accepted, the list's ↗ included |
+| [a-tracking-link-must-carry-the-resi](#a-tracking-link-must-carry-the-resi) | a courier's tracking link must carry {resi}; one without it is refused |
 
 ---
 
@@ -234,6 +237,8 @@ flowchart LR
 
 🔄 *(2026-11-20)* The owner's later word: his acceptance checklist ([inventory/order.md](../../acceptances/inventory/order.md) given 67, 2026-11-17) has the parcel's tracking **shown on the order**. Showing it is agreed; where the tracking comes from is still open, so it stays deferred (backlog *Later*).
 
+🔄 *(2026-11-20)* **Where the tracking comes from — settled for now.** Owner: *"later we add A, but now B"* → [an-orders-resi-links-to-the-couriers-tracking-page](#an-orders-resi-links-to-the-couriers-tracking-page): for now the order's resi links to the courier's own tracking page; an aggregator showing the tracking on the order comes later. The handover record itself stays deferred.
+
 ---
 
 ## the-channel-list-needs-no-login
@@ -305,6 +310,8 @@ flowchart LR
 **Why.** The third-party app maps onto our channels
 ([the-app-converts-the-courier-to-a-channel-id](#the-app-converts-the-courier-to-a-channel-id)); a renamed code
 breaks that mapping with no error on our side.
+
+🔄 *(2026-11-20)* The update RPC also edits the courier's **tracking link** (`tracking_url`) — editable like `name` and `desc`, as [the-tracking-link-prototype-is-accepted](#the-tracking-link-prototype-is-accepted) accepted (its README's build default: *"the link is editable like name and desc, so Update gains `tracking_url`"*). The `code` stays fixed.
 
 ---
 
@@ -723,3 +730,43 @@ flowchart LR
 **What it leaves** (HARD RULE 11): [context.md](./context.md) §Shipment Channel That Exists still lists three — yours to
 update, reported in the clarify's [the-channel-list-names-three](./context_clarify.md#the-channel-list-names-three).
 [the-three-channels-are-seeded](#the-three-channels-are-seeded) stays true of `00001`.
+
+---
+
+## an-orders-resi-links-to-the-couriers-tracking-page
+
+> Owner (Heri), in chat (2026-11-20): *"later we add A, but now B"* — **B for now, against my recommendation** (A was recommended) — to: *where should the order's tracking come from?* — A: a tracking aggregator (one paid API reading a resi across JNE, J&T, SiCepat, AnterAja and the others; the order shows the latest status and its history, refreshed on open and kept so repeat views cost no lookup; an account + API key from the owner); B: a link — the order shows its resi as a link to the courier's own tracking page (no cost, no account, the tracking itself not on the order); C: each courier's own API. The row it answers: [inventory/order.md](../../acceptances/inventory/order.md) given 67, *"parcel tracking shown on order"* ([the-handover-is-shipments-and-deferred](#the-handover-is-shipments-and-deferred) 🔄).
+
+**The verdict.** **Now:** an order's resi links to its courier's own tracking page — the app reads no tracking itself, so [tracking-is-deferred](#tracking-is-deferred)'s open point (does tracking move the order's status or only report it) stays open. **Later:** A — an aggregator shows the tracking on the order; it comes as its own slice, with its account and key from the owner, and replaces or sits beside the link then.
+
+**What it does NOT settle:** where each courier's link comes from (a link per [channel](#a-channel-is-a-courier), kept by root as [only-root-manages-channels](#only-root-manages-channels) says, is the build's default to show in the design accept), and which screens show it — both are drawn in the prototype first. ⛔ Not built.
+
+✅ **Built 2026-11-20** (backlog #103) — the **Now** verdict: an order's resi links to its courier's own tracking page, one link per channel kept by root (`ShipmentChannel.tracking_url`, shipment `00003`, no backfill — every courier starts with none); the app still reads no tracking itself, so [tracking-is-deferred](#tracking-is-deferred)'s open point stays open. The screens are [the-tracking-link-prototype-is-accepted](#the-tracking-link-prototype-is-accepted)'s. Flow: [rpc.md](../../services/shipment_service/rpc.md#shipmentchannelcreate--shipmentchannelupdate--the-tracking-link).
+
+---
+
+## the-tracking-link-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended — the first question of the #103 prototype's accept (pictures `D:/hermes/profiles/revamp_dev/accepts/accept103/` 01–18, README there): *"Approve the design as drawn? **A** approve, including the ↗ in the seller's list — a seller can follow a parcel in one click, and the list still fits the screen; **B** approve, but without the ↗ in the list, so only the order pages get the link."* The message listed the screens: the seller's order page (↗ *Lacak di situs kurir* beside the resi, the copy button stays), the warehouse's order page (the resi now shown, with the link), the seller's list (a small ↗ in the Resi column), root's *Channel Pengiriman* (one optional tracking link per courier; a courier with none stays copy-only).
+
+**The verdict.** The tracking-link design ([an-orders-resi-links-to-the-couriers-tracking-page](#an-orders-resi-links-to-the-couriers-tracking-page)) is accepted as drawn, the seller's list ↗ included: root keeps one optional `https://` link per courier on *Channel Pengiriman* (`Link pelacakan`, `{resi}` where the number goes, URL-encoded); the ↗ *Lacak di situs kurir* opens it in a new tab beside the copyable resi on the seller's order page (Info and Pengiriman), on the warehouse's order page (which now shows the resi), and as an icon in the seller's list Resi cell; a courier with no link reads as today. The README's *build defaults* hold (every status; a deleted courier's link still opens; the pick page, the warehouse's queue, the print page, Find Parcel, the order form, restock / transfer / custom-shipment and return resis are left out).
+
+*(Asked next: whether a link with no `{resi}` — a courier whose page cannot open on the number — is refused as drawn or accepted with the resi copied on the click.)*
+
+⚠ Not built — go-live is backlog #103.
+
+🔄 *(2026-11-20)* The question asked next is answered: a link without `{resi}` is refused, as drawn — [a-tracking-link-must-carry-the-resi](#a-tracking-link-must-carry-the-resi).
+
+✅ **Built 2026-11-20** (backlog #103) — live as drawn: `tracking_url` on `ShipmentChannel` (read by List and ByIds, a deleted channel's included) and on `ShipmentChannelCreateRequest` / `ShipmentChannelUpdateRequest` (root only, `max_len` 500; Update writes it as sent, so an empty one clears it); the handler refuses a link that is not `https://`, holds no `{resi}` or is no address, each for its own reason (`shipment_v1/tracking_url.go`), and the table's CHECK holds the first two. Screens: *Channel Pengiriman*'s *Link pelacakan* column and optional field (hint, refusals on leaving the field, Simpan off until fixed); the ↗ *Lacak di situs kurir* (new tab, `noopener noreferrer`) beside the copyable resi on the seller's order page (Info reference + Pengiriman leg), on the warehouse's order page (its Info tab now shows the RESI, copyable), and as an icon in the seller's list Resi cell (its click does not open the order). The link is read from the session's courier catalogue, deleted couriers included — no request per row. The Storybook prototype (`trackingLinkPrototype.tsx`) is deleted; its stories are live (`Pages/Order/OrderDetailPage/Tracking link`, `Pages/Order/SellerOrderListPage/Tracking link`, `Pages/Shipment/ShipmentChannels/Tracking link`). Flow: [rpc.md](../../services/shipment_service/rpc.md#shipmentchannelcreate--shipmentchannelupdate--the-tracking-link).
+
+---
+
+## a-tracking-link-must-carry-the-resi
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, **against my recommendation (B)** — the second question of the #103 accept (mock `D:/hermes/profiles/revamp_dev/accepts/accept103/14_MOCK_q2_option_B_link_without_resi_desktop.png`, as drawn `11_proposed_channels_refuses_without_resi_desktop.png`): *"Some couriers' tracking pages may only work if you open the page and type or paste the resi yourself. What should happen when root saves such a link? **B** (recommended) accept it — the ↗ opens the courier's tracking page and copies the resi at the same time, so the person just pastes it; links that don't start with https:// are still refused; **A** (as drawn) refuse it — that courier gets no link, and its orders' resi stays copy-only."*
+
+**The verdict.** A courier's tracking link must carry `{resi}` where the number goes: *Channel Pengiriman* refuses a link without `{resi}` (*Link harus memuat {resi}, di tempat nomor resi*), as it refuses one that is not `https://`, and the server refuses both. A courier whose page cannot open on the number gets no link — its orders' resi stays copy-only, as today.
+
+⚠ Not built (backlog #103).
+
+✅ **Built 2026-11-20** (backlog #103) — refused on the form (*Link harus memuat {resi}, di tempat nomor resi*, Simpan off) and by the server (`InvalidArgument` *the tracking link must hold {resi} where the resi goes*, on create and update), and by the table's CHECK `shipment_channels_tracking_url_shape`. Pinned by `TestShipmentChannelTrackingLink_RefusesEachForItsOwnReason` and the `Refuses a link without {resi}` story.

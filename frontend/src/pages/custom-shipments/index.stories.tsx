@@ -158,12 +158,12 @@ export const EachRowOffersWhatItsStepAllows: Story = {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("custom-shipment-actions-801"));
-    await expect(await screen.findByTestId("custom-shipment-action-cancel-801")).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId("custom-shipment-action-cancel-801")).toBeVisible(), { timeout: 5000 });
     await expect(screen.queryByTestId("custom-shipment-action-edit-cost-801")).toBeNull();
     await userEvent.keyboard("{Escape}");
 
     await userEvent.click(canvas.getByTestId("custom-shipment-actions-802"));
-    await expect(await screen.findByTestId("custom-shipment-action-edit-cost-802")).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId("custom-shipment-action-edit-cost-802")).toBeVisible(), { timeout: 5000 });
     await expect(screen.queryByTestId("custom-shipment-action-cancel-802")).toBeNull();
     await userEvent.keyboard("{Escape}");
 

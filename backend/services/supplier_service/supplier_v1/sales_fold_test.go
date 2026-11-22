@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -401,6 +402,50 @@ func TestSalesFold_AnUnreadTakeIsRedelivered(t *testing.T) {
 	salesFold(t, svc, saleCancelled(8, wib("2026-10-21", "09:00")))
 
 	checkSale(t, "nothing from nobody", salesByDay(t, svc, salSumber, "2026-10-21")["2026-10-21"], saleFigure{})
+}
+
+// THE REPLAY'S LOCK HOLDS THE SALES FOLD OFF, as it holds the restock fold (the-report-is-processed-like-settlement): while
+// a replay clears Penjualan's range, a placement and a cancel are refused — an error, so Pub/Sub redelivers them — and
+// write nothing; a dead replay's lock, past its lease, reads as released; once released, both fold.
+func TestSalesFold_IsRefusedWhileAReplayHoldsTheLock(t *testing.T) {
+	db := san_testdb.DB(t)
+	goods := &fakeGoods{takes: map[uint64][]supplier_v1.SaleTakePart{
+		7010: {{ProductID: salKaos, SupplierID: salSumber, TeamID: sellingA, WarehouseID: 5, Units: 2}},
+		7011: {{ProductID: salKaos, SupplierID: salSumber, TeamID: sellingA, WarehouseID: 5, Units: 1}},
+	}}
+	svc := salesService(db, goods)
+
+	placed := salePlaced(10, 7010, wib("2026-10-22", "09:00"), 20_000, saleLine(salKaos, 2, 20_000))
+	cancelled := saleCancelled(10, wib("2026-10-23", "09:00"))
+
+	setEventLock(t, db, `{"lock":true}`)
+
+	for _, e := range []*eventsv1.Event{placed, cancelled} {
+		err := svc.SalesFoldHandler()(context.Background(), e)
+		if err == nil || !strings.Contains(err.Error(), "process_event_lock") {
+			t.Fatalf("%s under a replay's lock = %v, want refused", e.GetEventId(), err)
+		}
+	}
+
+	if n := countRows(t, db, &supplier_service_models.SupplierSaleOrder{}); n != 0 {
+		t.Fatalf("a refused sale left %d order rows", n)
+	}
+
+	if n := countRows(t, db, &supplier_service_models.SupplierSaleDailyReport{}); n != 0 {
+		t.Fatalf("a refused sale left %d day rows", n)
+	}
+
+	// A replay that died holding it two minutes ago: released, by its lease.
+	leaveDeadLock(t, db)
+	salesFold(t, svc, salePlaced(11, 7011, wib("2026-10-22", "10:00"), 10_000, saleLine(salKaos, 1, 10_000)))
+
+	setEventLock(t, db, `{"lock":false}`)
+	salesFold(t, svc, placed)
+	salesFold(t, svc, cancelled)
+
+	days := salesByDay(t, svc, salSumber, "2026-10-22", "2026-10-23")
+	checkSale(t, "placed", days["2026-10-22"], saleFigure{count: 3, value: 30_000})
+	checkSale(t, "cancelled", days["2026-10-23"], saleFigure{count: -2, value: -20_000})
 }
 
 // A WAREHOUSE ROLE IS REFUSED, as SupplierGoods refuses it: supplier figures are a selling team's

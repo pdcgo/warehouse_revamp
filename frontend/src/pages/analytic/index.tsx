@@ -5,7 +5,7 @@ import { Box, Flex, HStack, Heading, Icon, Stack, Tabs, Tag, Text } from "@chakr
 import { ChartLine, Info, Table2 } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
-import { listQuery } from "../../api/queryClient";
+import { key, listQuery } from "../../api/queryClient";
 import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { DateRangePicker } from "../../components/datetime/DateRangePicker";
@@ -126,7 +126,7 @@ export function AnalyticPage() {
   const query = useQuery({
     ...listQuery,
     // The URL is the state: one string covers every input, and `from`/`to` move with the clock on a relative range.
-    queryKey: ["analytic", "report", String(teamId ?? 0n), params.toString(), from, to],
+    queryKey: key.analytic(teamId, { report: params.toString(), from, to }),
     enabled: valid && sort !== null && teamId !== undefined,
     queryFn: () =>
       loadReport(

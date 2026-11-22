@@ -21,7 +21,7 @@ import (
 // THE ACCOUNT REPORT AS A FILE (a-report-export-is-the-whole-view-as-a-file) — the view on screen, whole, in the screen's
 // own words: its columns are the report's, labelled as the report labels them in Indonesian.
 
-// reportTypes are the nine change types in the report's column order (the screen's CHANGE_TYPES), each with its label.
+// reportTypes are the ten change types in the report's column order (the screen's CHANGE_TYPES), each with its label.
 // ⚠ The type OPENING_BALANCE reads *Saldo awal*, as on screen — the Periode view has no opening-balance column for it to
 // be mistaken for.
 var reportTypes = []struct {
@@ -30,6 +30,7 @@ var reportTypes = []struct {
 }{
 	{m.ChangeWithdrawal, "Penarikan"},
 	{m.ChangeCapital, "Modal"},
+	{m.ChangeMoneyIn, "Uang masuk"},
 	{m.ChangeRestock, "Restok"},
 	{m.ChangeExpense, "Biaya"},
 	{m.ChangeAdsExpense, "Iklan"},

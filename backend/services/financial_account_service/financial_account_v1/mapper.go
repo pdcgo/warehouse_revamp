@@ -41,6 +41,7 @@ var changeTypeText = map[financial_accountv1.FinancialAccountChangeType]string{
 	financial_accountv1.FinancialAccountChangeType_FINANCIAL_ACCOUNT_CHANGE_TYPE_TRANSFER:        m.ChangeTransfer,
 	financial_accountv1.FinancialAccountChangeType_FINANCIAL_ACCOUNT_CHANGE_TYPE_TEAM_PAYMENT:    m.ChangeTeamPayment,
 	financial_accountv1.FinancialAccountChangeType_FINANCIAL_ACCOUNT_CHANGE_TYPE_CAPITAL:         m.ChangeCapital,
+	financial_accountv1.FinancialAccountChangeType_FINANCIAL_ACCOUNT_CHANGE_TYPE_MONEY_IN:        m.ChangeMoneyIn,
 }
 
 // changeTypes is every change type in the vocabulary's order — the daily row's columns, and the
@@ -55,6 +56,7 @@ var changeTypes = []string{
 	m.ChangeTransfer,
 	m.ChangeTeamPayment,
 	m.ChangeCapital,
+	m.ChangeMoneyIn,
 }
 
 func invert[K comparable, V comparable](in map[K]V) map[V]K {
@@ -118,5 +120,7 @@ func logToProto(l m.FinancialAccountLog) *financial_accountv1.FinancialAccountLo
 		CounterAccountId: l.CounterAccountID,
 		// The "by Root team" badge beside the actor (an-override-shows-a-platform-badge).
 		IsOverride: l.IsOverride,
+		// The expense it was posted from — *dari Biaya #N*.
+		ExpenseId: l.ExpenseID,
 	}
 }

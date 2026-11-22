@@ -170,6 +170,21 @@ sequenceDiagram
 ⚠ **The route is an open webhook**, as the others are: restrict `/event/liability-custom-shipment-handed-over/push` at
 the ingress to Pub/Sub's push.
 
+### An inbound parcel's door charge, at its Terima (backlog #101, built 2026-11-20)
+
+A supplier's RESHIPPING comes in as an INBOUND custom shipment
+([a-suppliers-reshipping-comes-in-as-a-custom-shipment](../../business/custom_shipments/context_decision.md#a-suppliers-reshipping-comes-in-as-a-custom-shipment),
+🔄 A: the restock's door charge, [the-courier-charge-is-noted-at-tiba-and-final-at-terima](../../business/inventory/restock_decision.md#the-courier-charge-is-noted-at-tiba-and-final-at-terima)):
+the warehouse pays the courier at the door, notes the charge at Tiba (no money), and Terima's figure is final. Inventory
+publishes *Custom Shipment Received* (414, `custom-shipment-received:<id>`) after the count; the push handler's
+`Event_CustomShipmentReceived` case calls the SAME `ChargeCustomShipmentCourier` with `door_charge` — a
+`custom_shipment_fee` keyed by the parcel, the selling team (`team_id`) owing the warehouse it came to
+(`warehouse_id`), the actor who counted it in. 0 posts nothing; a redelivery posts once. No collision with a
+handover's fee: an inbound parcel is never handed over, and parcel ids are one sequence. Subscription
+`liability-custom-shipment-received` (`CustomShipmentReceivedSubscription`, declared in `tools/san/pubsub.go`),
+proved through the real mux by `TestRegister_AnInboundParcelsDoorChargeReachesTheLedger` and end to end in
+`backend/cmd/app_development/restock_resolutions_test.go`. ⚠ The route is an open webhook too.
+
 ## How the two services are joined
 
 `inventory_service` declares `LiabilityPoster` in its own terms and imports nothing from liability; the adapter lives in

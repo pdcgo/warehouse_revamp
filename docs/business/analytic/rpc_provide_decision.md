@@ -2067,6 +2067,10 @@ The owner's tree listed Ads Expense only; this adds *Expenses*. Groups, filters,
 
 ✅ Built 2026-11-06 — the 18 accepted stories pass through the real wire path (stub `expenseAnalyticStub.ts`); the headline rule is `MetricDataRequest.rows_group` — the provider sends the table's group, and by Seller / Warehouse the server sums only that group's rows (`TestMetricData_TheHeadlineCountsOnlyTheGroupsRows`, story `RootReadsEveryTeamsExpenses`).
 
+🔄 *(2026-11-20)* The owner's later word: his acceptance checklist ([analytic/expense_metric.md](../../acceptances/analytic/expense_metric.md) givens 6–22, hfrada 2026-11-20 12:55 — later than the expense types' accept) gives each expense type its own figure in Analytic's *Expenses* (*<type> shown*), and its total moves as Biaya's month total does (prive raises it; setoran modal and money in lower it — financial_account/expense.md givens 17–22). The #99 build's *total stays spending only* was the build's default, not the owner's words; it gives way (backlog #107).
+
+✅ **Built 2026-11-20 (backlog #107)** — per the 🔄 line above ([analytic/expense_metric.md](../../acceptances/analytic/expense_metric.md) givens 6–22): `ExpensesMetric` gains one CURRENCY field per expense type (fields 9–26, appended in `ExpenseType`'s order — `ads_marketplace` … `other_in`), each the type's net signed as Biaya's month card shows it (money in and Setoran modal minus), labelled with Biaya's own words (`expenses.types.type.*`); **`total`'s meaning changes** — from the four groups' spending to Biaya's *Total bulan ini*, spending − money in + Prive − Setoran modal (the type fields plus the rows from before the types). `ads` · `payroll` · `operational` · `other` (each group's spending), `money_in`, `capital_out`, `capital_in` and Ads expense are unchanged. The report keys by type too (`expense_metric_daily_reports.type`, migration `expense_service` 00009; rows from before it type 0 — their group and the total only); `san report refold --report expense-daily --team <id> --date <day>` rebuilds a team's day from `expense_records` with the fold's own key. Tests `expense_v1/metric_types_test.go`, `metric_refold_test.go`, race `metric_refold_race_test.go`, `tools/san` `TestReportRefold_ExpenseDailyGivesOldRowsTheirTypes`; stories `pages/analytic/expense.stories.tsx` (`EachTypeIsAColumnInBiayasWords`, `TheTotalMovesAsBiayasMonthTotal`).
+
 ---
 
 ## the-four-inventory-metrics-filter-like-lost-stock
@@ -2164,6 +2168,10 @@ The owning seller and root keep every figure. ⚠ My reading of *"in placement l
 ✅ Built 2026-11-12 — Ready stock's warehouse reader on screen: units on hand and stock value, sortable by it (story `ReadyAWarehouseReadsItsOwn`, e2e `the_inventory_metrics.spec.ts`). The rack screens' units only for a warehouse are still not built.
 
 ✅ Built 2026-11-12 — the placement level in units for a warehouse: `RackDetail`'s value and unknown-cost count and `RackStock`'s unit price, cost-known and value are left unset for a caller acting with a warehouse role (Root from outside and the admin monitor keep them); the rack page draws the tile's value, *Harga/pcs · Nilai* and a phone block's price line only where sent (stories `RackDetail / Shelf`, e2e `the_warehouse_reads_a_shelf_in_units.spec.ts`). The rack list was units only already.
+
+🔄 *(2026-11-20)* The owner's later word: his acceptance checklist ([inventory/placement.md](../../acceptances/inventory/placement.md) given 11, hfrada 2026-11-20 17:25 — later than this entry) gives `warehouse:all` *each product with its units and value* on one rack. A warehouse now reads a rack's **value** too, as it reads the ready value; the shelf-in-units gate goes (backlog #109).
+
+✅ Built 2026-11-20 — the 🔄 above (backlog #109): the shelf-in-units gate is gone; `RackDetail` and `RackStock` give a warehouse the rack's value, unknown-cost count and each line's price, cost-known and value, as every other reader; the rack page draws *Harga/pcs · Nilai*, the tile's value and a phone block's price line for it again. The rack list stays counts (`TestRackDetail_EveryReaderIsGivenTheShelfsValue`, `TestRackStock_EveryReaderIsGivenEachLinesPriceAndValue`; stories `RackDetail / Shelf` *A warehouse reads the value* (+ phone)). The e2e `the_warehouse_reads_a_shelf_in_units.spec.ts` still pins the old reading — the tester's.
 
 ---
 
@@ -2266,3 +2274,15 @@ The owning seller and root keep every figure. ⚠ My reading of *"in placement l
 **The verdict.** What a warehouse reads stays as accepted ([the-order-status-moves-prototype-is-accepted](#the-order-status-moves-prototype-is-accepted), [the-restock-before-the-accept-prototype-is-accepted](#the-restock-before-the-accept-prototype-is-accepted)): in *Order status moves* every count of the orders it ships (now also *Disputes resolved*); in *Restock* the units and the courier COD it paid, never a value. His acceptance rows gain the role on his word: [analytic/order_metric.md](../../acceptances/analytic/order_metric.md) givens 11–14 and [analytic/inventory_metric.md](../../acceptances/analytic/inventory_metric.md) givens 9–12 now read `selling:all` · `warehouse:all` (their statuses unchanged).
 
 ✅ Built — nothing to change: the live code already serves this (#84, #85, #97).
+
+---
+
+## the-expense-metric-shows-each-type-not-the-three-summaries
+
+> Owner (Heri), in chat (2026-11-20): *"B"*, as recommended (pictures `D:/hermes/profiles/revamp_dev/accepts/q107/` — 01 as built, 02 the mock of B) — to: *"Analytic's Biaya now shows 26 figures. Three of the older ones repeat the new types: Uang masuk, Prive and Setoran modal. In Indonesian, Setoran modal appears twice. The table scrolls sideways inside its box; the page itself still fits. **B** hide those 3 older figures — the type figures and the total already cover them, and the duplicate name goes away; 23 figures; **A** keep all 26 as built; **C** add a picker so you choose which figures to show — a new pattern, its own design."*
+
+**The verdict.** Analytic's *Expenses* metric shows the four groups, the 18 types and the total (23 figures); the three #99 summaries — `money_in`, `capital_out`, `capital_in` — are not offered on the screen (the catalogue leaves them out; the proto keeps them, so nothing on the wire changes). The 18 types and the total ([the-expense-prototype-is-accepted](#the-expense-prototype-is-accepted) 🔄 2026-11-20) say the same money once.
+
+⚠ Not built (backlog #107).
+
+✅ Built 2026-11-20 (backlog #107) — the catalogue leaves the three #99 summaries out of *Expenses* (`EXPENSE_SUMMARIES_NOT_SHOWN` in `frontend/src/features/analytic/catalogue.ts`): the screen offers the four groups, the total and the 18 types — 23 headline cards, 23 columns, 23 sorts — and a link sorted by `money_in`, `capital_out` or `capital_in` opens on the default sort. The proto, expense_service and its answer are unchanged (`EXPENSES_AS_SERVED` keeps every field; the Storybook stub answers with it, as the server does); Finance's Account changes keeps its own `money_in`. At 1440 beside the open sidebar the page fits (1141 px) and the table scrolls in its own box (2154 px en, 2014 px id). Pinned by the stories *Not the three summaries · English* / *· Indonesian* (`pages/analytic/expense.stories.tsx` — the answer carries the three, none shows; *Setoran modal* heads one column in Indonesian) and *A link sorted by a summary opens on the default sort*, each red when one summary is put back.

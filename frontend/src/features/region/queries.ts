@@ -79,6 +79,35 @@ export function useDesaOfKecamatans(args: { codes: string[]; limit: number }) {
   });
 }
 
+// ONE RUNG OF THE ADDRESS CASCADE — a region's children by parent_code (empty = the 38 provinsi), one page: a level is
+// dozens of rows, never the whole tree (AddressPicker's LevelSelect, #122). Global reference data on `referenceQuery`
+// like the searches above: the same provinsi list is asked by every address field on every screen, and it is the same
+// for everyone — so a second field, a dialog opened again or the next order draws it from the cache.
+export function useRegionChildren(args: { parentCode: string; limit: number; enabled: boolean }) {
+  const { parentCode, limit, enabled } = args;
+
+  return useQuery({
+    queryKey: key.regions({ childrenOf: parentCode, limit }),
+    ...referenceQuery,
+    enabled,
+    queryFn: async () => (await regionClient.regionList({ parentCode, page: { page: 1, limit } })).regions,
+  });
+}
+
+// A SAVED ADDRESS'S NAMES, from its deepest code (RegionResolve) — the ancestry a consumer that stored codes only needs
+// to label the cascade (AddressPicker's hydration, #122). Reference data like the rest: a code names the same place for
+// everyone.
+export function useRegionResolve(args: { code: string; enabled: boolean }) {
+  const { code, enabled } = args;
+
+  return useQuery({
+    queryKey: key.regions({ resolve: code }),
+    ...referenceQuery,
+    enabled: enabled && code !== "",
+    queryFn: async () => (await regionClient.regionResolve({ code })).ancestry ?? null,
+  });
+}
+
 export function useRegionByKodePos(args: { kodePos: string; limit: number; minChars: number }) {
   const { kodePos, limit, minChars } = args;
 

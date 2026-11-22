@@ -45,6 +45,13 @@ service ProductService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // ProductCategoryCounts is how many live products EVERY team has filed under each category — the Kategori page's
+  // *Produk* column (the-product-count-is-a-marked-sample). Root / the Administrator only, as the page is.
+  rpc ProductCategoryCounts(ProductCategoryCountsRequest) returns (ProductCategoryCountsResponse) {
+    // A READ — it counts and writes nothing. No team scope, so the admin team's monitor never reaches it (a monitor
+    // passes only in a warehouse or selling team), and neither does a team-bound agent.
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc ProductUpdate(ProductUpdateRequest) returns (ProductUpdateResponse);
   // Two actions, split by whether the product has a HISTORY (a-used-product-is-archived-never-deleted):
   //
@@ -702,6 +709,38 @@ message ProductDetailRequest {
 
 message ProductDetailResponse {
   Product product = 1;
+}
+
+// ProductCategoryCounts — the Kategori page's *Produk* column (the-product-count-is-a-marked-sample): how many products
+// are filed DIRECTLY under each category, over every team's catalogue, archived ones left out (an archived product is
+// out of the list and every picker). A product has exactly one category (a-product-has-one-category), so it is one
+// `GROUP BY category_id` on products_category_idx. A branch's figure on the page is the screen's to make from these and
+// the tree it already holds (CategoryList).
+//
+// Root / the Administrator only, as the page is, and deliberately UNSCOPED: the taxonomy is global and the count is every
+// team's. Never add a team-level role here without a use_scope field.
+message ProductCategoryCountsRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+}
+
+message ProductCategoryCount {
+  uint64 category_id = 1;
+  // Live (unarchived) products filed directly under the category — never 0: a category holding none is not listed.
+  uint64 products = 2;
+}
+
+message ProductCategoryCountsResponse {
+  // One row per category that holds a live product, in category id order — products on no category (0, rows from
+  // before categories existed) are left out.
+  //
+  // NOT PAGED, by the tree exception (CLAUDE.md RULE 9): it is bounded by the category taxonomy, which CategoryList
+  // already returns whole, and the page can only sum a branch over every node at once.
+  repeated ProductCategoryCount counts = 1;
 }
 
 // ProductArchive takes a product out of the catalogue (`archived = true`) — any time, even with stock on a shelf. It needs

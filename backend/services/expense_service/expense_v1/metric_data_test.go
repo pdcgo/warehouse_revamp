@@ -80,7 +80,7 @@ func expenseAs(
 	}
 
 	res, err := svc.ExpenseCreate(asCaller(user, team, role), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: team, Kind: kind, Amount: amount, OccurredAt: on, ShopId: shop, FinanceAccountId: payingAccount,
+		TeamId: team, Kind: kind, Type: typeFor(kind), Amount: amount, OccurredAt: on, ShopId: shop, FinanceAccountId: payingAccount,
 	}))
 	if err != nil {
 		t.Fatalf("ExpenseCreate(%v %v on %s by %d): %v", kind, amount, on, user, err)
@@ -120,7 +120,7 @@ func metricBook(t *testing.T) *metricFixture {
 
 	// A STOCK LOSS, as inventory records it (no interceptor, no account) — counted nowhere in Analytic.
 	_, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Amount: 90_000, OccurredAt: "2026-10-12",
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS), Amount: 90_000, OccurredAt: "2026-10-12",
 	}))
 	if err != nil {
 		t.Fatalf("stock loss: %v", err)
@@ -353,7 +353,7 @@ func TestMetricData_AStockLossIsNeverCounted(t *testing.T) {
 	svc := newService(t, db)
 
 	res, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Amount: 45_000.25, OccurredAt: "2026-10-12",
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS), Amount: 45_000.25, OccurredAt: "2026-10-12",
 	}))
 	if err != nil {
 		t.Fatalf("stock loss: %v", err)

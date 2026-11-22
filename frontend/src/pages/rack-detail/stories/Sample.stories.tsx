@@ -46,6 +46,11 @@ export const RecordSample: Story = {
 
     await waitFor(() => expect(stock(canvas).getByTestId("rack-stock-onhand-71")).toHaveTextContent("10"));
     await waitFor(() => expect(canvas.getByTestId("rack-history-table")).toHaveTextContent(/sample/i));
+    // …naming who received it (a-sample-keeps-its-recipient; placement.md given 17).
+    const recipient = canvas
+      .getByTestId("rack-history-table")
+      .querySelector<HTMLElement>('[data-testid^="rack-history-row-"][data-testid$="-recipient"]');
+    await expect(recipient).toHaveTextContent("given to Pak Budi");
   },
 };
 

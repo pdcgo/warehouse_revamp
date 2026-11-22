@@ -144,6 +144,7 @@ test("Root types an ad and a payroll three days ago, Dewi corrects the ad today"
     await rpc<{ expense: { id: string } }>(page, "expense.v1.ExpenseService/ExpenseCreate", {
       teamId: state.team,
       kind: "EXPENSE_KIND_ADS",
+      type: "EXPENSE_TYPE_ADS_MARKETPLACE", // a type is required since #99 (expense-types-sit-under-groups)
       amount: 500_000,
       occurredAt: day(3),
       shopId: state.shop,
@@ -154,6 +155,7 @@ test("Root types an ad and a payroll three days ago, Dewi corrects the ad today"
   await rpc(page, "expense.v1.ExpenseService/ExpenseCreate", {
     teamId: state.team,
     kind: "EXPENSE_KIND_PAYROLL",
+    type: "EXPENSE_TYPE_BASIC_SALARY", // a type is required since #99
     amount: 2_000_000,
     occurredAt: day(3),
     note: "e2e payroll",

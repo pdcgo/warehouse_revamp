@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	inventoryv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
@@ -84,5 +85,89 @@ func TestOwnerStockHistory_ReadsAPriceCorrection(t *testing.T) {
 
 	if ids := res.Msg.GetIds(); len(ids) != 1 || ids[0] != c.GetId() {
 		t.Fatalf("REVALUATION filter = %v, want the correction alone", ids)
+	}
+}
+
+// THE OWNER'S STOCK HISTORY NAMES WHO RECEIVED A SAMPLE (a-sample-keeps-its-recipient — *Melati's history: 2 Kaos Hitam to
+// Budi*): the owning team checks its samples by who got them, so its own history's sample row carries the recipient from
+// the sample's inventory transaction, the staff's note still apart in `reason`; the receive and the take name nobody — not
+// even when their transaction somehow carries a name, since only a sample row asks. It is read on the PAGE: page 2 of
+// one-row pages (the OFFSET skipping the take) still names Pak Budi.
+func TestOwnerStockHistory_ASampleRowNamesWhoReceivedIt(t *testing.T) {
+	svc, db, rakA, _ := otStocked(t)
+
+	_, err := svc.RackSample(ctxUser(8), connect.NewRequest(&inventoryv1.RackSampleRequest{
+		TeamId: otWarehouse, RackId: rakA, Recipient: "Pak Budi", Description: "for a review video",
+		Lines: []*inventoryv1.RackSampleLine{{ProductId: otKaosHitam, Quantity: 2}},
+	}))
+	if err != nil {
+		t.Fatalf("sample: %v", err)
+	}
+
+	_, err = take(svc, "key-1", line(otKaosHitam, 1))
+	if err != nil {
+		t.Fatalf("take: %v", err)
+	}
+
+	rows := ownerHistory(t, svc, otMelati, otKaosHitam, 0)
+
+	kinds := []inventoryv1.MovementKind{
+		inventoryv1.MovementKind_MOVEMENT_KIND_PICK,
+		inventoryv1.MovementKind_MOVEMENT_KIND_SAMPLE,
+		inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE,
+	}
+	if len(rows) != len(kinds) {
+		t.Fatalf("owner history = %d rows, want the take, the sample and the receive", len(rows))
+	}
+
+	for i, m := range rows {
+		if m.GetKind() != kinds[i] {
+			t.Fatalf("row %d = %s, want %s", i, m.GetKind(), kinds[i])
+		}
+	}
+
+	if s := rows[1]; s.GetRecipient() != "Pak Budi" || s.GetReason() != "for a review video" || s.GetDelta() != -2 {
+		t.Fatalf("the sample row = recipient %q, reason %q, %d — want Pak Budi, the note on its own, -2",
+			s.GetRecipient(), s.GetReason(), s.GetDelta())
+	}
+
+	// A name on the take's transaction — no write sets one, but a row that is not a sample never reads it.
+	err = db.
+		Exec("UPDATE inventory_transactions SET recipient = ? WHERE id = ?", "Nobody", rows[0].GetMovementId()).
+		Error
+	if err != nil {
+		t.Fatalf("a stray name on the take: %v", err)
+	}
+
+	for _, m := range ownerHistory(t, svc, otMelati, otKaosHitam, 0) {
+		if m.GetKind() != inventoryv1.MovementKind_MOVEMENT_KIND_SAMPLE && m.GetRecipient() != "" {
+			t.Fatalf("a %s row names %q, want nobody — only a sample has a recipient", m.GetKind(), m.GetRecipient())
+		}
+	}
+
+	res, err := svc.OwnerStockHistory(context.Background(), connect.NewRequest(&inventoryv1.OwnerStockHistoryRequest{
+		TeamId: otMelati,
+		Filter: &inventoryv1.OwnerStockHistoryFilter{ProductId: otKaosHitam},
+		Page:   &commonv1.CommonPagination{Page: 2, Limit: 1},
+	}))
+	if err != nil {
+		t.Fatalf("OwnerStockHistory page 2: %v", err)
+	}
+
+	ids := res.Msg.GetIds()
+	if len(ids) != 1 || ids[0] != rows[1].GetId() {
+		t.Fatalf("page 2 of one = %v, want the sample row %d", ids, rows[1].GetId())
+	}
+
+	var onPage *inventoryv1.OwnerMovement
+
+	for _, item := range res.Msg.GetItems() {
+		if mv := item.GetMovement(); mv != nil {
+			onPage = mv.GetMapData()[ids[0]]
+		}
+	}
+
+	if onPage.GetRecipient() != "Pak Budi" {
+		t.Fatalf("page 2's sample row names %q, want Pak Budi — read on the page, past the OFFSET", onPage.GetRecipient())
 	}
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -49,6 +49,9 @@ import { ReadyLine } from "../../components/feedback/ReadyLine";
 import { toaster } from "../../components/feedback/Toaster";
 import { cameFrom } from "../../lib/cameFrom";
 import { formatUnixDate } from "../../lib/datetime";
+// Backlog #101 — a restock's `return` resolution opens this form on its restock.
+import { isReturnFormState } from "../../features/restockResolution/resolutions";
+import { NoteField } from "../../features/restockResolution/ResolutionSection";
 
 interface SampleLine {
   productId: bigint;
@@ -96,8 +99,13 @@ export function CustomShipmentFormPage() {
   const teamId = selling ? current?.teamId : undefined;
   const create = useCreateCustomShipment();
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+  // #101: opened by a restock's *Catat Resolusi → Retur ke Supplier* — the reship kind, that restock picked, and the
+  // resolution recorded WITH the parcel it creates, in the server's one step (CustomShipmentCreate's `resolution` —
+  // a-restock-problem-is-settled-by-resolution-rows: `return` rides the outbound reship parcel). 0 = a plain Paket Baru.
+  const returnFor = isReturnFormState(location.state) ? BigInt(location.state.resolutionReturn.restockId) : 0n;
+  const [resolutionNote, setResolutionNote] = useState("");
 
-  const [kind, setKind] = useState<CustomShipmentKind>("SAMPLE");
+  const [kind, setKind] = useState<CustomShipmentKind>(returnFor > 0n ? "RESTOCK_RESHIP" : "SAMPLE");
   // SAMPLE
   const [warehouseId, setWarehouseId] = useState(0n);
   const [lines, setLines] = useState<SampleLine[]>([]);
@@ -155,6 +163,12 @@ export function CustomShipmentFormPage() {
   );
 
   const back = () => navigate(cameFrom(location) ?? CUSTOM_SHIPMENTS_PATH);
+
+  // #101 — the restock a return was opened for, picked once its choices land.
+  useEffect(() => {
+    if (returnFor > 0n && restockId === 0n && options.some((o) => o.restockId === returnFor)) pickRestock(returnFor);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [returnFor, options]);
 
   if (teamId === undefined) {
     return (
@@ -264,8 +278,15 @@ export function CustomShipmentFormPage() {
         shippingCost: payer === "TEAM" && cost !== "" ? Number(cost) : 0,
         note: note.trim(),
         idempotencyKey,
+        // #101 — the restock's RETURN row, recorded with this parcel under the restock's lock.
+        resolution: returnFor > 0n ? { note: resolutionNote.trim() } : undefined,
       });
       toaster.create({ type: "success", title: t("customShipment.toast.created") });
+      // #101 — the return resolution was recorded with its parcel: back to the restock.
+      if (created && returnFor > 0n) {
+        back();
+        return;
+      }
       if (created) navigate(customShipmentPath(created.id));
     } catch (err) {
       toaster.create({ type: "error", title: t("customShipment.toast.createFailed"), description: rpcError(err) });
@@ -280,6 +301,21 @@ export function CustomShipmentFormPage() {
         <Icon as={ArrowLeft} boxSize="4" />
         {t("customShipment.form.back")}
       </Button>
+
+      {/* #101 — opened for a restock's return: said, and the resolution's own note. */}
+      {returnFor > 0n && (
+        <Card.Root borderColor="orange.muted" data-testid="custom-shipment-form-return">
+          <Card.Body>
+            <Stack gap="field">
+              <Text fontWeight="bold">{t("restockResolution.returnForm.title", { id: returnFor.toString() })}</Text>
+              <Text fontSize="sm" color="fg.muted">
+                {t("restockResolution.returnForm.hint")}
+              </Text>
+              <NoteField value={resolutionNote} onChange={setResolutionNote} testId="custom-shipment-form-return-note" />
+            </Stack>
+          </Card.Body>
+        </Card.Root>
+      )}
 
       {/* JENIS — the two kinds the owner named; the in-person sample stays on Rack detail. */}
       <Card.Root>

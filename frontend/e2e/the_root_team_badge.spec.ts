@@ -61,6 +61,7 @@ async function recordExpense(page: Page, note: string, amount: number): Promise<
     await rpc<{ expense: { id: string } }>(page, "expense.v1.ExpenseService/ExpenseCreate", {
       teamId: state.team,
       kind: "EXPENSE_KIND_OPERATIONAL",
+      type: "EXPENSE_TYPE_ELECTRICITY", // a type is required since #99 (expense-types-sit-under-groups)
       amount,
       occurredAt: day(0),
       note,

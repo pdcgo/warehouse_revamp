@@ -121,6 +121,17 @@ func (s *Service) OrderExport(
 			return connect.NewError(connect.CodeInternal, fmt.Errorf("naming the rows: %w", err))
 		}
 
+		// The step's tags — the list's one lookup per page (orderTagsOf).
+		ids := make([]uint64, 0, len(orders))
+		for i := range orders {
+			ids = append(ids, orders[i].ID)
+		}
+
+		names.tags, err = orderTagsOf(s.db.WithContext(ctx), ids)
+		if err != nil {
+			return dbError(err)
+		}
+
 		for i := range orders {
 			err = sheet.write(&orders[i], names)
 			if err != nil {
@@ -163,6 +174,8 @@ type exportRowNames struct {
 	users map[uint64]string
 	// The couriers, by channel id → code.
 	channels map[uint64]string
+	// Each order's tags, in the chips' order (orderTagsOf) — this service's own tables.
+	tags map[uint64][]*sellingv1.OrderTag
 }
 
 func (s *Service) exportNames(ctx context.Context, orders []selling_service_models.Order) (exportRowNames, error) {
@@ -245,14 +258,16 @@ type exportSheet struct {
 
 // The reader's own row, as on screen — real fields only (see OrderExport).
 var (
+	// TAGS after the status in both (the-order-tags-prototype-is-accepted: "the export gains a Tag column") — the
+	// seller's screen draws them after the shop, before the dates; the warehouse's right after the status.
 	sellerColumns = []string{
-		"Order ID", "Marketplace ref", "Shop", "Marketplace", "Status", "Created", "Created by",
+		"Order ID", "Marketplace ref", "Shop", "Marketplace", "Status", "Tags", "Created", "Created by",
 		"Customer", "Buyer username", "Phone", "Courier", "Tracking number", "Qty", "Goods cost", "Warehouse fee",
 		"Platform total", "Marketplace date", "Ship-by",
 	}
 	warehouseColumns = []string{
 		"Order ID", "Created", "Created by", "Seller", "Shop", "Marketplace", "Marketplace ref", "Courier",
-		"Tracking number", "Qty", "Status", "Marketplace date", "Ship-by",
+		"Tracking number", "Qty", "Status", "Tags", "Marketplace date", "Ship-by",
 	}
 )
 
@@ -309,6 +324,7 @@ func (s *exportSheet) write(order *selling_service_models.Order, names exportRow
 			order.Receipt,
 			order.ItemQuantity,
 			order.Status,
+			exportTags(names.tags[order.ID]),
 			momentOrEmpty(order.PlatformCreatedAt),
 			momentOrEmpty(order.PlatformShipmentDeadline),
 		})
@@ -320,6 +336,7 @@ func (s *exportSheet) write(order *selling_service_models.Order, names exportRow
 		shop.Name,
 		shop.Marketplace,
 		order.Status,
+		exportTags(names.tags[order.ID]),
 		created,
 		creator,
 		order.Customer(),
@@ -335,6 +352,17 @@ func (s *exportSheet) write(order *selling_service_models.Order, names exportRow
 		momentOrEmpty(order.PlatformCreatedAt),
 		momentOrEmpty(order.PlatformShipmentDeadline),
 	})
+}
+
+// exportTags is an order's tags as one cell — every name, in the chips' order (the system's first, then by name), ""
+// for none.
+func exportTags(tags []*sellingv1.OrderTag) string {
+	names := make([]string, 0, len(tags))
+	for _, t := range tags {
+		names = append(names, t.GetName())
+	}
+
+	return strings.Join(names, ", ")
 }
 
 // momentOrEmpty writes one of the platform's dates in the readers' own clock, and a date never recorded as an empty

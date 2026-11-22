@@ -10,10 +10,12 @@ import {
   useListCollection,
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { regionClient, rpcError } from "../../api/clients";
+import { rpcError } from "../../api/clients";
 import {
   useDesaOfKecamatans,
   useRegionByKodePos,
+  useRegionChildren,
+  useRegionResolve,
   useRegionSearch,
 } from "../../features/region/queries";
 import { useDebounced } from "../../lib/useDebounced";
@@ -144,7 +146,8 @@ interface LevelSelectProps {
 }
 
 // One rung of the cascade. Loads its level by parent_code — NEVER the whole tree: regions are ~84k
-// nodes, so this is deliberately not the CategorySelect full-tree pattern (brainstorming §2).
+// nodes, so this is deliberately not the CategorySelect full-tree pattern (brainstorming §2). Through a query hook
+// (useRegionChildren, #122): a level read once is drawn from the cache by the next field that asks for it.
 function LevelSelect({
   label,
   placeholder,
@@ -161,8 +164,6 @@ function LevelSelect({
   // Controlling the input this way keeps the label correct even when the options haven't loaded yet
   // (a hydrated snapshot), which an uncontrolled input cannot do.
   const [typed, setTyped] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const { collection, filter, set } = useListCollection<Region>({
     initialItems: [],
@@ -171,35 +172,15 @@ function LevelSelect({
     itemToValue: (r) => r.code,
   });
 
+  const level = useRegionChildren({ parentCode, limit: LEVEL_LIMIT, enabled });
+  const loading = enabled && level.isPending;
+  const error = enabled && level.isError ? rpcError(level.error) : "";
+
+  // The level's rows into the combobox — none while the rung above is unresolved, and none when the read failed (its
+  // error is said under the field).
   useEffect(() => {
-    if (!enabled) {
-      set([]);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-
-    regionClient
-      .regionList({ parentCode, page: { page: 1, limit: LEVEL_LIMIT } })
-      .then((res) => {
-        if (!cancelled) set(res.regions);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(rpcError(err));
-          set([]);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [parentCode, enabled, set]);
+    set(enabled && !level.isError ? (level.data ?? []) : []);
+  }, [enabled, level.data, level.isError, set]);
 
   const off = disabled || !enabled;
 
@@ -597,48 +578,36 @@ export function AddressPicker({ value, onChange, disabled, kecamatanSearch }: Ad
 
   const { code: deepCode, name: deepName } = deepestLevel(value);
 
-  // A consumer can hand us a saved address as CODES ONLY. One RegionResolve back-fills the labels.
-  // Guarded twice: once per code (the ref), and skipped entirely the moment a name is present — so
-  // a pick, which always carries its own name, can never trigger this.
+  // A consumer can hand us a saved address as CODES ONLY. One RegionResolve back-fills the labels —
+  // read through its query hook (useRegionResolve, #122) and APPLIED once per code (the ref), and only
+  // while no name is present — so a pick, which always carries its own name, can never trigger this.
+  // A resolve that fails leaves the codes as they are: the cascade still works from them.
+  const needsNames = deepCode !== "" && deepName === "";
+  const resolve = useRegionResolve({ code: deepCode, enabled: needsNames });
+
   useEffect(() => {
-    if (!deepCode || deepName || resolvedRef.current === deepCode) {
+    const a = resolve.data;
+    if (!needsNames || !a || resolvedRef.current === deepCode) {
       return;
     }
 
-    // Claimed BEFORE the await: one resolve per code even under StrictMode's double-invoke.
+    // Claimed as it is applied: one fill per code even under StrictMode's double-invoke.
     resolvedRef.current = deepCode;
-    let cancelled = false;
 
-    regionClient
-      .regionResolve({ code: deepCode })
-      .then((res) => {
-        const a = res.ancestry;
-        if (cancelled || !a) {
-          return;
-        }
-
-        onChangeRef.current({
-          ...valueRef.current,
-          provinsiCode: a.provinsiCode,
-          provinsiName: a.provinsiName,
-          kabupatenCode: a.kabupatenCode,
-          kabupatenName: a.kabupatenName,
-          kecamatanCode: a.kecamatanCode,
-          kecamatanName: a.kecamatanName,
-          desaCode: a.desaCode,
-          desaName: a.desaName,
-          // A snapshot may carry an edited kode pos — never clobber it with the dataset's.
-          kodePos: valueRef.current.kodePos || a.kodePos,
-        });
-      })
-      .catch((err) => {
-        void rpcError(err);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [deepCode, deepName]);
+    onChangeRef.current({
+      ...valueRef.current,
+      provinsiCode: a.provinsiCode,
+      provinsiName: a.provinsiName,
+      kabupatenCode: a.kabupatenCode,
+      kabupatenName: a.kabupatenName,
+      kecamatanCode: a.kecamatanCode,
+      kecamatanName: a.kecamatanName,
+      desaCode: a.desaCode,
+      desaName: a.desaName,
+      // A snapshot may carry an edited kode pos — never clobber it with the dataset's.
+      kodePos: valueRef.current.kodePos || a.kodePos,
+    });
+  }, [needsNames, deepCode, resolve.data]);
 
   // Picking a level CLEARS every level below it, and the kode pos with them — a kabupaten left over
   // from the previous provinsi is a wrong address that still looks filled in. addressLine survives:

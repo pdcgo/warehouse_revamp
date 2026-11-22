@@ -35,11 +35,14 @@ import { canForceReturn, useForceReturn } from "../../features/orders/useForceRe
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ReportFoundFromOrderDialog } from "../../features/inventory/ReportFoundFromOrderDialog";
 import { canReportFound } from "../../lib/roles";
-import { ItemScan } from "./components/ItemScan";
-import { PICK_ORDER_PENDING } from "./pending";
+import { ItemScan } from "../../features/picking/ItemScan";
+import { PICK_ORDER_PENDING } from "../../features/picking/pending";
 // CETAK ULANG LABEL (a-changed-label-asks-the-warehouse-to-reprint): the line under the title when the server marks the
 // order — the badge, why, and Cetak Resi (the-reprint-label-prototype-is-accepted).
 import { ReprintLabelPickLine } from "../../features/orders/ReprintLabel";
+import { useOrderTags } from "../../features/orders/tags/tagQueries";
+import { tagsOfOrder } from "../../features/orders/tags/orderTags";
+import { OrderTagsBox } from "../../features/orders/tags/OrderTagsBox";
 import { fromHere } from "../../lib/cameFrom";
 import { printReceiptsPath } from "../print-receipts/path";
 
@@ -104,8 +107,9 @@ export function PickOrderPage() {
   const forceReturn = useForceReturn({ teamId: warehouseId });
   // A LOST ORDER'S PARCEL, FOUND (a-found-lost-parcel-is-a-found-stock-in): Report Found, prefilled with the order.
   const [reportingFound, setReportingFound] = useState(false);
-
   const order = query.data?.order ?? null;
+  // THE ORDER'S TAGS (backlog #100): the Tag card — the crew sees and tags the same set the selling team does.
+  const tagsApi = useOrderTags(order ?? undefined);
   const locations = query.data?.locations ?? [];
   const loading = query.isPending && warehouseId !== undefined && orderId !== 0n;
   const error = query.isError ? rpcError(query.error) : "";
@@ -313,6 +317,20 @@ export function PickOrderPage() {
                 value={<OrderCourierBadge channelId={order.shipmentChannelId} />}
               />
             </SimpleGrid>
+          </Stack>
+        </Card.Body>
+      </Card.Root>
+
+      {/* THE ORDER'S TAGS (the-order-tags-prototype-is-accepted), on the page the warehouse's list and Scan Label open:
+          the crew sees and tags the same tags the selling team does (orders-have-their-own-tag-list), before the notes as
+          a restock's Tag box sits before its note. */}
+      <Card.Root data-testid="pick-order-tags">
+        <Card.Body>
+          <Stack gap="card">
+            <Text fontSize="sm" fontWeight="medium" color="fg.muted">
+              {t("orders.tags.title")}
+            </Text>
+            <OrderTagsBox orderId={order.id} tags={tagsOfOrder(order)} api={tagsApi} />
           </Stack>
         </Card.Body>
       </Card.Root>

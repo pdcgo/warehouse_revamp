@@ -144,11 +144,12 @@ const PRIORITY_TEAM_LIMIT = 200;
 // Both go through THIS hook rather than each fetching for itself, because TeamDetail is the only
 // RPC that returns `info`: the dialog and the page are two views of one record, and a write from
 // either must move both. `enabled` is what lets the dialog stay cheap — it does not read until it
-// is opened, exactly as the old effect did.
-export function useTeamDetail({ teamId, enabled = true }: { teamId: bigint; enabled?: boolean }) {
+// is opened, exactly as the old effect did. It may also be a FUNCTION, which TanStack evaluates at the moment it asks
+// (an invalidation included, never a render late): the warehouse edit page keeps its read still while its own save runs.
+export function useTeamDetail({ teamId, enabled = true }: { teamId: bigint; enabled?: boolean | (() => boolean) }) {
   return useQuery({
     queryKey: key.teams(undefined, { teamId: teamId.toString() }),
-    enabled: enabled && teamId > 0n,
+    enabled: typeof enabled === "function" ? () => teamId > 0n && enabled() : enabled && teamId > 0n,
     queryFn: async () => {
       const res = await teamClient.teamDetail({ teamId });
 

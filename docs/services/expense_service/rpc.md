@@ -260,6 +260,9 @@ sequenceDiagram
 | `finance_account_id` | `uint64.gt = 0` in the proto, re-checked in the handler (InvalidArgument) — a caller that skips the interceptor is not trusted |
 | a refused account | FailedPrecondition, naming it: *"BCA Gaji is not one of the team's active operational accounts — pick another, or ask an admin to mark it operational"*, *"… is archived — …"*, or *"account #N …"* for another team's or an unknown id (never confirms an id) |
 | the shop | ADS with shop 0 → InvalidArgument *"an ads expense names its shop"* · any other kind with a shop → *"only an ads expense names a shop"* |
+| the type (#99 P1, 2026-11-20) | `type` is required on every expense a person types (InvalidArgument without one); `expense_types.go`'s fixed table decides the group (stored as `kind` — a kind sent beside it must be the type's group), the direction, the capital flag and the shop rule, read per TYPE: only *Iklan marketplace* names a shop ([expense-types-sit-under-groups](../../business/financial_account/context_decision.md#expense-types-sit-under-groups)) |
+| the account by type | Prive and Setoran modal: any of the team's ACTIVE accounts (the account's capital); every other type, money in included: an active operational one ([the-expense-types-prototype-is-accepted](../../business/financial_account/context_decision.md#the-expense-types-prototype-is-accepted)) |
+| the event | `ExpenseCreated.type` / `ExpenseAdjusted.type` (an adjustment copies its expense's) — the listener posts by it |
 | the shop is the team's | 2026-11-18, [settlement-and-expense-ask-the-shop-first](../../business/shop/context_decision.md#settlement-and-expense-ask-the-shop-first): a non-zero `shop_id` is asked of the shop BEFORE the account and before any transaction — `Shops`, an interface expense owns, answered by the composition root's [expense_shops.go](../../../backend/cmd/app_development/expense_shops.go) with `ShopAccessCheck` over the shop client, under the caller's token. Another team's or an unknown shop → **NotFound** *"shop #N is not one of this team's shops"* (the same words for both), nothing stored — no row, no Analytic figure, no event. A CLOSED shop is taken (an expense is money still running on it). An expense naming no shop asks nothing; who may spend is unchanged |
 | `STOCK_LOSS` | through the API: InvalidArgument *"stock loss is recorded by inventory, not typed"* (a CEL rule on `kind`, enforced by the validation interceptor). Inventory's `expensePoster` calls the handler directly, with no account and no interceptor — stored with account 0 whatever was sent, the account service never asked, nothing published |
 | the event | `ExpenseCreated` (topic `expense-created`) — expense id, team, kind, account, amount, the expense's day, shop, actor + override. Published AFTER the commit; a failed publish is logged with its event_id and never fails the expense (no outbox, as a restock's) |
@@ -306,6 +309,49 @@ sequenceDiagram
 
 ---
 
+## The capital listener — the account page's Setor / Tarik Modal on Biaya
+
+[prive-and-deposit-on-pengeluaran-are-the-accounts-capital](../../business/financial_account/context_decision.md#prive-and-deposit-on-pengeluaran-are-the-accounts-capital),
+[the-expense-types-prototype-is-accepted](../../business/financial_account/context_decision.md#the-expense-types-prototype-is-accepted)
+— capital's second door: a SELLING team's Setor / Tarik Modal on the account page is the same one record as Biaya's
+Setoran modal / Prive. financial_account_service posts the account's by-hand `capital` row and publishes
+`FinancialAccountCapitalRecorded` ([financial_account_service](../financial_account_service/rpc.md#financialaccountcapital--the-second-door-to-biaya));
+this records it here. [capital_from_account.go](../../../backend/services/expense_service/expense_v1/capital_from_account.go),
+subscription `expense-financial-account-capital-recorded` → `/event/expense-financial-account-capital-recorded/push`
+(expense_service's first listener; claims in `expense_event_logs`, migration 00008). Built 2026-11-20 (#99 P2).
+
+```mermaid
+sequenceDiagram
+    participant B as Pub/Sub
+    participant L as the capital listener
+    participant T as team_service (TeamSides)
+    participant DB as one transaction
+    B->>L: FinancialAccountCapitalRecorded
+    L->>T: which side is the team on — asked BEFORE the transaction
+    L->>DB: CLAIM the event id — a redelivery stops here
+    alt a selling team
+        L->>DB: INSERT Setoran modal (plus) or Prive (minus), origin ACCOUNT_PAGE, account_log_id ON CONFLICT DO NOTHING
+        L->>DB: fold the metric — capital in or out, on the act's day
+    else a warehouse team, or neither side
+        L->>DB: nothing more — the claim alone
+    end
+    L-->>B: 200 acks, and any error NACKs and Pub/Sub redelivers
+```
+
+| case | what happens |
+| --- | --- |
+| the row | type Setoran modal for a plus change, Prive for a minus, group Lainnya; the amount positive; the account row's day, note, who (`created_by`) and override mark, account (`finance_account_id`), recorded-on its time; `origin = ACCOUNT_PAGE`; `account_log_id` = the account row |
+| nothing is published | the account row is the act's own — `ExpenseCreated` would post a second capital row; so exactly one capital row per act |
+| the same event twice, or the same account row under another event id, even at once | one row — the claim, then the partial unique index on `account_log_id` (`ON CONFLICT DO NOTHING`); the metric folds once |
+| a warehouse team's | claimed and dropped — never on Biaya |
+| a malformed message (no `log_id`, a change of 0) | an error (NACK → dead letter), never a guessed row |
+| Adjust / Batalkan on Biaya | ordinary corrections — the type copied, `origin` 0 (made on Biaya), `ExpenseAdjusted` published, the account posts the signed `capital` row (*dari Biaya #N*) |
+| the screen | `ExpenseRecord.origin` / `ExpenseRowItem.origin` — the row's *Dicatat di halaman akun* (`expense-origin-<id>`) |
+| the old rows | `ImportCapital(ctx, events)` — the same write without the claim, over financial_account's `HandCapitalEvents`; counts imported / already / not selling; run by `san expense import-capital` and `dev setup` |
+| the roles | none asked: the person made the act through `FinancialAccountCapital`'s own policy (selling Owner / Admin, root, administrator — the same selling roles `ExpenseCreate` takes), so nobody who may Setor / Tarik Modal is refused |
+
+---
+
 ## The Analytic expense metrics — `ExpenseAnalyticService`
 
 Built 2026-11-06 — [expense-has-ads-and-expenses](../../business/analytic/rpc_provide_decision.md#expense-has-ads-and-expenses),
@@ -315,13 +361,13 @@ Built 2026-11-06 — [expense-has-ads-and-expenses](../../business/analytic/rpc_
 [the-expense-metrics-follow-the-decisions-already-made](../../business/analytic/rpc_provide_decision.md#the-expense-metrics-follow-the-decisions-already-made),
 [an-expense-correction-counts-for-who-made-it](../../business/analytic/rpc_provide_decision.md#an-expense-correction-counts-for-who-made-it),
 [the-expense-prototype-is-accepted](../../business/analytic/rpc_provide_decision.md#the-expense-prototype-is-accepted).
-`proto/warehouse/expense/v1/expense_analytic.proto`, handlers `expense_v1/metric_{shared,search,data,fold}.go`, the
-report `expense_metric_daily_reports` (00006).
+`proto/warehouse/expense/v1/expense_analytic.proto`, handlers `expense_v1/metric_{shared,search,data,fold,refold}.go`,
+the report `expense_metric_daily_reports` (00006; `flow` 00007; `type` 00009).
 
 | metric | fields | filters | groups |
 | --- | --- | --- | --- |
 | **Ads expense** `metrics/ads` | `amount` — the ADS kind | date range (required), shop, team (the seller), user | shop, seller, warehouse, created by, daily / weekly / monthly / yearly |
-| **Expenses** `metrics/expenses` | `ads`, `payroll`, `operational`, `other`, `total` — typed kinds only, no STOCK_LOSS | date range (required), team, user | seller, warehouse, created by, time |
+| **Expenses** `metrics/expenses` | `ads`, `payroll`, `operational`, `other` — each group's spending; `total` — Biaya's month total, spending − `money_in` + `capital_out` − `capital_in` (since backlog #107); `money_in`, `capital_out` (Prive), `capital_in` (Setoran modal), positive; then one field per expense type, `ads_marketplace` … `other_in` (fields 9–26, signed: money in and Setoran modal minus) — typed kinds only, no STOCK_LOSS | date range (required), team, user | seller, warehouse, created by, time |
 
 ```mermaid
 sequenceDiagram
@@ -351,8 +397,10 @@ sequenceDiagram
 | the headline | MetricData with `GROUP_TYPE_SUMMARY`. `rows_group` names the table's group: under an id group the headline sums only the rows that group keys (by Seller the sellers' — a warehouse team's expense is no Seller row — by Warehouse the warehouses'); under a time group or unset, everything visible. On any other `group_by` it is InvalidArgument |
 | refusals | InvalidArgument: another service's metric id, a filter or group a metric does not list (a shop on Expenses), a repeated filter, no date range, a range over a year, keys under SUMMARY, a period keyed by any day but its first |
 | money | exact doubles, summed in SQL, never rounded |
+| by type (backlog #107) | each report row is one type's (`type`, part of the key — [analytic/expense_metric.md](../../acceptances/analytic/expense_metric.md) givens 6–22). A type field is the type's net signed by its direction as Biaya's month card shows it (`ExpenseTotals.by_type`), so the type fields plus the rows from before the types add up to `total`. Rows written before expense 00009 carry type 0: their group and the total only, never a type field — until a re-fold of their day. The sums run in two steps (`metricGrouped`: one `SUM` per key, kind, flow and type, then the twenty-six `FILTER`ed sums over those) — the same figures, at the eight-sum read's cost |
+| re-fold | `MetricDayRefold` (`metric_refold.go`) — `san report refold --report expense-daily --team <id> --date <day>` ([san.md](../../tools/san.md#report-refold)): the team's day rebuilt from `expense_records` through the fold's own `metricEntryOf` (expenses of the day by `occurred_at`, corrections made that day by `created_at` in WIB), a matching row left as it is, a stale one (an untyped row whose expenses now sit under their types) deleted. Takes the report in SHARE ROW EXCLUSIVE BEFORE reading the records, so a writer that reaches its fold meanwhile waits and adds on top (`TestInterleave_MetricDayRefold_AFoldInTheGapWaitsForTheReplace`) |
 | concurrency | one upsert per row, the transaction's last statement — see [lock-order.md](../../../audits/services/expense_service/concurrency/lock-order.md) |
-| perf | one query per read; a team's year 1–2 ms, root's every-team year 23–25 ms (the root scan, as the order metrics and Lost stock); create / adjust with the fold ~1 ms (`TestPerf_ExpenseMetric`, ~137 000 report rows) |
+| perf | one query per read; a team's year 1–2 ms, root's every-team year 23–25 ms (the root scan, as the order metrics and Lost stock); create / adjust with the fold ~1 ms (`TestPerf_ExpenseMetric`, ~137 000 report rows). With the type fields (backlog #107, ~219 000 rows): a team's reads 1–3 ms (before 1–3.4), root's year 36–47 ms (before 34–49 — the twenty-six sums on every row read 63–94 ms for the root headline, hence the two-step sum), create / adjust with the fold ~2 ms (before 2.2–3.4); a sort by a type field 2.5 ms (a team), 36–44 ms (root); a day re-fold of a busy team's day (60 records, 6 corrections) 5.4–5.7 ms, the day's expenses read on `expense_records_team_period_idx` (`TestPerf_ExpenseMetricTypes`) |
 | MCP | source `expense` in `mcp_service/tool_metrics.go` |
 
 ### Who a USER filter offers — `ExpensePersonList`

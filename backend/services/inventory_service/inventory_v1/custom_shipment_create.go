@@ -75,6 +75,11 @@ func (s *Service) CustomShipmentCreate(
 
 	switch msg.GetKind() {
 	case inventoryv1.CustomShipmentKind_CUSTOM_SHIPMENT_KIND_SAMPLE:
+		// A sample is no restock's resolution (backlog #101: only a reship can be a `return`).
+		if msg.GetResolution() != nil {
+			return nil, customShipmentErr(errCustomShipmentSampleShape)
+		}
+
 		err = s.createParcelSample(ctx, msg, &cs, override)
 	case inventoryv1.CustomShipmentKind_CUSTOM_SHIPMENT_KIND_RESTOCK_RESHIP:
 		err = s.createReship(ctx, msg, &cs, override)
@@ -83,7 +88,7 @@ func (s *Service) CustomShipmentCreate(
 		err = errCustomShipmentSampleShape
 	}
 	if err != nil {
-		return nil, customShipmentErr(err)
+		return nil, resolutionErr(err)
 	}
 
 	s.publishCustomShipmentEvent(ctx, customShipmentCreatedEvent(&cs, override))
@@ -328,7 +333,44 @@ func (s *Service) createReship(
 			return createErr
 		}
 
-		return appendCustomShipmentLog(tx, cs.ID, "", models.CustomShipmentRequested, cs.CreatedByUserID, override, "")
+		logErr := appendCustomShipmentLog(tx, cs.ID, "", models.CustomShipmentRequested, cs.CreatedByUserID, override, "")
+		if logErr != nil {
+			return logErr
+		}
+
+		// *RETUR KE SUPPLIER* (backlog #101 — a-restock-problem-is-settled-by-resolution-rows): this reship IS the
+		// restock's `return` row, written WITH the parcel and its link under the restock's lock — only on a restock that
+		// takes resolutions (a received one carrying a problem tag, or settled; a reship's restock is never a lost one).
+		if msg.GetResolution() == nil {
+			return nil
+		}
+
+		eligibleErr := restockTakesResolutions(tx, rr)
+		if eligibleErr != nil {
+			return eligibleErr
+		}
+
+		row := models.RestockResolution{
+			RestockID:           rr.ID,
+			ResolutionType:      models.RestockResolutionReturn,
+			Note:                msg.GetResolution().GetNote(),
+			IdempotencyKey:      cs.IdempotencyKey,
+			CreatedByUserID:     cs.CreatedByUserID,
+			CreatedByIsOverride: override,
+		}
+
+		rowErr := insertResolution(tx, &row)
+		if rowErr != nil {
+			return rowErr
+		}
+
+		// The Riwayat's row for it, in this transaction (restock_settlement_log.go).
+		resolutionLogErr := recordResolutionLog(tx, rr, &row)
+		if resolutionLogErr != nil {
+			return resolutionLogErr
+		}
+
+		return linkResolutionParcel(tx, rr.ID, row.ID, cs.ID)
 	})
 }
 

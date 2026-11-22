@@ -1,9 +1,12 @@
 import { useState } from "react";
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
+import { Button, Stack, Text } from "@chakra-ui/react";
+import { expect, fn, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { supplierFixtures } from "../../../.storybook/supplierFixtures";
+import { supplierClient } from "../../api/clients";
+import { useSaveSupplier } from "../../features/suppliers/queries";
 import { SupplierSelect, description } from "./SupplierSelect";
 
 // Team 12 is a selling team — only a selling team has suppliers (only-a-selling-team-has-suppliers). Other
@@ -64,7 +67,7 @@ export const SearchesByName: Story = {
     await userEvent.click(input);
     await userEvent.type(input, "Cahaya", { delay: 40 });
 
-    await expect(await screen.findByTestId(`supplier-select-option-${suppliers[1]!.id}`)).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId(`supplier-select-option-${suppliers[1]!.id}`)).toBeVisible(), { timeout: 5000 });
     await expect(screen.queryByTestId(`supplier-select-option-${suppliers[0]!.id}`)).toBeNull();
   },
 };
@@ -132,5 +135,108 @@ export const Interactive: Story = {
     await waitFor(() =>
       expect(canvas.getByRole("combobox")).toHaveValue(suppliers[0]!.name),
     );
+  },
+};
+
+/** How many times a spied client method has been called so far. */
+function callsOf(method: unknown): number {
+  return (method as { mock: { calls: unknown[] } }).mock.calls.length;
+}
+
+// A picker mounted after the first — a second restock form, the same form opened again.
+function ASecondPickerLater(props: { onChange: (id: bigint) => void }) {
+  const [second, setSecond] = useState(false);
+
+  return (
+    <Stack gap="3">
+      <SupplierSelect teamId={TEAM} onChange={props.onChange} />
+      <Button data-testid="story-mount-second" onClick={() => setSecond(true)}>
+        Open Another Form
+      </Button>
+      {second && <SupplierSelect teamId={TEAM} onChange={props.onChange} />}
+    </Stack>
+  );
+}
+
+// THE LIST IS READ ONCE (#121). Through the query cache (`useSupplierOptions`, referenceQuery), so a picker mounted
+// later offers the suppliers the first one read — no second SupplierList. Each mount used to fetch its own.
+export const APickerMountedLaterReadsTheCache: Story = {
+  name: "A picker mounted later reads the cached list — no second SupplierList",
+  beforeEach: () => {
+    const spy = spyOn(supplierClient, "supplierList");
+
+    return () => spy.mockRestore();
+  },
+  render: (args) => <ASecondPickerLater onChange={args.onChange ?? (() => {})} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByRole("combobox"));
+    await waitFor(() => expect(screen.getByTestId(`supplier-select-option-${suppliers[0]!.id}`)).toBeVisible(), {
+      timeout: 5000,
+    });
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(canvas.getByTestId("story-mount-second"));
+    await waitFor(() => expect(canvas.getAllByRole("combobox")).toHaveLength(2));
+    const secondInput = canvas.getAllByRole("combobox")[1]!;
+    await userEvent.click(secondInput);
+    // The first picker's options stay in the document, hidden, after it closes — so the second one's are found in ITS
+    // listbox.
+    await waitFor(
+      () => {
+        const listbox = document.getElementById(secondInput.getAttribute("aria-controls") ?? "");
+        expect(listbox).not.toBeNull();
+        expect(within(listbox!).getByTestId(`supplier-select-option-${suppliers[0]!.id}`)).toBeVisible();
+      },
+      { timeout: 5000 },
+    );
+
+    await expect(callsOf(supplierClient.supplierList)).toBe(1);
+  },
+};
+
+// A supplier added on My Supplier (its write invalidates `suppliers`).
+function AddThenPick(props: { onChange: (id: bigint) => void }) {
+  const save = useSaveSupplier();
+  const [added, setAdded] = useState(false);
+
+  return (
+    <Stack gap="3">
+      <SupplierSelect teamId={TEAM} onChange={props.onChange} />
+      <Button
+        data-testid="story-add-supplier"
+        onClick={async () => {
+          await save.mutateAsync({ teamId: TEAM, name: "Sumber Baru", contact: "", address: "", description: "" });
+          setAdded(true);
+        }}
+      >
+        Add Supplier Elsewhere
+      </Button>
+      {added && <Text data-testid="story-supplier-added">added</Text>}
+    </Stack>
+  );
+}
+
+// A SUPPLIER ADDED ON MY SUPPLIER IS OFFERED. The list is cached, but under the team's `suppliers` — the write's
+// invalidation re-reads the picker on screen, so the new supplier is pickable without a reload.
+export const ASupplierAddedElsewhereIsOffered: Story = {
+  name: "A supplier added on My Supplier is offered in the picker",
+  render: (args) => <AddThenPick onChange={args.onChange ?? (() => {})} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByRole("combobox"));
+    await waitFor(() => expect(screen.getByTestId(`supplier-select-option-${suppliers[0]!.id}`)).toBeVisible(), {
+      timeout: 5000,
+    });
+    await expect(screen.queryByRole("option", { name: /Sumber Baru/ })).toBeNull();
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(canvas.getByTestId("story-add-supplier"));
+    await canvas.findByTestId("story-supplier-added", {}, { timeout: 5000 });
+
+    await userEvent.click(canvas.getByRole("combobox"));
+    await waitFor(() => expect(screen.getByRole("option", { name: /Sumber Baru/ })).toBeVisible(), { timeout: 5000 });
   },
 };

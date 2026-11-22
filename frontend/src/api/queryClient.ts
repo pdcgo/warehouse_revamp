@@ -69,9 +69,11 @@ export const listQuery = {
 // screen, and a stale courier name is a cosmetic problem where a stale stock count is not — so this is
 // the one place the always-fresh default is bought out, deliberately and by name.
 //
-// Only reaches TanStack-backed feeds. `CategorySelect`, `SupplierSelect`, `RackSelect`, the four
-// product pickers (they share `ProductPickerShell`) and the courier catalogue run their own
-// `useEffect`/session caches and never saw `staleTime` at all — see features/shipping/catalogue.ts.
+// Every picker reads through a query hook now, so no picker keeps a cache of its own: `RackSelect`
+// (`useRacks`, on the plain always-fresh default) and, since #121, `CategorySelect`, `SupplierSelect`, the
+// four product pickers on `ProductPickerShell` and the courier catalogue (features/shipment/queries.ts
+// `useShipmentChannelCatalogue`) on this buy-out. Not bought out, deliberately: the product pickers'
+// READY/ONGOING figures and the stocked pickers' pages, which are stock (features/products/pickerQueries.ts).
 export const referenceQuery = {
   staleTime: 5 * 60_000,
 } as const;
@@ -130,6 +132,10 @@ export const key = {
   returnMaps: (teamId: bigint | undefined, params?: Params) => scope("returnMaps", teamId, params),
   // A warehouse's fee. Its own prefix: saving a rate changes no order and no list.
   warehouseFee: (teamId: bigint | undefined, params?: Params) => scope("warehouseFee", teamId, params),
+  // A warehouse's PROFILE — its weekly hours, its location, its closures — and whether it receives orders now
+  // (a-closed-day-warns-and-never-refuses), keyed by the WAREHOUSE (a warehouse is a team, as `racks` is keyed). One
+  // prefix per warehouse: a closure added there re-reads its profile and its receiving state, and no other warehouse's.
+  warehouseInfo: (warehouseId: bigint | undefined, params?: Params) => scope("warehouseInfo", warehouseId, params),
   inventory: (teamId: bigint | undefined, params?: Params) => scope("inventory", teamId, params),
   racks: (teamId: bigint | undefined, params?: Params) => scope("racks", teamId, params),
   restock: (teamId: bigint | undefined, params?: Params) => scope("restock", teamId, params),
@@ -158,6 +164,12 @@ export const key = {
   // The AI agents connected to read a team (docs/business/mcp) — a person's own (no team: `undefined`, they are the
   // caller's across every team) and a team's, for its owner, under ONE prefix: a revoke from either list is in both.
   agents: (teamId: bigint | undefined, params?: Params) => scope("agents", teamId, params),
+  // The analytic report (pages/analytic): every chosen metric's service, asked as one table. Its own prefix — the report
+  // is read, never written, so nothing invalidates it; a new question is a new key.
+  analytic: (teamId: bigint | undefined, params?: Params) => scope("analytic", teamId, params),
+  // A document's DOWNLOAD LINK — signed and short-lived, so cached only within the link's life
+  // (features/documents/queries.ts `useDocumentLink`), never past it.
+  documents: (teamId: bigint | undefined, params?: Params) => scope("documents", teamId, params),
 
   // No team: global reference data (see `global` above).
   regions: (params?: Params) => global("regions", params),

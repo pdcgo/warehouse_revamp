@@ -655,6 +655,10 @@ flowchart LR
 | `description` | the staff's note, as for every transaction |
 | ⚠ not written yet | the column is yours to add to [transaction.md](./transaction.md) |
 
+✅ Built 2026-11-20 — read back on the histories (backlog #108; [inventory/placement.md](../../acceptances/inventory/placement.md) given 17 *sample in the rack's history with who received it*): a sample row of the rack's history — and of the product's and the batch's — carries `StockMovement.recipient` from its transaction, every other row none, the note still apart; the rack page's Riwayat says *diberikan kepada Pak Budi* on the row's own line, on a phone too (`TestRackHistory_ASampleRowNamesWhoReceivedIt`; stories `RackDetail / History` *A sample names who received it* (+ phone), `RackDetail / Sample` *Record sample*). The owning team's own history (`OwnerStockHistory`) does not carry it yet.
+
+✅ Built 2026-11-21 — on the owning team's own history too (backlog #111): `OwnerStockHistory`'s sample row carries `OwnerMovement.recipient` from its transaction through the same lookup, read on the page's rows only, every other row none, the note still apart; the product's Riwayat Stok says *diberikan kepada Pak Budi* on the row's own line, on a phone too (`TestOwnerStockHistory_ASampleRowNamesWhoReceivedIt`; stories `ProductDetail / Warehouse` *A sample names who received it* (+ phone)). Another team reading the product's history ([DiscoverStockHistory](../../services/inventory_service/rpc.md)) gets no recipient.
+
 ## problem-and-found-replace-opname
 
 > Owner, in chat (2026-10-16): *"in tx_type we remove opname, and add problem, found ?"*, then *"followed ledger too"*, and

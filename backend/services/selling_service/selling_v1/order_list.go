@@ -43,6 +43,7 @@ type orderScopeFilter interface {
 	GetDateField() sellingv1.OrderDateField
 	GetSettlementNotOpened() bool
 	GetReprintLabel() bool
+	GetTagIds() []uint64
 }
 
 // A literal `%`, `_` or `\` typed into the search box must match ITSELF, not act as a wildcard.
@@ -184,6 +185,18 @@ func scopedOrders(query *gorm.DB, teamID uint64, filter orderScopeFilter) *gorm.
 	// written once as SQL (reprintLabelCondition), the twin of needsReprint.
 	if filter.GetReprintLabel() {
 		query = query.Where(reprintLabelCondition)
+	}
+
+	// BY TAG (the-order-tags-prototype-is-accepted): the orders carrying ANY of the picked order tags. An EXISTS, not a
+	// join, for the reason the product filter gives — an order carrying two of the picked would otherwise be listed twice
+	// and the count would be wrong. Per order it is a probe of `order_tag_links`' key (order_id, tag_id); a rare tag over
+	// a big book is read from its own side by `order_tag_links_tag_idx` (tag_id, order_id) — measured in
+	// order_tags_perf_test.go.
+	if tagIDs := filter.GetTagIds(); len(tagIDs) > 0 {
+		query = query.Where(
+			"EXISTS (SELECT 1 FROM order_tag_links otl WHERE otl.order_id = orders.id AND otl.tag_id IN ?)",
+			tagIDs,
+		)
 	}
 
 	return query
@@ -339,6 +352,12 @@ func (s *Service) OrderList(
 	}
 
 	items, ids := orderListItems(orders, req.Msg.GetDataRequest())
+
+	// The page's tags — one read for the page (orderTagsOf).
+	err = withListTags(s.db.WithContext(ctx), items)
+	if err != nil {
+		return nil, dbError(err)
+	}
 
 	return connect.NewResponse(&sellingv1.OrderListResponse{
 		Items: items,

@@ -48,7 +48,7 @@ func raceTeam(t *testing.T, db *gorm.DB) uint64 {
 
 func raceCreate(svc *expense_v1.Service, team uint64, amount float64) (uint64, error) {
 	res, err := svc.ExpenseCreate(asCaller(userBudi, team, role_basev1.Role_ROLE_SELLING_OWNER), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: team, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Amount: amount, OccurredAt: raceDay,
+		TeamId: team, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_ADS), Amount: amount, OccurredAt: raceDay,
 		ShopId: adsShop, FinanceAccountId: payingAccount,
 	}))
 	if err != nil {

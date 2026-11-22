@@ -14,6 +14,7 @@
 //	san dev        set up and run the local stack — docker, the API and the UI, in one terminal
 //	san deploy     ship one service to Cloud Run — Cloud Build compiles it, nothing is migrated
 //	san test       measured testing — the change measured, the affected specs, the smoke set, the full run
+//	san audit      measurements that assert nothing — the frontend speed audit on a seat of its own
 //
 // # Why one binary and not two
 //
@@ -83,6 +84,7 @@ func main() {
 			userCommand(),
 			supplierCommand(),
 			productCommand(),
+			expenseCommand(),
 			shopCommand(),
 			reportCommand(),
 			documentCommand(),
@@ -97,6 +99,9 @@ func main() {
 
 			// Measured testing — the full suites wait for a measured yes. Machine commands: no database.
 			testCommand(),
+
+			// Measurements of the running app on a seat of its own — they assert nothing (frontend speed, #119).
+			auditCommand(),
 		},
 	}
 

@@ -49,14 +49,12 @@ export function RecordSampleDialog({
   teamNames,
   open,
   onOpenChange,
-  onRecorded,
 }: {
   warehouseId: bigint;
   rack: Rack;
   teamNames: Map<string, string>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onRecorded: () => void;
 }) {
   const { t } = useTranslation();
   // FULL SCREEN ONLY ON A PHONE — by the JS breakpoint, never a responsive `size`: Chakra merges a responsive variant, so
@@ -80,6 +78,8 @@ export function RecordSampleDialog({
     setError("");
   }, [open]);
 
+  // The sample refreshes the page itself: useRackSample invalidates `racks`, so the header, the shelf and the history
+  // read again before the dialog closes (#120 — the page has no reload of its own to bump).
   const sample = useRackSample();
 
   const nameOf = (line: RackStockLine) =>
@@ -122,7 +122,6 @@ export function RecordSampleDialog({
       {
         onSuccess: () => {
           toaster.create({ type: "success", title: t("racks.sample.done", { count: given, code: rack.code }) });
-          onRecorded();
           onOpenChange(false);
         },
         onError: (err) => setError(rpcError(err)),

@@ -26,7 +26,15 @@ import (
 // STOCK_LOSS is outside the rule: inventory records it by an internal call (no validation interceptor), it moves no
 // cash, so it is stored with no account — whatever was sent — and never published.
 //
-// THE SHOP IS FOR ADS ONLY, AND ADS NEEDS ONE (an-expense-names-a-shop-only-for-ads): InvalidArgument either way. And it
+// THE TYPE (expense-types-sit-under-groups): every expense a person types names one — InvalidArgument without — and its
+// group IS the row's kind (a kind sent beside it must be that group). Prive and Setoran modal may be paid from or into
+// ANY of the team's ACTIVE accounts, as Setor / Tarik Modal on the account page; every other type names an active
+// OPERATIONAL account — money in goes INTO one (the-expense-types-prototype-is-accepted). The amount stays positive: the
+// type says the direction, and the account's listener posts by it (ads_expense · capital · money_in · expense).
+// Only inventory's STOCK_LOSS comes with no type.
+//
+// THE SHOP IS FOR THE MARKETPLACE'S ADS ONLY, AND THEY NEED ONE (an-expense-names-a-shop-only-for-ads, read per type —
+// Iklan marketplace names it, Konten · endorse does not): InvalidArgument either way. And it
 // must be ONE OF THE TEAM'S (settlement-and-expense-ask-the-shop-first): asked of the shop before anything is stored —
 // another team's or an unknown shop is NotFound, a closed one is taken. Who in the team may spend is not asked again.
 //
@@ -45,10 +53,14 @@ func (s *Service) ExpenseCreate(
 		return nil, costErr(err)
 	}
 
-	kind := req.Msg.GetKind()
+	kind, info, err := kindOfType(req.Msg.GetKind(), req.Msg.GetType())
+	if err != nil {
+		return nil, costErr(err)
+	}
+
 	account := req.Msg.GetFinanceAccountId()
 
-	err = shopRule(kind, req.Msg.GetShopId())
+	err = shopRule(info, req.Msg.GetShopId())
 	if err != nil {
 		return nil, costErr(err)
 	}
@@ -65,7 +77,8 @@ func (s *Service) ExpenseCreate(
 			return nil, costErr(errNoAccount)
 		}
 
-		err = s.checkPayingAccount(ctx, req.Msg.GetTeamId(), account)
+		// Capital on ANY active account; everything else on an operational one.
+		err = s.checkPayingAccount(ctx, req.Msg.GetTeamId(), account, info.capital)
 		if err != nil {
 			return nil, costErr(err)
 		}
@@ -83,6 +96,7 @@ func (s *Service) ExpenseCreate(
 		TeamID:           req.Msg.GetTeamId(),
 		ShopID:           req.Msg.GetShopId(),
 		Kind:             int32(kind),
+		Type:             int32(req.Msg.GetType()),
 		Amount:           amount,
 		OccurredAt:       occurred,
 		Note:             req.Msg.GetNote(),
@@ -123,10 +137,29 @@ func (s *Service) ExpenseCreate(
 	return connect.NewResponse(&expensev1.ExpenseCreateResponse{Expense: costToProto(&row, row.Amount)}), nil
 }
 
-// shopRule is an-expense-names-a-shop-only-for-ads: ADS names the shop it ran for, every other kind names none.
-// STOCK_LOSS is no exception — inventory never sends a shop.
-func shopRule(kind expensev1.ExpenseKind, shopID uint64) error {
-	if kind == expensev1.ExpenseKind_EXPENSE_KIND_ADS {
+// kindOfType is the row's kind — the type's group (expense-types-sit-under-groups). A typed expense may send its group
+// as `kind` or 0; any other kind is InvalidArgument. With no type, only inventory's STOCK_LOSS (an internal call) passes.
+func kindOfType(kind expensev1.ExpenseKind, t expensev1.ExpenseType) (expensev1.ExpenseKind, typeInfo, error) {
+	info, found := typeInfoOf(t)
+	if !found {
+		if t == expensev1.ExpenseType_EXPENSE_TYPE_UNSPECIFIED && kind == expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS {
+			return kind, typeInfo{group: kind}, nil
+		}
+
+		return 0, typeInfo{}, errNoType
+	}
+
+	if kind != expensev1.ExpenseKind_EXPENSE_KIND_UNSPECIFIED && kind != info.group {
+		return 0, typeInfo{}, errTypeNotInGroup
+	}
+
+	return info.group, info, nil
+}
+
+// shopRule is an-expense-names-a-shop-only-for-ads, read per type: the marketplace's ads name the shop they ran for,
+// every other type names none. STOCK_LOSS is no exception — inventory never sends a shop.
+func shopRule(info typeInfo, shopID uint64) error {
+	if info.namesShop {
 		if shopID == 0 {
 			return errAdsNeedsAShop
 		}

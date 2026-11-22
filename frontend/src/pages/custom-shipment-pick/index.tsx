@@ -17,7 +17,7 @@ import { CustomShipmentTimeline } from "../../features/customShipment/CustomShip
 import { HandoverDialog } from "../../features/customShipment/HandoverDialog";
 // Barang Tidak Ketemu (backlog #88 P6) — the warehouse's goods-missing note while Diminta, and the open note's notice.
 import { GoodsMissingAction, GoodsMissingNotice } from "../../features/customShipment/GoodsMissing";
-import { ItemScan } from "../pick-order/components/ItemScan";
+import { ItemScan } from "../../features/picking/ItemScan";
 import { toaster } from "../../components/feedback/Toaster";
 import { useIsMobile } from "../../layouts/shell";
 

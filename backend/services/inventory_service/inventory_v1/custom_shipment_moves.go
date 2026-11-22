@@ -87,6 +87,10 @@ var customShipmentActorColumns = map[models.CustomShipmentStatus][2]string{
 	models.CustomShipmentPicked:     {"picked_by_user_id", "picked_at"},
 	models.CustomShipmentHandedOver: {"handed_over_by_user_id", "handed_over_at"},
 	models.CustomShipmentCancelled:  {"cancelled_by_user_id", "cancelled_at"},
+	// The INBOUND steps (backlog #101, moveInbound).
+	models.CustomShipmentArrived:  {"arrived_by_user_id", "arrived_at"},
+	models.CustomShipmentReceived: {"received_by_user_id", "received_at"},
+	models.CustomShipmentLost:     {"lost_by_user_id", "lost_at"},
 }
 
 // moveCustomShipment writes a LOCKED parcel's new status — its actor and time, and any extra columns — and its trail row.

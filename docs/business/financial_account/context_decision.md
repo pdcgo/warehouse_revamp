@@ -58,6 +58,7 @@ renamed and its references grepped (RULE 12), never quietly edited away. The ope
 | [expense-types-sit-under-groups](#expense-types-sit-under-groups) | expense types sit under the four groups | owner, as recommended | — |
 | [prive-and-deposit-on-pengeluaran-are-the-accounts-capital](#prive-and-deposit-on-pengeluaran-are-the-accounts-capital) | a prive or deposit on Pengeluaran is the account's capital row | owner, as recommended | — |
 | [money-in-on-biaya-is-its-own-change-type](#money-in-on-biaya-is-its-own-change-type) | money in typed on Biaya is a money_in row on the account | owner, as recommended | — |
+| [the-expense-types-prototype-is-accepted](#the-expense-types-prototype-is-accepted) | the expense types design is accepted as drawn | owner, as recommended | — |
 
 ## the-accounts-are-one-ledger
 
@@ -283,6 +284,8 @@ flowchart LR
 
 🔄 *(2026-11-20)* Capital now has a second door: *Prive* and *Setoran modal* on Pengeluaran write this same capital row, and a capital row of a selling team's account shows on Pengeluaran — still never an expense in the profit ([prive-and-deposit-on-pengeluaran-are-the-accounts-capital](#prive-and-deposit-on-pengeluaran-are-the-accounts-capital)).
 
+✅ **Built 2026-11-20 (P2)** — the second door: a selling team's Setor / Tarik Modal on the account page shows on Biaya as the same record ([prive-and-deposit-on-pengeluaran-are-the-accounts-capital](#prive-and-deposit-on-pengeluaran-are-the-accounts-capital)); still one capital row, by hand, and never an expense in the profit.
+
 ## adjustment-is-for-reconciling-only
 
 > Chat *(owner, 2026-09-29)* — *"yes, adjsutment for reconcil only"*, to [Q4](./context_clarify.md#question) as
@@ -436,6 +439,8 @@ flowchart LR
   Left: whether it names the account it was paid from, and which expenses name none.
 
 🔄 *(2026-11-20)* For **capital**: two doors, still one row — the account screens' Setor / Tarik Modal and Pengeluaran's *Prive* / *Setoran modal* write the same capital row ([prive-and-deposit-on-pengeluaran-are-the-accounts-capital](#prive-and-deposit-on-pengeluaran-are-the-accounts-capital)).
+
+✅ **Built 2026-11-20 (P2)** — capital keeps one row per act through both doors: Biaya's Prive / Setoran modal post it from the broker (P1); the account page's Setor / Tarik Modal posts it by hand and Biaya hears it (`FinancialAccountCapitalRecorded`) without posting again.
 
 ## seeing-is-team-wide-moving-is-admin-and-up
 
@@ -1517,6 +1522,8 @@ Also confirmed the same day: *"When create expense it need financial account"* �
 
 ⚠ Not built — a Storybook prototype first (backlog *Expense types*).
 
+✅ **Built 2026-11-20 (P1)** — `expense.proto` `ExpenseType` (18 types, appended) + `ExpenseRecord.type` / `ExpenseCreateRequest.type` / `ExpenseListFilter.type` / `ExpenseTotals` (`by_type`, `spending`, `money_in`, `capital`, `by_kind_untyped`); the fixed table `expense_service/expense_v1/expense_types.go` (group, direction, capital, names-a-shop); kind written from the type; migration `expense_service` 00007 (`type` column, no backfill — old rows *Tanpa jenis*). Screen: the grouped picker, *Grup › Jenis* rows, the group-or-type filter (`?kind=` + `?type=`), the month card — `pages/expenses/components/ExpenseTypeParts.tsx`, `features/expense/expenseTypes.ts`. Tests `expense_v1/expense_types_test.go`; stories `pages/expenses/stories/ExpenseTypes`, `RecordTypes`.
+
 ---
 
 ## prive-and-deposit-on-pengeluaran-are-the-accounts-capital
@@ -1527,6 +1534,10 @@ Also confirmed the same day: *"When create expense it need financial account"* �
 
 ⚠ Not built — with the expense types' Storybook prototype first (backlog #99).
 
+✅ **Built 2026-11-20 (P1 — the Biaya door)** — Prive / Setoran modal typed on Biaya post the account's `capital` row (out −, in +; corrections the same type, the other way) from `financial_account_v1/expense_payment_listener.go`, on any of the team's active accounts (`paying_accounts.go`); `FinancialAccountLog.expense_id` (migration `financial_account_service` 00004) gives the history's *dari Biaya #N* (`financial-account-detail/components/ViaExpenses.tsx`). Never in Biaya's spending or the metric's group fields. The second door (the account page's Setor / Tarik Modal calling ExpenseCreate, its *Dicatat di halaman akun* mark, the CapitalDialog line, the one-time import) is P2 — still the prototype (`CapitalFromExpenses.stories.tsx`).
+
+✅ **Built 2026-11-20 (P2 — the account-page door)** — a SELLING team's Setor / Tarik Modal on the account page is the one record on Biaya: `FinancialAccountCapital` still posts its by-hand `capital` row at once (*manual · who*, roles unchanged), then publishes `FinancialAccountCapitalRecorded` (event 700, `financial_account_v1/capital_recorded.go`); expense_service's listener (`expense_v1/capital_from_account.go`, subscription `expense-financial-account-capital-recorded`) records a selling team's as Setoran modal (in) / Prive (out), origin `ACCOUNT_PAGE` (*Dicatat di halaman akun*), linked to the account row (`expense_records.account_log_id`, unique — once per row, idempotent on replay), and publishes nothing back, so one capital row per act; a warehouse team's is dropped (stays off Biaya). Adjust / Batalkan of such a row are Biaya's ordinary corrections. The Setor / Tarik Modal dialog's line on a selling team's account (`capital-on-expenses-hint`). Migration `expense_service` 00008. Tests `expense_v1/capital_from_account_test.go`, `financial_account_v1/capital_recorded_test.go`, `cmd/app_development/capital_doors_test.go`, race `capital_from_account_race_test.go`, `capital_recorded_race_test.go`; stories `financial-account-detail/stories/Actions` (*Setor Modal shows on Biaya*), `expenses/stories/ExpenseTypes` (*From the account page*). The prototype (`CapitalFromExpenses.stories.tsx`, `expenseTypesPrototype.tsx`) is deleted.
+
 ---
 
 ## money-in-on-biaya-is-its-own-change-type
@@ -1536,3 +1547,35 @@ Also confirmed the same day: *"When create expense it need financial account"* �
 **The verdict.** Money in typed on Biaya posts a row of a **new change type**, *Uang masuk* (`money_in`), on the operational account it enters — never a plus-sign `expense`. The account's `expense` / `ads_expense` rows stay spending only, and the type list of [context.md](./context.md) §What is `change_type` gains `money_in` beside `capital`.
 
 ⚠ Not built (backlog #99).
+
+✅ **Built 2026-11-20 (P1)** — `CHANGE_TYPE_MONEY_IN` / `money_in` (the `financial_account_logs_type_known` CHECK, the daily report's `money_in` column, `AccountChangeMetric.money_in`, the report CSV's *Uang masuk*; migration `financial_account_service` 00004); Piutang luar diterima and Uang masuk lain post it INTO the operational account; *Uang masuk* in the account history and the report columns. Tests `financial_account_v1/expense_types_listener_test.go`, race `expense_types_race_test.go`.
+
+---
+
+## the-expense-types-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended — the second and last question of the #99 prototype's accept (pictures `D:/hermes/profiles/revamp_dev/accepts/accept99/` 01–17, README there): *"Approve the expense types design as drawn? **A** approve as drawn; **B** approve, but move some types to another group; **C** change something first."* The message listed what *as drawn* means (the table below). The first question: [money-in-on-biaya-is-its-own-change-type](#money-in-on-biaya-is-its-own-change-type).
+
+**The verdict.** The expense types design ([expense-types-sit-under-groups](#expense-types-sit-under-groups), [prive-and-deposit-on-pengeluaran-are-the-accounts-capital](#prive-and-deposit-on-pengeluaran-are-the-accounts-capital)) is accepted as drawn: Biaya's month card with **Biaya · Uang masuk · Modal · Total bulan ini** and the four groups with their types (folding on a phone); the record dialog's grouped picker with the direction badge and line, and the account label *Dibayar dari* / *Diambil dari* / *Masuk ke*; the filter by group or one type; the account history's **Modal** row marked *dari Biaya #N*, and the Setor / Tarik Modal dialog's line that it shows on Biaya. The adjustment type of [expense.md](../../acceptances/financial_account/expense.md) given 6 is named *Selisih · transaksi tak tercatat* (en *Discrepancy · unrecorded transaction*); *Penyesuaian* stays the correction rows' and the reconcile's word.
+
+*(As drawn — listed to the owner in the accept message:)*
+
+| | |
+| --- | --- |
+| the groups | **Iklan**: Iklan marketplace, Konten · endorse · **Gaji**: Gaji pokok, Bonus, Iuran (BPJS) · **Operasional**: Listrik, Internet, Dapur, Alat, Perlengkapan, Biaya bank, Selisih · **Lainnya**: Utang luar dibayar, Piutang luar diterima, Prive, Setoran modal, Uang keluar lain, Uang masuk lain |
+| a shop | only *Iklan marketplace* names a shop; the whole Iklan group posts as `ads_expense` |
+| Biaya (spending) | every money-out type except Prive — an outside debt paid counts as spending |
+| Total bulan ini | moves as the checklist's givens 17–22: prive raises it, setoran and money in lower it |
+| accounts | Prive and Setoran on any of the team's active accounts; every other type on an operational account; money in goes into an operational account |
+| corrections | every typed row, Modal ones too, keeps Adjust and Batalkan (a signed row of the same type) |
+| old rows | a selling team's old Setor / Tarik Modal are brought into Biaya once (exact type, linked so nothing posts twice); old expenses stay without a type (*Tanpa jenis*) |
+| the filter | one group or one type, kept in the page link (`?kind=`, `?type=`) |
+| phone | the groups fold; a tap opens one |
+
+Wording: the README's table (en / id) — the prototype's.
+
+⚠ Not built — go-live is backlog #99.
+
+✅ **Built 2026-11-20 (P1)** — as drawn, on Biaya: the table's groups, shop rule, spending, month total (givens 17–22), accounts, corrections, old rows *Tanpa jenis*, filter, phone fold; `ExpensesMetric` gains `money_in`, `capital_out`, `capital_in` (the group fields and `total` stay spending only; `metric_fold.go`'s flow key, migration 00007). Not yet: the old capital rows' one-time import and the account page's second door (P2).
+
+✅ **Built 2026-11-20 (P2)** — the rest of *as drawn*: old rows — a selling team's Setor / Tarik Modal made before the build are brought into Biaya once by `san expense import-capital` (also a `dev setup` step; `--dry-run`): exact type (in → Setoran modal, out → Prive), the account row's amount, day, note, who and account, linked to it so nothing posts twice (run twice → once; a warehouse team's rows untouched; `tools/san/expense_test.go`). The second door's marks: *Dicatat di halaman akun* on Biaya, *manual · who* kept on the account, the dialog's line on a selling team's account only.

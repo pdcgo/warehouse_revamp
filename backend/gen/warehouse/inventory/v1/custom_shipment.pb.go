@@ -33,6 +33,9 @@ const (
 	CustomShipmentKind_CUSTOM_SHIPMENT_KIND_SAMPLE CustomShipmentKind = 1
 	// A received restock's broken units sent back to its supplier — no stock moves.
 	CustomShipmentKind_CUSTOM_SHIPMENT_KIND_RESTOCK_RESHIP CustomShipmentKind = 2
+	// INBOUND (backlog #101): the restock's supplier sending goods again — a RESHIPPING resolution's parcel, from the
+	// supplier to the warehouse chosen; its lines (product, count, the seller's price) may differ from the restock's.
+	CustomShipmentKind_CUSTOM_SHIPMENT_KIND_SUPPLIER_RESHIPPING CustomShipmentKind = 3
 )
 
 // Enum value maps for CustomShipmentKind.
@@ -41,11 +44,13 @@ var (
 		0: "CUSTOM_SHIPMENT_KIND_UNSPECIFIED",
 		1: "CUSTOM_SHIPMENT_KIND_SAMPLE",
 		2: "CUSTOM_SHIPMENT_KIND_RESTOCK_RESHIP",
+		3: "CUSTOM_SHIPMENT_KIND_SUPPLIER_RESHIPPING",
 	}
 	CustomShipmentKind_value = map[string]int32{
-		"CUSTOM_SHIPMENT_KIND_UNSPECIFIED":    0,
-		"CUSTOM_SHIPMENT_KIND_SAMPLE":         1,
-		"CUSTOM_SHIPMENT_KIND_RESTOCK_RESHIP": 2,
+		"CUSTOM_SHIPMENT_KIND_UNSPECIFIED":         0,
+		"CUSTOM_SHIPMENT_KIND_SAMPLE":              1,
+		"CUSTOM_SHIPMENT_KIND_RESTOCK_RESHIP":      2,
+		"CUSTOM_SHIPMENT_KIND_SUPPLIER_RESHIPPING": 3,
 	}
 )
 
@@ -76,6 +81,57 @@ func (CustomShipmentKind) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{0}
 }
 
+// Which way a parcel goes — read from its kind: SAMPLE and RESTOCK_RESHIP go OUT from the warehouse,
+// SUPPLIER_RESHIPPING comes IN to it. APPEND ONLY.
+type CustomShipmentDirection int32
+
+const (
+	CustomShipmentDirection_CUSTOM_SHIPMENT_DIRECTION_UNSPECIFIED CustomShipmentDirection = 0
+	CustomShipmentDirection_CUSTOM_SHIPMENT_DIRECTION_OUTBOUND    CustomShipmentDirection = 1
+	CustomShipmentDirection_CUSTOM_SHIPMENT_DIRECTION_INBOUND     CustomShipmentDirection = 2
+)
+
+// Enum value maps for CustomShipmentDirection.
+var (
+	CustomShipmentDirection_name = map[int32]string{
+		0: "CUSTOM_SHIPMENT_DIRECTION_UNSPECIFIED",
+		1: "CUSTOM_SHIPMENT_DIRECTION_OUTBOUND",
+		2: "CUSTOM_SHIPMENT_DIRECTION_INBOUND",
+	}
+	CustomShipmentDirection_value = map[string]int32{
+		"CUSTOM_SHIPMENT_DIRECTION_UNSPECIFIED": 0,
+		"CUSTOM_SHIPMENT_DIRECTION_OUTBOUND":    1,
+		"CUSTOM_SHIPMENT_DIRECTION_INBOUND":     2,
+	}
+)
+
+func (x CustomShipmentDirection) Enum() *CustomShipmentDirection {
+	p := new(CustomShipmentDirection)
+	*p = x
+	return p
+}
+
+func (x CustomShipmentDirection) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CustomShipmentDirection) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[1].Descriptor()
+}
+
+func (CustomShipmentDirection) Type() protoreflect.EnumType {
+	return &file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[1]
+}
+
+func (x CustomShipmentDirection) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CustomShipmentDirection.Descriptor instead.
+func (CustomShipmentDirection) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{1}
+}
+
 // Where a parcel is. APPEND ONLY.
 type CustomShipmentStatus int32
 
@@ -89,6 +145,15 @@ const (
 	CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_HANDED_OVER CustomShipmentStatus = 3
 	// Called off by the selling team while requested.
 	CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_CANCELLED CustomShipmentStatus = 4
+	// INBOUND only (a restock box's steps): on its way from the supplier — the seller edits the resi and the prices, or
+	// marks it lost.
+	CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_ON_THE_WAY CustomShipmentStatus = 5
+	// INBOUND: signed for at the door (Tiba) — the prices still editable.
+	CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_ARRIVED CustomShipmentStatus = 6
+	// INBOUND: counted in (Terima). Final.
+	CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_RECEIVED CustomShipmentStatus = 7
+	// INBOUND: never came — a lost one that turns up is signed for (ARRIVED).
+	CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_LOST CustomShipmentStatus = 8
 )
 
 // Enum value maps for CustomShipmentStatus.
@@ -99,6 +164,10 @@ var (
 		2: "CUSTOM_SHIPMENT_STATUS_PICKED",
 		3: "CUSTOM_SHIPMENT_STATUS_HANDED_OVER",
 		4: "CUSTOM_SHIPMENT_STATUS_CANCELLED",
+		5: "CUSTOM_SHIPMENT_STATUS_ON_THE_WAY",
+		6: "CUSTOM_SHIPMENT_STATUS_ARRIVED",
+		7: "CUSTOM_SHIPMENT_STATUS_RECEIVED",
+		8: "CUSTOM_SHIPMENT_STATUS_LOST",
 	}
 	CustomShipmentStatus_value = map[string]int32{
 		"CUSTOM_SHIPMENT_STATUS_UNSPECIFIED": 0,
@@ -106,6 +175,10 @@ var (
 		"CUSTOM_SHIPMENT_STATUS_PICKED":      2,
 		"CUSTOM_SHIPMENT_STATUS_HANDED_OVER": 3,
 		"CUSTOM_SHIPMENT_STATUS_CANCELLED":   4,
+		"CUSTOM_SHIPMENT_STATUS_ON_THE_WAY":  5,
+		"CUSTOM_SHIPMENT_STATUS_ARRIVED":     6,
+		"CUSTOM_SHIPMENT_STATUS_RECEIVED":    7,
+		"CUSTOM_SHIPMENT_STATUS_LOST":        8,
 	}
 )
 
@@ -120,11 +193,11 @@ func (x CustomShipmentStatus) String() string {
 }
 
 func (CustomShipmentStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[1].Descriptor()
+	return file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[2].Descriptor()
 }
 
 func (CustomShipmentStatus) Type() protoreflect.EnumType {
-	return &file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[1]
+	return &file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[2]
 }
 
 func (x CustomShipmentStatus) Number() protoreflect.EnumNumber {
@@ -133,7 +206,7 @@ func (x CustomShipmentStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CustomShipmentStatus.Descriptor instead.
 func (CustomShipmentStatus) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{1}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{2}
 }
 
 // Who pays the courier (the-courier-is-paid-by-the-team-or-by-the-warehouse). APPEND ONLY.
@@ -172,11 +245,11 @@ func (x CustomShipmentPayer) String() string {
 }
 
 func (CustomShipmentPayer) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[2].Descriptor()
+	return file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[3].Descriptor()
 }
 
 func (CustomShipmentPayer) Type() protoreflect.EnumType {
-	return &file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[2]
+	return &file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[3]
 }
 
 func (x CustomShipmentPayer) Number() protoreflect.EnumNumber {
@@ -185,7 +258,7 @@ func (x CustomShipmentPayer) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CustomShipmentPayer.Descriptor instead.
 func (CustomShipmentPayer) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{2}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{3}
 }
 
 // What a trail row is (P6 — a goods-missing note is from = to = REQUESTED, so from and to alone no longer say it).
@@ -201,6 +274,10 @@ const (
 	// *Barang tidak ketemu* — the warehouse's goods-missing note (missing-goods-leave-a-note-on-the-custom-shipment): from =
 	// to = REQUESTED, its lines in `missing`, its note the description. No money: both sides read it whole.
 	CustomShipmentLogKind_CUSTOM_SHIPMENT_LOG_KIND_GOODS_MISSING CustomShipmentLogKind = 3
+	// INBOUND: the seller's *Ubah Resi* — from = to; its description is the old and new resi (no money: both sides read it).
+	CustomShipmentLogKind_CUSTOM_SHIPMENT_LOG_KIND_RESI_EDIT CustomShipmentLogKind = 4
+	// INBOUND: the seller's price edit — from = to; its description names the seller's prices, EMPTY for a warehouse reader.
+	CustomShipmentLogKind_CUSTOM_SHIPMENT_LOG_KIND_PRICE_EDIT CustomShipmentLogKind = 5
 )
 
 // Enum value maps for CustomShipmentLogKind.
@@ -210,12 +287,16 @@ var (
 		1: "CUSTOM_SHIPMENT_LOG_KIND_STATUS",
 		2: "CUSTOM_SHIPMENT_LOG_KIND_COST_EDIT",
 		3: "CUSTOM_SHIPMENT_LOG_KIND_GOODS_MISSING",
+		4: "CUSTOM_SHIPMENT_LOG_KIND_RESI_EDIT",
+		5: "CUSTOM_SHIPMENT_LOG_KIND_PRICE_EDIT",
 	}
 	CustomShipmentLogKind_value = map[string]int32{
 		"CUSTOM_SHIPMENT_LOG_KIND_UNSPECIFIED":   0,
 		"CUSTOM_SHIPMENT_LOG_KIND_STATUS":        1,
 		"CUSTOM_SHIPMENT_LOG_KIND_COST_EDIT":     2,
 		"CUSTOM_SHIPMENT_LOG_KIND_GOODS_MISSING": 3,
+		"CUSTOM_SHIPMENT_LOG_KIND_RESI_EDIT":     4,
+		"CUSTOM_SHIPMENT_LOG_KIND_PRICE_EDIT":    5,
 	}
 )
 
@@ -230,11 +311,11 @@ func (x CustomShipmentLogKind) String() string {
 }
 
 func (CustomShipmentLogKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[3].Descriptor()
+	return file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[4].Descriptor()
 }
 
 func (CustomShipmentLogKind) Type() protoreflect.EnumType {
-	return &file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[3]
+	return &file_warehouse_inventory_v1_custom_shipment_proto_enumTypes[4]
 }
 
 func (x CustomShipmentLogKind) Number() protoreflect.EnumNumber {
@@ -243,7 +324,7 @@ func (x CustomShipmentLogKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CustomShipmentLogKind.Descriptor instead.
 func (CustomShipmentLogKind) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{3}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{4}
 }
 
 // Who receives the parcel — free text, all three. A reship's is prefilled from the supplier on the form.
@@ -322,7 +403,16 @@ type CustomShipmentItem struct {
 	// A reship's restock line; 0 on a sample.
 	RestockItemId uint64 `protobuf:"varint,7,opt,name=restock_item_id,json=restockItemId,proto3" json:"restock_item_id,omitempty"`
 	// A reship line's broken note, as the warehouse wrote it at Terima; "" on a sample.
-	BrokenNote    string `protobuf:"bytes,8,opt,name=broken_note,json=brokenNote,proto3" json:"broken_note,omitempty"`
+	BrokenNote string `protobuf:"bytes,8,opt,name=broken_note,json=brokenNote,proto3" json:"broken_note,omitempty"`
+	// INBOUND: the seller's price per unit — values the stock, moves no money. UNSET on an outbound line and for a
+	// warehouse reader (a-warehouse-sees-no-seller-money).
+	PriceUnit *float64 `protobuf:"fixed64,9,opt,name=price_unit,json=priceUnit,proto3,oneof" json:"price_unit,omitempty"`
+	// INBOUND, after Terima: what was in the box (broken included) and how many were broken; the short units are
+	// quantity − received. UNSET until counted.
+	Received *uint64 `protobuf:"varint,10,opt,name=received,proto3,oneof" json:"received,omitempty"`
+	Broken   *uint64 `protobuf:"varint,11,opt,name=broken,proto3,oneof" json:"broken,omitempty"`
+	// INBOUND, after Terima: the rack the good units went on; 0 = none (no good unit) or not yet.
+	RackId        uint64 `protobuf:"varint,12,opt,name=rack_id,json=rackId,proto3" json:"rack_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -411,6 +501,34 @@ func (x *CustomShipmentItem) GetBrokenNote() string {
 		return x.BrokenNote
 	}
 	return ""
+}
+
+func (x *CustomShipmentItem) GetPriceUnit() float64 {
+	if x != nil && x.PriceUnit != nil {
+		return *x.PriceUnit
+	}
+	return 0
+}
+
+func (x *CustomShipmentItem) GetReceived() uint64 {
+	if x != nil && x.Received != nil {
+		return *x.Received
+	}
+	return 0
+}
+
+func (x *CustomShipmentItem) GetBroken() uint64 {
+	if x != nil && x.Broken != nil {
+		return *x.Broken
+	}
+	return 0
+}
+
+func (x *CustomShipmentItem) GetRackId() uint64 {
+	if x != nil {
+		return x.RackId
+	}
+	return 0
 }
 
 // One line of a goods-missing note: a sample's line on one rack its take drew from, or a reship's line (no rack).
@@ -758,7 +876,23 @@ type CustomShipment struct {
 	// P6. The OPEN goods-missing note — the latest GOODS_MISSING row while the parcel is REQUESTED; UNSET once it is
 	// picked, handed over or cancelled (the trail keeps the row). On LIST rows too, which carry no trail: the badge on both
 	// lists (the-goods-missing-badge-is-on-both-lists). No money in it — the warehouse and the team are sent the same.
-	GoodsMissing  *CustomShipmentGoodsMissing `protobuf:"bytes,27,opt,name=goods_missing,json=goodsMissing,proto3" json:"goods_missing,omitempty"`
+	GoodsMissing *CustomShipmentGoodsMissing `protobuf:"bytes,27,opt,name=goods_missing,json=goodsMissing,proto3" json:"goods_missing,omitempty"`
+	// Backlog #101 — which way it goes (from its kind) and, for a parcel that is a restock's resolution, that row
+	// (`restock_custom_shipments`): a RESTOCK_RESHIP linked as a `return`, every SUPPLIER_RESHIPPING. 0 = none.
+	Direction    CustomShipmentDirection `protobuf:"varint,28,opt,name=direction,proto3,enum=warehouse.inventory.v1.CustomShipmentDirection" json:"direction,omitempty"`
+	ResolutionId uint64                  `protobuf:"varint,29,opt,name=resolution_id,json=resolutionId,proto3" json:"resolution_id,omitempty"`
+	// INBOUND: the courier's charge at the door is `shipping_cost` (the warehouse pays it, so both sides read it —
+	// the-warehouse-sees-the-ongkir-it-paid) and this its note; noted at Tiba, final at Terima.
+	ChargeNote string `protobuf:"bytes,30,opt,name=charge_note,json=chargeNote,proto3" json:"charge_note,omitempty"`
+	// INBOUND: who signed for it, counted it in, gave it up — user_service ids, 0 = not yet; unix seconds, 0 = not yet.
+	ArrivedByUserId  uint64 `protobuf:"varint,31,opt,name=arrived_by_user_id,json=arrivedByUserId,proto3" json:"arrived_by_user_id,omitempty"`
+	ArrivedAtUnix    int64  `protobuf:"varint,32,opt,name=arrived_at_unix,json=arrivedAtUnix,proto3" json:"arrived_at_unix,omitempty"`
+	ReceivedByUserId uint64 `protobuf:"varint,33,opt,name=received_by_user_id,json=receivedByUserId,proto3" json:"received_by_user_id,omitempty"`
+	ReceivedAtUnix   int64  `protobuf:"varint,34,opt,name=received_at_unix,json=receivedAtUnix,proto3" json:"received_at_unix,omitempty"`
+	LostByUserId     uint64 `protobuf:"varint,35,opt,name=lost_by_user_id,json=lostByUserId,proto3" json:"lost_by_user_id,omitempty"`
+	LostAtUnix       int64  `protobuf:"varint,36,opt,name=lost_at_unix,json=lostAtUnix,proto3" json:"lost_at_unix,omitempty"`
+	// INBOUND: why the seller gave it up; "" when none.
+	LostReason    string `protobuf:"bytes,37,opt,name=lost_reason,json=lostReason,proto3" json:"lost_reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -982,6 +1116,76 @@ func (x *CustomShipment) GetGoodsMissing() *CustomShipmentGoodsMissing {
 	return nil
 }
 
+func (x *CustomShipment) GetDirection() CustomShipmentDirection {
+	if x != nil {
+		return x.Direction
+	}
+	return CustomShipmentDirection_CUSTOM_SHIPMENT_DIRECTION_UNSPECIFIED
+}
+
+func (x *CustomShipment) GetResolutionId() uint64 {
+	if x != nil {
+		return x.ResolutionId
+	}
+	return 0
+}
+
+func (x *CustomShipment) GetChargeNote() string {
+	if x != nil {
+		return x.ChargeNote
+	}
+	return ""
+}
+
+func (x *CustomShipment) GetArrivedByUserId() uint64 {
+	if x != nil {
+		return x.ArrivedByUserId
+	}
+	return 0
+}
+
+func (x *CustomShipment) GetArrivedAtUnix() int64 {
+	if x != nil {
+		return x.ArrivedAtUnix
+	}
+	return 0
+}
+
+func (x *CustomShipment) GetReceivedByUserId() uint64 {
+	if x != nil {
+		return x.ReceivedByUserId
+	}
+	return 0
+}
+
+func (x *CustomShipment) GetReceivedAtUnix() int64 {
+	if x != nil {
+		return x.ReceivedAtUnix
+	}
+	return 0
+}
+
+func (x *CustomShipment) GetLostByUserId() uint64 {
+	if x != nil {
+		return x.LostByUserId
+	}
+	return 0
+}
+
+func (x *CustomShipment) GetLostAtUnix() int64 {
+	if x != nil {
+		return x.LostAtUnix
+	}
+	return 0
+}
+
+func (x *CustomShipment) GetLostReason() string {
+	if x != nil {
+		return x.LostReason
+	}
+	return ""
+}
+
 // One line to send: a SAMPLE names a product of the team's own; a RESHIP names a restock line (its product may be sent
 // too, and must then be the line's).
 type CustomShipmentLine struct {
@@ -1069,8 +1273,12 @@ type CustomShipmentCreateRequest struct {
 	// key already on a parcel is REFUSED as AlreadyExists, never answered with that parcel — as an order
 	// (the-order-refuses-a-used-key).
 	IdempotencyKey string `protobuf:"bytes,12,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Backlog #101 — a RESTOCK_RESHIP sent as the restock's `return` resolution (*Retur ke Supplier* opens this form): the
+	// row and its link are written WITH the parcel, in its transaction. Refused on a sample, and on a restock that takes no
+	// resolution (Diterima with no problem tag and not settled).
+	Resolution    *CustomShipmentReturnResolution `protobuf:"bytes,13,opt,name=resolution,proto3" json:"resolution,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CustomShipmentCreateRequest) Reset() {
@@ -1187,6 +1395,58 @@ func (x *CustomShipmentCreateRequest) GetIdempotencyKey() string {
 	return ""
 }
 
+func (x *CustomShipmentCreateRequest) GetResolution() *CustomShipmentReturnResolution {
+	if x != nil {
+		return x.Resolution
+	}
+	return nil
+}
+
+// The `return` resolution a reship is created as — its note.
+type CustomShipmentReturnResolution struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Note          string                 `protobuf:"bytes,1,opt,name=note,proto3" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomShipmentReturnResolution) Reset() {
+	*x = CustomShipmentReturnResolution{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentReturnResolution) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentReturnResolution) ProtoMessage() {}
+
+func (x *CustomShipmentReturnResolution) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentReturnResolution.ProtoReflect.Descriptor instead.
+func (*CustomShipmentReturnResolution) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CustomShipmentReturnResolution) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
 type CustomShipmentCreateResponse struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	CustomShipment *CustomShipment        `protobuf:"bytes,1,opt,name=custom_shipment,json=customShipment,proto3" json:"custom_shipment,omitempty"`
@@ -1196,7 +1456,7 @@ type CustomShipmentCreateResponse struct {
 
 func (x *CustomShipmentCreateResponse) Reset() {
 	*x = CustomShipmentCreateResponse{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[8]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1208,7 +1468,7 @@ func (x *CustomShipmentCreateResponse) String() string {
 func (*CustomShipmentCreateResponse) ProtoMessage() {}
 
 func (x *CustomShipmentCreateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[8]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1221,7 +1481,7 @@ func (x *CustomShipmentCreateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentCreateResponse.ProtoReflect.Descriptor instead.
 func (*CustomShipmentCreateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CustomShipmentCreateResponse) GetCustomShipment() *CustomShipment {
@@ -1243,7 +1503,7 @@ type CustomShipmentListRequest struct {
 
 func (x *CustomShipmentListRequest) Reset() {
 	*x = CustomShipmentListRequest{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[9]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1255,7 +1515,7 @@ func (x *CustomShipmentListRequest) String() string {
 func (*CustomShipmentListRequest) ProtoMessage() {}
 
 func (x *CustomShipmentListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[9]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1268,7 +1528,7 @@ func (x *CustomShipmentListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentListRequest.ProtoReflect.Descriptor instead.
 func (*CustomShipmentListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CustomShipmentListRequest) GetTeamId() uint64 {
@@ -1301,14 +1561,18 @@ type CustomShipmentListFilter struct {
 	// Free text over its number, the recipient and a line's product code or name.
 	Q string `protobuf:"bytes,3,opt,name=q,proto3" json:"q,omitempty"`
 	// Selling side only: the warehouse it ships from; 0 = any.
-	WarehouseId   uint64 `protobuf:"varint,4,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	WarehouseId uint64 `protobuf:"varint,4,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	// Backlog #101 — which way. UNSPECIFIED reads BOTH for the selling team and the root team (its Kirim Paket lists the
+	// inbound parcels under Semua) and OUTBOUND for a warehouse (its queue is what it ships; it reads the parcels coming
+	// in with INBOUND, its incoming list).
+	Direction     CustomShipmentDirection `protobuf:"varint,5,opt,name=direction,proto3,enum=warehouse.inventory.v1.CustomShipmentDirection" json:"direction,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CustomShipmentListFilter) Reset() {
 	*x = CustomShipmentListFilter{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[10]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1320,7 +1584,7 @@ func (x *CustomShipmentListFilter) String() string {
 func (*CustomShipmentListFilter) ProtoMessage() {}
 
 func (x *CustomShipmentListFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[10]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1333,7 +1597,7 @@ func (x *CustomShipmentListFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentListFilter.ProtoReflect.Descriptor instead.
 func (*CustomShipmentListFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{10}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CustomShipmentListFilter) GetStatus() CustomShipmentStatus {
@@ -1364,6 +1628,13 @@ func (x *CustomShipmentListFilter) GetWarehouseId() uint64 {
 	return 0
 }
 
+func (x *CustomShipmentListFilter) GetDirection() CustomShipmentDirection {
+	if x != nil {
+		return x.Direction
+	}
+	return CustomShipmentDirection_CUSTOM_SHIPMENT_DIRECTION_UNSPECIFIED
+}
+
 type CustomShipmentListResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Newest first. No logs.
@@ -1375,7 +1646,7 @@ type CustomShipmentListResponse struct {
 
 func (x *CustomShipmentListResponse) Reset() {
 	*x = CustomShipmentListResponse{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[11]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1387,7 +1658,7 @@ func (x *CustomShipmentListResponse) String() string {
 func (*CustomShipmentListResponse) ProtoMessage() {}
 
 func (x *CustomShipmentListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[11]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1400,7 +1671,7 @@ func (x *CustomShipmentListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentListResponse.ProtoReflect.Descriptor instead.
 func (*CustomShipmentListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CustomShipmentListResponse) GetCustomShipments() []*CustomShipment {
@@ -1427,7 +1698,7 @@ type CustomShipmentDetailRequest struct {
 
 func (x *CustomShipmentDetailRequest) Reset() {
 	*x = CustomShipmentDetailRequest{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[12]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1439,7 +1710,7 @@ func (x *CustomShipmentDetailRequest) String() string {
 func (*CustomShipmentDetailRequest) ProtoMessage() {}
 
 func (x *CustomShipmentDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[12]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1452,7 +1723,7 @@ func (x *CustomShipmentDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentDetailRequest.ProtoReflect.Descriptor instead.
 func (*CustomShipmentDetailRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{12}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *CustomShipmentDetailRequest) GetTeamId() uint64 {
@@ -1478,7 +1749,7 @@ type CustomShipmentDetailResponse struct {
 
 func (x *CustomShipmentDetailResponse) Reset() {
 	*x = CustomShipmentDetailResponse{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[13]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1490,7 +1761,7 @@ func (x *CustomShipmentDetailResponse) String() string {
 func (*CustomShipmentDetailResponse) ProtoMessage() {}
 
 func (x *CustomShipmentDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[13]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1503,7 +1774,7 @@ func (x *CustomShipmentDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentDetailResponse.ProtoReflect.Descriptor instead.
 func (*CustomShipmentDetailResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{13}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *CustomShipmentDetailResponse) GetCustomShipment() *CustomShipment {
@@ -1526,7 +1797,7 @@ type CustomShipmentCostSetRequest struct {
 
 func (x *CustomShipmentCostSetRequest) Reset() {
 	*x = CustomShipmentCostSetRequest{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[14]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1538,7 +1809,7 @@ func (x *CustomShipmentCostSetRequest) String() string {
 func (*CustomShipmentCostSetRequest) ProtoMessage() {}
 
 func (x *CustomShipmentCostSetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[14]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1551,7 +1822,7 @@ func (x *CustomShipmentCostSetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentCostSetRequest.ProtoReflect.Descriptor instead.
 func (*CustomShipmentCostSetRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CustomShipmentCostSetRequest) GetTeamId() uint64 {
@@ -1591,7 +1862,7 @@ type CustomShipmentCostSetResponse struct {
 
 func (x *CustomShipmentCostSetResponse) Reset() {
 	*x = CustomShipmentCostSetResponse{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[15]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1603,7 +1874,7 @@ func (x *CustomShipmentCostSetResponse) String() string {
 func (*CustomShipmentCostSetResponse) ProtoMessage() {}
 
 func (x *CustomShipmentCostSetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[15]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1616,7 +1887,7 @@ func (x *CustomShipmentCostSetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentCostSetResponse.ProtoReflect.Descriptor instead.
 func (*CustomShipmentCostSetResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *CustomShipmentCostSetResponse) GetCustomShipment() *CustomShipment {
@@ -1636,7 +1907,7 @@ type CustomShipmentCancelRequest struct {
 
 func (x *CustomShipmentCancelRequest) Reset() {
 	*x = CustomShipmentCancelRequest{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[16]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1648,7 +1919,7 @@ func (x *CustomShipmentCancelRequest) String() string {
 func (*CustomShipmentCancelRequest) ProtoMessage() {}
 
 func (x *CustomShipmentCancelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[16]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1661,7 +1932,7 @@ func (x *CustomShipmentCancelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentCancelRequest.ProtoReflect.Descriptor instead.
 func (*CustomShipmentCancelRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{16}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CustomShipmentCancelRequest) GetTeamId() uint64 {
@@ -1687,7 +1958,7 @@ type CustomShipmentCancelResponse struct {
 
 func (x *CustomShipmentCancelResponse) Reset() {
 	*x = CustomShipmentCancelResponse{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[17]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1699,7 +1970,7 @@ func (x *CustomShipmentCancelResponse) String() string {
 func (*CustomShipmentCancelResponse) ProtoMessage() {}
 
 func (x *CustomShipmentCancelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[17]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1712,7 +1983,7 @@ func (x *CustomShipmentCancelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentCancelResponse.ProtoReflect.Descriptor instead.
 func (*CustomShipmentCancelResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{17}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CustomShipmentCancelResponse) GetCustomShipment() *CustomShipment {
@@ -1733,7 +2004,7 @@ type CustomShipmentPickedRequest struct {
 
 func (x *CustomShipmentPickedRequest) Reset() {
 	*x = CustomShipmentPickedRequest{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[18]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1745,7 +2016,7 @@ func (x *CustomShipmentPickedRequest) String() string {
 func (*CustomShipmentPickedRequest) ProtoMessage() {}
 
 func (x *CustomShipmentPickedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[18]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1758,7 +2029,7 @@ func (x *CustomShipmentPickedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentPickedRequest.ProtoReflect.Descriptor instead.
 func (*CustomShipmentPickedRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{18}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CustomShipmentPickedRequest) GetTeamId() uint64 {
@@ -1784,7 +2055,7 @@ type CustomShipmentPickedResponse struct {
 
 func (x *CustomShipmentPickedResponse) Reset() {
 	*x = CustomShipmentPickedResponse{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[19]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1796,7 +2067,7 @@ func (x *CustomShipmentPickedResponse) String() string {
 func (*CustomShipmentPickedResponse) ProtoMessage() {}
 
 func (x *CustomShipmentPickedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[19]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1809,7 +2080,7 @@ func (x *CustomShipmentPickedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentPickedResponse.ProtoReflect.Descriptor instead.
 func (*CustomShipmentPickedResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{19}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CustomShipmentPickedResponse) GetCustomShipment() *CustomShipment {
@@ -1834,7 +2105,7 @@ type CustomShipmentHandoverRequest struct {
 
 func (x *CustomShipmentHandoverRequest) Reset() {
 	*x = CustomShipmentHandoverRequest{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[20]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1846,7 +2117,7 @@ func (x *CustomShipmentHandoverRequest) String() string {
 func (*CustomShipmentHandoverRequest) ProtoMessage() {}
 
 func (x *CustomShipmentHandoverRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[20]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1859,7 +2130,7 @@ func (x *CustomShipmentHandoverRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentHandoverRequest.ProtoReflect.Descriptor instead.
 func (*CustomShipmentHandoverRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{20}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CustomShipmentHandoverRequest) GetTeamId() uint64 {
@@ -1899,7 +2170,7 @@ type CustomShipmentHandoverResponse struct {
 
 func (x *CustomShipmentHandoverResponse) Reset() {
 	*x = CustomShipmentHandoverResponse{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[21]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1911,7 +2182,7 @@ func (x *CustomShipmentHandoverResponse) String() string {
 func (*CustomShipmentHandoverResponse) ProtoMessage() {}
 
 func (x *CustomShipmentHandoverResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[21]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1924,7 +2195,7 @@ func (x *CustomShipmentHandoverResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentHandoverResponse.ProtoReflect.Descriptor instead.
 func (*CustomShipmentHandoverResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{21}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CustomShipmentHandoverResponse) GetCustomShipment() *CustomShipment {
@@ -1947,7 +2218,7 @@ type CustomShipmentReshipOptionsRequest struct {
 
 func (x *CustomShipmentReshipOptionsRequest) Reset() {
 	*x = CustomShipmentReshipOptionsRequest{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[22]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1959,7 +2230,7 @@ func (x *CustomShipmentReshipOptionsRequest) String() string {
 func (*CustomShipmentReshipOptionsRequest) ProtoMessage() {}
 
 func (x *CustomShipmentReshipOptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[22]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1972,7 +2243,7 @@ func (x *CustomShipmentReshipOptionsRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use CustomShipmentReshipOptionsRequest.ProtoReflect.Descriptor instead.
 func (*CustomShipmentReshipOptionsRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{22}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *CustomShipmentReshipOptionsRequest) GetTeamId() uint64 {
@@ -2020,7 +2291,7 @@ type CustomShipmentReshipLine struct {
 
 func (x *CustomShipmentReshipLine) Reset() {
 	*x = CustomShipmentReshipLine{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[23]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2032,7 +2303,7 @@ func (x *CustomShipmentReshipLine) String() string {
 func (*CustomShipmentReshipLine) ProtoMessage() {}
 
 func (x *CustomShipmentReshipLine) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[23]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2045,7 +2316,7 @@ func (x *CustomShipmentReshipLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentReshipLine.ProtoReflect.Descriptor instead.
 func (*CustomShipmentReshipLine) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{23}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *CustomShipmentReshipLine) GetRestockItemId() uint64 {
@@ -2132,7 +2403,7 @@ type CustomShipmentReshipOption struct {
 
 func (x *CustomShipmentReshipOption) Reset() {
 	*x = CustomShipmentReshipOption{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[24]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2144,7 +2415,7 @@ func (x *CustomShipmentReshipOption) String() string {
 func (*CustomShipmentReshipOption) ProtoMessage() {}
 
 func (x *CustomShipmentReshipOption) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[24]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2157,7 +2428,7 @@ func (x *CustomShipmentReshipOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentReshipOption.ProtoReflect.Descriptor instead.
 func (*CustomShipmentReshipOption) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{24}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *CustomShipmentReshipOption) GetRestockId() uint64 {
@@ -2206,7 +2477,7 @@ type CustomShipmentReshipOptionsResponse struct {
 
 func (x *CustomShipmentReshipOptionsResponse) Reset() {
 	*x = CustomShipmentReshipOptionsResponse{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[25]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2218,7 +2489,7 @@ func (x *CustomShipmentReshipOptionsResponse) String() string {
 func (*CustomShipmentReshipOptionsResponse) ProtoMessage() {}
 
 func (x *CustomShipmentReshipOptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[25]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2231,7 +2502,7 @@ func (x *CustomShipmentReshipOptionsResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use CustomShipmentReshipOptionsResponse.ProtoReflect.Descriptor instead.
 func (*CustomShipmentReshipOptionsResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{25}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *CustomShipmentReshipOptionsResponse) GetOptions() []*CustomShipmentReshipOption {
@@ -2264,7 +2535,7 @@ type CustomShipmentMissingLine struct {
 
 func (x *CustomShipmentMissingLine) Reset() {
 	*x = CustomShipmentMissingLine{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[26]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2276,7 +2547,7 @@ func (x *CustomShipmentMissingLine) String() string {
 func (*CustomShipmentMissingLine) ProtoMessage() {}
 
 func (x *CustomShipmentMissingLine) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[26]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2289,7 +2560,7 @@ func (x *CustomShipmentMissingLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomShipmentMissingLine.ProtoReflect.Descriptor instead.
 func (*CustomShipmentMissingLine) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{26}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *CustomShipmentMissingLine) GetItemId() uint64 {
@@ -2328,7 +2599,7 @@ type CustomShipmentMissingReportRequest struct {
 
 func (x *CustomShipmentMissingReportRequest) Reset() {
 	*x = CustomShipmentMissingReportRequest{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[27]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2340,7 +2611,7 @@ func (x *CustomShipmentMissingReportRequest) String() string {
 func (*CustomShipmentMissingReportRequest) ProtoMessage() {}
 
 func (x *CustomShipmentMissingReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[27]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2353,7 +2624,7 @@ func (x *CustomShipmentMissingReportRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use CustomShipmentMissingReportRequest.ProtoReflect.Descriptor instead.
 func (*CustomShipmentMissingReportRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{27}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *CustomShipmentMissingReportRequest) GetTeamId() uint64 {
@@ -2394,7 +2665,7 @@ type CustomShipmentMissingReportResponse struct {
 
 func (x *CustomShipmentMissingReportResponse) Reset() {
 	*x = CustomShipmentMissingReportResponse{}
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[28]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2406,7 +2677,7 @@ func (x *CustomShipmentMissingReportResponse) String() string {
 func (*CustomShipmentMissingReportResponse) ProtoMessage() {}
 
 func (x *CustomShipmentMissingReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[28]
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2419,10 +2690,691 @@ func (x *CustomShipmentMissingReportResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use CustomShipmentMissingReportResponse.ProtoReflect.Descriptor instead.
 func (*CustomShipmentMissingReportResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{28}
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *CustomShipmentMissingReportResponse) GetCustomShipment() *CustomShipment {
+	if x != nil {
+		return x.CustomShipment
+	}
+	return nil
+}
+
+type CustomShipmentResiSetRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Id     uint64                 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	// The courier's receipt number; "" clears it.
+	Resi          string `protobuf:"bytes,3,opt,name=resi,proto3" json:"resi,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomShipmentResiSetRequest) Reset() {
+	*x = CustomShipmentResiSetRequest{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentResiSetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentResiSetRequest) ProtoMessage() {}
+
+func (x *CustomShipmentResiSetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentResiSetRequest.ProtoReflect.Descriptor instead.
+func (*CustomShipmentResiSetRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *CustomShipmentResiSetRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *CustomShipmentResiSetRequest) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *CustomShipmentResiSetRequest) GetResi() string {
+	if x != nil {
+		return x.Resi
+	}
+	return ""
+}
+
+type CustomShipmentResiSetResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CustomShipment *CustomShipment        `protobuf:"bytes,1,opt,name=custom_shipment,json=customShipment,proto3" json:"custom_shipment,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CustomShipmentResiSetResponse) Reset() {
+	*x = CustomShipmentResiSetResponse{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentResiSetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentResiSetResponse) ProtoMessage() {}
+
+func (x *CustomShipmentResiSetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentResiSetResponse.ProtoReflect.Descriptor instead.
+func (*CustomShipmentResiSetResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *CustomShipmentResiSetResponse) GetCustomShipment() *CustomShipment {
+	if x != nil {
+		return x.CustomShipment
+	}
+	return nil
+}
+
+// One line's new price.
+type CustomShipmentLinePrice struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A line of THIS parcel (CustomShipmentItem.id).
+	ItemId        uint64  `protobuf:"varint,1,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	PriceUnit     float64 `protobuf:"fixed64,2,opt,name=price_unit,json=priceUnit,proto3" json:"price_unit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomShipmentLinePrice) Reset() {
+	*x = CustomShipmentLinePrice{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentLinePrice) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentLinePrice) ProtoMessage() {}
+
+func (x *CustomShipmentLinePrice) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentLinePrice.ProtoReflect.Descriptor instead.
+func (*CustomShipmentLinePrice) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *CustomShipmentLinePrice) GetItemId() uint64 {
+	if x != nil {
+		return x.ItemId
+	}
+	return 0
+}
+
+func (x *CustomShipmentLinePrice) GetPriceUnit() float64 {
+	if x != nil {
+		return x.PriceUnit
+	}
+	return 0
+}
+
+type CustomShipmentPricesSetRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Id     uint64                 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	// The lines whose price changes — each once; a line not named keeps its price.
+	Lines         []*CustomShipmentLinePrice `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomShipmentPricesSetRequest) Reset() {
+	*x = CustomShipmentPricesSetRequest{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentPricesSetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentPricesSetRequest) ProtoMessage() {}
+
+func (x *CustomShipmentPricesSetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentPricesSetRequest.ProtoReflect.Descriptor instead.
+func (*CustomShipmentPricesSetRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *CustomShipmentPricesSetRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *CustomShipmentPricesSetRequest) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *CustomShipmentPricesSetRequest) GetLines() []*CustomShipmentLinePrice {
+	if x != nil {
+		return x.Lines
+	}
+	return nil
+}
+
+type CustomShipmentPricesSetResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CustomShipment *CustomShipment        `protobuf:"bytes,1,opt,name=custom_shipment,json=customShipment,proto3" json:"custom_shipment,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CustomShipmentPricesSetResponse) Reset() {
+	*x = CustomShipmentPricesSetResponse{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentPricesSetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentPricesSetResponse) ProtoMessage() {}
+
+func (x *CustomShipmentPricesSetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentPricesSetResponse.ProtoReflect.Descriptor instead.
+func (*CustomShipmentPricesSetResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *CustomShipmentPricesSetResponse) GetCustomShipment() *CustomShipment {
+	if x != nil {
+		return x.CustomShipment
+	}
+	return nil
+}
+
+type CustomShipmentMarkLostRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Id     uint64                 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	// Why — optional.
+	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomShipmentMarkLostRequest) Reset() {
+	*x = CustomShipmentMarkLostRequest{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentMarkLostRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentMarkLostRequest) ProtoMessage() {}
+
+func (x *CustomShipmentMarkLostRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentMarkLostRequest.ProtoReflect.Descriptor instead.
+func (*CustomShipmentMarkLostRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *CustomShipmentMarkLostRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *CustomShipmentMarkLostRequest) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *CustomShipmentMarkLostRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type CustomShipmentMarkLostResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CustomShipment *CustomShipment        `protobuf:"bytes,1,opt,name=custom_shipment,json=customShipment,proto3" json:"custom_shipment,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CustomShipmentMarkLostResponse) Reset() {
+	*x = CustomShipmentMarkLostResponse{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentMarkLostResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentMarkLostResponse) ProtoMessage() {}
+
+func (x *CustomShipmentMarkLostResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentMarkLostResponse.ProtoReflect.Descriptor instead.
+func (*CustomShipmentMarkLostResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *CustomShipmentMarkLostResponse) GetCustomShipment() *CustomShipment {
+	if x != nil {
+		return x.CustomShipment
+	}
+	return nil
+}
+
+type CustomShipmentArriveRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The warehouse — must be the parcel's; the owning team and any other warehouse read NotFound.
+	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Id     uint64 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	// The courier's charge at the door, noted — optional, 0 = none; its note REQUIRED above 0, as a restock's. Kept and
+	// shown; Terima's figure is final and replaces it. No money here.
+	DoorCharge     float64 `protobuf:"fixed64,3,opt,name=door_charge,json=doorCharge,proto3" json:"door_charge,omitempty"`
+	DoorChargeNote string  `protobuf:"bytes,4,opt,name=door_charge_note,json=doorChargeNote,proto3" json:"door_charge_note,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CustomShipmentArriveRequest) Reset() {
+	*x = CustomShipmentArriveRequest{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentArriveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentArriveRequest) ProtoMessage() {}
+
+func (x *CustomShipmentArriveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentArriveRequest.ProtoReflect.Descriptor instead.
+func (*CustomShipmentArriveRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *CustomShipmentArriveRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *CustomShipmentArriveRequest) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *CustomShipmentArriveRequest) GetDoorCharge() float64 {
+	if x != nil {
+		return x.DoorCharge
+	}
+	return 0
+}
+
+func (x *CustomShipmentArriveRequest) GetDoorChargeNote() string {
+	if x != nil {
+		return x.DoorChargeNote
+	}
+	return ""
+}
+
+type CustomShipmentArriveResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CustomShipment *CustomShipment        `protobuf:"bytes,1,opt,name=custom_shipment,json=customShipment,proto3" json:"custom_shipment,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CustomShipmentArriveResponse) Reset() {
+	*x = CustomShipmentArriveResponse{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentArriveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentArriveResponse) ProtoMessage() {}
+
+func (x *CustomShipmentArriveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentArriveResponse.ProtoReflect.Descriptor instead.
+func (*CustomShipmentArriveResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *CustomShipmentArriveResponse) GetCustomShipment() *CustomShipment {
+	if x != nil {
+		return x.CustomShipment
+	}
+	return nil
+}
+
+// One line counted in.
+type CustomShipmentReceivedLine struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A line of THIS parcel — every line once.
+	ItemId uint64 `protobuf:"varint,1,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	// What was in the box, broken included — at most the line's quantity (accept-refuses-more-than-the-line-says).
+	Received uint64 `protobuf:"varint,2,opt,name=received,proto3" json:"received,omitempty"`
+	// Of those, broken — at most received.
+	Broken uint64 `protobuf:"varint,3,opt,name=broken,proto3" json:"broken,omitempty"`
+	// The rack the good units (received − broken) go on — required when there is one, a rack of this warehouse; 0 when
+	// none.
+	RackId        uint64 `protobuf:"varint,4,opt,name=rack_id,json=rackId,proto3" json:"rack_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomShipmentReceivedLine) Reset() {
+	*x = CustomShipmentReceivedLine{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentReceivedLine) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentReceivedLine) ProtoMessage() {}
+
+func (x *CustomShipmentReceivedLine) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentReceivedLine.ProtoReflect.Descriptor instead.
+func (*CustomShipmentReceivedLine) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *CustomShipmentReceivedLine) GetItemId() uint64 {
+	if x != nil {
+		return x.ItemId
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceivedLine) GetReceived() uint64 {
+	if x != nil {
+		return x.Received
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceivedLine) GetBroken() uint64 {
+	if x != nil {
+		return x.Broken
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceivedLine) GetRackId() uint64 {
+	if x != nil {
+		return x.RackId
+	}
+	return 0
+}
+
+type CustomShipmentReceiveRequest struct {
+	state  protoimpl.MessageState        `protogen:"open.v1"`
+	TeamId uint64                        `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Id     uint64                        `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	Lines  []*CustomShipmentReceivedLine `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
+	// The courier's charge at the door, FINAL — it replaces Tiba's, never adds to it; its note required above 0. The
+	// selling team owes it to the warehouse through Team Balance (custom_shipment_fee, keyed by the parcel).
+	DoorCharge     float64 `protobuf:"fixed64,4,opt,name=door_charge,json=doorCharge,proto3" json:"door_charge,omitempty"`
+	DoorChargeNote string  `protobuf:"bytes,5,opt,name=door_charge_note,json=doorChargeNote,proto3" json:"door_charge_note,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CustomShipmentReceiveRequest) Reset() {
+	*x = CustomShipmentReceiveRequest{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentReceiveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentReceiveRequest) ProtoMessage() {}
+
+func (x *CustomShipmentReceiveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentReceiveRequest.ProtoReflect.Descriptor instead.
+func (*CustomShipmentReceiveRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *CustomShipmentReceiveRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceiveRequest) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceiveRequest) GetLines() []*CustomShipmentReceivedLine {
+	if x != nil {
+		return x.Lines
+	}
+	return nil
+}
+
+func (x *CustomShipmentReceiveRequest) GetDoorCharge() float64 {
+	if x != nil {
+		return x.DoorCharge
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceiveRequest) GetDoorChargeNote() string {
+	if x != nil {
+		return x.DoorChargeNote
+	}
+	return ""
+}
+
+type CustomShipmentReceiveResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// As the warehouse reads it — no seller price.
+	CustomShipment *CustomShipment `protobuf:"bytes,1,opt,name=custom_shipment,json=customShipment,proto3" json:"custom_shipment,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CustomShipmentReceiveResponse) Reset() {
+	*x = CustomShipmentReceiveResponse{}
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentReceiveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentReceiveResponse) ProtoMessage() {}
+
+func (x *CustomShipmentReceiveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentReceiveResponse.ProtoReflect.Descriptor instead.
+func (*CustomShipmentReceiveResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *CustomShipmentReceiveResponse) GetCustomShipment() *CustomShipment {
 	if x != nil {
 		return x.CustomShipment
 	}
@@ -2439,7 +3391,7 @@ const file_warehouse_inventory_v1_custom_shipment_proto_rawDesc = "" +
 	"\xbaH\ar\x05\x10\x01\x18\xc8\x01R\x04name\x12\x1f\n" +
 	"\x05phone\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x182R\x05phone\x12$\n" +
 	"\aaddress\x18\x03 \x01(\tB\n" +
-	"\xbaH\ar\x05\x10\x01\x18\xf4\x03R\aaddress\"\x84\x02\n" +
+	"\xbaH\ar\x05\x10\x01\x18\xf4\x03R\aaddress\"\xa6\x03\n" +
 	"\x12CustomShipmentItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x1d\n" +
 	"\n" +
@@ -2450,8 +3402,17 @@ const file_warehouse_inventory_v1_custom_shipment_proto_rawDesc = "" +
 	"\x05total\x18\x06 \x01(\x01H\x00R\x05total\x88\x01\x01\x12&\n" +
 	"\x0frestock_item_id\x18\a \x01(\x04R\rrestockItemId\x12\x1f\n" +
 	"\vbroken_note\x18\b \x01(\tR\n" +
-	"brokenNoteB\b\n" +
-	"\x06_total\"\xdc\x01\n" +
+	"brokenNote\x12\"\n" +
+	"\n" +
+	"price_unit\x18\t \x01(\x01H\x01R\tpriceUnit\x88\x01\x01\x12\x1f\n" +
+	"\breceived\x18\n" +
+	" \x01(\x04H\x02R\breceived\x88\x01\x01\x12\x1b\n" +
+	"\x06broken\x18\v \x01(\x04H\x03R\x06broken\x88\x01\x01\x12\x17\n" +
+	"\arack_id\x18\f \x01(\x04R\x06rackIdB\b\n" +
+	"\x06_totalB\r\n" +
+	"\v_price_unitB\v\n" +
+	"\t_receivedB\t\n" +
+	"\a_broken\"\xdc\x01\n" +
 	"\x19CustomShipmentMissingItem\x12\x17\n" +
 	"\aitem_id\x18\x01 \x01(\x04R\x06itemId\x12\x1d\n" +
 	"\n" +
@@ -2480,8 +3441,7 @@ const file_warehouse_inventory_v1_custom_shipment_proto_rawDesc = "" +
 	"isOverride\x12 \n" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12A\n" +
 	"\x04kind\x18\b \x01(\x0e2-.warehouse.inventory.v1.CustomShipmentLogKindR\x04kind\x12K\n" +
-	"\amissing\x18\t \x03(\v21.warehouse.inventory.v1.CustomShipmentMissingItemR\amissing\"\x82\n" +
-	"\n" +
+	"\amissing\x18\t \x03(\v21.warehouse.inventory.v1.CustomShipmentMissingItemR\amissing\"\xaf\r\n" +
 	"\x0eCustomShipment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12!\n" +
@@ -2512,14 +3472,27 @@ const file_warehouse_inventory_v1_custom_shipment_proto_rawDesc = "" +
 	"\x13handed_over_at_unix\x18\x18 \x01(\x03R\x10handedOverAtUnix\x12/\n" +
 	"\x14cancelled_by_user_id\x18\x19 \x01(\x04R\x11cancelledByUserId\x12*\n" +
 	"\x11cancelled_at_unix\x18\x1a \x01(\x03R\x0fcancelledAtUnix\x12W\n" +
-	"\rgoods_missing\x18\x1b \x01(\v22.warehouse.inventory.v1.CustomShipmentGoodsMissingR\fgoodsMissingB\x10\n" +
+	"\rgoods_missing\x18\x1b \x01(\v22.warehouse.inventory.v1.CustomShipmentGoodsMissingR\fgoodsMissing\x12M\n" +
+	"\tdirection\x18\x1c \x01(\x0e2/.warehouse.inventory.v1.CustomShipmentDirectionR\tdirection\x12#\n" +
+	"\rresolution_id\x18\x1d \x01(\x04R\fresolutionId\x12\x1f\n" +
+	"\vcharge_note\x18\x1e \x01(\tR\n" +
+	"chargeNote\x12+\n" +
+	"\x12arrived_by_user_id\x18\x1f \x01(\x04R\x0farrivedByUserId\x12&\n" +
+	"\x0farrived_at_unix\x18  \x01(\x03R\rarrivedAtUnix\x12-\n" +
+	"\x13received_by_user_id\x18! \x01(\x04R\x10receivedByUserId\x12(\n" +
+	"\x10received_at_unix\x18\" \x01(\x03R\x0ereceivedAtUnix\x12%\n" +
+	"\x0flost_by_user_id\x18# \x01(\x04R\flostByUserId\x12 \n" +
+	"\flost_at_unix\x18$ \x01(\x03R\n" +
+	"lostAtUnix\x12\x1f\n" +
+	"\vlost_reason\x18% \x01(\tR\n" +
+	"lostReasonB\x10\n" +
 	"\x0e_shipping_costB\b\n" +
 	"\x06_total\"\x84\x01\n" +
 	"\x12CustomShipmentLine\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\x04R\tproductId\x12&\n" +
 	"\x0frestock_item_id\x18\x02 \x01(\x04R\rrestockItemId\x12'\n" +
-	"\bquantity\x18\x03 \x01(\x04B\v\xbaH\b2\x06\x18\xc0\x84= \x00R\bquantity\"\xc4\x05\n" +
+	"\bquantity\x18\x03 \x01(\x04B\v\xbaH\b2\x06\x18\xc0\x84= \x00R\bquantity\"\x9c\x06\n" +
 	"\x1bCustomShipmentCreateRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12J\n" +
 	"\x04kind\x18\x02 \x01(\x0e2*.warehouse.inventory.v1.CustomShipmentKindB\n" +
@@ -2537,8 +3510,13 @@ const file_warehouse_inventory_v1_custom_shipment_proto_rawDesc = "" +
 	" \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\fshippingCost\x12\x1c\n" +
 	"\x04note\x18\v \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\x04note\x123\n" +
 	"\x0fidempotency_key\x18\f \x01(\tB\n" +
-	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\x0eidempotencyKey:\v\x92\xb5\x18\a\n" +
-	"\x05\x01\x02\x03\x04\x05\"o\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\x0eidempotencyKey\x12V\n" +
+	"\n" +
+	"resolution\x18\r \x01(\v26.warehouse.inventory.v1.CustomShipmentReturnResolutionR\n" +
+	"resolution:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\">\n" +
+	"\x1eCustomShipmentReturnResolution\x12\x1c\n" +
+	"\x04note\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\x04note\"o\n" +
 	"\x1cCustomShipmentCreateResponse\x12O\n" +
 	"\x0fcustom_shipment\x18\x01 \x01(\v2&.warehouse.inventory.v1.CustomShipmentR\x0ecustomShipment\"\xde\x01\n" +
 	"\x19CustomShipmentListRequest\x12$\n" +
@@ -2546,12 +3524,13 @@ const file_warehouse_inventory_v1_custom_shipment_proto_rawDesc = "" +
 	"\x06filter\x18\x02 \x01(\v20.warehouse.inventory.v1.CustomShipmentListFilterR\x06filter\x12A\n" +
 	"\x04page\x18\x03 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\x0e\x92\xb5\x18\n" +
 	"\n" +
-	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xee\x01\n" +
+	"\b\x01\x02\x03\x04\x05\x06\t\b\"\xc7\x02\n" +
 	"\x18CustomShipmentListFilter\x12N\n" +
 	"\x06status\x18\x01 \x01(\x0e2,.warehouse.inventory.v1.CustomShipmentStatusB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06status\x12H\n" +
 	"\x04kind\x18\x02 \x01(\x0e2*.warehouse.inventory.v1.CustomShipmentKindB\b\xbaH\x05\x82\x01\x02\x10\x01R\x04kind\x12\x15\n" +
 	"\x01q\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x12!\n" +
-	"\fwarehouse_id\x18\x04 \x01(\x04R\vwarehouseId\"\xab\x01\n" +
+	"\fwarehouse_id\x18\x04 \x01(\x04R\vwarehouseId\x12W\n" +
+	"\tdirection\x18\x05 \x01(\x0e2/.warehouse.inventory.v1.CustomShipmentDirectionB\b\xbaH\x05\x82\x01\x02\x10\x01R\tdirection\"\xab\x01\n" +
 	"\x1aCustomShipmentListResponse\x12Q\n" +
 	"\x10custom_shipments\x18\x01 \x03(\v2&.warehouse.inventory.v1.CustomShipmentR\x0fcustomShipments\x12:\n" +
 	"\tpage_info\x18\x02 \x01(\v2\x1d.warehouse.common.v1.PageInfoR\bpageInfo\"l\n" +
@@ -2632,26 +3611,86 @@ const file_warehouse_inventory_v1_custom_shipment_proto_rawDesc = "" +
 	"\x04note\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x04note:\v\x92\xb5\x18\a\n" +
 	"\x05\x01\x02\x06\t\b\"v\n" +
 	"#CustomShipmentMissingReportResponse\x12O\n" +
-	"\x0fcustom_shipment\x18\x01 \x01(\v2&.warehouse.inventory.v1.CustomShipmentR\x0ecustomShipment*\x84\x01\n" +
+	"\x0fcustom_shipment\x18\x01 \x01(\v2&.warehouse.inventory.v1.CustomShipmentR\x0ecustomShipment\"\x87\x01\n" +
+	"\x1cCustomShipmentResiSetRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x17\n" +
+	"\x02id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x02id\x12\x1b\n" +
+	"\x04resi\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18dR\x04resi:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"p\n" +
+	"\x1dCustomShipmentResiSetResponse\x12O\n" +
+	"\x0fcustom_shipment\x18\x01 \x01(\v2&.warehouse.inventory.v1.CustomShipmentR\x0ecustomShipment\"l\n" +
+	"\x17CustomShipmentLinePrice\x12 \n" +
+	"\aitem_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06itemId\x12/\n" +
+	"\n" +
+	"price_unit\x18\x02 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\tpriceUnit\"\xc0\x01\n" +
+	"\x1eCustomShipmentPricesSetRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x17\n" +
+	"\x02id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x02id\x12R\n" +
+	"\x05lines\x18\x03 \x03(\v2/.warehouse.inventory.v1.CustomShipmentLinePriceB\v\xbaH\b\x92\x01\x05\b\x01\x10\xc8\x01R\x05lines:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"r\n" +
+	"\x1fCustomShipmentPricesSetResponse\x12O\n" +
+	"\x0fcustom_shipment\x18\x01 \x01(\v2&.warehouse.inventory.v1.CustomShipmentR\x0ecustomShipment\"\x8d\x01\n" +
+	"\x1dCustomShipmentMarkLostRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x17\n" +
+	"\x02id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x02id\x12 \n" +
+	"\x06reason\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x06reason:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"q\n" +
+	"\x1eCustomShipmentMarkLostResponse\x12O\n" +
+	"\x0fcustom_shipment\x18\x01 \x01(\v2&.warehouse.inventory.v1.CustomShipmentR\x0ecustomShipment\"\xd0\x01\n" +
+	"\x1bCustomShipmentArriveRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x17\n" +
+	"\x02id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x02id\x121\n" +
+	"\vdoor_charge\x18\x03 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\n" +
+	"doorCharge\x122\n" +
+	"\x10door_charge_note\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x0edoorChargeNote:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x06\t\b\"o\n" +
+	"\x1cCustomShipmentArriveResponse\x12O\n" +
+	"\x0fcustom_shipment\x18\x01 \x01(\v2&.warehouse.inventory.v1.CustomShipmentR\x0ecustomShipment\"\xa1\x01\n" +
+	"\x1aCustomShipmentReceivedLine\x12 \n" +
+	"\aitem_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06itemId\x12%\n" +
+	"\breceived\x18\x02 \x01(\x04B\t\xbaH\x062\x04\x18\xc0\x84=R\breceived\x12!\n" +
+	"\x06broken\x18\x03 \x01(\x04B\t\xbaH\x062\x04\x18\xc0\x84=R\x06broken\x12\x17\n" +
+	"\arack_id\x18\x04 \x01(\x04R\x06rackId\"\xa8\x02\n" +
+	"\x1cCustomShipmentReceiveRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\x17\n" +
+	"\x02id\x18\x02 \x01(\x04B\a\xbaH\x042\x02 \x00R\x02id\x12U\n" +
+	"\x05lines\x18\x03 \x03(\v22.warehouse.inventory.v1.CustomShipmentReceivedLineB\v\xbaH\b\x92\x01\x05\b\x01\x10\xc8\x01R\x05lines\x121\n" +
+	"\vdoor_charge\x18\x04 \x01(\x01B\x10\xbaH\r\x12\v@\x01)\x00\x00\x00\x00\x00\x00\x00\x00R\n" +
+	"doorCharge\x122\n" +
+	"\x10door_charge_note\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\x0edoorChargeNote:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x06\t\b\"p\n" +
+	"\x1dCustomShipmentReceiveResponse\x12O\n" +
+	"\x0fcustom_shipment\x18\x01 \x01(\v2&.warehouse.inventory.v1.CustomShipmentR\x0ecustomShipment*\xb2\x01\n" +
 	"\x12CustomShipmentKind\x12$\n" +
 	" CUSTOM_SHIPMENT_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bCUSTOM_SHIPMENT_KIND_SAMPLE\x10\x01\x12'\n" +
-	"#CUSTOM_SHIPMENT_KIND_RESTOCK_RESHIP\x10\x02*\xd5\x01\n" +
+	"#CUSTOM_SHIPMENT_KIND_RESTOCK_RESHIP\x10\x02\x12,\n" +
+	"(CUSTOM_SHIPMENT_KIND_SUPPLIER_RESHIPPING\x10\x03*\x93\x01\n" +
+	"\x17CustomShipmentDirection\x12)\n" +
+	"%CUSTOM_SHIPMENT_DIRECTION_UNSPECIFIED\x10\x00\x12&\n" +
+	"\"CUSTOM_SHIPMENT_DIRECTION_OUTBOUND\x10\x01\x12%\n" +
+	"!CUSTOM_SHIPMENT_DIRECTION_INBOUND\x10\x02*\xe6\x02\n" +
 	"\x14CustomShipmentStatus\x12&\n" +
 	"\"CUSTOM_SHIPMENT_STATUS_UNSPECIFIED\x10\x00\x12$\n" +
 	" CUSTOM_SHIPMENT_STATUS_REQUESTED\x10\x01\x12!\n" +
 	"\x1dCUSTOM_SHIPMENT_STATUS_PICKED\x10\x02\x12&\n" +
 	"\"CUSTOM_SHIPMENT_STATUS_HANDED_OVER\x10\x03\x12$\n" +
-	" CUSTOM_SHIPMENT_STATUS_CANCELLED\x10\x04*\x81\x01\n" +
+	" CUSTOM_SHIPMENT_STATUS_CANCELLED\x10\x04\x12%\n" +
+	"!CUSTOM_SHIPMENT_STATUS_ON_THE_WAY\x10\x05\x12\"\n" +
+	"\x1eCUSTOM_SHIPMENT_STATUS_ARRIVED\x10\x06\x12#\n" +
+	"\x1fCUSTOM_SHIPMENT_STATUS_RECEIVED\x10\a\x12\x1f\n" +
+	"\x1bCUSTOM_SHIPMENT_STATUS_LOST\x10\b*\x81\x01\n" +
 	"\x13CustomShipmentPayer\x12%\n" +
 	"!CUSTOM_SHIPMENT_PAYER_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aCUSTOM_SHIPMENT_PAYER_TEAM\x10\x01\x12#\n" +
-	"\x1fCUSTOM_SHIPMENT_PAYER_WAREHOUSE\x10\x02*\xba\x01\n" +
+	"\x1fCUSTOM_SHIPMENT_PAYER_WAREHOUSE\x10\x02*\x8b\x02\n" +
 	"\x15CustomShipmentLogKind\x12(\n" +
 	"$CUSTOM_SHIPMENT_LOG_KIND_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fCUSTOM_SHIPMENT_LOG_KIND_STATUS\x10\x01\x12&\n" +
 	"\"CUSTOM_SHIPMENT_LOG_KIND_COST_EDIT\x10\x02\x12*\n" +
-	"&CUSTOM_SHIPMENT_LOG_KIND_GOODS_MISSING\x10\x032\xf7\t\n" +
+	"&CUSTOM_SHIPMENT_LOG_KIND_GOODS_MISSING\x10\x03\x12&\n" +
+	"\"CUSTOM_SHIPMENT_LOG_KIND_RESI_EDIT\x10\x04\x12'\n" +
+	"#CUSTOM_SHIPMENT_LOG_KIND_PRICE_EDIT\x10\x052\xa0\x0f\n" +
 	"\x15CustomShipmentService\x12\x81\x01\n" +
 	"\x14CustomShipmentCreate\x123.warehouse.inventory.v1.CustomShipmentCreateRequest\x1a4.warehouse.inventory.v1.CustomShipmentCreateResponse\x12\x80\x01\n" +
 	"\x12CustomShipmentList\x121.warehouse.inventory.v1.CustomShipmentListRequest\x1a2.warehouse.inventory.v1.CustomShipmentListResponse\"\x03\x90\x02\x01\x12\x86\x01\n" +
@@ -2661,7 +3700,12 @@ const file_warehouse_inventory_v1_custom_shipment_proto_rawDesc = "" +
 	"\x14CustomShipmentPicked\x123.warehouse.inventory.v1.CustomShipmentPickedRequest\x1a4.warehouse.inventory.v1.CustomShipmentPickedResponse\x12\x87\x01\n" +
 	"\x16CustomShipmentHandover\x125.warehouse.inventory.v1.CustomShipmentHandoverRequest\x1a6.warehouse.inventory.v1.CustomShipmentHandoverResponse\x12\x9b\x01\n" +
 	"\x1bCustomShipmentReshipOptions\x12:.warehouse.inventory.v1.CustomShipmentReshipOptionsRequest\x1a;.warehouse.inventory.v1.CustomShipmentReshipOptionsResponse\"\x03\x90\x02\x01\x12\x96\x01\n" +
-	"\x1bCustomShipmentMissingReport\x12:.warehouse.inventory.v1.CustomShipmentMissingReportRequest\x1a;.warehouse.inventory.v1.CustomShipmentMissingReportResponseBRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
+	"\x1bCustomShipmentMissingReport\x12:.warehouse.inventory.v1.CustomShipmentMissingReportRequest\x1a;.warehouse.inventory.v1.CustomShipmentMissingReportResponse\x12\x84\x01\n" +
+	"\x15CustomShipmentResiSet\x124.warehouse.inventory.v1.CustomShipmentResiSetRequest\x1a5.warehouse.inventory.v1.CustomShipmentResiSetResponse\x12\x8a\x01\n" +
+	"\x17CustomShipmentPricesSet\x126.warehouse.inventory.v1.CustomShipmentPricesSetRequest\x1a7.warehouse.inventory.v1.CustomShipmentPricesSetResponse\x12\x87\x01\n" +
+	"\x16CustomShipmentMarkLost\x125.warehouse.inventory.v1.CustomShipmentMarkLostRequest\x1a6.warehouse.inventory.v1.CustomShipmentMarkLostResponse\x12\x81\x01\n" +
+	"\x14CustomShipmentArrive\x123.warehouse.inventory.v1.CustomShipmentArriveRequest\x1a4.warehouse.inventory.v1.CustomShipmentArriveResponse\x12\x84\x01\n" +
+	"\x15CustomShipmentReceive\x124.warehouse.inventory.v1.CustomShipmentReceiveRequest\x1a5.warehouse.inventory.v1.CustomShipmentReceiveResponseBRZPgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1b\x06proto3"
 
 var (
 	file_warehouse_inventory_v1_custom_shipment_proto_rawDescOnce sync.Once
@@ -2675,103 +3719,137 @@ func file_warehouse_inventory_v1_custom_shipment_proto_rawDescGZIP() []byte {
 	return file_warehouse_inventory_v1_custom_shipment_proto_rawDescData
 }
 
-var file_warehouse_inventory_v1_custom_shipment_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_warehouse_inventory_v1_custom_shipment_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_warehouse_inventory_v1_custom_shipment_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_warehouse_inventory_v1_custom_shipment_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
 var file_warehouse_inventory_v1_custom_shipment_proto_goTypes = []any{
 	(CustomShipmentKind)(0),                     // 0: warehouse.inventory.v1.CustomShipmentKind
-	(CustomShipmentStatus)(0),                   // 1: warehouse.inventory.v1.CustomShipmentStatus
-	(CustomShipmentPayer)(0),                    // 2: warehouse.inventory.v1.CustomShipmentPayer
-	(CustomShipmentLogKind)(0),                  // 3: warehouse.inventory.v1.CustomShipmentLogKind
-	(*CustomShipmentRecipient)(nil),             // 4: warehouse.inventory.v1.CustomShipmentRecipient
-	(*CustomShipmentItem)(nil),                  // 5: warehouse.inventory.v1.CustomShipmentItem
-	(*CustomShipmentMissingItem)(nil),           // 6: warehouse.inventory.v1.CustomShipmentMissingItem
-	(*CustomShipmentGoodsMissing)(nil),          // 7: warehouse.inventory.v1.CustomShipmentGoodsMissing
-	(*CustomShipmentLog)(nil),                   // 8: warehouse.inventory.v1.CustomShipmentLog
-	(*CustomShipment)(nil),                      // 9: warehouse.inventory.v1.CustomShipment
-	(*CustomShipmentLine)(nil),                  // 10: warehouse.inventory.v1.CustomShipmentLine
-	(*CustomShipmentCreateRequest)(nil),         // 11: warehouse.inventory.v1.CustomShipmentCreateRequest
-	(*CustomShipmentCreateResponse)(nil),        // 12: warehouse.inventory.v1.CustomShipmentCreateResponse
-	(*CustomShipmentListRequest)(nil),           // 13: warehouse.inventory.v1.CustomShipmentListRequest
-	(*CustomShipmentListFilter)(nil),            // 14: warehouse.inventory.v1.CustomShipmentListFilter
-	(*CustomShipmentListResponse)(nil),          // 15: warehouse.inventory.v1.CustomShipmentListResponse
-	(*CustomShipmentDetailRequest)(nil),         // 16: warehouse.inventory.v1.CustomShipmentDetailRequest
-	(*CustomShipmentDetailResponse)(nil),        // 17: warehouse.inventory.v1.CustomShipmentDetailResponse
-	(*CustomShipmentCostSetRequest)(nil),        // 18: warehouse.inventory.v1.CustomShipmentCostSetRequest
-	(*CustomShipmentCostSetResponse)(nil),       // 19: warehouse.inventory.v1.CustomShipmentCostSetResponse
-	(*CustomShipmentCancelRequest)(nil),         // 20: warehouse.inventory.v1.CustomShipmentCancelRequest
-	(*CustomShipmentCancelResponse)(nil),        // 21: warehouse.inventory.v1.CustomShipmentCancelResponse
-	(*CustomShipmentPickedRequest)(nil),         // 22: warehouse.inventory.v1.CustomShipmentPickedRequest
-	(*CustomShipmentPickedResponse)(nil),        // 23: warehouse.inventory.v1.CustomShipmentPickedResponse
-	(*CustomShipmentHandoverRequest)(nil),       // 24: warehouse.inventory.v1.CustomShipmentHandoverRequest
-	(*CustomShipmentHandoverResponse)(nil),      // 25: warehouse.inventory.v1.CustomShipmentHandoverResponse
-	(*CustomShipmentReshipOptionsRequest)(nil),  // 26: warehouse.inventory.v1.CustomShipmentReshipOptionsRequest
-	(*CustomShipmentReshipLine)(nil),            // 27: warehouse.inventory.v1.CustomShipmentReshipLine
-	(*CustomShipmentReshipOption)(nil),          // 28: warehouse.inventory.v1.CustomShipmentReshipOption
-	(*CustomShipmentReshipOptionsResponse)(nil), // 29: warehouse.inventory.v1.CustomShipmentReshipOptionsResponse
-	(*CustomShipmentMissingLine)(nil),           // 30: warehouse.inventory.v1.CustomShipmentMissingLine
-	(*CustomShipmentMissingReportRequest)(nil),  // 31: warehouse.inventory.v1.CustomShipmentMissingReportRequest
-	(*CustomShipmentMissingReportResponse)(nil), // 32: warehouse.inventory.v1.CustomShipmentMissingReportResponse
-	(*v1.CommonPagination)(nil),                 // 33: warehouse.common.v1.CommonPagination
-	(*v1.PageInfo)(nil),                         // 34: warehouse.common.v1.PageInfo
+	(CustomShipmentDirection)(0),                // 1: warehouse.inventory.v1.CustomShipmentDirection
+	(CustomShipmentStatus)(0),                   // 2: warehouse.inventory.v1.CustomShipmentStatus
+	(CustomShipmentPayer)(0),                    // 3: warehouse.inventory.v1.CustomShipmentPayer
+	(CustomShipmentLogKind)(0),                  // 4: warehouse.inventory.v1.CustomShipmentLogKind
+	(*CustomShipmentRecipient)(nil),             // 5: warehouse.inventory.v1.CustomShipmentRecipient
+	(*CustomShipmentItem)(nil),                  // 6: warehouse.inventory.v1.CustomShipmentItem
+	(*CustomShipmentMissingItem)(nil),           // 7: warehouse.inventory.v1.CustomShipmentMissingItem
+	(*CustomShipmentGoodsMissing)(nil),          // 8: warehouse.inventory.v1.CustomShipmentGoodsMissing
+	(*CustomShipmentLog)(nil),                   // 9: warehouse.inventory.v1.CustomShipmentLog
+	(*CustomShipment)(nil),                      // 10: warehouse.inventory.v1.CustomShipment
+	(*CustomShipmentLine)(nil),                  // 11: warehouse.inventory.v1.CustomShipmentLine
+	(*CustomShipmentCreateRequest)(nil),         // 12: warehouse.inventory.v1.CustomShipmentCreateRequest
+	(*CustomShipmentReturnResolution)(nil),      // 13: warehouse.inventory.v1.CustomShipmentReturnResolution
+	(*CustomShipmentCreateResponse)(nil),        // 14: warehouse.inventory.v1.CustomShipmentCreateResponse
+	(*CustomShipmentListRequest)(nil),           // 15: warehouse.inventory.v1.CustomShipmentListRequest
+	(*CustomShipmentListFilter)(nil),            // 16: warehouse.inventory.v1.CustomShipmentListFilter
+	(*CustomShipmentListResponse)(nil),          // 17: warehouse.inventory.v1.CustomShipmentListResponse
+	(*CustomShipmentDetailRequest)(nil),         // 18: warehouse.inventory.v1.CustomShipmentDetailRequest
+	(*CustomShipmentDetailResponse)(nil),        // 19: warehouse.inventory.v1.CustomShipmentDetailResponse
+	(*CustomShipmentCostSetRequest)(nil),        // 20: warehouse.inventory.v1.CustomShipmentCostSetRequest
+	(*CustomShipmentCostSetResponse)(nil),       // 21: warehouse.inventory.v1.CustomShipmentCostSetResponse
+	(*CustomShipmentCancelRequest)(nil),         // 22: warehouse.inventory.v1.CustomShipmentCancelRequest
+	(*CustomShipmentCancelResponse)(nil),        // 23: warehouse.inventory.v1.CustomShipmentCancelResponse
+	(*CustomShipmentPickedRequest)(nil),         // 24: warehouse.inventory.v1.CustomShipmentPickedRequest
+	(*CustomShipmentPickedResponse)(nil),        // 25: warehouse.inventory.v1.CustomShipmentPickedResponse
+	(*CustomShipmentHandoverRequest)(nil),       // 26: warehouse.inventory.v1.CustomShipmentHandoverRequest
+	(*CustomShipmentHandoverResponse)(nil),      // 27: warehouse.inventory.v1.CustomShipmentHandoverResponse
+	(*CustomShipmentReshipOptionsRequest)(nil),  // 28: warehouse.inventory.v1.CustomShipmentReshipOptionsRequest
+	(*CustomShipmentReshipLine)(nil),            // 29: warehouse.inventory.v1.CustomShipmentReshipLine
+	(*CustomShipmentReshipOption)(nil),          // 30: warehouse.inventory.v1.CustomShipmentReshipOption
+	(*CustomShipmentReshipOptionsResponse)(nil), // 31: warehouse.inventory.v1.CustomShipmentReshipOptionsResponse
+	(*CustomShipmentMissingLine)(nil),           // 32: warehouse.inventory.v1.CustomShipmentMissingLine
+	(*CustomShipmentMissingReportRequest)(nil),  // 33: warehouse.inventory.v1.CustomShipmentMissingReportRequest
+	(*CustomShipmentMissingReportResponse)(nil), // 34: warehouse.inventory.v1.CustomShipmentMissingReportResponse
+	(*CustomShipmentResiSetRequest)(nil),        // 35: warehouse.inventory.v1.CustomShipmentResiSetRequest
+	(*CustomShipmentResiSetResponse)(nil),       // 36: warehouse.inventory.v1.CustomShipmentResiSetResponse
+	(*CustomShipmentLinePrice)(nil),             // 37: warehouse.inventory.v1.CustomShipmentLinePrice
+	(*CustomShipmentPricesSetRequest)(nil),      // 38: warehouse.inventory.v1.CustomShipmentPricesSetRequest
+	(*CustomShipmentPricesSetResponse)(nil),     // 39: warehouse.inventory.v1.CustomShipmentPricesSetResponse
+	(*CustomShipmentMarkLostRequest)(nil),       // 40: warehouse.inventory.v1.CustomShipmentMarkLostRequest
+	(*CustomShipmentMarkLostResponse)(nil),      // 41: warehouse.inventory.v1.CustomShipmentMarkLostResponse
+	(*CustomShipmentArriveRequest)(nil),         // 42: warehouse.inventory.v1.CustomShipmentArriveRequest
+	(*CustomShipmentArriveResponse)(nil),        // 43: warehouse.inventory.v1.CustomShipmentArriveResponse
+	(*CustomShipmentReceivedLine)(nil),          // 44: warehouse.inventory.v1.CustomShipmentReceivedLine
+	(*CustomShipmentReceiveRequest)(nil),        // 45: warehouse.inventory.v1.CustomShipmentReceiveRequest
+	(*CustomShipmentReceiveResponse)(nil),       // 46: warehouse.inventory.v1.CustomShipmentReceiveResponse
+	(*v1.CommonPagination)(nil),                 // 47: warehouse.common.v1.CommonPagination
+	(*v1.PageInfo)(nil),                         // 48: warehouse.common.v1.PageInfo
 }
 var file_warehouse_inventory_v1_custom_shipment_proto_depIdxs = []int32{
-	6,  // 0: warehouse.inventory.v1.CustomShipmentGoodsMissing.lines:type_name -> warehouse.inventory.v1.CustomShipmentMissingItem
-	1,  // 1: warehouse.inventory.v1.CustomShipmentLog.from_status:type_name -> warehouse.inventory.v1.CustomShipmentStatus
-	1,  // 2: warehouse.inventory.v1.CustomShipmentLog.to_status:type_name -> warehouse.inventory.v1.CustomShipmentStatus
-	3,  // 3: warehouse.inventory.v1.CustomShipmentLog.kind:type_name -> warehouse.inventory.v1.CustomShipmentLogKind
-	6,  // 4: warehouse.inventory.v1.CustomShipmentLog.missing:type_name -> warehouse.inventory.v1.CustomShipmentMissingItem
+	7,  // 0: warehouse.inventory.v1.CustomShipmentGoodsMissing.lines:type_name -> warehouse.inventory.v1.CustomShipmentMissingItem
+	2,  // 1: warehouse.inventory.v1.CustomShipmentLog.from_status:type_name -> warehouse.inventory.v1.CustomShipmentStatus
+	2,  // 2: warehouse.inventory.v1.CustomShipmentLog.to_status:type_name -> warehouse.inventory.v1.CustomShipmentStatus
+	4,  // 3: warehouse.inventory.v1.CustomShipmentLog.kind:type_name -> warehouse.inventory.v1.CustomShipmentLogKind
+	7,  // 4: warehouse.inventory.v1.CustomShipmentLog.missing:type_name -> warehouse.inventory.v1.CustomShipmentMissingItem
 	0,  // 5: warehouse.inventory.v1.CustomShipment.kind:type_name -> warehouse.inventory.v1.CustomShipmentKind
-	1,  // 6: warehouse.inventory.v1.CustomShipment.status:type_name -> warehouse.inventory.v1.CustomShipmentStatus
-	4,  // 7: warehouse.inventory.v1.CustomShipment.recipient:type_name -> warehouse.inventory.v1.CustomShipmentRecipient
-	2,  // 8: warehouse.inventory.v1.CustomShipment.payer:type_name -> warehouse.inventory.v1.CustomShipmentPayer
-	5,  // 9: warehouse.inventory.v1.CustomShipment.items:type_name -> warehouse.inventory.v1.CustomShipmentItem
-	8,  // 10: warehouse.inventory.v1.CustomShipment.logs:type_name -> warehouse.inventory.v1.CustomShipmentLog
-	7,  // 11: warehouse.inventory.v1.CustomShipment.goods_missing:type_name -> warehouse.inventory.v1.CustomShipmentGoodsMissing
-	0,  // 12: warehouse.inventory.v1.CustomShipmentCreateRequest.kind:type_name -> warehouse.inventory.v1.CustomShipmentKind
-	10, // 13: warehouse.inventory.v1.CustomShipmentCreateRequest.lines:type_name -> warehouse.inventory.v1.CustomShipmentLine
-	4,  // 14: warehouse.inventory.v1.CustomShipmentCreateRequest.recipient:type_name -> warehouse.inventory.v1.CustomShipmentRecipient
-	2,  // 15: warehouse.inventory.v1.CustomShipmentCreateRequest.payer:type_name -> warehouse.inventory.v1.CustomShipmentPayer
-	9,  // 16: warehouse.inventory.v1.CustomShipmentCreateResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
-	14, // 17: warehouse.inventory.v1.CustomShipmentListRequest.filter:type_name -> warehouse.inventory.v1.CustomShipmentListFilter
-	33, // 18: warehouse.inventory.v1.CustomShipmentListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	1,  // 19: warehouse.inventory.v1.CustomShipmentListFilter.status:type_name -> warehouse.inventory.v1.CustomShipmentStatus
-	0,  // 20: warehouse.inventory.v1.CustomShipmentListFilter.kind:type_name -> warehouse.inventory.v1.CustomShipmentKind
-	9,  // 21: warehouse.inventory.v1.CustomShipmentListResponse.custom_shipments:type_name -> warehouse.inventory.v1.CustomShipment
-	34, // 22: warehouse.inventory.v1.CustomShipmentListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	9,  // 23: warehouse.inventory.v1.CustomShipmentDetailResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
-	9,  // 24: warehouse.inventory.v1.CustomShipmentCostSetResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
-	9,  // 25: warehouse.inventory.v1.CustomShipmentCancelResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
-	9,  // 26: warehouse.inventory.v1.CustomShipmentPickedResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
-	9,  // 27: warehouse.inventory.v1.CustomShipmentHandoverResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
-	33, // 28: warehouse.inventory.v1.CustomShipmentReshipOptionsRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	27, // 29: warehouse.inventory.v1.CustomShipmentReshipOption.lines:type_name -> warehouse.inventory.v1.CustomShipmentReshipLine
-	28, // 30: warehouse.inventory.v1.CustomShipmentReshipOptionsResponse.options:type_name -> warehouse.inventory.v1.CustomShipmentReshipOption
-	34, // 31: warehouse.inventory.v1.CustomShipmentReshipOptionsResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	30, // 32: warehouse.inventory.v1.CustomShipmentMissingReportRequest.lines:type_name -> warehouse.inventory.v1.CustomShipmentMissingLine
-	9,  // 33: warehouse.inventory.v1.CustomShipmentMissingReportResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
-	11, // 34: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCreate:input_type -> warehouse.inventory.v1.CustomShipmentCreateRequest
-	13, // 35: warehouse.inventory.v1.CustomShipmentService.CustomShipmentList:input_type -> warehouse.inventory.v1.CustomShipmentListRequest
-	16, // 36: warehouse.inventory.v1.CustomShipmentService.CustomShipmentDetail:input_type -> warehouse.inventory.v1.CustomShipmentDetailRequest
-	18, // 37: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCostSet:input_type -> warehouse.inventory.v1.CustomShipmentCostSetRequest
-	20, // 38: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCancel:input_type -> warehouse.inventory.v1.CustomShipmentCancelRequest
-	22, // 39: warehouse.inventory.v1.CustomShipmentService.CustomShipmentPicked:input_type -> warehouse.inventory.v1.CustomShipmentPickedRequest
-	24, // 40: warehouse.inventory.v1.CustomShipmentService.CustomShipmentHandover:input_type -> warehouse.inventory.v1.CustomShipmentHandoverRequest
-	26, // 41: warehouse.inventory.v1.CustomShipmentService.CustomShipmentReshipOptions:input_type -> warehouse.inventory.v1.CustomShipmentReshipOptionsRequest
-	31, // 42: warehouse.inventory.v1.CustomShipmentService.CustomShipmentMissingReport:input_type -> warehouse.inventory.v1.CustomShipmentMissingReportRequest
-	12, // 43: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCreate:output_type -> warehouse.inventory.v1.CustomShipmentCreateResponse
-	15, // 44: warehouse.inventory.v1.CustomShipmentService.CustomShipmentList:output_type -> warehouse.inventory.v1.CustomShipmentListResponse
-	17, // 45: warehouse.inventory.v1.CustomShipmentService.CustomShipmentDetail:output_type -> warehouse.inventory.v1.CustomShipmentDetailResponse
-	19, // 46: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCostSet:output_type -> warehouse.inventory.v1.CustomShipmentCostSetResponse
-	21, // 47: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCancel:output_type -> warehouse.inventory.v1.CustomShipmentCancelResponse
-	23, // 48: warehouse.inventory.v1.CustomShipmentService.CustomShipmentPicked:output_type -> warehouse.inventory.v1.CustomShipmentPickedResponse
-	25, // 49: warehouse.inventory.v1.CustomShipmentService.CustomShipmentHandover:output_type -> warehouse.inventory.v1.CustomShipmentHandoverResponse
-	29, // 50: warehouse.inventory.v1.CustomShipmentService.CustomShipmentReshipOptions:output_type -> warehouse.inventory.v1.CustomShipmentReshipOptionsResponse
-	32, // 51: warehouse.inventory.v1.CustomShipmentService.CustomShipmentMissingReport:output_type -> warehouse.inventory.v1.CustomShipmentMissingReportResponse
-	43, // [43:52] is the sub-list for method output_type
-	34, // [34:43] is the sub-list for method input_type
-	34, // [34:34] is the sub-list for extension type_name
-	34, // [34:34] is the sub-list for extension extendee
-	0,  // [0:34] is the sub-list for field type_name
+	2,  // 6: warehouse.inventory.v1.CustomShipment.status:type_name -> warehouse.inventory.v1.CustomShipmentStatus
+	5,  // 7: warehouse.inventory.v1.CustomShipment.recipient:type_name -> warehouse.inventory.v1.CustomShipmentRecipient
+	3,  // 8: warehouse.inventory.v1.CustomShipment.payer:type_name -> warehouse.inventory.v1.CustomShipmentPayer
+	6,  // 9: warehouse.inventory.v1.CustomShipment.items:type_name -> warehouse.inventory.v1.CustomShipmentItem
+	9,  // 10: warehouse.inventory.v1.CustomShipment.logs:type_name -> warehouse.inventory.v1.CustomShipmentLog
+	8,  // 11: warehouse.inventory.v1.CustomShipment.goods_missing:type_name -> warehouse.inventory.v1.CustomShipmentGoodsMissing
+	1,  // 12: warehouse.inventory.v1.CustomShipment.direction:type_name -> warehouse.inventory.v1.CustomShipmentDirection
+	0,  // 13: warehouse.inventory.v1.CustomShipmentCreateRequest.kind:type_name -> warehouse.inventory.v1.CustomShipmentKind
+	11, // 14: warehouse.inventory.v1.CustomShipmentCreateRequest.lines:type_name -> warehouse.inventory.v1.CustomShipmentLine
+	5,  // 15: warehouse.inventory.v1.CustomShipmentCreateRequest.recipient:type_name -> warehouse.inventory.v1.CustomShipmentRecipient
+	3,  // 16: warehouse.inventory.v1.CustomShipmentCreateRequest.payer:type_name -> warehouse.inventory.v1.CustomShipmentPayer
+	13, // 17: warehouse.inventory.v1.CustomShipmentCreateRequest.resolution:type_name -> warehouse.inventory.v1.CustomShipmentReturnResolution
+	10, // 18: warehouse.inventory.v1.CustomShipmentCreateResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	16, // 19: warehouse.inventory.v1.CustomShipmentListRequest.filter:type_name -> warehouse.inventory.v1.CustomShipmentListFilter
+	47, // 20: warehouse.inventory.v1.CustomShipmentListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	2,  // 21: warehouse.inventory.v1.CustomShipmentListFilter.status:type_name -> warehouse.inventory.v1.CustomShipmentStatus
+	0,  // 22: warehouse.inventory.v1.CustomShipmentListFilter.kind:type_name -> warehouse.inventory.v1.CustomShipmentKind
+	1,  // 23: warehouse.inventory.v1.CustomShipmentListFilter.direction:type_name -> warehouse.inventory.v1.CustomShipmentDirection
+	10, // 24: warehouse.inventory.v1.CustomShipmentListResponse.custom_shipments:type_name -> warehouse.inventory.v1.CustomShipment
+	48, // 25: warehouse.inventory.v1.CustomShipmentListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	10, // 26: warehouse.inventory.v1.CustomShipmentDetailResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	10, // 27: warehouse.inventory.v1.CustomShipmentCostSetResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	10, // 28: warehouse.inventory.v1.CustomShipmentCancelResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	10, // 29: warehouse.inventory.v1.CustomShipmentPickedResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	10, // 30: warehouse.inventory.v1.CustomShipmentHandoverResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	47, // 31: warehouse.inventory.v1.CustomShipmentReshipOptionsRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	29, // 32: warehouse.inventory.v1.CustomShipmentReshipOption.lines:type_name -> warehouse.inventory.v1.CustomShipmentReshipLine
+	30, // 33: warehouse.inventory.v1.CustomShipmentReshipOptionsResponse.options:type_name -> warehouse.inventory.v1.CustomShipmentReshipOption
+	48, // 34: warehouse.inventory.v1.CustomShipmentReshipOptionsResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	32, // 35: warehouse.inventory.v1.CustomShipmentMissingReportRequest.lines:type_name -> warehouse.inventory.v1.CustomShipmentMissingLine
+	10, // 36: warehouse.inventory.v1.CustomShipmentMissingReportResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	10, // 37: warehouse.inventory.v1.CustomShipmentResiSetResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	37, // 38: warehouse.inventory.v1.CustomShipmentPricesSetRequest.lines:type_name -> warehouse.inventory.v1.CustomShipmentLinePrice
+	10, // 39: warehouse.inventory.v1.CustomShipmentPricesSetResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	10, // 40: warehouse.inventory.v1.CustomShipmentMarkLostResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	10, // 41: warehouse.inventory.v1.CustomShipmentArriveResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	44, // 42: warehouse.inventory.v1.CustomShipmentReceiveRequest.lines:type_name -> warehouse.inventory.v1.CustomShipmentReceivedLine
+	10, // 43: warehouse.inventory.v1.CustomShipmentReceiveResponse.custom_shipment:type_name -> warehouse.inventory.v1.CustomShipment
+	12, // 44: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCreate:input_type -> warehouse.inventory.v1.CustomShipmentCreateRequest
+	15, // 45: warehouse.inventory.v1.CustomShipmentService.CustomShipmentList:input_type -> warehouse.inventory.v1.CustomShipmentListRequest
+	18, // 46: warehouse.inventory.v1.CustomShipmentService.CustomShipmentDetail:input_type -> warehouse.inventory.v1.CustomShipmentDetailRequest
+	20, // 47: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCostSet:input_type -> warehouse.inventory.v1.CustomShipmentCostSetRequest
+	22, // 48: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCancel:input_type -> warehouse.inventory.v1.CustomShipmentCancelRequest
+	24, // 49: warehouse.inventory.v1.CustomShipmentService.CustomShipmentPicked:input_type -> warehouse.inventory.v1.CustomShipmentPickedRequest
+	26, // 50: warehouse.inventory.v1.CustomShipmentService.CustomShipmentHandover:input_type -> warehouse.inventory.v1.CustomShipmentHandoverRequest
+	28, // 51: warehouse.inventory.v1.CustomShipmentService.CustomShipmentReshipOptions:input_type -> warehouse.inventory.v1.CustomShipmentReshipOptionsRequest
+	33, // 52: warehouse.inventory.v1.CustomShipmentService.CustomShipmentMissingReport:input_type -> warehouse.inventory.v1.CustomShipmentMissingReportRequest
+	35, // 53: warehouse.inventory.v1.CustomShipmentService.CustomShipmentResiSet:input_type -> warehouse.inventory.v1.CustomShipmentResiSetRequest
+	38, // 54: warehouse.inventory.v1.CustomShipmentService.CustomShipmentPricesSet:input_type -> warehouse.inventory.v1.CustomShipmentPricesSetRequest
+	40, // 55: warehouse.inventory.v1.CustomShipmentService.CustomShipmentMarkLost:input_type -> warehouse.inventory.v1.CustomShipmentMarkLostRequest
+	42, // 56: warehouse.inventory.v1.CustomShipmentService.CustomShipmentArrive:input_type -> warehouse.inventory.v1.CustomShipmentArriveRequest
+	45, // 57: warehouse.inventory.v1.CustomShipmentService.CustomShipmentReceive:input_type -> warehouse.inventory.v1.CustomShipmentReceiveRequest
+	14, // 58: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCreate:output_type -> warehouse.inventory.v1.CustomShipmentCreateResponse
+	17, // 59: warehouse.inventory.v1.CustomShipmentService.CustomShipmentList:output_type -> warehouse.inventory.v1.CustomShipmentListResponse
+	19, // 60: warehouse.inventory.v1.CustomShipmentService.CustomShipmentDetail:output_type -> warehouse.inventory.v1.CustomShipmentDetailResponse
+	21, // 61: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCostSet:output_type -> warehouse.inventory.v1.CustomShipmentCostSetResponse
+	23, // 62: warehouse.inventory.v1.CustomShipmentService.CustomShipmentCancel:output_type -> warehouse.inventory.v1.CustomShipmentCancelResponse
+	25, // 63: warehouse.inventory.v1.CustomShipmentService.CustomShipmentPicked:output_type -> warehouse.inventory.v1.CustomShipmentPickedResponse
+	27, // 64: warehouse.inventory.v1.CustomShipmentService.CustomShipmentHandover:output_type -> warehouse.inventory.v1.CustomShipmentHandoverResponse
+	31, // 65: warehouse.inventory.v1.CustomShipmentService.CustomShipmentReshipOptions:output_type -> warehouse.inventory.v1.CustomShipmentReshipOptionsResponse
+	34, // 66: warehouse.inventory.v1.CustomShipmentService.CustomShipmentMissingReport:output_type -> warehouse.inventory.v1.CustomShipmentMissingReportResponse
+	36, // 67: warehouse.inventory.v1.CustomShipmentService.CustomShipmentResiSet:output_type -> warehouse.inventory.v1.CustomShipmentResiSetResponse
+	39, // 68: warehouse.inventory.v1.CustomShipmentService.CustomShipmentPricesSet:output_type -> warehouse.inventory.v1.CustomShipmentPricesSetResponse
+	41, // 69: warehouse.inventory.v1.CustomShipmentService.CustomShipmentMarkLost:output_type -> warehouse.inventory.v1.CustomShipmentMarkLostResponse
+	43, // 70: warehouse.inventory.v1.CustomShipmentService.CustomShipmentArrive:output_type -> warehouse.inventory.v1.CustomShipmentArriveResponse
+	46, // 71: warehouse.inventory.v1.CustomShipmentService.CustomShipmentReceive:output_type -> warehouse.inventory.v1.CustomShipmentReceiveResponse
+	58, // [58:72] is the sub-list for method output_type
+	44, // [44:58] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_inventory_v1_custom_shipment_proto_init() }
@@ -2781,14 +3859,14 @@ func file_warehouse_inventory_v1_custom_shipment_proto_init() {
 	}
 	file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[1].OneofWrappers = []any{}
 	file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[5].OneofWrappers = []any{}
-	file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[20].OneofWrappers = []any{}
+	file_warehouse_inventory_v1_custom_shipment_proto_msgTypes[21].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_inventory_v1_custom_shipment_proto_rawDesc), len(file_warehouse_inventory_v1_custom_shipment_proto_rawDesc)),
-			NumEnums:      4,
-			NumMessages:   29,
+			NumEnums:      5,
+			NumMessages:   42,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

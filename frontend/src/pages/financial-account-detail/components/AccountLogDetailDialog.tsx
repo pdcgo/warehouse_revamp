@@ -7,8 +7,7 @@ import { BalanceText, ChangeText, ChangeTypeBadge } from "../../../features/fina
 import { BY_HAND } from "../../../features/financialAccount/vocab";
 import { formatUnixDate } from "../../../lib/datetime";
 import { ActorName } from "../../../components/entity/ActorName";
-// ⚠ #99 PROTOTYPE (expense types) — a capital row typed on Pengeluaran says so; today's words live.
-import { CapitalViaExpenses } from "../../../features/expense/ExpenseTypesParts";
+import { ViaExpenses } from "./ViaExpenses";
 
 // ONE STATEMENT ROW, WHOLE (owner: *"keterangan di mobile lebih baik dihidden saja, atau buat modal detail untuk
 // mobile"*, `a-phone-statement-row-opens-its-detail`) — a phone's row is the date, the type and the money; what it
@@ -66,7 +65,7 @@ export function AccountLogDetailDialog({
                     </Stack>
                     <Line label={t("financialAccounts.log.by")}>
                       <Text fontSize="sm" textAlign="end" data-testid="account-log-detail-way">
-                        <CapitalViaExpenses log={log} actorName={actorName} testId="account-log-detail-via-expenses">
+                        <ViaExpenses log={log} actorName={actorName} testId="account-log-detail-via-expenses">
                           {BY_HAND.has(log.changeType) ? (
                             <ActorName
                               name={t("financialAccounts.log.byHand", { name: actorName(log.actorId) })}
@@ -75,7 +74,7 @@ export function AccountLogDetailDialog({
                           ) : (
                             t("financialAccounts.log.automatic")
                           )}
-                        </CapitalViaExpenses>
+                        </ViaExpenses>
                       </Text>
                     </Line>
                     <Line label={t("financialAccounts.log.recorded")}>

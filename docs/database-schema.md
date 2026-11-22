@@ -237,6 +237,7 @@ erDiagram
         boolean     is_deleted "default false — soft delete"
         timestamptz created_at
         timestamptz updated_at "set on edit, delete, restore"
+        text        tracking_url "default empty = none — https, holds {resi}, CHECK"
     }
 ```
 
@@ -248,6 +249,11 @@ erDiagram
 - **The unique index on `code` is PLAIN, not partial.** A deleted channel keeps its code, and creating
   that code again is refused in favour of restore — a partial index would let a second `jne` split the
   orders and the third-party app's mapping between two ids.
+- **`tracking_url`** (00003, [the-tracking-link-prototype-is-accepted](business/shipment/context_decision.md#the-tracking-link-prototype-is-accepted))
+  — the courier's own tracking page, `{resi}` where the number goes; `''` = none (the order's resi stays copy-only).
+  CHECK `shipment_channels_tracking_url_shape`: `''`, or starting `https://` (any case) AND holding `{resi}`
+  ([a-tracking-link-must-carry-the-resi](business/shipment/context_decision.md#a-tracking-link-must-carry-the-resi)); the
+  handler also refuses a link that is no address. No backfill — every courier starts with none, root types each.
 
 ## shipping_service — REMOVED
 
@@ -360,6 +366,8 @@ erDiagram
     orders ||--|| order_addresses : "order_id, exactly one"
     orders ||--o{ order_items : "order_id"
     orders ||--o{ order_timeline_logs : "order_id"
+    orders ||--o{ order_tag_links : "order_id, ON DELETE CASCADE (00055)"
+    order_tags ||--o{ order_tag_links : "tag_id, ON DELETE CASCADE (00055)"
     order_drafts ||--|| order_draft_addresses : "order_draft_id, exactly one"
     order_drafts ||--o{ order_draft_items : "draft_id"
     team_return_configurations
@@ -551,8 +559,42 @@ erDiagram
         double_precision mp_total     "sum of platform_total - 0 on warehouse_fee and moves_* (double since 00041)"
         timestamptz      last_updated
     }
+
+    order_tags {
+        bigserial   id                     PK
+        text        name                   "THE ORDERS' OWN list (00055): unique on lower(name); kept trimmed, inner spaces folded (CHECK), at most 60"
+        text        type                   "system / custom - CHECK; no app task (no app-owned order tags)"
+        bigint      created_by_user_id
+        boolean     created_by_is_override
+        timestamptz created_at
+        timestamptz updated_at             "a rename"
+    }
+
+    order_tag_links {
+        bigint      order_id             PK "FK orders"
+        bigint      tag_id               PK "FK order_tags - also order_tag_links_tag_idx (tag_id, order_id)"
+        bigint      added_by_user_id     "who put it on"
+        boolean     added_by_is_override "Root or the Administrator from outside"
+        timestamptz added_at
+    }
 ```
 
+- **`order_tags`**, **`order_tag_links`** (`00055`, built 2026-11-20, backlog #100) — an order's TAGS
+  ([orders-have-their-own-tag-list](business/order/context_decision.md#orders-have-their-own-tag-list),
+  [the-order-tags-prototype-is-accepted](technical/frontend/order_list_decision.md#the-order-tags-prototype-is-accepted)).
+  **The orders' own list**, apart from the restocks' (inventory's `tags`): the same name may sit in both, and one list
+  serves every team. `order_tags_name_key ON order_tags (lower(name))` makes a name one tag — a create is `INSERT … ON
+  CONFLICT ((lower(name))) DO NOTHING` and then reads the holder, so two people making one new name at once get one tag
+  (`order_tags_race_test.go`); a rename onto another tag's name fails on it (AlreadyExists). The name's shape — trimmed,
+  inner white space folded — is a CHECK. `type` is `system` (Root / the Administrator make, put on and take off) or
+  `custom`; there is **no app task** — the app owns no order tag for now. A link is one tag on one order (the pair is the
+  key), with who put it on; deleting a tag cascades off every order (`OrderTagDelete` locks the tag row FOR UPDATE first,
+  a put-on holds it FOR KEY SHARE). **`order_tag_links_tag_idx (tag_id, order_id)`** — a pure index
+  ([a-pure-index-is-added-without-asking](technical/architecture/context_decision.md#a-pure-index-is-added-without-asking)):
+  the lists' Tag filter from a rare tag, the admins' per-tag count and the delete's take-off. Over 50 000 orders
+  (`order_tags_perf_test.go`, tags on 1/7, 1/53 and 1/503 of the orders) a rare tag's list reads 4.7 ms instead of
+  7.8 ms for a seller and its count 1.6 instead of 2.3 ms; every case stays under 31 ms, generic plans included. The
+  Down drops both tables.
 - **`order_addresses`** *(00045, 2026-11-06)* — an order's buyer and where the parcel goes, as plain names
   ([an-address-is-plain-names](business/order/context_decision.md#an-address-is-plain-names)): exactly one row per order,
   `order_id` UNIQUE, written in the order's own transaction by `placeOrder`
@@ -1508,6 +1550,18 @@ erDiagram
 - **A supplier's goods are read by supplier** — `00039` `batches_supplier_idx ON batches (supplier_id, supplier_channel_id,
   warehouse_id)`: `SupplierGoods` (the supplier pages' Terjual / Siap / Gudang terkait) sums the batches minted with a
   supplier's id, grouped by store or warehouse; without it every read scanned every batch.
+- **A supplier's goods of one product are found by store** — `00063` `batches_supplier_product_idx ON batches
+  (supplier_id, supplier_channel_id, product_id, warehouse_id)`, beside `batches_supplier_idx`: a supplier page's Produk tab
+  (`SupplierStoreProductGoods`) looks each row's batches up by supplier, store and product (and the Gudang terkait chip's
+  warehouse); without the product every row walked all the store's batches — a big supplier's 200 rows 0.7–1.3 s → 41–77 ms.
+  Full, not partial: Siap sums emptied batches too. Under a chip the cached generic plan still picks `batches_supplier_idx`
+  (a pure index — `a-pure-index-is-added-without-asking`;
+  [SupplierGoods.md](../audits/services/inventory_service/performances/SupplierGoods.md) Finding 3).
+- **A product's every batch is read by its owner** — `00062` `batches_owner_product_all_idx ON batches (team_id,
+  product_id)`, beside the take's partial `batches_owner_product_idx`: Pemasok (`ProductSupplierGoods`) and Riwayat Stok
+  (`OwnerStockHistory`, `DiscoverStockHistory`) read a product's batches across EVERY warehouse, emptied ones included;
+  without it the read was a seq scan or a non-leading index scan (a pure index — `a-pure-index-is-added-without-asking`;
+  [OwnerStockHistory.md](../audits/services/inventory_service/performances/OwnerStockHistory.md) Finding 2).
 - **What a history row came from is found by transaction** — `00041` `idempotency_order_check_transaction_idx ON
   idempotency_order_check (transaction_id)` and `restocks_transaction_idx ON restocks (transaction_id)`: every stock
   history row names its order key or restock receipt (`ledger_history.go`'s `refExpr`), and the owner's history works
@@ -2182,6 +2236,61 @@ erDiagram
   `custom_shipment_logs_shipment_idx`; a partial index on `kind = 'goods_missing'` was measured and gave nothing
   (543 vs 552 µs a queue page) — not added.
 
+### Restock resolutions and the inbound parcel (`00060`)
+
+Built 2026-11-20, backlog #101 P1 —
+[a-restock-problem-is-settled-by-resolution-rows](business/inventory/restock_decision.md#a-restock-problem-is-settled-by-resolution-rows),
+[a-suppliers-reshipping-comes-in-as-a-custom-shipment](business/custom_shipments/context_decision.md#a-suppliers-reshipping-comes-in-as-a-custom-shipment)
+(each with its 🔄 lines). Two new tables (the owner's, restock.md §*Table Should We Have In Restock* item 4, and the
+link); `restocks`, `custom_shipments`, `custom_shipment_items` and `custom_shipment_logs` altered — every new column
+defaulted or NULL, every widened CHECK still true of the old rows.
+
+```mermaid
+erDiagram
+    restocks ||--o{ restock_resolutions : "restock_id"
+    restock_resolutions ||--o| restock_custom_shipments : "resolution_id - unique"
+    custom_shipments ||--o| restock_custom_shipments : "custom_shipment_id - unique"
+    restocks ||--o{ restock_custom_shipments : "restock_id"
+    inventory_transactions |o--o| restock_custom_shipments : "a reshipping's Terima stock-in"
+
+    restock_resolutions {
+        bigserial   id                     PK
+        bigint      restock_id             "FK restocks - unique with idempotency_key (restock_resolutions_restock_key)"
+        text        resolution_type        "refund / return / reshipping - CHECK"
+        double      refund_amount          "a refund's money above 0, else 0 - CHECK restock_resolutions_refund_shape"
+        bigint      finance_account_id     "a refund's account (financial_account_service, no FK), else 0"
+        text        note
+        text        idempotency_key        "the form's key - a double tap is AlreadyExists"
+        bigint      created_by_user_id
+        boolean     created_by_is_override
+        timestamptz created_at
+    }
+    restock_custom_shipments {
+        bigserial   id                       PK
+        bigint      restock_id               "FK restocks"
+        bigint      resolution_id            "FK restock_resolutions - one per row"
+        bigint      custom_shipment_id       "FK custom_shipments - one per parcel"
+        bigint      inventory_transaction_id "FK inventory_transactions - a reshipping's stock-in at Terima, NULL until then and on a return"
+        timestamptz created_at
+    }
+```
+
+- **`restocks`** + `settled_at` (NULL = not settled), `settled_by_user_id`, `settled_by_is_override` — *Tandai Selesai*;
+  an inbound Terima with short or broken units sets them back to NULL / 0 / false (the reopen).
+- **`custom_shipments`** goes both ways: kind `supplier_reshipping` (the INBOUND parcel), statuses `on_the_way`,
+  `arrived`, `received`, `lost`; + `charge_note`, `arrived_by_user_id` / `arrived_at`, `received_by_user_id` /
+  `received_at`, `lost_by_user_id` / `lost_at`, `lost_reason`. `custom_shipments_kind_shape` now holds each kind's
+  statuses too (outbound kinds the outbound four and a recipient — the old `recipient_name <> ''` moved into it; the
+  inbound kind its restock, no take, payer `warehouse`, the inbound four). The door charge is `shipping_cost` (noted at
+  Tiba, final at Terima).
+- **`custom_shipment_items`** + `price_unit` (the seller's, values the stock-in, moves no money), `received` / `broken`
+  (NULL until Terima — `custom_shipment_items_count_shape`: both or neither, received ≤ quantity, broken ≤ received) and
+  `rack_id` (the good units' rack, 0 when none).
+- **`custom_shipment_logs`**: from / to take the inbound statuses; two more kinds — `resi_edit` (on_the_way, from = to)
+  and `price_edit` (on_the_way or arrived, from = to).
+- **No new list index**: a page's resolution counts are one grouped read on `restock_resolutions_restock_key`
+  (restock_id leads it); the parcels' links one read on the link's unique `custom_shipment_id`.
+
 ---
 
 ## region_service
@@ -2277,7 +2386,8 @@ erDiagram
         bigserial   id          PK
         bigint      team_id     "the scope, opaque cross-service id; ONE team per row"
         bigint      shop_id     "the shop an ADS expense ran for, opaque - required on ADS, refused on every other kind; 0 = none"
-        int         kind        "ExpenseKind enum number — mapped in the handler, no DB CHECK"
+        int         kind        "ExpenseKind enum number — mapped in the handler, no DB CHECK; the type's GROUP, written from it"
+        int         type        "ExpenseType enum number, no DB CHECK; 0 = recorded before the types, or a STOCK_LOSS (00007)"
         double      amount      "stored exact as written — > 0 on an expense, signed and never 0 on an adjustment. A double since 00005"
         date        occurred_at "the date the cost BELONGS TO, chosen by the person"
         text        note        "what it actually was"
@@ -2285,8 +2395,15 @@ erDiagram
         boolean     is_override "the typist was Root or the Administrator, not a member (00003)"
         bigint      adjusts_expense_id "0 on an expense; on an adjustment, the expense it corrects — never another adjustment"
         bigint      finance_account_id "the account that paid, opaque financial_account id - an adjustment copies its expense's; 0 = before Paid from, or a STOCK_LOSS (00004)"
+        smallint    origin      "ExpenseOrigin - 0 typed on Biaya, 1 the account page's Setor / Tarik Modal; CHECK 0-1 (00008)"
+        bigint      account_log_id "the by-hand capital row an origin-1 expense IS, opaque financial_account_logs id; UNIQUE when set, 0 otherwise (00008)"
         timestamptz created_at
         timestamptz updated_at
+    }
+    expense_event_logs {
+        text        event_id         PK "the claim - a redelivered event records nothing"
+        bigint      occurred_at_unix
+        timestamptz received_at
     }
     expense_metric_daily_reports {
         bigserial   id           PK
@@ -2295,6 +2412,8 @@ erDiagram
         bigint      seller_id    "team_id when the team sells, else 0 - the Seller group"
         bigint      warehouse_id "team_id when the team is a warehouse, else 0 - the Warehouse group"
         int         kind         "a TYPED ExpenseKind only - ADS 1 to OTHER 4, CHECK, never STOCK_LOSS"
+        smallint    flow         "0 spending, 1 money in, 2 capital out (Prive), 3 capital in (Setoran modal) - part of the key, CHECK 0-3 (00007)"
+        int         type         "ExpenseType - one field per type in Analytic, 0 = a row from before the types - part of the key, CHECK >= 0 (00009)"
         bigint      shop_id      "an ads expense's shop, 0 on every other kind"
         bigint      user_id      "who made the entry - the typer, or the corrector"
         double      amount       "the signed exact sum of the rows that count here"
@@ -2305,6 +2424,12 @@ erDiagram
 
 - **`expense_records`** (#161/#167) — money the business spent that **no order caused**: ads budget,
   payroll, rent. `revenue_service` already knows what an order earned; this is everything else.
+  - **`type`** (`00007`, #99 — [expense-types-sit-under-groups](business/financial_account/context_decision.md#expense-types-sit-under-groups))
+    is the type a person picked; `kind` is its group, written from it. Each type's group, direction (out / in), capital
+    flag and shop rule are `expense_v1/expense_types.go`'s fixed table, never a column. The amount stays positive and
+    the type says the direction: money in (Piutang luar diterima, Setoran modal, Uang masuk lain) counts minus in the
+    totals. Old rows keep `type = 0` — no backfill. `expense_metric_daily_reports.flow` keeps spending, money in and the
+    two capital flows on rows of their own, so the metric's group fields stay spending only.
   - **A PERSON TYPES IT**, and every decision here follows from that. A revenue row is written by the
     system from an order and frozen (#153); a cost row is entered by hand about a period, so it can be
     wrong — hence correctable, hence `created_by`. It is corrected by a **new row**, never an edit
@@ -2338,6 +2463,16 @@ erDiagram
     `0` on every row made before the column and on a `STOCK_LOSS` (inventory's internal call, no cash moved) — nothing
     posts for 0. Each new row is published (`ExpenseCreated` / `ExpenseAdjusted`) and financial_account_service posts it
     as `expense`, or `ads_expense` for ADS.
+  - **`origin` and `account_log_id`** (`00008`, #99 P2 — capital's second door,
+    [prive-and-deposit-on-pengeluaran-are-the-accounts-capital](business/financial_account/context_decision.md#prive-and-deposit-on-pengeluaran-are-the-accounts-capital)):
+    a SELLING team's Setor / Tarik Modal made on the account page is a row here too — Setoran modal / Prive, `origin = 1`
+    (the Biaya row's *Dicatat di halaman akun*), written by the capital listener (`expense_v1/capital_from_account.go`)
+    from financial_account's `FinancialAccountCapitalRecorded`, or brought in once by `san expense import-capital`.
+    `account_log_id` names the account's by-hand capital row it IS (no FK across services): a partial UNIQUE index
+    (`WHERE account_log_id > 0`) makes one account row one expense whoever brings it, and the listener inserts
+    `ON CONFLICT DO NOTHING`. CHECK `(origin = 1) = (account_log_id > 0)`. Nothing is published for such a row — the
+    account row is the act's own — while its corrections publish `ExpenseAdjusted` as any typed row's. Every row before
+    reads `origin = 0`.
   - **`amount` is `double precision`** since `00005` (every-ledger-moves-to-double-rounded-when-frozen) — `BIGINT` before.
     `ExpenseCreate` / `ExpenseAdjust` store it EXACT ([the-backend-never-rounds-money](business/order/context_decision.md#the-backend-never-rounds-money)), a stock loss's FIFO fraction included; Create
     refuses one that is not finite and above 0, Adjust a correction of 0 (float dust counts as 0). Sums equal their rows
@@ -2354,7 +2489,8 @@ erDiagram
   - **Written in the expense row's own transaction** (`expense_v1/metric_fold.go`, called by `ExpenseCreate` and
     `ExpenseAdjust`) — never from the events, which a STOCK_LOSS and an expense made before *Paid from* never publish
     ([expense-figures-are-read-from-its-own-records](business/analytic/rpc_provide_decision.md#expense-figures-are-read-from-its-own-records)).
-    One `INSERT … ON CONFLICT (day, team_id, kind, shop_id, user_id) DO UPDATE SET amount = amount + EXCLUDED.amount`.
+    One `INSERT … ON CONFLICT (day, team_id, kind, flow, type, shop_id, user_id) DO UPDATE SET amount = amount +
+    EXCLUDED.amount` (`flow` joined the key in `00007`, `type` in `00009`).
   - **The day.** An expense counts on its own `occurred_at`; a correction — a cancel too — on the Jakarta day it is
     MADE ([an-expense-correction-counts-on-the-day-it-is-made](business/analytic/rpc_provide_decision.md#an-expense-correction-counts-on-the-day-it-is-made)),
     so a past day never changes here, while `expense_records` keeps the correction on the expense's day for the Expenses
@@ -2369,6 +2505,15 @@ erDiagram
     composition root (`cmd/app_development/expense_team_sides.go`).
   - Indexed on the upsert key (which starts with `day`, so root's read of every team over a window uses it) and on
     `(team_id, day)` for a team's own read. No backfill (revamp-has-no-real-orders-yet).
+  - **`type`** (`00009`, backlog #107 — acceptance [analytic/expense_metric.md](acceptances/analytic/expense_metric.md)
+    givens 6–22) — the ExpenseType of the row's expenses, so *Expenses* reads one field per type; part of the key. Every
+    row written before `00009` is type 0: it counts in its group and the total, in no type field. No backfill in the
+    migration — `san report refold --report expense-daily --team <id> --date <day>` rebuilds a team's day from
+    `expense_records` with the fold's own key ([san.md](tools/san.md#report-refold)). Down merges the types back into
+    one row per old key.
+- **`expense_event_logs`** (`00008`) — the capital listener's claims, `san_event.NewDedup`'s shape (one row per event
+  handled, indexed on `received_at` for a retention sweep): a redelivered `FinancialAccountCapitalRecorded` records
+  nothing, and a warehouse team's is claimed and dropped.
 
 ---
 
@@ -3025,7 +3170,7 @@ erDiagram
     bigserial id PK
     bigint team_id
     bigint account_id FK "financial_accounts — the scope of balance_after"
-    text change_type "expense, ads_expense, adjustment, withdrawal, restock, opening_balance, transfer, team_payment, capital"
+    text change_type "expense, ads_expense, adjustment, withdrawal, restock, opening_balance, transfer, team_payment, capital, money_in (00004)"
     double change "signed — positive is money INTO the account"
     double balance_after "the previous row's plus this change, in ENTRY order"
     text description "the cause in words — no source id"
@@ -3034,6 +3179,7 @@ erDiagram
     timestamptz occurred_at "when the money MOVED — the analytics day, in Jakarta"
     bigint group_id "both legs of one transfer — 0 for a single-leg row"
     bigint counter_account_id "a transfer's other account — 0 otherwise"
+    bigint expense_id "the expense_records id the expense listener posted it from, no FK — 0 otherwise (00004)"
     timestamptz created_at "when it was recorded"
   }
   shop_accounts {
@@ -3065,6 +3211,7 @@ erDiagram
     double transfer
     double team_payment
     double capital
+    double money_in "money in typed on Biaya (00004)"
     double change "the day's net — close minus open"
     double open_balance "the account's balance as the day opened — SHIFTED by a late row"
     double close_balance

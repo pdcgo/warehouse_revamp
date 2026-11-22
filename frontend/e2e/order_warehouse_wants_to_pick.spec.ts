@@ -40,7 +40,8 @@ import { expectMoveCounted, expectMovesOffered } from "./order_moves_metric";
 // root and confirmed by root, so each stands processed: (1) ONE ×2 with a tracking number on its label, (2) TWO ×3,
 // (3)–(5) ONE ×2, two ONE ×2 that carry the SAME tracking number, THREE ×2, ONE ×2 with a tracking number (the parcel
 // before the cancelled one), and ONE ×2 that another person sets picked; plus one ONE ×2 with a tracking number placed
-// and then cancelled by root as the seller (never confirmed). The metric check has a shop of its own with two orders.
+// and then cancelled by root as the seller (never confirmed). Each role's metric check has a shop of its own with two
+// orders.
 // A selling:owner of the seller reads the selling team's side.
 //
 // The WHEN — the role validates the order's package:
@@ -82,9 +83,10 @@ import { expectMoveCounted, expectMovesOffered } from "./order_moves_metric";
 //   the order stays picked, and its timeline still has ONE Picked step — the other person's.
 // - `message says already picked` — the page says so: its toast reads "already picked".
 // - `pick recorded in analytic metric` — Analytic › Order › Order status moves (`metrics/orders/moves`, #84) counts a
-//   pick as a Picked, processed → picked (the-order-metric-ids-name-what-moved). Its own test, last in the file, on a
-//   shop of its own with TWO processed orders of which the test validates ONE (opened by its label), read as
-//   warehouse:owner (a warehouse reads every count of the orders it ships): Add Metric › Order offers Order status moves,
+//   pick as a Picked, processed → picked (the-order-metric-ids-name-what-moved). Its own test per role, last in the file
+//   — EVERY warehouse role on a shop of its own with TWO processed orders of which the role validates ONE (opened by its
+//   label), read as that role (a warehouse reads every count of the orders it ships): Add Metric › Order offers Order
+//   status moves,
 //   and Analytic by shop over the last 7 days, filtered to that shop, reads `created_count` 2 (the fold landed) and
 //   `picked_count` exactly 1 — the untouched order, still processed, adds nothing (order_moves_metric.ts).
 test.describe("warehouse:all wants to validate an order's package", () => {
@@ -116,8 +118,8 @@ test.describe("warehouse:all wants to validate an order's package", () => {
   const QTY = 2; // product ONE and THREE, per order
   const ON_A = 1; // product TWO: rack A
   const ON_B = 2; // product TWO: rack B
-  // Every ONE order of every role, the cancelled one, the metric shop's two — and a few spare.
-  const ONE_STOCK = ROLES.length * (ONE_KINDS.length + 1) * QTY + 2 * QTY + 4;
+  // Every ONE order of every role, the cancelled one, each role's metric shop's two — and a few spare.
+  const ONE_STOCK = ROLES.length * (ONE_KINDS.length + 1) * QTY + ROLES.length * 2 * QTY + 4;
   const UNIT_COST = 10_000;
   const PLATFORM_TOTAL = 100_000;
 
@@ -134,7 +136,7 @@ test.describe("warehouse:all wants to validate an order's package", () => {
   const twinReceipt = (key: string) => `ZRT${SUFFIX}${key.toUpperCase()}`;
   const beforeReceipt = (key: string) => `ZRR${SUFFIX}${key.toUpperCase()}`;
   const cancelledReceipt = (key: string) => `ZRC${SUFFIX}${key.toUpperCase()}`;
-  const METRIC_RECEIPT = `ZRM${SUFFIX}`;
+  const metricReceipt = (key: string) => `ZRM${SUFFIX}${key.toUpperCase()}`;
   const RACK_A = `zpa-${SUFFIX}`;
   const RACK_B = `zpb-${SUFFIX}`;
 
@@ -151,9 +153,9 @@ test.describe("warehouse:all wants to validate an order's package", () => {
     stickerRestock: "",
     orders: {} as Record<string, Record<Kind, string>>,
     cancelled: {} as Record<string, string>,
-    // The metric check's shop and its two orders: [the one validated, the one left processed].
-    metricShop: "",
-    metricOrders: [] as string[],
+    // Per role, the metric check's shop and its two orders: [the one validated, the one left processed].
+    metricShops: {} as Record<string, string>,
+    metricOrders: {} as Record<string, string[]>,
   };
 
   // The order's own record, read with the page's signed-in token — its status, as the server keeps it.
@@ -389,8 +391,8 @@ test.describe("warehouse:all wants to validate an order's package", () => {
       })),
     );
 
-    // The seller's shops, its owner on them: the orders' shop, and the metric check's own (so no other test's pick
-    // counts on it).
+    // The seller's shops, its owner on them: the orders' shop, and per role the metric check's own (so no other test's
+    // pick counts on it).
     const shopOf = async (name: string, shopCode: string) => {
       const id = String(
         (await api(page, "selling.v1.ShopService/ShopCreate", { teamId: ground.seller, name, shopCode, marketplace: "MARKETPLACE_SHOPEE" }))
@@ -400,7 +402,9 @@ test.describe("warehouse:all wants to validate an order's package", () => {
       return id;
     };
     const shop = await shopOf(`E2E Opk Shop ${SUFFIX}`, `ZPK${SUFFIX}`);
-    ground.metricShop = await shopOf(`E2E Opk Metric Shop ${SUFFIX}`, `ZPM${SUFFIX}`);
+    for (const r of ROLES) {
+      ground.metricShops[r.key] = await shopOf(`E2E Opk Metric Shop ${r.key} ${SUFFIX}`, `ZPM${r.key.toUpperCase()}${SUFFIX}`);
+    }
 
     const place = async (o: { key: string; shopId: string; productId: string; code: string; quantity: number; receipt?: string }) =>
       String(
@@ -459,17 +463,20 @@ test.describe("warehouse:all wants to validate an order's package", () => {
       await api(page, "selling.v1.OrderService/OrderCancel", { teamId: ground.seller, orderId: dead });
       ground.cancelled[r.key] = dead;
     }
-    for (const n of [1, 2]) {
-      const id = await place({
-        key: `metric${n}`,
-        shopId: ground.metricShop,
-        productId: ground.one,
-        code: SKU_ONE,
-        quantity: QTY,
-        ...(n === 1 ? { receipt: METRIC_RECEIPT } : {}),
-      });
-      ground.metricOrders.push(id);
-      placed.push(id);
+    for (const r of ROLES) {
+      ground.metricOrders[r.key] = [];
+      for (const n of [1, 2]) {
+        const id = await place({
+          key: `${r.key}metric${n}`,
+          shopId: ground.metricShops[r.key]!,
+          productId: ground.one,
+          code: SKU_ONE,
+          quantity: QTY,
+          ...(n === 1 ? { receipt: metricReceipt(r.key) } : {}),
+        });
+        ground.metricOrders[r.key]!.push(id);
+        placed.push(id);
+      }
     }
     const confirmed = await api(page, "selling.v1.OrderService/OrderStatusChange", {
       teamId: ground.warehouse,
@@ -906,32 +913,35 @@ test.describe("warehouse:all wants to validate an order's package", () => {
     });
   }
 
-  // Its own test, LAST in the file: it moves one order of a shop of its own (see the head of this file).
-  test(`warehouse:owner validate package order (${COND_SCAN}): pick recorded in analytic metric`, async ({ page }) => {
-    await installEar(page);
-    await signIn(page, username("own"), ground.warehouse);
-    const [orderId, left] = ground.metricOrders;
-    const shop = ground.metricShop;
-    expect(await statusOf(page, ground.warehouse, orderId!)).toBe("ORDER_STATUS_PROCESSED");
+  // Its own test per role, LAST in the file: each moves one order of the role's own shop (see the head of this file).
+  for (const r of ROLES) {
+    test(`${r.given} validate package order (${COND_SCAN}): pick recorded in analytic metric`, async ({ page }) => {
+      await installEar(page);
+      await signIn(page, username(r.key), ground.warehouse);
+      const [orderId, left] = ground.metricOrders[r.key]!;
+      const shop = ground.metricShops[r.key]!;
+      expect(await statusOf(page, ground.warehouse, orderId!)).toBe("ORDER_STATUS_PROCESSED");
 
-    // WHEN — Orders › Scan Label opens the order; every unit scanned, Set Picked. The shop's other order stays processed.
-    await page.goto("/warehouse-orders");
-    await openScanLabel(page);
-    const label = page.getByTestId("scan-label-input");
-    await label.fill(METRIC_RECEIPT);
-    await label.press("Enter");
-    await expect(page).toHaveURL(new RegExp(`/warehouse-orders/${orderId}$`));
-    await expect(page.getByTestId("pick-scan-input")).toBeVisible();
-    for (let n = 0; n < QTY; n += 1) await scanAndHear(page, SKU_ONE);
-    const answer = await setPicked(page);
-    expect(answer.status()).toBe(200);
-    expect(await statusOf(page, ground.warehouse, orderId!)).toBe("ORDER_STATUS_PICKED");
-    expect(await statusOf(page, ground.warehouse, left!)).toBe("ORDER_STATUS_PROCESSED");
+      // WHEN — Orders › Scan Label opens the order; every unit scanned, Set Picked. The shop's other order stays
+      // processed.
+      await page.goto("/warehouse-orders");
+      await openScanLabel(page);
+      const label = page.getByTestId("scan-label-input");
+      await label.fill(metricReceipt(r.key));
+      await label.press("Enter");
+      await expect(page).toHaveURL(new RegExp(`/warehouse-orders/${orderId}$`));
+      await expect(page.getByTestId("pick-scan-input")).toBeVisible();
+      for (let n = 0; n < QTY; n += 1) await scanAndHear(page, SKU_ONE);
+      const answer = await setPicked(page);
+      expect(answer.status()).toBe(200);
+      expect(await statusOf(page, ground.warehouse, orderId!)).toBe("ORDER_STATUS_PICKED");
+      expect(await statusOf(page, ground.warehouse, left!)).toBe("ORDER_STATUS_PROCESSED");
 
-    await test.step("then: pick recorded in analytic metric", async () => {
-      // Order status moves is offered under Order, and the shop's Picked reads the ONE pick.
-      await expectMovesOffered(page);
-      await expectMoveCounted(page, shop, "picked_count");
+      await test.step("then: pick recorded in analytic metric", async () => {
+        // Order status moves is offered under Order, and the shop's Picked reads the ONE pick.
+        await expectMovesOffered(page);
+        await expectMoveCounted(page, shop, "picked_count");
+      });
     });
-  });
+  }
 });

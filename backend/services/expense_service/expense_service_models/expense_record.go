@@ -19,8 +19,13 @@ type ExpenseRecord struct {
 	ShopID uint64
 
 	// ExpenseKind's enum number. Mapped in the handler — proto enums are open, so the database does not
-	// get to decide which values are legal (cf. #80).
+	// get to decide which values are legal (cf. #80). Since the types, the type's GROUP, written from it.
 	Kind int32
+
+	// ExpenseType's enum number (expense-types-sit-under-groups) — 0 on a row recorded before the types (it keeps its
+	// kind only) and on a STOCK_LOSS. An adjustment copies its expense's. Its group, direction and capital flag are the
+	// fixed table in expense_v1/expense_types.go, never stored. No CHECK, as `kind` (proto enums are open).
+	Type int32
 
 	// Exact rupiah, never rounded (the-backend-never-rounds-money); the sign is a DB CHECK. Positive on an expense — the kind carries the direction, and a signed amount would let a
 	// negative cost silently become revenue. Signed and never 0 on an adjustment: the correction, not a new total.
@@ -46,6 +51,16 @@ type ExpenseRecord struct {
 	// expense was recorded (an-expense-must-name-the-account-that-paid). On an adjustment, its expense's, copied
 	// (a-correction-follows-the-expenses-account). 0 = made before *Paid from*, or a STOCK_LOSS: nothing posts for it.
 	FinanceAccountID uint64
+
+	// THE DOOR it came in by — ExpenseOrigin's number (prive-and-deposit-on-pengeluaran-are-the-accounts-capital): 0 =
+	// typed on Biaya (every adjustment too); 1 = ACCOUNT_PAGE, a selling team's Setor / Tarik Modal made on the account
+	// page and recorded here from the account's FinancialAccountCapitalRecorded (or brought in once by
+	// `san expense import-capital`). CHECK 0–1 (migration 00008).
+	Origin int32
+	// The account's by-hand `capital` row an ACCOUNT_PAGE expense IS — financial_account_logs.id, an opaque id of
+	// financial_account_service. UNIQUE when set, so one account row is one expense whoever brings it (the live door, a
+	// redelivery, the import). 0 on every other row. Nothing posts for it: the account row is the act's own.
+	AccountLogID uint64
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

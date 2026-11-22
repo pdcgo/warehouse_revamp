@@ -221,6 +221,7 @@ test("Expense: an ad naming another team's shop, or an unknown one, is NotFound 
   const ad = (shopId: string) => ({
     teamId: state.teamA,
     kind: "EXPENSE_KIND_ADS",
+    type: "EXPENSE_TYPE_ADS_MARKETPLACE", // a type is required since #99 (expense-types-sit-under-groups)
     amount: 150_000,
     occurredAt: today(),
     shopId,
@@ -251,8 +252,8 @@ test("Expense: an ad naming another team's shop, or an unknown one, is NotFound 
 
   await page.getByTestId("open-record-cost").click();
   const dialog = page.getByRole("dialog");
-  await page.getByTestId("expense-kind-select").click();
-  await page.getByTestId("expense-kind-select-1").click(); // ADS
+  await page.getByTestId("expense-type-select").click();
+  await page.getByTestId("expense-type-select-adsMarketplace").click(); // Iklan › Iklan marketplace — the one type that names a shop (#99)
   await page.getByTestId("expense-amount").fill("150000");
   await openShops(dialog);
   // The team's own shops only — B1 is never offered.
@@ -282,8 +283,8 @@ test("Expense: an ad on the team's CLOSED shop is taken — recorded through the
   await page.goto("/expenses");
   await page.getByTestId("open-record-cost").click();
   const dialog = page.getByRole("dialog");
-  await page.getByTestId("expense-kind-select").click();
-  await page.getByTestId("expense-kind-select-1").click(); // ADS
+  await page.getByTestId("expense-type-select").click();
+  await page.getByTestId("expense-type-select-adsMarketplace").click(); // Iklan › Iklan marketplace — the one type that names a shop (#99)
   await page.getByTestId("expense-amount").fill("90000");
   await openShops(dialog);
   // The form offers the closed shop, badged (withClosed) — an ad is money still running on it.

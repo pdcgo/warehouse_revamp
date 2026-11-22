@@ -1,71 +1,28 @@
-import { useEffect, useState } from "react";
-import { rpcError, shipmentChannelClient } from "../../api/clients";
+import { rpcError } from "../../api/clients";
 import type { ShipmentChannel } from "../../gen/warehouse/shipment/v1/shipment_pb";
-import { channelListRowData, channelsFromList } from "../shipment/adapt";
+import { fetchChannelCatalogue, useShipmentChannelCatalogue } from "../shipment/queries";
 
-// The courier catalogue, loaded ONCE per session and shared by every component that needs it (#126).
+// The courier catalogue as the screens read it (#126) — through ONE query, shared by every component that needs it.
 //
 // ⚠ THE CODE BRIDGE (the-old-catalogue-bridges-by-code, docs/business/shipment). Selling orders and
 // restocks still store a courier CODE, so ShippingSelect and ShippingBadge match on code — but the
 // catalogue itself is shipment_service's now. It loads DELETED channels too: a badge must still name the
 // courier an old order used, and ShippingSelect filters them out for new work.
 //
-// Why this is not a plain useEffect in each component: a courier is rendered per table ROW
-// (ShippingBadge), so a per-instance fetch would fire one ShippingList call per row — ~20 for a
-// single page of restock requests. The catalogue is curated, rarely-changing reference data (it is
-// the one list CLAUDE.md exempts from pagination for exactly that reason), so a session cache is the
-// right shape:
-//
-//   - `cache` holds the resolved catalogue. A caller arriving after the load makes NO request.
-//   - `inflight` is the single shared Promise, so N components mounting in the same tick await ONE
-//     request instead of racing N of them.
-//
-// The catalogue changes in one place — ShipmentChannelsPage, where root curates it. Every write hook in
-// features/shipment/queries.ts calls invalidateShippingCatalogue(), so a renamed courier does not keep
-// its old name in every badge for the rest of the session.
-let cache: ShipmentChannel[] | null = null;
-let inflight: Promise<ShipmentChannel[]> | null = null;
-// Bumped on invalidation so a response that was already in flight cannot resurrect a cache that has
-// since been dropped.
-let generation = 0;
+// Why one shared read and not one per component: a courier is rendered per table ROW (ShippingBadge), so
+// a per-instance fetch would fire one ShipmentChannelList per row — ~20 for a single page of restock
+// requests. It used to be a module-level session cache here (`cache` / `inflight` / `generation`); since
+// #121 it is `useShipmentChannelCatalogue` (features/shipment/queries.ts), and the one-request property is
+// the query cache's own: every row's hook reads the same entry, and N components mounting in the same tick
+// share ONE request. The catalogue changes in one place — ShipmentChannelsPage, where root curates it — and
+// every write hook there invalidates the `shipmentChannels` prefix this entry sits under, so a renamed
+// courier is renamed in every badge already on screen, not only after a reload.
 
-export function loadShippingCatalogue(): Promise<ShipmentChannel[]> {
-  if (cache !== null) return Promise.resolve(cache);
-  if (inflight !== null) return inflight;
-
-  const gen = generation;
-
-  const request = shipmentChannelClient
-    // One page covers the catalogue: a curated handful of couriers, capped by the contract's limit.
-    .shipmentChannelList({
-      filter: { includeDeleted: true },
-      dataRequest: channelListRowData(),
-      page: { page: 1, limit: 200 },
-    })
-    .then((res) => {
-      const channels = channelsFromList(res.items, res.ids);
-      if (gen === generation) {
-        cache = channels;
-        inflight = null;
-      }
-      return channels;
-    })
-    .catch((err: unknown) => {
-      // A failed load is never cached — the next caller retries.
-      if (gen === generation) inflight = null;
-      throw err;
-    });
-
-  inflight = request;
-  return request;
-}
-
-// Drops the session cache. Call it after anything that CHANGES the catalogue.
-export function invalidateShippingCatalogue() {
-  cache = null;
-  inflight = null;
-  generation++;
-}
+/**
+ * The catalogue's one read, uncached on its own — the query's function. A caller holding no component (a story
+ * waiting for the stub to have answered) awaits it; a screen reads `useShippingCatalogue` instead.
+ */
+export const loadShippingCatalogue: () => Promise<ShipmentChannel[]> = fetchChannelCatalogue;
 
 export interface ShippingCatalogue {
   /** Every channel, DELETED ones included — a picker must filter on isDeleted itself. */
@@ -74,41 +31,21 @@ export interface ShippingCatalogue {
   error: string;
 }
 
+// One empty list for every render while nothing has landed, so a memo keyed on `couriers` is not re-run by a fresh
+// `[]` each time.
+const NO_COURIERS: ShipmentChannel[] = [];
+
 // useShippingCatalogue subscribes a component to the shared catalogue: it renders from the cache on
 // the first paint if the catalogue is already loaded, and otherwise re-renders when the one shared
 // request resolves.
 export function useShippingCatalogue(): ShippingCatalogue {
-  const [couriers, setCouriers] = useState<ShipmentChannel[]>(() => cache ?? []);
-  const [loading, setLoading] = useState(() => cache === null);
-  const [error, setError] = useState("");
+  const query = useShipmentChannelCatalogue();
 
-  useEffect(() => {
-    if (cache !== null) {
-      setCouriers(cache);
-      setLoading(false);
-      return;
-    }
-
-    let alive = true;
-
-    loadShippingCatalogue()
-      .then((list) => {
-        if (!alive) return;
-        setCouriers(list);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        if (!alive) return;
-        setError(rpcError(err));
-        setLoading(false);
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  return { couriers, loading, error };
+  return {
+    couriers: query.data ?? NO_COURIERS,
+    loading: query.isPending,
+    error: query.isError ? rpcError(query.error) : "",
+  };
 }
 
 // courierName maps a stored courier CODE to its human name. It falls back to the raw code when the

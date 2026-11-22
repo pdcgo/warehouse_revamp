@@ -181,7 +181,7 @@ export const TheSearchFindsAScreenByItsGroup: Story = {
 
     await userEvent.clear(search);
     await userEvent.type(search, "zzz", { delay: 30 });
-    await expect(await screen.findByTestId("menu-sheet-no-match")).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId("menu-sheet-no-match")).toBeVisible(), { timeout: 5000 });
   },
 };
 

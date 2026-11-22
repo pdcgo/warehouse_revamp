@@ -472,9 +472,12 @@ is re-read every time a dropdown mounts, several times per screen, and a stale c
 cosmetic where a stale stock count is not. Buy out **by name**, never by hand-writing a `staleTime`.
 `useTeams` carries a `reference` flag because it is the one hook with callers on both sides.
 
-Not everything went through TanStack: `CategorySelect`, `SupplierSelect`, `RackSelect`,
-`ProductPicker` and the courier catalogue run their own `useEffect`/session caches and never saw
-`staleTime` at all. If you touch one, it is not covered by this rule until it moves to a query hook.
+Every picker reads through a query hook — no picker keeps a `useEffect` fetch or a session cache of its own:
+`RackSelect` (`useRacks`, on the plain default) and, since #121, `CategorySelect`, `SupplierSelect`, the four
+product pickers on `ProductPickerShell` and the courier catalogue (`useShipmentChannelCatalogue`) on
+`referenceQuery`. Two picker reads are deliberately NOT bought out: the product pickers' READY/ONGOING figures and
+the stocked pickers' pages are stock, and stay always fresh
+([features/products/pickerQueries.ts](frontend/src/features/products/pickerQueries.ts)).
 
 `refetchOnWindowFocus: false` **survives** this change and is not an inconsistency — it answers a
 third question. The app is used with a scanner and a spreadsheet beside it, so focus is lost and
@@ -1077,7 +1080,7 @@ the stories too, so a story asserts on the same values the stub served.
 | Popovers/listboxes animate in | `await waitFor(() => expect(el).toBeVisible())` before clicking — until then `pointer-events: none` rejects the click |
 | Some pickers portal, some deliberately do not | `screen` for portalled (TeamSelect, RoleSelect); `within(canvasElement)` for the inline ones (RackSelect, ShopSelect, MarketplaceSelect, CategorySelect — they must work inside modal Dialogs) |
 | A controlled input needs real state | a story pinning `value` to a constant re-renders the field back after every keystroke, so typing tests nothing. `userEvent.type(el, "…", { delay: 40 })` too — at machine speed a controlled input drops characters |
-| Module-level caches survive between stories | the shipping catalogue and the color-mode/token storage are reset in `preview.tsx`'s `beforeEach` |
+| Module-level caches survive between stories | the color-mode/token storage are reset in `preview.tsx`'s `beforeEach`; server data needs no reset — every story gets a fresh QueryClient (the courier catalogue is a query since #121) |
 
 [frontend/src/theme.ts](frontend/src/theme.ts) is the **only** place density, spacing and colour
 are set. Three things are centralised there on purpose:
@@ -1200,7 +1203,8 @@ written for the next agent, not for a person: what exists, what does not, what w
 
 **Acceptances are made semi-automatically, and nothing outside that loop changes them** (owner) —
 [docs/acceptances/guide.md](docs/acceptances/guide.md). A row is written only by discussing one given + when with the
-owner, and a status changes only on the owner's instruction. A code change, a refactor, or an edit to a business or
+owner, and a then's status is set by revamp_tester from its green test results — ✅ / ❌ / 🚧 — the owner's own word always
+winning ([the-tester-sets-a-thens-status-from-its-green-results](docs/development_lifecycle_decision.md#the-tester-sets-a-thens-status-from-its-green-results)). A code change, a refactor, or an edit to a business or
 technical doc never rewrites a row. When the code disagrees with a then, report it in chat and leave the row alone.
 **An acceptance has no test file of its own:** the agent's check for a then goes in the regression spec of the WHEN's
 feature (create restock → `frontend/e2e/restock.spec.ts`).

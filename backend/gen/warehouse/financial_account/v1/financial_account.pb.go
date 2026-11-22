@@ -227,23 +227,29 @@ const (
 	// Broker — the balance service's acceptance, out of the payer and into the creditor
 	// (a-team-payment-posts-on-accept). Never reversed (a-team-payment-is-never-reversed).
 	FinancialAccountChangeType_FINANCIAL_ACCOUNT_CHANGE_TYPE_TEAM_PAYMENT FinancialAccountChangeType = 8
-	// By hand — the business owner's own money, in or out (capital-joins-the-types).
+	// By hand — the business owner's own money, in or out (capital-joins-the-types). Since 2026-11-20 also from the
+	// broker: Prive (out) and Setoran modal (in) typed on Biaya write this same row
+	// (prive-and-deposit-on-pengeluaran-are-the-accounts-capital), the log naming the expense (`expense_id`).
 	FinancialAccountChangeType_FINANCIAL_ACCOUNT_CHANGE_TYPE_CAPITAL FinancialAccountChangeType = 9
+	// Broker — money IN typed on Biaya (Piutang luar diterima, Uang masuk lain), INTO the operational account it entered
+	// (money-in-on-biaya-is-its-own-change-type): never a plus-sign `expense`, so the expense rows stay spending only.
+	FinancialAccountChangeType_FINANCIAL_ACCOUNT_CHANGE_TYPE_MONEY_IN FinancialAccountChangeType = 10
 )
 
 // Enum value maps for FinancialAccountChangeType.
 var (
 	FinancialAccountChangeType_name = map[int32]string{
-		0: "FINANCIAL_ACCOUNT_CHANGE_TYPE_UNSPECIFIED",
-		1: "FINANCIAL_ACCOUNT_CHANGE_TYPE_EXPENSE",
-		2: "FINANCIAL_ACCOUNT_CHANGE_TYPE_ADS_EXPENSE",
-		3: "FINANCIAL_ACCOUNT_CHANGE_TYPE_ADJUSTMENT",
-		4: "FINANCIAL_ACCOUNT_CHANGE_TYPE_WITHDRAWAL",
-		5: "FINANCIAL_ACCOUNT_CHANGE_TYPE_RESTOCK",
-		6: "FINANCIAL_ACCOUNT_CHANGE_TYPE_OPENING_BALANCE",
-		7: "FINANCIAL_ACCOUNT_CHANGE_TYPE_TRANSFER",
-		8: "FINANCIAL_ACCOUNT_CHANGE_TYPE_TEAM_PAYMENT",
-		9: "FINANCIAL_ACCOUNT_CHANGE_TYPE_CAPITAL",
+		0:  "FINANCIAL_ACCOUNT_CHANGE_TYPE_UNSPECIFIED",
+		1:  "FINANCIAL_ACCOUNT_CHANGE_TYPE_EXPENSE",
+		2:  "FINANCIAL_ACCOUNT_CHANGE_TYPE_ADS_EXPENSE",
+		3:  "FINANCIAL_ACCOUNT_CHANGE_TYPE_ADJUSTMENT",
+		4:  "FINANCIAL_ACCOUNT_CHANGE_TYPE_WITHDRAWAL",
+		5:  "FINANCIAL_ACCOUNT_CHANGE_TYPE_RESTOCK",
+		6:  "FINANCIAL_ACCOUNT_CHANGE_TYPE_OPENING_BALANCE",
+		7:  "FINANCIAL_ACCOUNT_CHANGE_TYPE_TRANSFER",
+		8:  "FINANCIAL_ACCOUNT_CHANGE_TYPE_TEAM_PAYMENT",
+		9:  "FINANCIAL_ACCOUNT_CHANGE_TYPE_CAPITAL",
+		10: "FINANCIAL_ACCOUNT_CHANGE_TYPE_MONEY_IN",
 	}
 	FinancialAccountChangeType_value = map[string]int32{
 		"FINANCIAL_ACCOUNT_CHANGE_TYPE_UNSPECIFIED":     0,
@@ -256,6 +262,7 @@ var (
 		"FINANCIAL_ACCOUNT_CHANGE_TYPE_TRANSFER":        7,
 		"FINANCIAL_ACCOUNT_CHANGE_TYPE_TEAM_PAYMENT":    8,
 		"FINANCIAL_ACCOUNT_CHANGE_TYPE_CAPITAL":         9,
+		"FINANCIAL_ACCOUNT_CHANGE_TYPE_MONEY_IN":        10,
 	}
 )
 
@@ -1998,7 +2005,11 @@ type FinancialAccountLog struct {
 	// THE ACTOR WAS AN OVERRIDE — `actor_id` is Root or the System Administrator and moved it inside a team they hold no role in (an-override-is-stamped-in-every-service);
 	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
 	// From `financial_account_logs.is_override`; a row an event wrote carries the act's own flag.
-	IsOverride    bool `protobuf:"varint,13,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	IsOverride bool `protobuf:"varint,13,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	// THE EXPENSE THIS ROW WAS POSTED FROM — an `expense_records` id of expense_service, for every row its listener posts
+	// (an expense, a correction, a Prive or Setoran modal typed on Biaya, money in); 0 for every other row. The account
+	// history's *dari Biaya #N* (the-expense-types-prototype-is-accepted). From `financial_account_logs.expense_id`.
+	ExpenseId     uint64 `protobuf:"varint,14,opt,name=expense_id,json=expenseId,proto3" json:"expense_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2122,6 +2133,13 @@ func (x *FinancialAccountLog) GetIsOverride() bool {
 		return x.IsOverride
 	}
 	return false
+}
+
+func (x *FinancialAccountLog) GetExpenseId() uint64 {
+	if x != nil {
+		return x.ExpenseId
+	}
+	return 0
 }
 
 type FinancialAccountLogListRequest struct {
@@ -3950,7 +3968,7 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"type_total\x18\x02 \x01(\v2=.warehouse.financial_account.v1.FinancialAccountTypeTotalListH\x00R\ttypeTotalB\x03\n" +
 	"\x01d\"~\n" +
 	" FinancialAccountOverviewResponse\x12Z\n" +
-	"\x05items\x18\x01 \x03(\v2D.warehouse.financial_account.v1.FinancialAccountOverviewResponseItemR\x05items\"\x96\x04\n" +
+	"\x05items\x18\x01 \x03(\v2D.warehouse.financial_account.v1.FinancialAccountOverviewResponseItemR\x05items\"\xb5\x04\n" +
 	"\x13FinancialAccountLog\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x1d\n" +
@@ -3970,7 +3988,9 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\bgroup_id\x18\v \x01(\x04R\agroupId\x12,\n" +
 	"\x12counter_account_id\x18\f \x01(\x04R\x10counterAccountId\x12\x1f\n" +
 	"\vis_override\x18\r \x01(\bR\n" +
-	"isOverride\"\xb3\x03\n" +
+	"isOverride\x12\x1d\n" +
+	"\n" +
+	"expense_id\x18\x0e \x01(\x04R\texpenseId\"\xb3\x03\n" +
 	"\x1eFinancialAccountLogListRequest\x12$\n" +
 	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12]\n" +
 	"\x06filter\x18\x02 \x01(\v2=.warehouse.financial_account.v1.FinancialAccountLogListFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter\x12U\n" +
@@ -4132,7 +4152,7 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"\x16FinancialAccountStatus\x12(\n" +
 	"$FINANCIAL_ACCOUNT_STATUS_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fFINANCIAL_ACCOUNT_STATUS_ACTIVE\x10\x01\x12%\n" +
-	"!FINANCIAL_ACCOUNT_STATUS_ARCHIVED\x10\x02*\xe6\x03\n" +
+	"!FINANCIAL_ACCOUNT_STATUS_ARCHIVED\x10\x02*\x92\x04\n" +
 	"\x1aFinancialAccountChangeType\x12-\n" +
 	")FINANCIAL_ACCOUNT_CHANGE_TYPE_UNSPECIFIED\x10\x00\x12)\n" +
 	"%FINANCIAL_ACCOUNT_CHANGE_TYPE_EXPENSE\x10\x01\x12-\n" +
@@ -4143,7 +4163,9 @@ const file_warehouse_financial_account_v1_financial_account_proto_rawDesc = "" +
 	"-FINANCIAL_ACCOUNT_CHANGE_TYPE_OPENING_BALANCE\x10\x06\x12*\n" +
 	"&FINANCIAL_ACCOUNT_CHANGE_TYPE_TRANSFER\x10\a\x12.\n" +
 	"*FINANCIAL_ACCOUNT_CHANGE_TYPE_TEAM_PAYMENT\x10\b\x12)\n" +
-	"%FINANCIAL_ACCOUNT_CHANGE_TYPE_CAPITAL\x10\t*\xac\x01\n" +
+	"%FINANCIAL_ACCOUNT_CHANGE_TYPE_CAPITAL\x10\t\x12*\n" +
+	"&FINANCIAL_ACCOUNT_CHANGE_TYPE_MONEY_IN\x10\n" +
+	"*\xac\x01\n" +
 	"\x1cFinancialAccountListDataType\x120\n" +
 	",FINANCIAL_ACCOUNT_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12,\n" +
 	"(FINANCIAL_ACCOUNT_LIST_DATA_TYPE_GENERAL\x10\x01\x12,\n" +

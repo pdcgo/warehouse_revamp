@@ -10,6 +10,10 @@ const (
 	CustomShipmentSample CustomShipmentKind = "sample"
 	// CustomShipmentReship is a received restock's broken units sent back to its supplier — no stock moves.
 	CustomShipmentReship CustomShipmentKind = "restock_reship"
+	// CustomShipmentSupplierReshipping is INBOUND (backlog #101, 00060): the restock's supplier sending goods again — a
+	// `reshipping` resolution's parcel, from the supplier to the warehouse chosen (a-suppliers-reshipping-comes-in-as-a-
+	// custom-shipment). It arrives as a restock box: on_the_way → arrived → received, or lost.
+	CustomShipmentSupplierReshipping CustomShipmentKind = "supplier_reshipping"
 )
 
 // CustomShipmentStatus is where a parcel is.
@@ -20,6 +24,13 @@ const (
 	CustomShipmentPicked     CustomShipmentStatus = "picked"
 	CustomShipmentHandedOver CustomShipmentStatus = "handed_over"
 	CustomShipmentCancelled  CustomShipmentStatus = "cancelled"
+
+	// The INBOUND steps (00060) — a restock box's: on its way, signed for at the door (Tiba), counted in (Terima), or
+	// lost before it arrived.
+	CustomShipmentOnTheWay CustomShipmentStatus = "on_the_way"
+	CustomShipmentArrived  CustomShipmentStatus = "arrived"
+	CustomShipmentReceived CustomShipmentStatus = "received"
+	CustomShipmentLost     CustomShipmentStatus = "lost"
 )
 
 // CustomShipmentPayer is who pays the courier (the-courier-is-paid-by-the-team-or-by-the-warehouse).
@@ -80,6 +91,18 @@ type CustomShipment struct {
 	HandedOverAt       *time.Time
 	CancelledByUserID  uint64
 	CancelledAt        *time.Time
+
+	// INBOUND only (00060): the courier's charge at the door is ShippingCost (payer `warehouse`) and this its note — noted
+	// at Tiba, final at Terima (the-courier-charge-is-noted-at-tiba-and-final-at-terima). Who signed for it, counted it
+	// in and gave it up, when, and why it was given up.
+	ChargeNote       string
+	ArrivedByUserID  uint64
+	ArrivedAt        *time.Time
+	ReceivedByUserID uint64
+	ReceivedAt       *time.Time
+	LostByUserID     uint64
+	LostAt           *time.Time
+	LostReason       string
 
 	Items []CustomShipmentItem `gorm:"foreignKey:CustomShipmentID"`
 	// The trail, oldest first. Preloaded by Detail only.

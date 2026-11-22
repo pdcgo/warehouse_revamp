@@ -1,19 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Box, Button, Flex, Grid, HStack, Heading, Icon, Span, Stack, Table, Text, useBreakpointValue } from "@chakra-ui/react";
 import { ArrowRightLeft, Gift, History, PackageOpen, PackageSearch } from "lucide-react";
-import { personName } from "../../lib/users";
-import { productClient, rackClient, rpcError } from "../../api/clients";
-import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
-import type { Rack, RackStockLine, RackSummary } from "../../gen/warehouse/inventory/v1/rack_pb";
+import { rpcError } from "../../api/clients";
+import type { RackStockLine } from "../../gen/warehouse/inventory/v1/rack_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamItem } from "../../components/entity/TeamItem";
-import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
 import { ProductStickyStrip } from "../../features/products/ProductTitleRow";
-import { rackHistoryFromList, rackHistoryRowData } from "../../features/racks/adapt";
+import { type RackHistoryRow, useRackDetail, useRackHistory } from "../../features/racks/queries";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { Fact, Section } from "../../components/chrome/DetailSection";
@@ -28,13 +25,11 @@ import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
 import { cameFrom } from "../../lib/cameFrom";
 import { formatUnixDate } from "../../lib/datetime";
 import { PLACEMENT_KINDS } from "../../features/inventory/movementKind";
-import { MovementTable, type MovementRow } from "../../features/inventory/MovementTable";
-import { countCorrectionOf } from "../../features/receivedCount/corrections";
+import { MovementTable } from "../../features/inventory/MovementTable";
 import { formatRupiah } from "../../lib/money";
 import { useIsMobile } from "../../layouts/shell";
 import { useScrollSpy } from "../../lib/useScrollSpy";
 import { useStickyTitle } from "../../lib/useStickyTitle";
-import { fetchActors } from "../../features/users/queries";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ReportFoundDialog } from "../../features/inventory/ReportFoundDialog";
 import { canReportFound } from "../../lib/roles";
@@ -72,10 +67,10 @@ function parseRackId(raw: string | undefined): bigint {
 // RackDetailPage answers the questions someone standing at a shelf has (#138/#197): which rack is this, what is on it,
 // what it is worth, and what has happened to it — a PAGE, not a dialog, because it is a record being read.
 //
-// WHAT IT IS WORTH IS NOT A WAREHOUSE'S (a-warehouse-sees-ready-value-but-a-shelf-only-units): a caller acting with a
-// warehouse role reads the shelf in UNITS ONLY, and the server leaves the money unset for it. The page draws the money
-// only where the server sent it — the tile's value line, Harga/pcs and Nilai, the phone block's price line — so a
-// warehouse sees no empty column and no Rp 0, and Root (from outside the warehouse) sees them all.
+// WHAT IT IS WORTH IS EVERY READER'S, A WAREHOUSE'S TOO (placement.md given 11 — the 🔄 2026-11-20 line of
+// a-warehouse-sees-ready-value-but-a-shelf-only-units ended the shelf's units-only reading, backlog #109). The page still
+// draws the money only where the server sent it — the tile's value line, Harga/pcs and Nilai, the phone block's price
+// line — so a read with no money would show no empty column and no Rp 0.
 //
 // ONE PAGE OF SECTIONS, AS EVERY OTHER DETAIL PAGE (owner: *"iya seperti usulmu, gunakan detail lain sebagai
 // referensi"*, a-rack-page-is-one-page-of-sections) — the product page's and the restock pages' shape. It REPLACES the
@@ -106,23 +101,24 @@ export function RackDetailPage() {
   const rackId = parseRackId(rackIdParam);
   const teamId = current?.teamId;
 
-  const [rack, setRack] = useState<Rack | null>(null);
-  const [summary, setSummary] = useState<RackSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  // Which rack is this, and the header's figures (useRackDetail). Kept apart from the shelves so that paging one does not
+  // re-ask for the header, and a rack that fails to load fails the whole page — there is no useful "contents of a rack we
+  // cannot name". A by-id read: another rack's answer is never drawn under this address.
+  const detail = useRackDetail({ teamId, rackId });
+  const rack = detail.data?.rack ?? null;
+  const summary = detail.data?.summary ?? null;
 
   // The writes off this rack (placement_decision.md): Move Goods, Record Sample (a-sample-is-recorded-on-rack-detail) and
-  // Report Found. The reads are hand-rolled effects rather than query hooks, so a write bumps `reloadKey` and every read on
-  // the page — header, the shelf, the history — asks again, IN PLACE: a refresh moves nothing
-  // (motion-is-small-quick-and-shared; HARD RULE 10). The page stays drawn while it asks and the new answer lands where the
-  // old one was; only the shelf's and the history's rows dim under RefreshOverlay. The skeletons are the FIRST load's alone
-  // — re-drawing them on a refresh swapped the whole page out and made it rise in again (backlog #45).
+  // Report Found. The reads are query hooks (features/racks/queries.ts), so a write refreshes them by INVALIDATION — a
+  // move or a sample invalidates `racks` (useInvalidateStock), and the header, the shelf and the history ask again, once
+  // each, IN PLACE: a refresh moves nothing (motion-is-small-quick-and-shared; HARD RULE 10). The page stays drawn while
+  // it asks and the new answer lands where the old one was; only the shelf's and the history's rows dim under
+  // RefreshOverlay. The skeletons are the FIRST load's alone — re-drawing them on a refresh swapped the whole page out and
+  // made it rise in again (backlog #45). A found report posts nothing (useReportFound), so nothing here reads again.
   const [dialog, setDialog] = useState<"move" | "sample" | "found" | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-  const reload = () => setReloadKey((k) => k + 1);
 
   // WHAT IS ON IT, PRICED — Produk's read and its pager (useRackShelf).
-  const shelf = useRackShelf(teamId, rackId, reloadKey);
+  const shelf = useRackShelf(teamId, rackId);
 
   // The names alone, for the dialogs, which show a team inside a product's line.
   const teamNames = useMemo(() => new Map([...shelf.teams].map(([id, team]) => [id, team.name])), [shelf.teams]);
@@ -143,47 +139,6 @@ export function RackDetailPage() {
     [t],
   );
 
-  // Which rack is this, and the header's figures. Kept apart from the shelves so that paging one does not re-ask for the
-  // header, and a rack that fails to load fails the whole page — there is no useful "contents of a rack we cannot name".
-  //
-  // ⚠ NOT KEYED ON `t`: the words are the render's business (an invalid id is said below, in the app's language), and an
-  // effect that re-runs on a new `t` would re-read the rack for a language switch.
-  useEffect(() => {
-    if (teamId === undefined || rackId === 0n) {
-      setLoading(false);
-      return;
-    }
-
-    let ignore = false;
-
-    setLoading(true);
-    setError("");
-
-    rackClient
-      .rackDetail({ teamId, rackId })
-      .then((res) => {
-        if (ignore) return;
-
-        setRack(res.rack ?? null);
-        setSummary(res.summary ?? null);
-      })
-      .catch((err) => {
-        // Another warehouse's rack is NotFound, and so is a deleted one — rpcError says which.
-        if (!ignore) {
-          setError(rpcError(err));
-          setRack(null);
-          setSummary(null);
-        }
-      })
-      .finally(() => {
-        if (!ignore) setLoading(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [teamId, rackId, reloadKey]);
-
   // No current team means there is no warehouse to read a rack against — the whole page is meaningless.
   if (!current) {
     return (
@@ -198,13 +153,16 @@ export function RackDetailPage() {
 
   const back = () => navigate(backTo);
 
-  // THIS rack is on screen — a refresh keeps it drawn; another rack's (the address changed) is not this page's to show.
+  // THIS rack is on screen — a refresh keeps it drawn; another rack's (the address changed) is not this page's to show:
+  // the read is keyed by the rack, so its answer is this rack's or nothing yet.
   const shown = rack !== null && rack.id === rackId;
-  const failure = rackId === 0n ? t("racks.detail.invalidId") : error;
+  // Another warehouse's rack is NotFound, and so is a deleted one — rpcError says which.
+  const failure = rackId === 0n ? t("racks.detail.invalidId") : detail.error ? rpcError(detail.error) : "";
 
   // The FIRST load shows the page's shape (motion-is-small-quick-and-shared) — and only the first: a re-read of a rack
-  // already drawn keeps it drawn, so the page never swaps itself for its skeleton and rises in again (backlog #45).
-  if (loading && !shown && !failure) {
+  // already drawn keeps it drawn (`isPending` is the first load alone), so the page never swaps itself for its skeleton
+  // and rises in again (backlog #45).
+  if (detail.isPending && !failure) {
     return <ListSkeleton heading rows={3} testId="rack-detail-loading" />;
   }
 
@@ -296,12 +254,11 @@ export function RackDetailPage() {
 
   const counted = summary?.lastCountedAt ? Date.parse(summary.lastCountedAt) : NaN;
   const unknownCost = summary?.unknownCostProducts ?? 0;
-  // The shelf's value, when the server gave it — never to a warehouse (a-warehouse-sees-ready-value-but-a-shelf-only-units).
+  // The shelf's value, when the server gave it — to every reader, a warehouse included.
   const totalValue = summary?.totalValue;
 
   // THE HEADER FIGURES, the order list's card strip (a-list-summary-is-the-order-lists-card-strip) — what is on the shelf
-  // and what it is worth, then when it was last counted. Under the title, over the sections: the whole rack's. A
-  // warehouse's tile is the units alone: no value line under them.
+  // and what it is worth, then when it was last counted. Under the title, over the sections: the whole rack's.
   const figures = (
     <SummaryStrip testId="rack-summary">
       <SummaryCard
@@ -383,7 +340,7 @@ export function RackDetailPage() {
   // to the movements that decided goods LIVE here.
   const history = section(
     "history",
-    <RackHistory teamId={teamId} rackId={rackId} reloadKey={reloadKey} testId="rack-history" />,
+    <RackHistory teamId={teamId} rackId={rackId} testId="rack-history" />,
     "rack-history-panel",
   );
 
@@ -452,7 +409,6 @@ export function RackDetailPage() {
             teamNames={teamNames}
             open={dialog === "move"}
             onOpenChange={(open) => setDialog(open ? "move" : null)}
-            onMoved={reload}
           />
           <RecordSampleDialog
             warehouseId={teamId}
@@ -460,7 +416,6 @@ export function RackDetailPage() {
             teamNames={teamNames}
             open={dialog === "sample"}
             onOpenChange={(open) => setDialog(open ? "sample" : null)}
-            onRecorded={reload}
           />
           {reportsFound && (
             <ReportFoundDialog
@@ -514,9 +469,9 @@ interface RackStockTableProps {
 
 // THE SHELF, PRICED — what is on it, whose it is, how many here, the unit price and the value. It was two tabs, Produk and
 // Harga, the second this table with the money shown; on one page they read twice, so the money columns are here — for a
-// reader the server gives them to. A warehouse reads the shelf in units only
-// (a-warehouse-sees-ready-value-but-a-shelf-only-units): its lines carry no price, and the table draws neither column,
-// nor the phone block's price line.
+// reader the server gives them to, which is every reader, a warehouse's too (the 🔄 2026-11-20 line of
+// a-warehouse-sees-ready-value-but-a-shelf-only-units). Lines with no money would draw neither column, nor the phone
+// block's price line.
 function RackStockTable({ lines, products, teams, loading, error }: RackStockTableProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -580,13 +535,12 @@ function RackStockTable({ lines, products, teams, loading, error }: RackStockTab
   // the difference is the whole reason the server sends `cost_known` rather than letting a screen infer it.
   const money = (line: RackStockLine, v: number | undefined) =>
     line.costKnown ? formatRupiah(v ?? 0) : t("racks.detail.costUnknown");
-  // PRICED only when the server sent the money — `cost_known` is set (true or false) for every line of a reader given
-  // it, and unset on every line for a warehouse.
+  // PRICED only when the server sent the money — `cost_known` is set (true or false) on every line it sends.
   const priced = lines.some((line) => line.costKnown !== undefined);
 
   if (isMobile) {
     // A PHONE READS EACH PRODUCT AS A BLOCK (a-phone-reads-each-line-as-a-block) — the product at full width, whose it
-    // is, then the count on this rack, then its unit price × count = its value (that last line not for a warehouse).
+    // is, then the count on this rack, then its unit price × count = its value.
     return (
       <Stack gap="3" data-testid="rack-detail-stock">
         {lines.map((line) => {
@@ -683,36 +637,14 @@ function RackStockTable({ lines, products, teams, loading, error }: RackStockTab
 interface RackHistoryProps {
   teamId: bigint | undefined;
   rackId: bigint;
-  // Bumped by a write on this page (a move, a sample), so the history asks again.
-  reloadKey: number;
   testId: string;
 }
 
 /** Riwayat's chips: every movement, or only the ones that decided goods live here. */
 type HistoryLens = "all" | "placement";
 
-// The names of a page of history rows' products. Never throws: a product the catalogue cannot name keeps its row, as
-// "#id" — the same fallback the shelf's own table uses.
-async function productNamesFor(teamId: bigint, ids: bigint[]): Promise<Map<string, string>> {
-  const names = new Map<string, string>();
-  const wanted = [...new Set(ids.filter((id) => id > 0n))];
-  if (wanted.length === 0) return names;
-
-  try {
-    const res = await productClient.productByIds({
-      teamId,
-      filter: { ids: wanted },
-      dataRequest: productByIdsRowData(),
-    });
-    for (const product of productsFromByIds(res)) {
-      names.set(product.id.toString(), product.name);
-    }
-  } catch {
-    // Deliberately empty — see above.
-  }
-
-  return names;
-}
+const NO_MOVEMENTS: RackHistoryRow[] = [];
+const NO_NAMES = new Map<string, string>();
 
 // RackHistory is what has happened to THIS SHELF (#197) — a read `StockHistory` cannot serve, since
 // it demands a product id and answers "what happened to this product".
@@ -722,99 +654,30 @@ async function productNamesFor(teamId: bigint, ids: bigint[]): Promise<Map<strin
 // they read twice, so Penempatan is a chip over the one ledger:
 //
 //   (Semua) (Hanya penempatan)  ← Diterima and Pindah rak only — what decided goods live here
-function RackHistory({ teamId, rackId, reloadKey, testId }: RackHistoryProps) {
+//
+// The read is a query (features/racks useRackHistory): the page of rows, WHO did each (any-warehouse-member-may-move-goods
+// — every row names its person) and to WHAT, committed together; a failed name lookup falls back to "#id". A write on the
+// page refreshes it by invalidation.
+function RackHistory({ teamId, rackId, testId }: RackHistoryProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [lens, setLens] = useState<HistoryLens>("all");
   const kinds = lens === "placement" ? PLACEMENT_KINDS : undefined;
-
-  const [movements, setMovements] = useState<(StockMovement & Pick<MovementRow, "countCorrection">)[]>([]);
-  // userId → name, and productId → name, for the page of rows: WHO did it (any-warehouse-member-may-move-goods — every
-  // row names its person) and to WHAT. One batch each, committed with the rows; a failed lookup falls back to "#id".
-  const [actorNames, setActorNames] = useState<Map<string, string>>(new Map());
-  const [productNames, setProductNames] = useState<Map<string, string>>(new Map());
-  const [fetching, setFetching] = useState(true);
-  // Which rack the rows on screen are: a re-read of the same rack — a write on the page, the other chip, a page turned —
-  // keeps them drawn under RefreshOverlay (HARD RULE 10, backlog #45); another rack's are a first load.
-  const [shownFor, setShownFor] = useState<bigint | null>(null);
-  const [error, setError] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalItems, setTotalItems] = useState(0);
-
-  // The kinds array is a new literal on every render, so it is joined to a stable string for the
-  // dependency list — depending on the array itself would refetch this tab forever.
   const kindKey = (kinds ?? []).join(",");
 
-  useEffect(() => {
-    if (teamId === undefined || rackId === 0n) {
-      setFetching(false);
-      return;
-    }
+  const query = useRackHistory({ teamId, rackId, kinds, page, pageSize });
+  const movements = query.data?.movements ?? NO_MOVEMENTS;
+  const actorNames = query.data?.actorNames ?? NO_NAMES;
+  const productNames = query.data?.productNames ?? NO_NAMES;
+  const totalItems = query.data?.totalItems ?? 0;
+  const error = query.error ? rpcError(query.error) : "";
 
-    let ignore = false;
-
-    setFetching(true);
-    setError("");
-
-    rackClient
-      .rackHistory({
-        teamId,
-        filter: {
-          rackId,
-          kinds: kindKey === "" ? [] : kindKey.split(",").map(Number),
-        },
-        dataRequest: rackHistoryRowData(),
-        page: { page, limit: pageSize },
-      })
-      .then(async (res) => {
-        if (ignore) return;
-
-        const rows = rackHistoryFromList(res.items, res.ids);
-        const [actors, names] = await Promise.all([
-          fetchActors(rows.map((m) => m.actorUserId)),
-          productNamesFor(teamId, rows.map((m) => m.productId)),
-        ]);
-        if (ignore) return;
-
-        const people = new Map<string, string>();
-        for (const [id, user] of actors) {
-          people.set(id, personName(user));
-        }
-
-        // A received-count correction reads as one — *Jumlah terima dikoreksi · 20 → 18*, why and who
-        // (the-received-count-prototype-is-accepted).
-        setMovements(
-          rows.map((m) => {
-            const countCorrection = countCorrectionOf(m, actors);
-            return countCorrection ? { ...m, countCorrection } : m;
-          }),
-        );
-        setActorNames(people);
-        setProductNames(names);
-        setTotalItems(Number(res.pageInfo?.totalItems ?? 0n));
-        setShownFor(rackId);
-      })
-      .catch((err) => {
-        if (!ignore) {
-          setError(rpcError(err));
-          setMovements([]);
-          setTotalItems(0);
-          setShownFor(null);
-        }
-      })
-      .finally(() => {
-        if (!ignore) setFetching(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [teamId, rackId, page, pageSize, kindKey, reloadKey]);
-
-  // The FIRST read draws the skeleton; a re-read dims the rows already drawn.
-  const shown = shownFor === rackId;
-  const loading = fetching && !shown;
+  // The FIRST read of this rack's history draws the skeleton; a re-read — a write on the page, the other chip, a page
+  // turned — dims the rows already drawn under RefreshOverlay (HARD RULE 10, backlog #45). Another rack's are a first load
+  // (useRackHistory keeps previous rows only within the same rack).
+  const loading = query.isPending;
 
   // The chips stay put while the ledger under them loads or fails — a lens is chosen, then answered.
   const chips = (
@@ -861,7 +724,7 @@ function RackHistory({ teamId, rackId, reloadKey, testId }: RackHistoryProps) {
       {/* The shared ledger (features/inventory/MovementTable): this shelf's history names the PRODUCT
           that moved, since the rack is already the thing you are looking at. "On shelf after" stays
           this page's wording — it is one shelf's count, not the warehouse's (#135). */}
-      <RefreshOverlay busy={fetching && shown}>
+      <RefreshOverlay busy={query.isFetching && !query.isPending}>
         <MovementTable
           movements={movements}
           testId={testId}

@@ -10,15 +10,18 @@
 // "same picture = same place" holds, and a card's icon cannot quietly differ from the one beside its name
 // in the nav.
 import type { LucideIcon } from "lucide-react";
-import { FileText, History, Landmark, MapPin, Package, StickyNote, Truck } from "lucide-react";
+import { FileText, History, Landmark, MapPin, Package, StickyNote, Tags, Truck } from "lucide-react";
 
-export type SectionKey = "info" | "notes" | "items" | "timeline" | "shipping" | "recipient" | "settlement";
+export type SectionKey = "info" | "tags" | "notes" | "items" | "timeline" | "shipping" | "recipient" | "settlement";
 
 // ⚠ `navKey` IS A SHORT LABEL, `titleKey` THE CARD'S FULL ONE. "Withdrawal dan penyesuaian" is right
 // above a card and too long in a 13rem column, where it wrapped onto two lines and made that one item
 // taller than its neighbours.
 export const SECTIONS: { key: SectionKey; titleKey: string; navKey: string; icon: LucideIcon }[] = [
   { key: "info", titleKey: "orderDetail.info.title", navKey: "orderDetail.nav.info", icon: FileText },
+  // THE ORDER'S TAGS (backlog #100, the-order-tags-prototype-is-accepted): after Info and before Catatan — on a wide
+  // screen first in the side column, above Catatan — as a restock's Tag box sits before its note.
+  { key: "tags", titleKey: "orders.tags.title", navKey: "orders.tags.nav", icon: Tags },
   { key: "notes", titleKey: "orderDetail.notes.title", navKey: "orderDetail.nav.notes", icon: StickyNote },
   { key: "items", titleKey: "orderDetail.items.title", navKey: "orderDetail.nav.items", icon: Package },
   { key: "timeline", titleKey: "orderDetail.timeline.title", navKey: "orderDetail.nav.timeline", icon: History },

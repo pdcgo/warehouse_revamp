@@ -11,8 +11,7 @@ import { formatUnixDate } from "../../../lib/datetime";
 import { AccountLogDetailDialog } from "./AccountLogDetailDialog";
 import { EmptyHint } from "../../../components/feedback/EmptyHint";
 import { ActorName } from "../../../components/entity/ActorName";
-// ⚠ #99 PROTOTYPE (expense types) — a capital row typed on Pengeluaran says so; today's words live.
-import { CapitalViaExpenses } from "../../../features/expense/ExpenseTypesParts";
+import { ViaExpenses } from "./ViaExpenses";
 
 // A ROW LIGHTS UP UNDER THE POINTER (owner: *"hoverable juga"*, `a-statement-row-lights-up`) — as the report's table
 // does: set on every cell, by Chakra's `_hover`, which a story can drive with `data-hover`.
@@ -149,7 +148,7 @@ export function AccountLogTable({
                     <Text fontSize="xs" color="fg.muted" data-testid={`account-log-way-${log.id}`}>
                       {/* A hand row Root or the System Administrator made from outside the team carries the "by Root
                           team" badge beside the person (an-override-shows-a-platform-badge). */}
-                      <CapitalViaExpenses log={log} actorName={actorName}>
+                      <ViaExpenses log={log} actorName={actorName}>
                         {byHand ? (
                           <ActorName
                             name={t("financialAccounts.log.byHand", { name: actorName(log.actorId) })}
@@ -159,7 +158,7 @@ export function AccountLogTable({
                         ) : (
                           t("financialAccounts.log.automatic")
                         )}
-                      </CapitalViaExpenses>
+                      </ViaExpenses>
                     </Text>
                   </Stack>
                 </Table.Cell>

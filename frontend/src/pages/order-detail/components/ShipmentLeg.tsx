@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Flex, Icon, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { courierCodeOf, useShippingCatalogue } from "../../../features/shipping/catalogue";
+import { TrackingLink, useTrackingHref } from "../../../features/shipment/CourierTrackingLink";
 import { Truck } from "lucide-react";
 
 import { formatUnixDateTime } from "../../../lib/datetime";
@@ -18,6 +19,10 @@ import { Rail } from "./Rail";
 //
 // ⚠ A LEG WITH NO TRAIL SAYS SO. Most parcels carry no trail here — nothing reads the courier back yet
 // — and a missing trail must read as "not recorded", not as "this screen does not show trails".
+//
+// THE COURIER'S TRACKING PAGE (the-tracking-link-prototype-is-accepted): the resi gets a ↗ *Lacak di situs kurir* beside
+// its copy action — the way to follow the parcel while no trail is read back — when the courier has a link (the shared
+// catalogue, as the courier code above). No link: the copyable resi alone.
 export function ShipmentLeg({
   title,
   channelId = 0n,
@@ -41,6 +46,7 @@ export function ShipmentLeg({
   const { t } = useTranslation();
   const { couriers, loading } = useShippingCatalogue();
   const courier = courierCodeOf(couriers, channelId, loading);
+  const trackingHref = useTrackingHref(channelId, receiptCode);
 
   return (
     <Stack gap="3" data-testid={testId}>
@@ -58,7 +64,16 @@ export function ShipmentLeg({
           ) : undefined}
         </Fact>
         <Fact label={t("orders.receiptColumn")}>
-          {receiptCode ? <CopyText value={receiptCode} mono /> : undefined}
+          {receiptCode ? (
+            trackingHref ? (
+              <Flex gap="2" align="center" wrap="wrap">
+                <CopyText value={receiptCode} mono />
+                <TrackingLink href={trackingHref} hint testId={`${testId}-track`} />
+              </Flex>
+            ) : (
+              <CopyText value={receiptCode} mono />
+            )
+          ) : undefined}
         </Fact>
         {extra && (
           <Fact label={extra.label} mark={extra.mark}>

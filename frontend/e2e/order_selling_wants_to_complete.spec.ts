@@ -43,15 +43,16 @@ import { NOT_COUNTED, expectMoveCounted, expectMoveCounts, expectMovesOffered } 
 //   its Timeline tab, ONE completed step by the seller's user; on its Orders › Semua the order carries the Completed
 //   badge; the order as the warehouse reads it is ORDER_STATUS_COMPLETED.
 // - `complete recorded in analytic metric` — Analytic › Order › Order status moves (`metrics/orders/moves`, #84) counts a
-//   complete as a Completed, shipped → completed. Its own test, LAST in the file, on a shop of its own with TWO shipped
-//   orders of which the test completes ONE, read as selling:owner: Add Metric › Order offers Order status moves, and
+//   complete as a Completed, shipped → completed. Its own test per role, LAST in the file — EVERY selling role on a shop
+//   of its own with TWO shipped orders of which the role completes ONE, read as that role: Add Metric › Order offers
+//   Order status moves, and
 //   Analytic by shop over the last 7 days, filtered to that shop, reads `created_count` 2 (the fold landed) and
 //   `completed_count` exactly 1 — the untouched order, still shipped, adds nothing (order_moves_metric.ts). (Every
 //   earlier move — confirmed, picked, handed over, shipped — happened to BOTH orders.) A `regression:` step reads the
 //   same row's Disputes resolved (#97) as 0 / unset: only problem → completed counts there, never shipped → completed.
 //
 // GROUND (beforeAll, as root, through the API): a selling team of its own (root owns it) with a user per selling role, a
-// Shopee shop (root and the CS on it), a warehouse it returns to with a warehouse:staff user, 10 units of one product
+// Shopee shop (root and the CS on it), a warehouse it returns to with a warehouse:staff user, 14 units of one product
 // accepted onto a rack there. Orders of 1 unit, each walked by the warehouse to `shipping` (processed → picked → shipping)
 // and by the selling team on to `shipped`: one per role, one for the warehouse's refused move; plus the metric check's own
 // shop with its two. Seeded in beforeAll so a worker restarted after a failure seeds its own.
@@ -61,7 +62,7 @@ const SUFFIX = Date.now().toString().slice(-6);
 const PASSWORD = "e2e-complete-pass-1";
 const PRODUCT = `Sabun Selesai ${SUFFIX}`;
 const SKU = `CPK${SUFFIX}`;
-const STOCK = 10;
+const STOCK = 14;
 
 const ROLES = [
   { key: "own", role: "ROLE_SELLING_OWNER", label: "selling:owner" },
@@ -72,10 +73,10 @@ type Key = (typeof ROLES)[number]["key"];
 
 const COND = "status: shipped · 1 order";
 
-// The orders, by slot: one per role (its key), the warehouse's refused move's, and the metric check's two (on their own
-// shop).
+// The orders, by slot: one per role (its key), the warehouse's refused move's, and per role the metric check's two (on
+// that role's own shop: m<key>a is moved, m<key>b stays).
 const SLOTS = ["own", "adm", "cs", "crew"] as const;
-const METRIC_SLOTS = ["mta", "mtb"] as const;
+const metricSlots = (key: Key) => [`m${key}a`, `m${key}b`] as const;
 
 const userOf = (key: Key) => `e2ecp${key}${SUFFIX}`;
 const nameOf = (key: Key) => `Complete ${key} ${SUFFIX}`;
@@ -88,7 +89,8 @@ const ground = {
   team: "",
   warehouse: "",
   shop: "",
-  metricShop: "",
+  // role key → the metric check's own shop
+  metricShops: {} as Record<string, string>,
   // slot → order id
   orders: {} as Record<string, string>,
   // role key → user id
@@ -244,7 +246,9 @@ async function seed(browser: Browser) {
     return id;
   };
   ground.shop = await shop(`E2E Selesai Shop ${SUFFIX}`, `CPP${SUFFIX}`);
-  ground.metricShop = await shop(`E2E Selesai Metric Shop ${SUFFIX}`, `CPQ${SUFFIX}`);
+  for (const r of ROLES) {
+    ground.metricShops[r.key] = await shop(`E2E Selesai Metric Shop ${r.key} ${SUFFIX}`, `CPQ${r.key.toUpperCase()}${SUFFIX}`);
+  }
 
   // The product's units on the warehouse's rack, paid from the seller's operational account.
   const rack = String((await ok(page, "inventory.v1.RackService/RackCreate", { teamId: ground.warehouse, code: `cp-${SUFFIX}` })).rack.id);
@@ -310,7 +314,7 @@ async function seed(browser: Browser) {
     ground.orders[slot] = id;
   };
   for (const slot of SLOTS) await place(slot, ground.shop);
-  for (const slot of METRIC_SLOTS) await place(slot, ground.metricShop);
+  for (const r of ROLES) for (const slot of metricSlots(r.key)) await place(slot, ground.metricShops[r.key]!);
 
   await page.close();
 }
@@ -420,27 +424,30 @@ test.describe(`selling:all wants to complete an order (${COND})`, () => {
     }
   });
 
-  // Its own test, LAST in the file: it moves one order of a shop of its own (see the head of this file).
-  test(`selling:owner complete order (${COND}): complete recorded in analytic metric`, async ({ page }) => {
-    await signInAs(page, "own");
-    const [orderId, left] = [ground.orders.mta!, ground.orders.mtb!];
-    const shop = ground.metricShop;
-    expect(await orderOf(page, orderId).then((o) => o.status)).toBe("ORDER_STATUS_SHIPPED");
+  // Its own test per role, LAST in the file: each moves one order of the role's own shop (see the head of this file).
+  for (const r of ROLES) {
+    test(`${r.label} complete order (${COND}): complete recorded in analytic metric`, async ({ page }) => {
+      await signInAs(page, r.key);
+      const [moved, kept] = metricSlots(r.key);
+      const [orderId, left] = [ground.orders[moved]!, ground.orders[kept]!];
+      const shop = ground.metricShops[r.key]!;
+      expect(await orderOf(page, orderId).then((o) => o.status)).toBe("ORDER_STATUS_SHIPPED");
 
-    // WHEN — Complete Order on one of the shop's two orders; the other stays shipped.
-    await completeOrder(page, orderId, refOf("mta"));
-    expect((await orderOf(page, orderId)).status).toBe("ORDER_STATUS_COMPLETED");
-    expect((await orderOf(page, left)).status).toBe("ORDER_STATUS_SHIPPED");
+      // WHEN — Complete Order on one of the shop's two orders; the other stays shipped.
+      await completeOrder(page, orderId, refOf(moved));
+      expect((await orderOf(page, orderId)).status).toBe("ORDER_STATUS_COMPLETED");
+      expect((await orderOf(page, left)).status).toBe("ORDER_STATUS_SHIPPED");
 
-    await test.step("then: complete recorded in analytic metric", async () => {
-      // Order status moves is offered under Order, and the shop's Completed reads the ONE complete.
-      await expectMovesOffered(page);
-      await expectMoveCounted(page, shop, "completed_count");
+      await test.step("then: complete recorded in analytic metric", async () => {
+        // Order status moves is offered under Order, and the shop's Completed reads the ONE complete.
+        await expectMovesOffered(page);
+        await expectMoveCounted(page, shop, "completed_count");
+      });
+
+      await test.step("regression: a complete is no dispute resolved", async () => {
+        // #97: Disputes resolved counts only problem → completed — a shipped → completed reaches Completed alone.
+        await expectMoveCounts(page, shop, { completed_count: "1", disputes_resolved_count: NOT_COUNTED });
+      });
     });
-
-    await test.step("regression: a complete is no dispute resolved", async () => {
-      // #97: Disputes resolved counts only problem → completed — a shipped → completed reaches Completed alone.
-      await expectMoveCounts(page, shop, { completed_count: "1", disputes_resolved_count: NOT_COUNTED });
-    });
-  });
+  }
 });

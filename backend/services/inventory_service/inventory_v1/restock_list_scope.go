@@ -99,6 +99,15 @@ func restockListScope(db *gorm.DB, teamID uint64, filter *inventoryv1.RestockReq
 		)
 	}
 
+	// BY THE SETTLED MARK (backlog #101): the seller's Hilang tab is LOST + UNSETTLED, so a settled lost restock leaves
+	// it and stays under Semua (the-restock-resolutions-prototype-is-accepted). Unasked, either — as before.
+	switch filter.GetSettled() {
+	case inventoryv1.RestockSettledFilter_RESTOCK_SETTLED_FILTER_SETTLED:
+		query = query.Where("settled_at IS NOT NULL")
+	case inventoryv1.RestockSettledFilter_RESTOCK_SETTLED_FILTER_UNSETTLED:
+		query = query.Where("settled_at IS NULL")
+	}
+
 	query = applyRestockDateRange(query, filter)
 	query = applyRestockSearch(query, filter.GetQ())
 

@@ -26,6 +26,8 @@ import (
 //   - Updated, another account: the old amount back INTO the old account and the new amount OUT of the new one,
 //     one group (an-edit-may-move-the-payment-to-another-account).
 //   - Cancelled with money returned: the amount back INTO the account that paid; without, nothing.
+//   - Refunded (backlog #101, a-restock-problem-is-settled-by-resolution-rows): a REFUND resolution's amount INTO the
+//     account the row names — the cancel's path, its own row per refund.
 //
 // Every event carries its own delta, so the rows COMMUTE: an edit delivered before its create, or a cancel before an
 // edit, still leaves the account at the same balance once all have arrived — no ordering is needed.
@@ -42,6 +44,8 @@ func (s *Service) RestockPaymentHandler() event_source.PushHandler {
 			return s.postRestockUpdated(ctx, event, variant.RestockUpdated)
 		case *eventsv1.Event_RestockCancelled:
 			return s.postRestockCancelled(ctx, event, variant.RestockCancelled)
+		case *eventsv1.Event_RestockRefunded:
+			return s.postRestockRefunded(ctx, event, variant.RestockRefunded)
 		default:
 			// A variant this listener does not post. ACKed: redelivering what nothing here will ever handle is a
 			// loop, not a retry. The subscriptions' event_type filters keep it from arriving at all.
@@ -141,6 +145,28 @@ func (s *Service) postRestockCancelled(ctx context.Context, event *eventsv1.Even
 			accountID:   cancelled.GetFinanceAccountId(),
 			change:      cancelled.GetAmount(),
 			description: fmt.Sprintf("Restock #%d cancelled — money returned", cancelled.GetRestockId()),
+		}})
+}
+
+// postRestockRefunded posts a REFUND resolution (backlog #101): its amount INTO the account the row names, a `restock`
+// row whose history names the restock — exactly as a cancelled restock's money comes back (postRestockCancelled,
+// restock-is-never-typed-by-hand). The claim keeps a redelivery from posting twice.
+func (s *Service) postRestockRefunded(ctx context.Context, event *eventsv1.Event, refunded *eventsv1.RestockRefunded) error {
+	if san_money.IsZero(refunded.GetAmount()) {
+		return s.claimOnly(ctx, event)
+	}
+
+	// NOT acked: money that came back with no account to put it in is money this build cannot file. Inventory refuses a
+	// refund without one; this is the listener not trusting that.
+	if refunded.GetFinanceAccountId() == 0 {
+		return fmt.Errorf("financial_account: %s: a restock refund with no account it went into", event.GetEventId())
+	}
+
+	return s.postPaymentLegs(ctx, event, m.ChangeRestock, refunded.GetTeamId(), refunded.GetActorId(),
+		actDay(event, refunded.GetRefundedAtUnix()), []paymentLeg{{
+			accountID:   refunded.GetFinanceAccountId(),
+			change:      refunded.GetAmount(),
+			description: fmt.Sprintf("Restock #%d refund", refunded.GetRestockId()),
 		}})
 }
 

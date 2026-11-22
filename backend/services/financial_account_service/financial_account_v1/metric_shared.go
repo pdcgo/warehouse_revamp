@@ -86,6 +86,7 @@ func changesOf(f figures) *financial_accountv1.AccountChangeMetric {
 		Transfer:       f.Transfer,
 		TeamPayment:    f.TeamPayment,
 		Capital:        f.Capital,
+		MoneyIn:        f.MoneyIn,
 		Change:         f.Change,
 		ClosingBalance: f.CloseBalance,
 	}
@@ -126,6 +127,8 @@ func column(c figures, changeType string) float64 {
 		return c.TeamPayment
 	case m.ChangeCapital:
 		return c.Capital
+	case m.ChangeMoneyIn:
+		return c.MoneyIn
 	}
 
 	return 0
@@ -150,6 +153,7 @@ func add(a, b figures) figures {
 		Transfer:       a.Transfer + b.Transfer,
 		TeamPayment:    a.TeamPayment + b.TeamPayment,
 		Capital:        a.Capital + b.Capital,
+		MoneyIn:        a.MoneyIn + b.MoneyIn,
 		Change:         a.Change + b.Change,
 		OpenBalance:    a.OpenBalance + b.OpenBalance,
 		CloseBalance:   a.CloseBalance + b.CloseBalance,
@@ -352,6 +356,7 @@ type accountWindow struct {
 	MovedTransfer       bool
 	MovedTeamPayment    bool
 	MovedCapital        bool
+	MovedMoneyIn        bool
 }
 
 func (w accountWindow) moved(changeType string) bool {
@@ -374,6 +379,8 @@ func (w accountWindow) moved(changeType string) bool {
 		return w.MovedTeamPayment
 	case m.ChangeCapital:
 		return w.MovedCapital
+	case m.ChangeMoneyIn:
+		return w.MovedMoneyIn
 	}
 
 	return false

@@ -8,7 +8,7 @@ import { asRole } from "../../../../.storybook/sessionScenario";
 import { expenseScenario, someoneElseAdjusts } from "../../../../.storybook/expenseStub";
 import { CURRENT_MONTH, EXPENSE_TEAM } from "../../../../.storybook/expenseFixtures";
 import type { ExpenseRecord } from "../../../gen/warehouse/expense/v1/expense_pb";
-import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
+import { ExpenseKind, ExpenseType } from "../../../gen/warehouse/expense/v1/expense_pb";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { formatDayShort } from "../../../lib/datetime";
 import { formatRupiah } from "../../../lib/money";
@@ -39,7 +39,7 @@ import { AdjustExpenseDialog } from "./AdjustExpenseDialog";
 const EXPENSE_ID = 503n;
 
 function Harness({ expenseId = EXPENSE_ID }: { expenseId?: bigint }) {
-  const query = useExpenses({ teamId: EXPENSE_TEAM, month: CURRENT_MONTH, kind: ExpenseKind.UNSPECIFIED, page: 1, pageSize: 50 });
+  const query = useExpenses({ teamId: EXPENSE_TEAM, month: CURRENT_MONTH, kind: ExpenseKind.UNSPECIFIED, type: ExpenseType.UNSPECIFIED, page: 1, pageSize: 50 });
   // The row the page would have clicked — captured once, as `adjusting` is on the page.
   const [expense, setExpense] = useState<ExpenseRecord | null>(null);
   const [closed, setClosed] = useState(false);

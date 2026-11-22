@@ -289,8 +289,8 @@ export const RecordAnExpense: Story = {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("open-record-cost"));
-    await userEvent.click(await screen.findByTestId("expense-kind-select"));
-    const operational = await screen.findByTestId(`expense-kind-select-${ExpenseKind.OPERATIONAL}`);
+    await userEvent.click(await screen.findByTestId("expense-type-select"));
+    const operational = await screen.findByTestId("expense-type-select-electricity");
     await waitFor(() => expect(operational).toBeVisible());
     await userEvent.click(operational);
     await userEvent.type(screen.getByTestId("expense-amount"), "300000", { delay: 40 });

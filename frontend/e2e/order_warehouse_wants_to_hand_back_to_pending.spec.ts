@@ -45,8 +45,9 @@ import { expectMoveCounted, expectMovesOffered } from "./order_moves_metric";
 //   order is cancelled (its stepper and its record).
 // - `back to pending recorded in analytic metric` — Analytic › Order › Order status moves (`metrics/orders/moves`, #84)
 //   counts a hand-back as a Back to pending, processed or picked → pending (the-order-metric-ids-name-what-moved). Its own
-//   test, LAST in the file, on a shop of its own with TWO processed orders of which the test hands ONE back, read as
-//   warehouse:owner (a warehouse reads every count of the orders it ships): Add Metric › Order offers Order status moves,
+//   test per role, LAST in the file — EVERY warehouse role on a shop of its own with TWO processed orders of which the
+//   role hands ONE back, read as that role (a warehouse reads every count of the orders it ships): Add Metric › Order
+//   offers Order status moves,
 //   and Analytic by shop over the last 7 days, filtered to that shop, reads `created_count` 2 (the fold landed) and
 //   `back_to_pending_count` exactly 1 — the untouched order, still processed, adds nothing (order_moves_metric.ts).
 //
@@ -57,7 +58,8 @@ import { expectMoveCounted, expectMovesOffered } from "./order_moves_metric";
 // GROUND (beforeAll, as root, through the API): a selling team of its own (root owns it) with its owner, a warehouse it
 // returns to with a user per warehouse role, a Shopee shop, 20 units of one product accepted onto a rack there. Per role
 // two orders of 1 unit: one confirmed (processed), one confirmed and picked with customer service's note that the
-// platform cancelled it; the metric check's own shop with two processed orders; one processed order for the regression.
+// platform cancelled it; per role the metric check's own shop with two processed orders; one processed order for the
+// regression.
 // Seeded in beforeAll so a worker restarted after a failure seeds its own.
 
 const RPC = "/warehouse.selling.v1.OrderService";
@@ -90,8 +92,9 @@ const ground = {
   team: "",
   warehouse: "",
   shop: "",
-  metricShop: "",
-  // slot ("pr-<role>", "pk-<role>", "met1", "met2", "reg") → order id
+  // role key → the metric check's own shop
+  metricShops: {} as Record<string, string>,
+  // slot ("pr-<role>", "pk-<role>", "met1-<role>", "met2-<role>", "reg") → order id
   orders: {} as Record<string, string>,
   // role key → user id
   users: {} as Record<string, string>,
@@ -316,8 +319,10 @@ async function seed(browser: Browser) {
     return id;
   };
   ground.shop = await shop(`E2E Hand Back Shop ${SUFFIX}`, `OHP${SUFFIX}`);
-  // The metric check's own shop, so no other test's hand-back counts on it.
-  ground.metricShop = await shop(`E2E Hand Back Metric ${SUFFIX}`, `OHM${SUFFIX}`);
+  // The metric check's own shop per role, so no other test's hand-back counts on it.
+  for (const r of WAREHOUSE_ROLES) {
+    ground.metricShops[r.key] = await shop(`E2E Hand Back Metric ${r.key} ${SUFFIX}`, `OHM${r.key.toUpperCase()}${SUFFIX}`);
+  }
 
   // 20 units of the product on the warehouse's rack, paid from the seller's operational account.
   const rack = String((await ok(page, "inventory.v1.RackService/RackCreate", { teamId: ground.warehouse, code: `oh-${SUFFIX}` })).rack.id);
@@ -366,8 +371,10 @@ async function seed(browser: Browser) {
     walks.push({ slot: `pr-${r.key}`, shop: ground.shop, to: ["PROCESSED"] });
     walks.push({ slot: `pk-${r.key}`, shop: ground.shop, to: ["PROCESSED", "PICKED"], csNote: true });
   }
-  walks.push({ slot: "met1", shop: ground.metricShop, to: ["PROCESSED"] });
-  walks.push({ slot: "met2", shop: ground.metricShop, to: ["PROCESSED"] });
+  for (const r of WAREHOUSE_ROLES) {
+    walks.push({ slot: `met1-${r.key}`, shop: ground.metricShops[r.key]!, to: ["PROCESSED"] });
+    walks.push({ slot: `met2-${r.key}`, shop: ground.metricShops[r.key]!, to: ["PROCESSED"] });
+  }
   walks.push({ slot: "reg", shop: ground.shop, to: ["PROCESSED"] });
 
   for (const w of walks) {
@@ -516,22 +523,25 @@ test("back to pending order: refused with no note, and refused to the selling te
   expect.soft((after.timelineLogs ?? []).filter((l) => l.status === "ORDER_STATUS_PENDING").length, "only the placement").toBe(1);
 });
 
-// Its own test, LAST in the file: it moves one order of a shop of its own (see the head of this file).
-test(`warehouse:owner back to pending order (${PROCESSED_COND}): back to pending recorded in analytic metric`, async ({ page }) => {
-  await signInAs(page, "wown", ground.warehouse);
-  const shop = ground.metricShop;
-  const left = ground.orders.met2!;
-  expect((await orderOf(page, ground.orders.met1!, ground.warehouse)).status).toBe("ORDER_STATUS_PROCESSED");
+// Its own test per role, LAST in the file: each moves one order of the role's own shop (see the head of this file).
+for (const r of WAREHOUSE_ROLES) {
+  test(`${r.label} back to pending order (${PROCESSED_COND}): back to pending recorded in analytic metric`, async ({ page }) => {
+    await signInAs(page, r.key, ground.warehouse);
+    const shop = ground.metricShops[r.key]!;
+    const [moved, kept] = [`met1-${r.key}`, `met2-${r.key}`];
+    const left = ground.orders[kept]!;
+    expect((await orderOf(page, ground.orders[moved]!, ground.warehouse)).status).toBe("ORDER_STATUS_PROCESSED");
 
-  // WHEN — ONE of the shop's two processed orders handed back; the other stays processed.
-  const answer = await handBack(page, "confirm", "met1", missingNoteOf("met"));
-  expect(answer.status()).toBe(200);
-  expect((await orderOf(page, ground.orders.met1!, ground.warehouse)).status).toBe("ORDER_STATUS_PENDING");
-  expect((await orderOf(page, left, ground.warehouse)).status).toBe("ORDER_STATUS_PROCESSED");
+    // WHEN — ONE of the shop's two processed orders handed back; the other stays processed.
+    const answer = await handBack(page, "confirm", moved, missingNoteOf(`met-${r.key}`));
+    expect(answer.status()).toBe(200);
+    expect((await orderOf(page, ground.orders[moved]!, ground.warehouse)).status).toBe("ORDER_STATUS_PENDING");
+    expect((await orderOf(page, left, ground.warehouse)).status).toBe("ORDER_STATUS_PROCESSED");
 
-  await test.step("then: back to pending recorded in analytic metric", async () => {
-    // Order status moves is offered under Order, and the shop's Back to pending reads the ONE hand-back.
-    await expectMovesOffered(page);
-    await expectMoveCounted(page, shop, "back_to_pending_count");
+    await test.step("then: back to pending recorded in analytic metric", async () => {
+      // Order status moves is offered under Order, and the shop's Back to pending reads the ONE hand-back.
+      await expectMovesOffered(page);
+      await expectMoveCounted(page, shop, "back_to_pending_count");
+    });
   });
-});
+}

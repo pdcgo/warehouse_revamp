@@ -97,7 +97,7 @@ func TestExpenseEvents_NothingForStockLossOrAnOldExpense(t *testing.T) {
 	ctx := context.Background()
 
 	loss, err := svc.ExpenseCreate(ctx, connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Amount: 30_000, OccurredAt: "2026-09-28",
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS), Amount: 30_000, OccurredAt: "2026-09-28",
 	}))
 	if err != nil {
 		t.Fatalf("stock loss: %v", err)

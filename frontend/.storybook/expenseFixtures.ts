@@ -22,7 +22,7 @@
 // old, naming no account.
 // Toko Kenanga (13) has recorded nothing — the screen as a team first opens it.
 
-import { ExpenseKind } from "../src/gen/warehouse/expense/v1/expense_pb";
+import { ExpenseKind, type ExpenseOrigin, type ExpenseType } from "../src/gen/warehouse/expense/v1/expense_pb";
 import { thisMonth } from "../src/lib/period";
 
 export interface ExpenseFixture {
@@ -42,6 +42,15 @@ export interface ExpenseFixture {
   financeAccountId: bigint;
   /** Recorded by Root or the System Administrator from outside the team (`is_override`); absent reads false. */
   isOverride?: boolean;
+  /** Its type (expense-types-sit-under-groups) — an adjustment its expense's; absent = UNSPECIFIED, a row from before
+   *  the types (its group alone, *Tanpa jenis*). */
+  type?: ExpenseType;
+  /** The door (ExpenseRecord.origin) — ACCOUNT_PAGE for a Setor / Tarik Modal made on the account page; absent =
+   *  UNSPECIFIED, typed on Biaya. */
+  origin?: ExpenseOrigin;
+  /** STUB-ONLY, never served: the account row an ACCOUNT_PAGE expense IS (expense_records.account_log_id) — one expense
+   *  per account row. */
+  accountLogId?: bigint;
 }
 
 /** Melati's operational accounts (financialAccountFixtures.ts) — what Paid from offers. */

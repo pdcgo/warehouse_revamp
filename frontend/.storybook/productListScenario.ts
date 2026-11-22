@@ -51,10 +51,33 @@ export interface DiscoverHistoryCall {
 export const discoverHistoryCalls: DiscoverHistoryCall[] = [];
 export const productImagesCalls: { teamId: bigint; ids: bigint[] }[] = [];
 
+// PEMASOK'S READ — ProductSupplierGoods, on both product pages (the-supplier-tab-names-the-store): which team asked, about
+// which product, in which warehouse lens and page. Reset with the list's.
+export interface ProductSupplierCall {
+  teamId: bigint;
+  productId: bigint;
+  warehouseId: bigint;
+  page: number;
+}
+
+export const productSupplierCalls: ProductSupplierCall[] = [];
+
+// KELUAR MASUK HARIAN'S READ — ProductDailyMoves, on both product pages (the-warehouse-zone-is-tabs): which team asked,
+// about which product, in which warehouse lens. Reset with the list's.
+export interface ProductDailyCall {
+  teamId: bigint;
+  productId: bigint;
+  warehouseId: bigint;
+}
+
+export const productDailyCalls: ProductDailyCall[] = [];
+
 export function resetProductListCalls() {
   productListCalls.length = 0;
   productDiscoverCalls.length = 0;
   discoverStockCalls.length = 0;
   discoverHistoryCalls.length = 0;
   productImagesCalls.length = 0;
+  productSupplierCalls.length = 0;
+  productDailyCalls.length = 0;
 }

@@ -534,3 +534,41 @@ order's take, a return's or a found's).
 ```sh
 go test -tags raceaudit -p 1 -count=1 -run 'TestRace_CustomShipmentMove' -v ./backend/services/inventory_service/inventory_v1/
 ```
+
+## Restock resolutions and the inbound parcel (2026-11-20)
+
+[a-restock-problem-is-settled-by-resolution-rows](../../../../docs/business/inventory/restock_decision.md#a-restock-problem-is-settled-by-resolution-rows),
+[a-suppliers-reshipping-comes-in-as-a-custom-shipment](../../../../docs/business/custom_shipments/context_decision.md#a-suppliers-reshipping-comes-in-as-a-custom-shipment)
+(backlog #101 P1). **New cross-row writes, one order: the RESTOCK row first, then the parcel row, then the ledgers** —
+the order the reship create already takes (restock → parcel INSERT), extended:
+
+| Writer | Locks, in order |
+| --- | --- |
+| `RestockResolutionCreate` — refund | *(the account — asked of financial_account before the transaction)* → **`restocks` — the ONE row `FOR UPDATE`** (as its selling team) → *(read: its problem tags)* → `restock_resolutions` INSERT. The money after commit (`RestockRefunded`) |
+| `RestockResolutionCreate` — return | **`restocks` FOR UPDATE** → `restock_resolutions` INSERT → **`custom_shipments` — the reship's row `FOR UPDATE`** → `restock_custom_shipments` INSERT |
+| `RestockResolutionCreate` — reshipping | *(product facts — before the transaction)* → **`restocks` FOR UPDATE** → `restock_resolutions` INSERT → *(read: `restock_items`' suppliers)* → `custom_shipments` / `custom_shipment_items` / `custom_shipment_logs` / `restock_custom_shipments` INSERTs — new rows only |
+| `CustomShipmentCreate` — a reship WITH `resolution` | the reship's existing order (**`restocks` FOR UPDATE** → parcel INSERTs), then `restock_resolutions` + `restock_custom_shipments` INSERTs |
+| `RestockRequestSettle` | **`restocks` FOR UPDATE** → *(read: its problem tags)* → `restocks` UPDATE (the mark) → `restock_tags` DELETE (its problem tags) |
+| `CustomShipmentReceive` (Terima) | *(read, no lock: the parcel's restock id — it never changes)* → **`restocks` FOR UPDATE** → **`custom_shipments` FOR UPDATE** (as the warehouse it comes to) → `custom_shipment_items` UPDATE → `PostRestock`'s order (batches INSERT, `product_placements` by id, ledger rows, `inventory_transactions`) → `restock_custom_shipments` UPDATE → `custom_shipments` UPDATE + trail INSERT → on a shortfall `restocks` UPDATE (the mark lifted) + `restock_tags` INSERT (`ON CONFLICT DO NOTHING`) → **stock report upserts (last)** |
+| `CustomShipmentResiSet` / `PricesSet` / `MarkLost` / `Arrive` | **`custom_shipments` — the ONE row `FOR UPDATE`** → its UPDATE (+ `custom_shipment_items` UPDATE for a price) → trail INSERT. No restock row: none of them touches the restock |
+
+**No cycle.** Every writer that takes both takes the restock row BEFORE the parcel row (the return link, the reship
+create, Terima); the parcel-only moves never take a restock row while holding a parcel. The restock's own acts (accept,
+cancel, edits, Koreksi Jumlah Terima, tag puts) take the restock row first and never a parcel row. Terima reaches the
+ledgers only after both rows, in `PostRestock`'s order (the restock accept's), and ends on the report rows.
+
+**Why the restock row for Terima.** A shortfall REOPENS the restock (the settled mark lifted, the tags back on) — a write
+to the row a settle writes. Without the lock, a settle and a reopening Terima each judge a stale `settled_at`: proved —
+the mutation (Terima without the restock lock) leaves a restock SETTLED with a problem tag back on (round 1).
+
+| Claim | Proof |
+| --- | --- |
+| Two people record resolutions at once, a form double-tapped: 8 own keys + 4 one shared key → 9 rows, 3 AlreadyExists; then 8 settles → exactly one wins, 7 FailedPrecondition; settled, no problem tag; no deadlock | `TestRace_RestockResolution_ConcurrentRowsAndOneSettle` — 4 rounds. Mutation-checked: the restock lock as `KEY SHARE` → red in round 0 (2 settles won) |
+| A settle races a reshipping's short Terima: either order, never a settled restock carrying a problem tag nor an unsettled one with none; no deadlock | `TestRace_RestockResolution_SettleVsAReopeningTerima` — 12 rounds, staggered (settle last 8 / reopened last 4). Mutation-checked: Terima without the restock lock → red in round 1 (settled with 1 problem tag) |
+| Two people count one inbound parcel in: 8 Terima → exactly one stock-in, 7 FailedPrecondition, the units on the shelf once, every transaction verifies | `TestRace_RestockResolution_TerimaCountsOnce` — 4 rounds |
+| A refund event delivered four times at once beside other refunds and hand transfers on the same account: posted once, no deadlock, the sum exact | financial_account `TestRace_RestockRefund_OneEventFourDeliveriesBesideOthers` (`postPaymentLegs` — the claim beside the post, the account FOR UPDATE) |
+
+```sh
+go test -tags raceaudit -p 1 -count=1 -run 'TestRace_RestockResolution' -v ./backend/services/inventory_service/inventory_v1/
+go test -tags raceaudit -p 1 -count=1 -run 'TestRace_RestockRefund' -v ./backend/services/financial_account_service/financial_account_v1/
+```

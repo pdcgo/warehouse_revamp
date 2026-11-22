@@ -56,7 +56,8 @@ func TestExpenseShops_TheRealShopAnswersForTheTeam(t *testing.T) {
 
 	ads := func(shopID uint64) *connect.Request[expensev1.ExpenseCreateRequest] {
 		return connect.NewRequest(&expensev1.ExpenseCreateRequest{
-			TeamId: scopeTeam, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Amount: 125_000, OccurredAt: "2026-11-18",
+			TeamId: scopeTeam, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Type: expensev1.ExpenseType_EXPENSE_TYPE_ADS_MARKETPLACE,
+			Amount: 125_000, OccurredAt: "2026-11-18",
 			ShopId: shopID, FinanceAccountId: 1,
 		})
 	}

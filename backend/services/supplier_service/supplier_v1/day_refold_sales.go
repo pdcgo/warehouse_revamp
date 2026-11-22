@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/supplier_service/supplier_service_models"
@@ -122,6 +123,17 @@ func refoldSaleDay(tx *gorm.DB, in DayRefoldInput, entries []saleEntry) (DayRefo
 	day, err := parseDate(in.Day)
 	if err != nil {
 		return result, err
+	}
+
+	// 0 · THE MAINTENANCE LOCK, FOR SHARE — as the sales fold reads it. A replay clearing Penjualan's range never
+	// interleaves with this: its flip waits for the re-fold, and the re-fold refuses while the replay holds it.
+	locked, err := readEventLock(tx.Clauses(clause.Locking{Strength: "SHARE"}))
+	if err != nil {
+		return result, err
+	}
+
+	if locked {
+		return result, ErrRefoldLocked
 	}
 
 	short := map[ShortScope]bool{}

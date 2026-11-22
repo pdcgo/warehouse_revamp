@@ -24,6 +24,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/financial_account/v1/financial_accountv1connect"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_event"
 	"github.com/pdcgo/warehouse_revamp/backend/services/financial_account_service/financial_account_service_models"
@@ -46,6 +47,9 @@ type Service struct {
 	// Where the report's export goes, and the shop names its account rows need (export_store.go). nil = the export is
 	// Unimplemented.
 	exports ExportStore
+	// The broker — a Setor / Tarik Modal made on the account page is told to it (capital_recorded.go), so a selling
+	// team's shows on Biaya. nil = EmptySender.
+	events event_source.EventSender
 }
 
 // compile-time proof Service serves both proto services.
@@ -54,10 +58,14 @@ var (
 	_ financial_accountv1connect.FinancialAccountAnalyticServiceHandler = (*Service)(nil)
 )
 
-func NewService(db *gorm.DB, shops ShopChecker, exports ExportStore) *Service {
+func NewService(db *gorm.DB, shops ShopChecker, exports ExportStore, events event_source.EventSender) *Service {
 	// With no shop to ask, every ShopSet is REFUSED rather than trusted.
 	if shops == nil {
 		shops = noShopChecker{}
+	}
+
+	if events == nil {
+		events = event_source.EmptySender
 	}
 
 	dedup, err := san_event.NewDedup(financial_account_service_models.EventLogTable)
@@ -66,7 +74,7 @@ func NewService(db *gorm.DB, shops ShopChecker, exports ExportStore) *Service {
 		panic(err)
 	}
 
-	return &Service{db: db, shops: shops, dedup: dedup, now: time.Now, exports: exports}
+	return &Service{db: db, shops: shops, dedup: dedup, now: time.Now, exports: exports, events: events}
 }
 
 type noShopChecker struct{}

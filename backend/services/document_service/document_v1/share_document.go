@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -82,8 +83,31 @@ func (s *Service) ShareDocument(
 		Create(&share).
 		Error
 	if err != nil {
+		// THE DOCUMENT WENT BETWEEN THE READ AND THE WRITE — the generated-file sweep took it
+		// (generated-files-are-kept-seven-days): the share's foreign-key check waited on the sweep's row lock and
+		// found the row deleted. That is a document that is gone, so it answers what one already gone answers.
+		if isForeignKeyViolation(err) {
+			return nil, notFound()
+		}
+
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	return connect.NewResponse(&documentv1.ShareDocumentResponse{}), nil
+}
+
+// isForeignKeyViolation detects a foreign-key violation in BOTH forms — GORM opened with TranslateError turns the
+// driver's 23503 into gorm.ErrForeignKeyViolated, a raw Exec may not. On a `document_shares` insert it can only mean
+// the document is gone: `document_id` is that table's one foreign key (team_id has none — teams are another service's).
+func isForeignKeyViolation(err error) bool {
+	if errors.Is(err, gorm.ErrForeignKeyViolated) {
+		return true
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23503"
+	}
+
+	return false
 }

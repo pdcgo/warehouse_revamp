@@ -29,3 +29,23 @@ Thresholds live in the skills, not here:
 > it. Acting on one — especially an index migration or a lock change, which belong to the owning
 > service and alter what blocks what across it — is a separate, explicitly-asked task (HARD RULE 3,
 > HARD RULE 8).
+
+## `audits/frontend/` — the screens' speed, measured by a tool
+
+```
+audits/frontend/<screen>.md     how many requests a screen's load sends, the same RPC asked twice, the CORS pre-checks,
+                                the calls waiting on each other, the time until it is usable, the requests one save fires
+audits/frontend/baseline.json   the same figures for every audited screen — what a later run is compared with
+```
+
+Written by `go run ./tools/san audit frontend --baseline` ([docs/tools/san.md](../docs/tools/san.md#audit-frontend)),
+never by hand, on the owner's [frontend-speed-is-measured-by-a-dev-tool](../docs/development_lifecycle_decision.md#frontend-speed-is-measured-by-a-dev-tool).
+**Unlike the rest of this tree, every audited screen gets its file even when clean** — like `lock-order.md`: the
+decision asks for a baseline per screen, and the file's value is being the *before* that the state work (#120–#123)
+reports its *after* against. Its `History` row reads before → after.
+
+The figures come from a PRODUCTION build (`vite build` + `vite preview`, so the dev server's StrictMode does not count
+every effect twice) on the audit's own database and ports. Counts are exact; times move with the CPU — beside a full
+run the tool records counts only and marks the times *noisy*. When a later run shows a slice made a COUNT worse, the
+slice fixes it ([a-slice-fixes-the-speed-regression-it-caused](../docs/development_lifecycle_decision.md#a-slice-fixes-the-speed-regression-it-caused));
+a timing alone, and anything already in the baseline, is reported. The *Findings* stay discussion documents, as above.

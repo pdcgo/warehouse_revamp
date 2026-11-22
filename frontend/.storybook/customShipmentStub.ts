@@ -34,6 +34,7 @@
 import { Code, ConnectError, type ServiceImpl } from "@connectrpc/connect";
 
 import {
+  CustomShipmentDirection as D,
   CustomShipmentKind as K,
   CustomShipmentLogKind as LK,
   CustomShipmentPayer as P,
@@ -58,6 +59,21 @@ import {
   reshipRestockRows,
 } from "./customShipmentFixtures";
 import { customShipmentScenario, resetCustomShipmentScenario } from "./customShipmentScenario";
+import {
+  arriveInbound,
+  inboundById,
+  inboundForList,
+  inboundSideOf,
+  inboundWire,
+  markInboundLost,
+  receiveInbound,
+  recordResolutionCall,
+  recordReturnWithParcel,
+  returnRowOf,
+  setInboundPrices,
+  setInboundResi,
+} from "./restockResolutionScenario";
+import { putProblemTags } from "./restockTagScenario";
 
 let rows: ParcelRow[] = [];
 let restocks: ReshipRestockRow[] = [];
@@ -138,6 +154,9 @@ function answer(rpc: string, row: ParcelRow, teamId: bigint, withLogs: boolean) 
     items: row.items.map((item) => ({ ...item, total: moneyFree ? undefined : item.total })),
     transactionId: row.transactionId,
     total: moneyFree ? undefined : row.total,
+    // Backlog #101 — an outbound parcel; a reship that is a restock's RETURN names its row.
+    direction: D.OUTBOUND,
+    resolutionId: returnRowOf(row.id),
     logs: withLogs
       ? row.logs.map((log) => ({
           ...log,
@@ -283,7 +302,11 @@ export const customShipmentService: Partial<ServiceImpl<typeof CustomShipmentSer
     const f = req.filter;
     const needle = (f?.q ?? "").trim().toLowerCase().replace(/^#/, "");
 
-    const matched = rows
+    // The direction (#101): unasked, the selling team and root read both ways, a warehouse what it ships; INBOUND asks
+    // for the parcels coming in (restockResolutionScenario.ts), OUTBOUND leaves them out.
+    const inbound = inboundForList(req.teamId, typeOf(req.teamId) === TeamType.WAREHOUSE, f).map((p) => ({ id: p.id, inbound: p }));
+    const outbound = rows
+      .filter(() => f?.direction !== D.INBOUND)
       .filter((r) => sideOf(r, req.teamId) !== null)
       .filter((r) => !f?.status || r.status === f.status)
       .filter((r) => !f?.kind || r.kind === f.kind)
@@ -295,18 +318,55 @@ export const customShipmentService: Partial<ServiceImpl<typeof CustomShipmentSer
           r.recipient.name.toLowerCase().includes(needle) ||
           r.items.some((i) => i.productCode.toLowerCase().includes(needle) || i.name.toLowerCase().includes(needle)),
       )
-      .sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
+      .map((r) => ({ id: r.id, outbound: r }));
+    const matched = [...inbound, ...outbound].sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
     const { rows: window, pageInfo } = pageOf(matched, req.page);
 
-    return { customShipments: window.map((r) => answer("CustomShipmentList", r, req.teamId, false)), pageInfo };
+    return {
+      customShipments: window.map((m) => ("inbound" in m ? inboundWire(m.inbound, req.teamId) : answer("CustomShipmentList", m.outbound, req.teamId, false))),
+      pageInfo,
+    };
   },
 
   customShipmentDetail(req) {
     record("CustomShipmentDetail", req);
     const row = rows.find((r) => r.id === req.id);
+    // An inbound parcel (#101), as either side reads it.
+    const coming = inboundById(req.id);
+    if (!row && coming && inboundSideOf(coming, req.teamId) !== null) return { customShipment: inboundWire(coming, req.teamId) };
     if (!row || sideOf(row, req.teamId) === null) throw notFound();
 
     return { customShipment: answer("CustomShipmentDetail", row, req.teamId, true) };
+  },
+
+  // ── THE INBOUND PARCEL'S MOVES (backlog #101) — restockResolutionScenario.ts plays the rules. ──
+  customShipmentResiSet(req) {
+    recordResolutionCall("CustomShipmentResiSet", req);
+    return { customShipment: inboundWire(setInboundResi(req), req.teamId) };
+  },
+
+  customShipmentPricesSet(req) {
+    recordResolutionCall("CustomShipmentPricesSet", req);
+    return { customShipment: inboundWire(setInboundPrices(req), req.teamId) };
+  },
+
+  customShipmentMarkLost(req) {
+    recordResolutionCall("CustomShipmentMarkLost", req);
+    return { customShipment: inboundWire(markInboundLost(req), req.teamId) };
+  },
+
+  customShipmentArrive(req) {
+    recordResolutionCall("CustomShipmentArrive", req);
+    return { customShipment: inboundWire(arriveInbound(req), req.teamId) };
+  },
+
+  customShipmentReceive(req) {
+    recordResolutionCall("CustomShipmentReceive", req);
+    const { parcel, short, broken } = receiveInbound(req);
+    // A short or broken count puts a received restock's problem tags back on (a lost one carries none).
+    if ((short || broken) && !parcel.restockLost) putProblemTags(parcel.restockId, short, broken);
+
+    return { customShipment: inboundWire(parcel, req.teamId) };
   },
 
   customShipmentReshipOptions(req) {
@@ -344,6 +404,8 @@ export const customShipmentService: Partial<ServiceImpl<typeof CustomShipmentSer
     if (req.lines.length === 0) throw invalid("lines: at least one");
     if (req.shipmentChannelId === 0n) throw invalid("shipment_channel_id: required");
     if (req.idempotencyKey === "") throw invalid("idempotency_key: required");
+    // A restock's RETURN (#101) rides a reship only.
+    if (req.resolution && req.kind !== K.RESTOCK_RESHIP) throw invalid("only a reship is a restock's return");
     if (rows.some((r) => r.teamId === req.teamId && r.idempotencyKey === req.idempotencyKey)) {
       throw new ConnectError("this create was already sent", Code.AlreadyExists);
     }
@@ -472,6 +534,8 @@ export const customShipmentService: Partial<ServiceImpl<typeof CustomShipmentSer
 
     log(row, S.UNSPECIFIED, S.REQUESTED);
     rows = [row, ...rows];
+    // A RETURN (#101): the restock's resolution row — and its Riwayat row — recorded with this reship parcel.
+    if (req.resolution) recordReturnWithParcel(row.restockId, req.resolution.note, row.id);
 
     return { customShipment: answer("CustomShipmentCreate", row, req.teamId, true) };
   },

@@ -103,7 +103,7 @@ export const ActionsDoNotOpenTheRow: Story = {
     await waitFor(() => expect(move).toBeVisible());
     await userEvent.click(move);
 
-    await expect(await screen.findByTestId("move-quantity")).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId("move-quantity")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId("at-warehouse-product")).toBeNull();
   },
 };

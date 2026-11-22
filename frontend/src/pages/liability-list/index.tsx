@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
 import {
   Badge,
   Box,
@@ -19,8 +18,8 @@ import {
 } from "@chakra-ui/react";
 import { ChevronRight, Handshake, ScrollText, SlidersHorizontal } from "lucide-react";
 
-import { rpcError, teamClient } from "../../api/clients";
-import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
+import { rpcError } from "../../api/clients";
+import { useTeamsByIds } from "../../features/teams/queries";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useLiabilityPositions, useLiabilityTerms } from "../../features/liability/queries";
@@ -147,12 +146,8 @@ export function LiabilityListPage() {
 
     return seen;
   }, [positions, query.data?.summary.oldestCounterpartyId]);
-  const teamsQuery = useQuery({
-    queryKey: ["team-by-ids", ids.map((id) => id.toString()).sort()],
-    enabled: ids.length > 0,
-    queryFn: async () =>
-      teamsByIds(await teamClient.teamByIds({ filter: { ids }, dataRequest: teamByIdsRowData() })),
-  });
+  // A name lookup (useTeamsByIds, `referenceQuery`, keyed `key.teams` by the id set — #122).
+  const teamsQuery = useTeamsByIds({ ids });
   const teamMap = teamsQuery.data ?? {};
 
   // THE LIMITS THIS TEAM HAS SET, for the 80% warning (§About Thresholds 1) and for the DEFAULT row.

@@ -190,6 +190,24 @@ export function useShopUsers(args: { teamId: bigint | undefined; shopId: bigint 
   });
 }
 
+// A TEAM'S SHOPS AS ITS DETAIL PAGE LISTS THEM (pages/team-detail ShopsSection, #79) — the first 50, asked with no
+// filter, exactly as that section always asked. Its own key: a different question from the managed list's filtered
+// pages and the picker's every-shop feed, so neither's answer can become this one's rows. A record list on the plain
+// always-fresh default, under `shops` so a shop write re-reads it.
+export function useTeamShops(args: { teamId: bigint }) {
+  const { teamId } = args;
+
+  return useQuery({
+    queryKey: key.shops(teamId, { teamDetail: true, page: 1, pageSize: 50 }),
+    enabled: teamId > 0n,
+    queryFn: async () => {
+      const res = await shopClient.shopList({ teamId, dataRequest: shopListRowData(), page: { page: 1, limit: 50 } });
+
+      return shopsFromList(res.items, res.ids);
+    },
+  });
+}
+
 // Broad: an edit changes the row in the list AND the detail page, and a close changes every page
 // after it. One invalidation covers both screens.
 export function useInvalidateShops() {

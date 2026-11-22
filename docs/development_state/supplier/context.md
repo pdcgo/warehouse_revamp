@@ -163,8 +163,8 @@ and [the-range-pills-are-a-fixed-set](../../technical/frontend/suppliers_decisio
 
 **⚠ My readings (report):** a line's selling value is its share of the order's `platform_total` by the lines' frozen
 `total` (no line stores a platform price — product-is-its-own-line-metric); Penjualan's team filter means whose goods
-(the batch's team), as Direstok means whose restocks. **Not replayed:** `AnalyticReplayCompute` re-seeks only
-`supplier-fold`, so Penjualan has no rebuild path yet.
+(the batch's team), as Direstok means whose restocks. **Not replayed** then: `AnalyticReplayCompute` re-seeked only
+`supplier-fold`. 🔄 Replayed since 2026-11-21 — [below](#2026-11-21--penjualan-is-replayed-with-the-restock-figures-backlog-113).
 
 ## 2026-11-07 — the date range is Jakarta days for any viewer (backlog #37)
 
@@ -349,3 +349,22 @@ legacy tables, retire `san supplier move`. inventory_service **`00046_drop_legac
 | retired | `tools/san/supplier_move.go` + `supplier_move_test.go` (5 tests) deleted; `supplierCommand` kept in `tools/san/supplier.go` (the three backfills); `dev setup`'s step 5 removed (`dev_setup.go`) |
 | proved | fresh scratch DB `up-all` → v46, no legacy relation · scratch refusals: no supplier tables yet / an unmoved supplier + online store (an offline one ignored) / an unrelated row under the id (another team) — each exit 1 at v45 with the message; moved as the move writes it → v46, tables and sequences gone · scratch up-all → down (tables back, names = dev's before the drop) → up → down → supplier_service reset + inventory down-to 22 (00023's Down renames back) · **dev DB**: `san dev setup` end to end exit 0, `OK 00046` (guard passed: every legacy id was moved), legacy relations 9 → 0, suppliers 3 / stores 3 unchanged |
 | docs | `docs/database-schema.md` (the two tables out of the erDiagram, the note rewritten) · `docs/tools/san.md` (§supplier move → retired + the guard's errors, setup step 5, the flowchart, the command table) · `docs/services/supplier_service/rpc.md` · CLAUDE.md's setup line |
+
+## 2026-11-21 — Penjualan is replayed with the restock figures (backlog #113)
+
+[the-report-is-processed-like-settlement](../../business/supplier/context_decision.md#the-report-is-processed-like-settlement)
+(*"`AnalyticReplayCompute` — lock, delete the daily rows and the event logs from a date, seek, unlock | the same, on the
+supplier's tables"*) read as covering the sales tables added after it (⚠ my reading, named in the report); the
+settlement rules it follows unchanged: [a-replay-deletes-its-range-first](../../business/settlement/context_decision.md#a-replay-deletes-its-range-first),
+[the-replay-is-bounded-by-the-subscription-retention](../../business/settlement/context_decision.md#the-replay-is-bounded-by-the-subscription-retention),
+[topic-retention-carries-the-replay](../../business/settlement/context_decision.md#topic-retention-carries-the-replay).
+Before, Penjualan's only repair was the one-day re-fold.
+
+| | |
+| --- | --- |
+| the delete | `analytic_replay_compute.go` `clearSalesFrom`, inside the replay's ONE delete transaction: `supplier_sale_daily_reports` `day >= start`; the parts and claims of the orders placed from `start`; a claim holding only a cancel from `start` (its placement not folded); `cancelled_day = NULL` on an order placed BEFORE `start` and cancelled from it (only its cancel is redelivered, so it takes the kept parts back again). The response's counts stay the restock report's (no proto change); Penjualan's are logged |
+| the seek | `cmd/app_development/replay_broker.go` `NewSupplierReplayBroker` — `supplier-fold`, `supplier-count-corrected`, `supplier-order-placed`, `supplier-order-cancelled`; the window is the shortest of the four |
+| the lock | `sales_fold.go` `refuseWhileReplaying` — `process_event_lock` FOR SHARE first in both the placement's and the cancel's transaction (`errFoldLocked` → 500 → redelivered), as the restock fold. The Penjualan day re-fold (`day_refold_sales.go`) reads it too and refuses with `ErrRefoldLocked` — the restock re-fold already did; without it a re-fold holding order rows and waiting for the report's table lock could deadlock with the replay's delete |
+| tests | `analytic_replay_compute_test.go` +2 (the replayed days equal the never-replayed figures over 9 orders — placed and cancelled inside, placed before / cancelled inside, cancels first, the Jakarta-midnight boundary, events from before the day redelivered; a cancel first whose placement lands after the replay) · `sales_fold_test.go` +1 (refused while a replay holds the lock, a dead lock's lease) · `day_refold_test.go` (both reports refused under the lock) · `cmd/app_development/replay_broker_test.go` (the four subscriptions) · raceaudit `analytic_replay_compute_sales_race_test.go` (3: the replay waits for a sales fold in flight; refused at four points of the held window; a replay beside live sales counts every order once) · mutation-checked: the claims' delete, the cancel's-day reset, the sale rows' delete, the fold's lock read, the broker's two subscriptions, the re-fold's lock read — each turns a test red |
+| audits | [lock-order.md](../../../audits/services/supplier_service/concurrency/lock-order.md) rows (replay, sales fold, sale re-fold) · [SalesFold.md](../../../audits/services/supplier_service/concurrency/SalesFold.md) (concurrency) · perf [SalesFold.md](../../../audits/services/supplier_service/performances/SalesFold.md) re-measured: 7 statements (+ the lock read), 2.0–2.6 ms at 1–20 parts, flat |
+| docs | [rpc.md § AnalyticReplayCompute](../../services/supplier_service/rpc.md#analyticreplaycompute--never-into-the-backfilled-past) (the table of what each case loses and gets back), § Penjualan's replay row |

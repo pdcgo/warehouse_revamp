@@ -114,6 +114,12 @@ const (
 	// InventoryServiceDiscoverStockHistoryProcedure is the fully-qualified name of the
 	// InventoryService's DiscoverStockHistory RPC.
 	InventoryServiceDiscoverStockHistoryProcedure = "/warehouse.inventory.v1.InventoryService/DiscoverStockHistory"
+	// InventoryServiceProductSupplierGoodsProcedure is the fully-qualified name of the
+	// InventoryService's ProductSupplierGoods RPC.
+	InventoryServiceProductSupplierGoodsProcedure = "/warehouse.inventory.v1.InventoryService/ProductSupplierGoods"
+	// InventoryServiceProductDailyMovesProcedure is the fully-qualified name of the InventoryService's
+	// ProductDailyMoves RPC.
+	InventoryServiceProductDailyMovesProcedure = "/warehouse.inventory.v1.InventoryService/ProductDailyMoves"
 )
 
 // InventoryServiceClient is a client for the warehouse.inventory.v1.InventoryService service.
@@ -212,6 +218,23 @@ type InventoryServiceClient interface {
 	// · Perubahan · Sesudahnya, the-discover-history-names-no-batch). A price correction moved no unit and is only money,
 	// so it is not a row here. Paged like the owner's ledger.
 	DiscoverStockHistory(context.Context, *connect.Request[v1.DiscoverStockHistoryRequest]) (*connect.Response[v1.DiscoverStockHistoryResponse], error)
+	// PEMASOK — WHO SUPPLIES A PRODUCT, the Per Gudang tab of the product's own page and of its discover detail
+	// (the-suppliers-are-a-tab-of-their-own, the-supplier-tab-names-the-store, the-discover-detail-has-the-warehouse-zone):
+	// per supplier and the store it was bought at, how many deliveries, how many units, when last, and — to the OWNING team
+	// only — the last unit cost. Read from the owner's batches a RESTOCK minted (a-batch-keeps-its-supplier); a transfer-in
+	// or a return mints batches with the supplier too and is not a delivery. Any selling team may read it, as Riwayat Stok
+	// (stock-history-is-everyones, another-team-sees-everything-of-a-supplier) — the cost is the owner's alone.
+	ProductSupplierGoods(context.Context, *connect.Request[v1.ProductSupplierGoodsRequest]) (*connect.Response[v1.ProductSupplierGoodsResponse], error)
+	// KELUAR MASUK HARIAN — A PRODUCT'S LAST FOURTEEN DAYS, the Per Gudang tab of its own page and of its discover detail
+	// (the-warehouse-zone-is-tabs: *"the last fourteen days: date, in, out, on hand"*, the-discover-detail-has-the-
+	// warehouse-zone): per Jakarta day, each change type's NET units, what came in (Masuk), what went out (Keluar) and
+	// what was on hand at the end of the day (Sisa). Read from the daily fold every stock change writes in its own
+	// transaction (`inventory_stock_daily_changes`, ready-stock-is-folded-in-the-stock-changes-own-step) — never the
+	// ledger — with Sisa read BACKWARDS from today's batches, as Ready stock reads its position. Units only, for every
+	// caller: no value, no price, nothing of the owner's money (stock-history-is-everyones, DiscoverStockHistory's
+	// policy). ⚠ HELD — which movements are Masuk and which Keluar is the owner's open question; drawn as every movement
+	// by its direction until he answers (`in_units`, `out_units`).
+	ProductDailyMoves(context.Context, *connect.Request[v1.ProductDailyMovesRequest]) (*connect.Response[v1.ProductDailyMovesResponse], error)
 }
 
 // NewInventoryServiceClient constructs a client for the warehouse.inventory.v1.InventoryService
@@ -412,6 +435,20 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		productSupplierGoods: connect.NewClient[v1.ProductSupplierGoodsRequest, v1.ProductSupplierGoodsResponse](
+			httpClient,
+			baseURL+InventoryServiceProductSupplierGoodsProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("ProductSupplierGoods")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		productDailyMoves: connect.NewClient[v1.ProductDailyMovesRequest, v1.ProductDailyMovesResponse](
+			httpClient,
+			baseURL+InventoryServiceProductDailyMovesProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("ProductDailyMoves")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -444,6 +481,8 @@ type inventoryServiceClient struct {
 	supplierGoods          *connect.Client[v1.SupplierGoodsRequest, v1.SupplierGoodsResponse]
 	discoverStockByIds     *connect.Client[v1.DiscoverStockByIdsRequest, v1.DiscoverStockByIdsResponse]
 	discoverStockHistory   *connect.Client[v1.DiscoverStockHistoryRequest, v1.DiscoverStockHistoryResponse]
+	productSupplierGoods   *connect.Client[v1.ProductSupplierGoodsRequest, v1.ProductSupplierGoodsResponse]
+	productDailyMoves      *connect.Client[v1.ProductDailyMovesRequest, v1.ProductDailyMovesResponse]
 }
 
 // StockList calls warehouse.inventory.v1.InventoryService.StockList.
@@ -581,6 +620,16 @@ func (c *inventoryServiceClient) DiscoverStockHistory(ctx context.Context, req *
 	return c.discoverStockHistory.CallUnary(ctx, req)
 }
 
+// ProductSupplierGoods calls warehouse.inventory.v1.InventoryService.ProductSupplierGoods.
+func (c *inventoryServiceClient) ProductSupplierGoods(ctx context.Context, req *connect.Request[v1.ProductSupplierGoodsRequest]) (*connect.Response[v1.ProductSupplierGoodsResponse], error) {
+	return c.productSupplierGoods.CallUnary(ctx, req)
+}
+
+// ProductDailyMoves calls warehouse.inventory.v1.InventoryService.ProductDailyMoves.
+func (c *inventoryServiceClient) ProductDailyMoves(ctx context.Context, req *connect.Request[v1.ProductDailyMovesRequest]) (*connect.Response[v1.ProductDailyMovesResponse], error) {
+	return c.productDailyMoves.CallUnary(ctx, req)
+}
+
 // InventoryServiceHandler is an implementation of the warehouse.inventory.v1.InventoryService
 // service.
 type InventoryServiceHandler interface {
@@ -678,6 +727,23 @@ type InventoryServiceHandler interface {
 	// · Perubahan · Sesudahnya, the-discover-history-names-no-batch). A price correction moved no unit and is only money,
 	// so it is not a row here. Paged like the owner's ledger.
 	DiscoverStockHistory(context.Context, *connect.Request[v1.DiscoverStockHistoryRequest]) (*connect.Response[v1.DiscoverStockHistoryResponse], error)
+	// PEMASOK — WHO SUPPLIES A PRODUCT, the Per Gudang tab of the product's own page and of its discover detail
+	// (the-suppliers-are-a-tab-of-their-own, the-supplier-tab-names-the-store, the-discover-detail-has-the-warehouse-zone):
+	// per supplier and the store it was bought at, how many deliveries, how many units, when last, and — to the OWNING team
+	// only — the last unit cost. Read from the owner's batches a RESTOCK minted (a-batch-keeps-its-supplier); a transfer-in
+	// or a return mints batches with the supplier too and is not a delivery. Any selling team may read it, as Riwayat Stok
+	// (stock-history-is-everyones, another-team-sees-everything-of-a-supplier) — the cost is the owner's alone.
+	ProductSupplierGoods(context.Context, *connect.Request[v1.ProductSupplierGoodsRequest]) (*connect.Response[v1.ProductSupplierGoodsResponse], error)
+	// KELUAR MASUK HARIAN — A PRODUCT'S LAST FOURTEEN DAYS, the Per Gudang tab of its own page and of its discover detail
+	// (the-warehouse-zone-is-tabs: *"the last fourteen days: date, in, out, on hand"*, the-discover-detail-has-the-
+	// warehouse-zone): per Jakarta day, each change type's NET units, what came in (Masuk), what went out (Keluar) and
+	// what was on hand at the end of the day (Sisa). Read from the daily fold every stock change writes in its own
+	// transaction (`inventory_stock_daily_changes`, ready-stock-is-folded-in-the-stock-changes-own-step) — never the
+	// ledger — with Sisa read BACKWARDS from today's batches, as Ready stock reads its position. Units only, for every
+	// caller: no value, no price, nothing of the owner's money (stock-history-is-everyones, DiscoverStockHistory's
+	// policy). ⚠ HELD — which movements are Masuk and which Keluar is the owner's open question; drawn as every movement
+	// by its direction until he answers (`in_units`, `out_units`).
+	ProductDailyMoves(context.Context, *connect.Request[v1.ProductDailyMovesRequest]) (*connect.Response[v1.ProductDailyMovesResponse], error)
 }
 
 // NewInventoryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -874,6 +940,20 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	inventoryServiceProductSupplierGoodsHandler := connect.NewUnaryHandler(
+		InventoryServiceProductSupplierGoodsProcedure,
+		svc.ProductSupplierGoods,
+		connect.WithSchema(inventoryServiceMethods.ByName("ProductSupplierGoods")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	inventoryServiceProductDailyMovesHandler := connect.NewUnaryHandler(
+		InventoryServiceProductDailyMovesProcedure,
+		svc.ProductDailyMoves,
+		connect.WithSchema(inventoryServiceMethods.ByName("ProductDailyMoves")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.InventoryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InventoryServiceStockListProcedure:
@@ -930,6 +1010,10 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceDiscoverStockByIdsHandler.ServeHTTP(w, r)
 		case InventoryServiceDiscoverStockHistoryProcedure:
 			inventoryServiceDiscoverStockHistoryHandler.ServeHTTP(w, r)
+		case InventoryServiceProductSupplierGoodsProcedure:
+			inventoryServiceProductSupplierGoodsHandler.ServeHTTP(w, r)
+		case InventoryServiceProductDailyMovesProcedure:
+			inventoryServiceProductDailyMovesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1045,4 +1129,12 @@ func (UnimplementedInventoryServiceHandler) DiscoverStockByIds(context.Context, 
 
 func (UnimplementedInventoryServiceHandler) DiscoverStockHistory(context.Context, *connect.Request[v1.DiscoverStockHistoryRequest]) (*connect.Response[v1.DiscoverStockHistoryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.DiscoverStockHistory is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) ProductSupplierGoods(context.Context, *connect.Request[v1.ProductSupplierGoodsRequest]) (*connect.Response[v1.ProductSupplierGoodsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.ProductSupplierGoods is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) ProductDailyMoves(context.Context, *connect.Request[v1.ProductDailyMovesRequest]) (*connect.Response[v1.ProductDailyMovesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.ProductDailyMoves is not implemented"))
 }

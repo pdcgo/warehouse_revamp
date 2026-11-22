@@ -12,10 +12,11 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
 
-// A WAREHOUSE READS A SHELF IN UNITS ONLY (docs/business/analytic/rpc_provide_decision.md —
-// a-warehouse-sees-ready-value-but-a-shelf-only-units): at the placement level a caller acting with a warehouse role is
-// given the units on the rack and when it was last counted, never what they cost. The money is UNSET, not 0 — a 0 would
-// tell a person at the shelf that it is worth nothing.
+// A WAREHOUSE READS A RACK'S VALUE (docs/acceptances/inventory/placement.md given 11 — `warehouse:all` opens a rack and
+// reads each product with its units and value; the 🔄 2026-11-20 line of a-warehouse-sees-ready-value-but-a-shelf-only-units,
+// docs/business/analytic/rpc_provide_decision.md, backlog #109): every reader of a shelf is given what it is worth — the
+// warehouse's own three roles as Root, the Administrator and the admin team's monitor are. SET, a 0 included: an empty
+// shelf is worth Rp 0.
 
 // warehouseReaders are the three roles a warehouse team holds — each reads the shelf the same way.
 var warehouseReaders = []role_basev1.Role{
@@ -24,53 +25,28 @@ var warehouseReaders = []role_basev1.Role{
 	role_basev1.Role_ROLE_WAREHOUSE_STAFF,
 }
 
-// valueReaders are the callers who keep the shelf's money: Root or the Administrator from outside the warehouse (in by
-// the root-team bypass, so they hold no role there) and the admin team monitoring it.
-func valueReaders() map[string]context.Context {
-	return map[string]context.Context{
+// shelfReaders are everybody who reads a rack: the warehouse's three roles, Root or the Administrator from outside the
+// warehouse (in by the root-team bypass, so they hold no role there) and the admin team monitoring it.
+func shelfReaders() map[string]context.Context {
+	readers := map[string]context.Context{
 		"root from outside": asRole(1, role_basev1.Role_ROLE_UNSPECIFIED),
 		"the admin monitor": san_auth.WithMonitor(asRole(1, role_basev1.Role_ROLE_UNSPECIFIED)),
 	}
-}
-
-func TestRackDetail_AWarehouseReadsTheShelfInUnitsOnly(t *testing.T) {
-	db := san_testdb.DB(t)
-	svc := newService(t, db)
-
-	rackID, _, _ := aRackWithGoods(t, svc, db)
 
 	for _, role := range warehouseReaders {
-		res, err := svc.RackDetail(asRole(1, role), connect.NewRequest(&inventoryv1.RackDetailRequest{
-			TeamId: rackWarehouse, RackId: rackID,
-		}))
-		if err != nil {
-			t.Fatalf("%s: RackDetail: %v", role, err)
-		}
-
-		summary := res.Msg.GetSummary()
-
-		// The units stay — they are what somebody at the shelf counts.
-		if summary.GetTotalOnHand() != 14 {
-			t.Fatalf("%s: total on hand = %d, want 14", role, summary.GetTotalOnHand())
-		}
-
-		if summary.TotalValue != nil {
-			t.Fatalf("%s: total value = %v, want it unset for a warehouse", role, summary.GetTotalValue())
-		}
-
-		if summary.UnknownCostProducts != nil {
-			t.Fatalf("%s: unknown-cost products = %d, want it unset for a warehouse", role, summary.GetUnknownCostProducts())
-		}
+		readers[role.String()] = asRole(1, role)
 	}
+
+	return readers
 }
 
-func TestRackDetail_RootAndTheMonitorKeepTheValue(t *testing.T) {
+func TestRackDetail_EveryReaderIsGivenTheShelfsValue(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
 	rackID, _, _ := aRackWithGoods(t, svc, db)
 
-	for who, ctx := range valueReaders() {
+	for who, ctx := range shelfReaders() {
 		res, err := svc.RackDetail(ctx, connect.NewRequest(&inventoryv1.RackDetailRequest{
 			TeamId: rackWarehouse, RackId: rackID,
 		}))
@@ -79,6 +55,10 @@ func TestRackDetail_RootAndTheMonitorKeepTheValue(t *testing.T) {
 		}
 
 		summary := res.Msg.GetSummary()
+
+		if summary.GetTotalOnHand() != 14 {
+			t.Fatalf("%s: total on hand = %d, want 14", who, summary.GetTotalOnHand())
+		}
 
 		// 10 × 50.000 + 4 × 1.000, and nothing of unknown cost — both SET, the 0 included.
 		if summary.TotalValue == nil || summary.GetTotalValue() != 504000 {
@@ -91,8 +71,8 @@ func TestRackDetail_RootAndTheMonitorKeepTheValue(t *testing.T) {
 	}
 }
 
-// An empty shelf is worth Rp 0 to whoever is given its money — a SET 0 — and is still nothing at all to a warehouse.
-func TestRackDetail_AnEmptyShelfIsAZeroOnlyForWhoReadsTheValue(t *testing.T) {
+// An empty shelf is worth Rp 0 to every reader — a SET 0, the warehouse's staff's too.
+func TestRackDetail_AnEmptyShelfIsAZeroForEveryReader(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
@@ -103,26 +83,17 @@ func TestRackDetail_AnEmptyShelfIsAZeroOnlyForWhoReadsTheValue(t *testing.T) {
 		t.Fatalf("create rack: %v", err)
 	}
 
-	read := func(ctx context.Context) *inventoryv1.RackSummary {
-		t.Helper()
-
+	for who, ctx := range shelfReaders() {
 		res, readErr := svc.RackDetail(ctx, connect.NewRequest(&inventoryv1.RackDetailRequest{
 			TeamId: rackWarehouse, RackId: rack.Msg.GetRack().GetId(),
 		}))
 		if readErr != nil {
-			t.Fatalf("RackDetail: %v", readErr)
+			t.Fatalf("%s: RackDetail: %v", who, readErr)
 		}
 
-		return res.Msg.GetSummary()
-	}
-
-	root := read(asRole(1, role_basev1.Role_ROLE_UNSPECIFIED))
-	if root.TotalValue == nil || root.GetTotalValue() != 0 {
-		t.Fatalf("root's empty shelf value = %v, want a set 0", root.TotalValue)
-	}
-
-	staff := read(asRole(1, role_basev1.Role_ROLE_WAREHOUSE_STAFF))
-	if staff.TotalValue != nil || staff.UnknownCostProducts != nil {
-		t.Fatalf("staff's empty shelf = %+v, want no money at all", staff)
+		summary := res.Msg.GetSummary()
+		if summary.TotalValue == nil || summary.GetTotalValue() != 0 || summary.UnknownCostProducts == nil {
+			t.Fatalf("%s: empty shelf = %+v, want a set value of 0 and a set unknown-cost count", who, summary)
+		}
 	}
 }

@@ -46,6 +46,8 @@ func expenseCreatedEvent(row *expense_service_models.ExpenseRecord) *eventsv1.Ev
 			ActorId:          row.CreatedBy,
 			ActorIsOverride:  row.IsOverride,
 			CreatedAtUnix:    row.CreatedAt.Unix(),
+			// The account posts by it: ads_expense · capital · money_in · expense.
+			Type: expensev1.ExpenseType(row.Type),
 		}},
 	}
 }
@@ -70,6 +72,8 @@ func expenseAdjustedEvent(adjustment *expense_service_models.ExpenseRecord) *eve
 			ActorId:          adjustment.CreatedBy,
 			ActorIsOverride:  adjustment.IsOverride,
 			CreatedAtUnix:    adjustment.CreatedAt.Unix(),
+			// The expense's type, copied — the same change type, signed the same way.
+			Type: expensev1.ExpenseType(adjustment.Type),
 		}},
 	}
 }

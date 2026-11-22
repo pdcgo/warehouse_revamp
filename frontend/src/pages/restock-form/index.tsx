@@ -24,9 +24,9 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, Lock, Package, PackagePlus, Plus, Save, X } from "lucide-react";
 
-import { productClient, rpcError } from "../../api/clients";
-import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
+import { rpcError } from "../../api/clients";
 import { usePresetProduct } from "../../features/products/presetProduct";
+import { useProductsByIds } from "../../features/products/queries";
 import { cameFrom } from "../../lib/cameFrom";
 import type { RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -279,38 +279,29 @@ export function RestockFormPage() {
     setReceiptFile(receiptFrom(request.receiptFile));
     setShippingCost(String(request.shipmentCost));
     setNote(request.note);
-
-    // The covers, in ONE call for every line — decoration, so best-effort and patched in by product id, never over
-    // anything typed.
-    const productIds = [...new Set(request.items.map((i) => i.productId).filter((pid) => pid > 0n))];
-    if (productIds.length === 0) return;
-
-    void (async () => {
-      try {
-        const found = await productClient.productByIds({
-          teamId,
-          filter: { ids: productIds },
-          dataRequest: productByIdsRowData(),
-        });
-        const covers = new Map(
-          productsFromByIds(found).map((p) => [
-            p.id.toString(),
-            { imageUrl: p.defaultImageUrl, thumbnailUrl: p.defaultImageThumbnailUrl },
-          ]),
-        );
-
-        setLines((prev) =>
-          prev.map((l) => {
-            const cover = covers.get(l.productId.toString());
-
-            return cover ? { ...l, ...cover } : l;
-          }),
-        );
-      } catch {
-        // A cover is decoration; the placeholder is a correct rendering of "no picture".
-      }
-    })();
   }, [isEdit, teamId, detail.data]);
+
+  // The covers, in ONE read for every stored line (useProductsByIds, #122) — decoration, so best-effort and patched in
+  // by product id, never over anything typed: only a line's picture moves, and a failed read leaves the placeholder, a
+  // correct rendering of "no picture".
+  const storedProductIds = useMemo(
+    () => (loaded ? [...new Set(loaded.items.map((i) => i.productId).filter((pid) => pid > 0n))] : []),
+    [loaded],
+  );
+  const covers = useProductsByIds({ teamId: isEdit ? teamId : undefined, productIds: storedProductIds });
+
+  useEffect(() => {
+    const found = covers.data;
+    if (!found) return;
+
+    setLines((prev) =>
+      prev.map((l) => {
+        const p = found.get(l.productId.toString());
+
+        return p ? { ...l, imageUrl: p.defaultImageUrl, thumbnailUrl: p.defaultImageThumbnailUrl } : l;
+      }),
+    );
+  }, [covers.data]);
 
   const mode: FormMode | null = !isEdit ? "create" : loaded && teamId !== undefined ? modeFor(loaded, teamId) : null;
   const headerLocked = mode === "arrived";

@@ -767,13 +767,19 @@ func (p *workerPlan) batchCap(w *e2eWorker, i int) time.Duration {
 // pickWorkerPorts gives worker i the API port 8181+k and the UI port 5181+k for the next k at which neither is held
 // by another program. Ports this checkout's own e2e left behind count as free (the run stops those first).
 func pickWorkerPorts(n int, busy portBusy) (apis, uis []int, skipped []string, err error) {
+	return pickPortPairs(n, workerAPIPortMin, workerUIPortMin, workerPortSpan, busy)
+}
+
+// pickPortPairs is pickWorkerPorts from any base pair: the API port apiMin+k and the UI port uiMin+k for the next k
+// (below span) at which neither is held — `san audit frontend` looks from :8251/:5251, outside the workers' scan.
+func pickPortPairs(n, apiMin, uiMin, span int, busy portBusy) (apis, uis []int, skipped []string, err error) {
 	for k := 0; len(apis) < n; k++ {
-		if k >= workerPortSpan {
+		if k >= span {
 			return nil, nil, skipped, fmt.Errorf("no free port pair for %d workers in %d–%d / %d–%d", n,
-				workerAPIPortMin, workerAPIPortMin+workerPortSpan-1, workerUIPortMin, workerUIPortMin+workerPortSpan-1)
+				apiMin, apiMin+span-1, uiMin, uiMin+span-1)
 		}
 
-		api, ui := workerAPIPortMin+k, workerUIPortMin+k
+		api, ui := apiMin+k, uiMin+k
 
 		if busy != nil && (busy(api) || busy(ui)) {
 			skipped = append(skipped, fmt.Sprintf(":%d/:%d", api, ui))

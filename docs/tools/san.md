@@ -22,7 +22,7 @@ go run ./tools/san user reset-password --username ani
 | --- | --- | --- |
 | **the schema** | [`migrate`](#migrate) | goose, per service (HARD RULE 3) |
 | **the fixtures** | [`seed`](#seed) · [`db`](#db) · [`region`](#region) | dev data, the test database, reference data |
-| **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) · [`product recompose-codes`](#product-recompose-codes) · [`shop grant-current-cs`](#shop-grant-current-cs) | acts on real data, through the real services |
+| **operations** | [`user reset-password`](#user-reset-password) · [`user root add` / `remove`](#user-root-add--remove) · [`product recompose-codes`](#product-recompose-codes) · [`expense import-capital`](#expense-import-capital) · [`shop grant-current-cs`](#shop-grant-current-cs) | acts on real data, through the real services |
 | **the workspace** | [`remote`](#remote) · [`remote mcp`](#remote-mcp) · [`remote refresh-token`](#remote-refresh-token) | serve this checkout to a coding agent |
 | **the local stack** | [`dev setup`](#dev-setup) · [`dev run`](#dev-run) | make a checkout runnable, then run the containers, the API and the UI in one terminal |
 | **the tests** | [`test measure`](#test-measure) · [`test affected`](#test-affected) · [`test smoke`](#test-smoke) · [`test full`](#test-full) · [`test accept-run`](#test-accept-run) · [`test report` · `test slice`](#test-report--test-slice) | measured testing: measure the change against the last green full run, run what it reaches, run the full suites only when due |
@@ -94,15 +94,17 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`test full`](#test-full) | The full go test, Storybook and e2e on a **frozen copy** of the folder; `last_green.json` moves only when all of it is green. The e2e runs on **ONE worker** by default (`--workers N` for more, on request) — its own database, ports and events project, so the live tree's Go DB tests, smoke and Storybook go on beside it. Run it when measured due and the owner said yes. `--dry-run` prints the plan. A story or spec file that only failed to **load** is re-run once, by itself, in the same run |
 | [`test accept-run`](#test-accept-run) | Make an ENDED full run the green baseline when its only failures were load failures: re-run each such file once now, in this tree; `last_green.json` moves to **that run's** fingerprint. Refuses while any failed check remains |
 | [`test report` · `test slice`](#test-report--test-slice) | Print `e2e_report/latest.md` and the recent runs · log the files a slice changed |
+| [`audit frontend`](#audit-frontend) | Open each audited screen of a PRODUCTION build in one headless Chromium, on a seat of its own (`warehouse_test_audit`, :8251/:5251, events `warehouse-audit`), and count per screen: requests per load, the same RPC asked twice, CORS pre-checks, calls waiting on each other (measured), time until usable, requests one save fires, and what React re-renders per keystroke in its forms. Asserts nothing. `--baseline` writes `audits/frontend/`; `--files a,b` measures only the screens a slice's files reach and prints the Level 2 verdict against the baseline; `--dry-run` prints the seat |
 | [`user reset-password`](#user-reset-password) | Set a user's password without knowing the old one |
 | [`user root add` / `remove`](#user-root-add--remove) | Make an account a Root, or take Root from one — never the last |
 | [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
 | [`supplier backfill-links`](#supplier-backfill-links) | Link every accepted restock line's product to its supplier and store, and re-fold the figures a restock mixing suppliers never got. `--dry-run` first. Repeatable — a second run writes nothing |
 | [`supplier backfill-warehouses`](#supplier-backfill-warehouses) | Re-fold both supplier daily reports into the warehouse each figure came from, and print every supplier's totals BEFORE == AFTER. `--dry-run` first. Repeatable — a second run finds nothing |
 | [`product recompose-codes`](#product-recompose-codes) | Put each team's code in front of the product codes written before codes were composed on write. Safe to re-run — a second run changes nothing |
+| [`expense import-capital`](#expense-import-capital) | Bring a selling team's Setor / Tarik Modal made on the account page before capital's second door into Biaya — Setoran modal / Prive, linked to the account row. `--dry-run` first. Safe to re-run — a second run imports nothing |
 | [`shop grant-current-cs`](#shop-grant-current-cs) | The shop write gate's rollout: grant every current CS every live shop of their team, through `ShopUserAdd`. `--dry-run` prints it first. Safe to re-run — a second run adds nothing |
 | [`document sweep-generated`](#document-sweep-generated) | Delete the generated downloads older than 7 days — merged label PDFs, table exports, order exports — now, as the server's daily sweep does. Uploads never. `--dry-run` counts first. Safe to re-run — a second run finds nothing |
-| [`report refold`](#report-refold) | Rebuild ONE scope's day of an EVENT-FED report from its log — a shop's or a person's settlement day (every later day's carry follows), a seller team's order metrics, a supplier's restock figures or Penjualan — the repair for a day that is wrong while the log is right. `--dry-run` prints it first. Safe to re-run — a second run changes nothing |
+| [`report refold`](#report-refold) | Rebuild ONE scope's day of an EVENT-FED report from its log — a shop's or a person's settlement day (every later day's carry follows), a seller team's order metrics or expense metrics, a supplier's restock figures or Penjualan — the repair for a day that is wrong while the log is right. `--dry-run` prints it first. Safe to re-run — a second run changes nothing |
 | [`pubsub ensure`](#pubsub-ensure) | Make every declared event topic and subscription exist, with the safe defaults |
 | [`pubsub redrive`](#pubsub-redrive) | Re-publish everything sitting in a dead-letter queue back to its topic |
 | [`pubsub releases`](#pubsub-releases) | List and replay the dead-lettered stock releases (`InventoryTxCancel`, `OrderCancelled`) through inventory's own listener |
@@ -338,6 +340,7 @@ go run ./tools/san dev setup --no-docker   # the containers are already up
 | 6a | every accepted line's product linked to its supplier and store, and a mixed restock's figures re-folded — repeatable | [`supplier backfill-links`](#supplier-backfill-links) |
 | 6a′ | the supplier figures folded before the reports carried the warehouse, re-folded into it — repeatable | [`supplier backfill-warehouses`](#supplier-backfill-warehouses) |
 | 6b | the product codes written before a code was composed — each team's code put in front, once | [`product recompose-codes`](#product-recompose-codes) |
+| 6c | a selling team's Setor / Tarik Modal made on the account page before capital's second door, brought into Biaya — repeatable | [`expense import-capital`](#expense-import-capital) |
 | 7 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller`, and Dev Warehouse's fee while it has none | [`seed dev`](#seed) |
 | 8 | the product-category tree | [`seed categories`](#seed) |
 | 9 | Indonesia's 91,599 regions | [`region load-seed`](#region) |
@@ -363,7 +366,9 @@ flowchart TD
     M --> SB["supplier backfill-figures"]
     SB --> SL["supplier backfill-links"]
     SL --> SW["supplier backfill-warehouses"]
-    SW --> SD["seed dev"]
+    SW --> PR["product recompose-codes"]
+    PR --> IC["expense import-capital"]
+    IC --> SD["seed dev"]
     SD --> SC["seed categories"]
     SC --> RG["region load-seed"]
     RG --> N["npm install"]
@@ -1167,6 +1172,339 @@ At the repo root, gitignored — nothing in it is committed:
 | `slice_log.md`, `slice_mark.json` | the slice log and its last mark |
 | `state.json` | since when the full run has been due (the overdue rule) |
 | `.full_run.lock` | a live full run |
+| `frontend_audit/` | [`audit frontend`](#audit-frontend): `<stamp>/` per run, `build/<hash>/` the cached production builds, `bin/` its API binary, `template.json` the kept template's fingerprint and seed ids |
+| `.frontend_audit.lock` | a live frontend audit |
+
+---
+
+## `audit frontend`
+
+```sh
+go run ./tools/san audit frontend --dry-run                 # the seat, the screens, the caches, whether it can start
+go run ./tools/san audit frontend --screen rack-detail      # one screen (repeatable, or a,b)
+go run ./tools/san audit frontend --baseline                # every screen; writes audits/frontend/*.md + baseline.json
+go run ./tools/san audit frontend --files a.tsx,b.go        # the Level 2 line: the screens these files reach + the verdict
+```
+
+The frontend speed audit ([frontend-speed-is-measured-by-a-dev-tool](../development_lifecycle_decision.md#frontend-speed-is-measured-by-a-dev-tool),
+backlog #119). It opens each audited screen of a **production build** in one headless Chromium, one page at a time, as
+the role whose daily work it is, and counts — it **asserts nothing** (a measurement, not a test, so its group is
+`audit`, not `test`, and it never moves `last_green.json`):
+
+| measure | how |
+| --- | --- |
+| requests per load | every Connect POST of a warm load; the **shell**'s (CheckAccess, TeamAccessList, the sidebar's two one-row badge reads — `layouts/desktop/Sidebar.tsx`) apart from the **screen**'s own. Every warm load must ask the same — a count that differs is itself a finding (a race) |
+| the same RPC asked twice | same method, same body, inside one load |
+| CORS pre-checks | the `OPTIONS` requests (seen through the DevTools protocol), informative. The API keeps a pre-check 7200 s (`Access-Control-Max-Age`, backlog #127 — Chromium's own cap; it kept one 5 s before), so a warm load asks none; the cold load opens a fresh browser context per screen and still pays one per request shape |
+| calls waiting on each other | **measured**, not guessed from timings: one more load per screen request holds THAT request's answer back 1 s; every request that then starts ≥ 0.5 s later waits on it. The chain depth is the longest path; every chain that deep is listed. The pass runs **twice** (`auditDepPasses`): the depth each pass read is kept (`chain_depths`), so a chain is judged only when it holds in both (the unstable-chain rule, below) |
+| time until usable | in the page (a `requestAnimationFrame` loop): the first frame with the screen's ready element shown, no loading marker in it (`[role="status"]`, `.chakra-spinner`, `[data-busy="true"]`) and no Connect request in flight — held 500 ms with no new request; capped at 15 s ("never usable"). Warm median and min–max |
+| requests after one save | the screen's one representative write done through the UI on a warm load; every Connect POST from its answer until 1 s quiet. A read the screen lists missing reads *stale?*; one asked twice or more than listed + 2 reads *storm*. A write the API **refused** (its answer 4xx/5xx — the driver keeps the answer's first 400 bytes) reads *refused*: nothing after it is a refresh, so it is never compared |
+| re-renders while typing | per form field the screen lists (P2, [below](#typing--re-renders-per-keystroke)): React **commits** and **components** rendered per keystroke (the median over the keys), the **trailing** commits after the typing stops, and the components named — where each re-render starts, the app's own rendered most, every component rendered most. On a load of its own, apart from the timed ones |
+
+Plus, per screen, read-only **probes** (opening a picker), counted the same way from their first step; a probe's
+`setup` steps (order-create's ProductPicker opens only once a warehouse is picked) run first and are not counted.
+
+**Flags:** `--screen <name>` (repeatable or comma-separated; default every screen) · `--runs N` warm loads after one
+cold load (default 5) · `--baseline` writes `audits/frontend/<screen>.md` and `audits/frontend/baseline.json` (without
+it a run writes only its folder) · `--dry-run` prints the seat, the screens, the template and build caches and whether
+it can start, and touches nothing. `--files a,b` (comma-separated, repo-relative — as `san test affected --files`)
+measures only the screens those files reach and prints the Level 2 verdict ([below](#--files--the-level-2-line));
+it refuses `--screen` (it picks the screens itself) and `--baseline` (it compares, never writes).
+
+**The screens** (`tools/san/audit_frontend_screens.go`, P1 = the scoping's first ten): `rack-detail` (wh owner, save
+RackMove 1 unit A→B) · `restock-edit` (seller, save the note; types the first line's quantity and the note) ·
+`restock-new` (seller, probes ProductPicker and the supplier picker) · `product-edit` (seller, save unchanged, probe
+CategorySelect; types the name) · `liability-detail` (the WAREHOUSE owner on its ledger with the seller — "request
+payment" is the creditor's button) · `profile` · `warehouse-edit` (root) · `shop-detail` (seller, ShopUserSetPrimary) ·
+`order-create` (seller; P2: save the whole OrderCreate — the warehouse, a shop, a courier, the seed's newest product,
+today, a price, the ref and a 1×1 PNG receipt — which opens the order it made; probe ProductPicker, the warehouse
+picked first; types the buyer name, the address and the first line's quantity, a product picked first) ·
+`team-detail` (root). A step reaches an element by its test id, or — where the app gives it none — by a CSS selector
+over the app's own attributes (the date picker's `[data-today]` cell, the receipt's file input): the audit never edits
+`frontend/src`; a form it cannot reach either way is reported, not patched.
+
+**P4 — the daily screens** (`tools/san/audit_frontend_screens_daily.go`, backlog #126): the main lists and the other
+screens a person works on every day, one role each — the one whose daily work it is (`layouts/nav.ts`'s menu per team
+type and role). **50 screens in all** (`--dry-run` lists them):
+
+| role | screens |
+| --- | --- |
+| seller (the selling team's owner) | `home` · `products` · `product-detail` · `orders` · `order-detail` (save: a note, OrderNoteCreate) · `order-drafts` · `restock-selling` · `restock-selling-detail` · `suppliers` · `supplier-detail` · `shops` · `financial-accounts` · `financial-account-detail` · `expenses` · `settlement` · `settlement-report` · `settlement-imports` · `analytic` (opened on a report — orders created, by shop, 7 days: the bare `/analytic` asks nothing until a metric is picked) · `users` · `user-detail` · `transfers-selling` · `custom-shipments-selling` |
+| the warehouse crew (staff) | `warehouse-orders` (the order queue) · `warehouse-order` (one order's pick page; save: the order's next step, OrderStatusChange) |
+| the warehouse owner | `restock-warehouse` · `restock-warehouse-detail` · `restock-accept` · `racks` · `batches` · `batch-detail` · `warehouse-products` (`/products`, its warehouse branch) · `warehouse-product` · `opname-sessions` · `opname-session-detail` · `found-stock` · `returns` · `statement` · `liability-list` |
+| root | `teams` · `inventory` (`?warehouse=` the audit's) |
+
+A save is a cheap, repeatable write of the screen's daily work; a list whose writes are creates in a dialog measures
+none. Usable waits on the page's root test id, or — a page with none of its own (`home`, `orders`, `order-drafts`,
+`expenses`, `settlement-imports`, `warehouse-orders`, `warehouse-order`, `users`, `transfers-selling`,
+`custom-shipments-selling`, `statement`, `teams`) — on the best stable element it already draws: its table, its team
+line, or the shell's `main` (the lazy page's spinner, a list's skeleton and any request in flight hold it unusable).
+
+**Routes not audited, each for a reason:** `/login` (the audit signs in by token) · `/connect-agent` (an OAuth
+hand-off) · `warehouse-orders/print`, `inventories/restock/labels` (print pages — a PDF built in the browser) ·
+`products/archived` (the products page with its archive flag) · `products/new` (product-edit's create mode) ·
+`inventories/stock` (a forwarder to `/products` or `/inventory`) · every loader redirect · the setup screens
+(`categories`, `shipping`, `settings`, the bundles) · the cross-team discover pages and the reports read now and then
+(supplier report, account report, shop entries) · the screens needing a state the seed does not make (a transfer
+between two warehouses, a parcel, a return, an import file, a count in progress, a restock resolution).
+
+**The table is checked against the app** (`TestAuditScreenTableMatchesTheApp`, over the real checkout): every page
+directory exists under `frontend/src/pages/`, every address is a route `router.tsx` renders THAT page on (read by
+`san test affected`'s own route reader — `RestockRoute`'s two pages included), every role is one the seed signs in,
+every name is its own, and every test id a usable rule waits on is one `frontend/src` draws (a literal, or a literal of
+a `data-testid={…}` expression). `TestAuditFilesReachEveryScreenThroughItsPage` proves `--files` reaches each screen
+through its own page.
+
+### Its own seat
+
+It shares nothing with the tester (worker w1, `warehouse_test_tpl`, `.full_run.lock`), the dev bot's Go DB tests
+(`warehouse_test`, :8081/:5175) or the owner's dev stack (`postgres`, :8080/:5174):
+
+| | |
+| --- | --- |
+| database | `warehouse_test_audit`, cloned per run from `warehouse_test_audit_tpl` (`db reset-test --template`), dropped at the end |
+| template | **kept** between runs; rebuilt only when its fingerprint moves — every service's `db_migrations/**`, the seed's Go files `tools/san/audit_frontend_seed*.go` (P1's ground and P4's daily one — never a `_test.go`), `frontend/scripts/speed-audit/fixtures/**` (CRLF read as LF). State: `e2e_report/frontend_audit/template.json` (the fingerprint and the seed's ids) |
+| ports | the first free pair from **:8251/:5251** (20 pairs; a port another program holds is skipped, never killed) |
+| events | the emulator project `warehouse-audit`, push subscriptions to the audit's own API (`pubsub ensure`, every run) |
+| API | `e2e_report/frontend_audit/bin/app_development_audit.exe` (`go build`), with the e2e's environment pointed at the audit's database, origin and project |
+| UI | `vite build --config frontend/scripts/speed-audit/vite.audit.config.mjs` into `e2e_report/frontend_audit/build/<hash>` — cached by `frontend/src` (stories and unit tests left out), `index.html`, both vite configs, `package-lock.json` and the API URL; the newest three kept — served by `vite preview`. The audit's config is the app's `vite.config.ts` with **one** change, `esbuild.keepNames` — so the typing pass can name components ([the keepNames proof](#typing--re-renders-per-keystroke)) |
+| lock | `e2e_report/.frontend_audit.lock` — a second audit in **any** checkout of the repo refuses (the template is one database for the machine). A dead lock's servers are stopped on the ports it recorded, only if they are ours (`app_development`, or this checkout's `frontend/`) |
+
+**A dependency that holds only sometimes flips a chain between runs**: a call fired by a timer OR an answer, whichever comes later, waits on the answer in one run and not in the next. order-create's `WarehouseReceivingStatus` read depth 2 (after the warehouse `TeamList`) in four 2026-11-21 runs and 1 in a fifth — P1's baseline. `--files` never calls such a flip a regression: see *the unstable-chain rule* below.
+
+**Beside a full run** (a live `.full_run.lock` in any checkout) it does not refuse — nothing is shared — but runs
+**counts only**: one warm load per screen, its times recorded as *noisy* and never judged.
+
+**The audit builds the app's own `vite.config.ts`**, its `manualChunks` vendor split included — the bundle a person
+downloads. (Until #128 its split made the `react` and `chakra` chunks import each other and the production page drew
+blank, *"Cannot read properties of undefined (reading 'createContext')"*; P1's first baseline was taken on Rollup's
+own chunking — request counts do not depend on the split, load times a little.)
+
+**The seed** (`tools/san/audit_frontend_seed.go`) goes **through the audit's own API** with the generated Connect
+clients, as root — every row validated and written by its real handler, the events delivered by the real push: a
+warehouse (info, fee) and a selling team, five users (warehouse owner and staff, seller, two CS), 15 suppliers, two
+operational accounts, 60 products, 10 racks — rack A holding 45 product lines, with moves and samples —, 30 restocks
+accepted (each with a courier charge at the door → 30 liability entries, waited for) and 10 open (each with a courier
+and a resi; the first with 8 lines), two shops (the first with three users), and the selling team's return warehouse
+(TeamReturnConfigurationSet — an order is refused without one). 186 API calls. **P4's daily ground**
+(`tools/san/audit_frontend_seed_daily.go`, #126), on top: 25 orders on shop 1 from the warehouse's ready stock
+(products 46–58, one unit each — never rack A's, product 54 or product 60, which the P1 screens and the count stand
+on), 25 order drafts (OrderDraftPush), a capital deposit and 24 running costs on the first account, 3 found reports on
+rack C, one open count of rack J (last: an open count locks its rack's stock), and the newest batch's id read back.
+Its events settle before the template's API stops — the ledger's 55 entries (30 courier charges + 25 order fees), a
+settlement account per order, the first account's log — and the order metrics' fold, which no list reads back, gets
+3 s after them. **266 API calls; the template rebuild 22 s (the seed 11 s)**. The only SQL is what
+`db reset-test`, `migrate up-all`, `region load-seed` (its own five-row chain), `seed root` (its own password) and
+`seed categories` already do — run in process, the same commands.
+
+```mermaid
+sequenceDiagram
+    participant S as san audit frontend
+    participant PG as Postgres
+    participant API as audit API :8251
+    participant UI as vite preview :5251
+    participant N as run.mjs (Chromium)
+    S->>S: lock (refuse a live audit in any checkout) · pick ports · full run beside? → counts only
+    S->>S: go build the API binary
+    alt the template's fingerprint moved
+        S->>PG: reset _tpl · migrate up-all · regions · seed root · categories
+        S->>API: start on _tpl
+        S->>API: the seed (Connect clients, as root) · wait for its events (the ledger's entries, the settlement accounts, the account log)
+        S->>API: stop (a template cannot be cloned while connected)
+    end
+    S->>PG: clone warehouse_test_audit from _tpl
+    S->>S: vite build (or the cached build for this tree)
+    S->>API: start on the clone · pubsub ensure warehouse-audit
+    S->>UI: vite preview of the build
+    S->>API: Login per role → tokens into plan.json
+    S->>N: node run.mjs --plan plan.json --out results.json
+    loop each screen
+        N->>UI: cold load, then the warm loads (token + team in storage)
+        N->>UI: the dependency pass (one held-back answer per load)
+        N->>UI: the typing pass (a fresh context with the render hook, a load per field and pass)
+        N->>UI: the save, then the probes
+    end
+    N-->>S: results.json
+    S->>S: the figures (audit_frontend_measure.go) → summary.md · --baseline: audits/frontend/
+    S->>API: stop both servers · drop the clone
+```
+
+### Output
+
+`e2e_report/frontend_audit/<stamp>/` (gitignored): `plan.json`, `results.json` (the raw loads), `measures.json`,
+`costs.json`, `summary.md` (one line a screen, the costs, and — listed, not judged — what moved against the committed
+baseline), the servers' logs, and a screenshot of a screen that never became usable. With `--baseline`:
+`audits/frontend/<screen>.md` (Verdict · Measured · the measures · Requests · Typing · Findings · History) and
+`audits/frontend/baseline.json` — the screens measured are replaced, the others kept, each screen's History gaining a
+row. What moved past a threshold is listed by ONE pure function, `frontendChanges`, each change tagged **COUNT**
+(requests, duplicates, chain depth, requests after the save, the typing counts) or **TIMING** (usable) — what a slice
+does about it is
+[a-slice-fixes-the-speed-regression-it-caused](../development_lifecycle_decision.md#a-slice-fixes-the-speed-regression-it-caused),
+judged by `--files` (`verdict.txt` and `verdict.json` in the run folder).
+
+**Measured cost** (2026-11-21, beside a live full run): the API binary 1.2 s (Go cache warm) · the template 18 s
+(seed 185 calls, 4 s) — else kept, 0 s · the clone 3–4 s · the production build 17–19 s — else cached · the servers
+1.2 s · per screen, counts only, 7–36 s (the dependency pass is most of it) · all ten screens about 3 min.
+Since #124 the dependency pass runs twice: rack-detail 23 s → 44 s a screen on a quiet machine (1 cold + 5 warm
+loads, its 7 screen requests held back twice); all ten, counts only beside an isolated run, 4 min.
+Since #125 the typing pass adds a load and ten keys per field and pass (two passes) — a screen, counts only beside an
+isolated run: order-create (three fields) 79 s, restock-edit (two) 58 s, product-edit (one) 23 s; all ten 5 min 17 s.
+The driver's limit grows with it (`auditDriverLimit`: per screen 1 min + 25 s a load + 30 s a typed field and pass).
+Since #126 (P4, 50 screens): P4's 40 daily screens, counts only beside an isolated run, **17 min** (16 min 56 s and
+17 min 9 s in two runs; 3–70 s a screen — `warehouse-product`'s 17 screen requests, each held back twice, the
+longest); the ten 6 min; all 50 about 23 min counts only. A run with 5 warm loads on a quiet machine adds four loads a screen (≈ 1 s each).
+
+### Typing — re-renders per keystroke
+
+The scoping's P2 (backlog #125): what React draws while a person types into the forms — order-create, the restock
+form, product-edit (`Typing` in `tools/san/audit_frontend_screens.go`). Each field is typed **twice**
+(`auditTypingPasses`), each time on a **fresh load** in a browser context of its own: the render hook below walks the
+whole tree on every commit, so it never runs where loads are timed. A field's `setup` steps run first (the quantity
+needs a product picked); then it is clicked, emptied, and its ten keys (`auditTextKeys` — `audit text`; a quantity's
+`auditQtyKeys`) are pressed one by one, two animation frames after each, then **500 ms of quiet**
+(`auditTypingWaitMS`).
+
+**The hook.** `run.mjs` installs a stub `__REACT_DEVTOOLS_GLOBAL_HOOK__` before the app's code: react-dom's production
+build attaches to any hook that says `supportsFiber`, and calls `onCommitFiberRoot` on every commit. The stub walks the
+committed tree and counts a component (function, class, `forwardRef`, `memo`) whose **PerformedWork** flag is set — it
+rendered this commit; a subtree whose child list is its previous one's is skipped (React reused it: DevTools' own
+rule). It also notes where each re-render **starts** — a component that rendered while its nearest component above did
+not: its own state, or a context it reads, changed. The page records only raw times (each keydown, each key's frames,
+the end of the quiet) and the commits; the windows and the figures are Go's (`tools/san/audit_frontend_typing.go`).
+
+| figure | what |
+| --- | --- |
+| commits/key | the commits from a key's keydown up to the next one (the last key: up to its two frames) — the median over the keys |
+| components/key | the components those commits rendered — the median |
+| trailing | the commits after the last key's frames, up to the end of the quiet: a debounced read and its answer (a quote, a picker search) — or a re-render nothing asked for |
+| re-renders start at | the starts summed over the keys and the quiet, the widest first: `OrderCreatePage ×10 (3826 a time)` — ten re-renders started at the page, each drawing 3826 components |
+| the app's, most / every, most | the components rendered most: those `frontend/src` declares in a `.tsx` (stories and tests left out — `appComponentNames`), then every one, Chakra's and emotion's internals included |
+
+**Thresholds**: commits/key **+1** and components/key **+25 %** (the scoping's §6), trailing **+1** *(build default)*
+— COUNTs, so a slice that crosses one fixes it (`FIX`). The **every-pass rule** as for the chains: *worse* only when every pass now
+is worse than every baseline pass by the threshold, *better* the mirror, a move the passes straddle `unstable`; a
+field the baseline lacks reads `no base`.
+
+**Names need `esbuild.keepNames`** — a minified production build calls every component `t` or `n`. The audit's build
+config (`frontend/scripts/speed-audit/vite.audit.config.mjs`) is the app's `vite.config.ts` with that one change: the
+build then wraps each declaration in a (minified) `__name(fn, "OrderCreatePage")` call — 4.51 → 4.73 MB of
+JavaScript, uncompressed (+4.9 %), and no request. **Counts** do not move with it; **times** may a little, so a
+usable-time move across the first baseline taken after #125 is the build's, not a slice's.
+**The keepNames proof** (2026-11-21, counts only, the same tree): `--files frontend/scripts/speed-audit/vite.audit.config.mjs`
+measured all ten screens against the baseline taken without it — 0 `FIX`, every screen's request lists the
+baseline's but warehouse-edit's 3 → 2 (an uncommitted #122 edit to that page, newer than the baseline); warehouse-edit
+measured on a build without keepNames (`115e005f…`) and with it (`f0367406…`) read the same: screen 2, shell 2, after
+the save 3. The config is therefore a build file: a change to it reaches every audited screen.
+
+**What it found** (2026-11-21, P2's first readings): every key re-renders the whole form — order-create 3826–4213
+components a key, each re-render starting at `OrderCreatePage` (30 `useState`s, #123); restock-edit 3268, starting at
+`RestockFormPage`; product-edit 934, at `ProductEditPage`. The quantity's 2 trailing commits (330–530 ms after the last
+key, each the whole page again) are most likely the two quotes keyed by the lines answering (`useStockTakeQuote`,
+`useWarehouseFeeQuote`) — the typing pass does not record requests.
+
+### `--files` — the Level 2 line
+
+```sh
+go run ./tools/san audit frontend --files frontend/src/pages/rack-detail/index.tsx
+go run ./tools/san audit frontend --files <the slice's files> --dry-run      # which screens, and why — measures nothing
+```
+
+The dev bot's Level 2 check for a slice that changes what a screen reads (backlog #124,
+[a-slice-fixes-the-speed-regression-it-caused](../development_lifecycle_decision.md#a-slice-fixes-the-speed-regression-it-caused)).
+It measures **only the audited screens the files reach**, compares them with `audits/frontend/baseline.json` and
+prints the owner's verdict. It **never writes the baseline** — the slice ends with `--screen <s> --baseline` once its
+counts are right — and **exits 0 whenever the measurement completed**, whatever the verdict *(build default)*: the
+tool asserts nothing, the dev bot acts on the lines.
+
+**Which screens a file reaches** is `san test affected`'s page mapping, called (`tools/san/audit_frontend_files.go`):
+
+| the file | reaches |
+| --- | --- |
+| a frontend file | up the imports **by name** (`reachedFiles`) to its pages (`pagesOf`) → the screens whose page directory it is — every audited screen holding a shared component (`CategorySelect.tsx` → `product-edit`; the other pages holding it are not audited) |
+| the app shell — `router.tsx`, `main.tsx`, `theme.ts`, `transport.ts`, `layouts/`, `api/` — or a file the layouts take (the sidebar's badge hooks) or the router mounts outside any page (`AuthGate`, `TeamContext`) | **every** audited screen. The router reached only *through* a page it imports is that page |
+| the build — `index.html`, `vite.config.ts`, `package.json`, `package-lock.json`, the audit's own `frontend/scripts/speed-audit/vite.audit.config.mjs` (`keepNames`, #125) | every audited screen |
+| a backend service file | the RPCs whose handlers reach it (`indexGoService` → `reachedRPCs`; nothing traced, or a migration: every RPC of the service) → the screens whose **measured requests** call one — the baseline's lists (the screen's, the shell's, after the save, the probes') and the screen's save. A `.proto` → its RPCs; a `backend/pkgs/` package → every RPC of the services importing it; `backend/cmd/app_development/` → every RPC of the services the file imports (`service_api.go`: all) |
+| tests and stories, `tools/`, `docs/`, `frontend/e2e/`, another binary's `backend/cmd/`, the audit's driver `frontend/scripts/speed-audit/run.mjs` | nothing |
+
+Since P4 a shell or build file reaches **all 50** screens — about 23 min counts only, the run's longest case.
+
+It prints one line for the list (`audit --files: 2 file(s) reach 1 audited screen(s): product-edit`, or `… reach no
+audited screen — nothing measured`, and then it stops) and one line per file with how it got there; `--dry-run` stops
+after them and the seat.
+
+**The verdict** — one summary line first, then one line per change:
+
+```
+audit: 3 screen(s) · 1 count(s) worse (fix) · 0 timing · 1 unstable · 1 unchanged
+  FIX       rack-detail · requests 7 → 9 · RPCs RackHistory ×3 — a count this slice made worse: fix it in this slice, before its snapshot
+  unstable  order-create · chain 1 → 2 · RPCs TeamList → WarehouseReceivingStatus — through a link this screen declares unstable — …
+  FIX       order-create · typing quantity · commits/key 1 → 3 · re-renders start at OrderCreatePage ×30 (4079 a time); most … — a count this slice made worse: …
+```
+
+| line | when | the dev bot |
+| --- | --- | --- |
+| `FIX` | a COUNT the slice made worse: screen requests per load +1, a new duplicate, a deeper waiting chain, after the save a listed read missing or 2+ more requests, typing into a field +1 commit or +25 % components a keystroke or +1 trailing commit — the screen, the measure, before → after and the RPCs (typing: where its re-renders start) | fixes it in the slice, before its snapshot; the hand-off note names it |
+| `timing` | time until usable +25 % and +150 ms on a quiet machine, counts unchanged | reports it, never fixes it — timings move with the CPU |
+| `noisy` | slower, but beside a full run or with a spread over 30 % of the median | nothing — not a change |
+| `already` | a problem the baseline already has, still there and no worse: a duplicate, a chain 3+ deep, a save that reads *stale?* or *storm*, counts that differ between warm loads | reports it, never fixes it unasked ([audits/README.md](../../audits/README.md)) |
+| `better` | a count that went down: requests, duplicates, chain depth, listed reads missing after the save, 2+ fewer requests after it, a typing count down past its threshold | names it in the hand-off note |
+| `unstable` | a count that does not hold in every run of the measurement (below) | nothing — not judged, not to fix |
+| `no base` / `not measured` | the screen (or a typed field) has no baseline entry yet / no warm load (or no typing pass) was measured | takes a baseline / reads `results.json` |
+
+The summary's first four are changes (lines); *unchanged* is the screens with no line but `already` or `noisy`.
+
+**The unstable-chain rule — a count is judged only when it holds in every run of the measurement.**
+
+- A **waiting chain** is judged on every dependency pass: *worse* only when every pass now reads deeper than every
+  pass of the baseline, *better* only when every pass reads shallower; a move some passes read and others do not is
+  `unstable`. A baseline taken with one pass (P1's) is one reading.
+- A move of **one level** whose deeper side's every chain runs through a link the screen **declares** unstable
+  (`UnstableLinks` in `tools/san/audit_frontend_screens.go`) is `unstable` however the passes agree — two passes
+  agree by chance one run in two on a link that holds half the time. Declared: order-create's `TeamList →
+  WarehouseReceivingStatus`. Declare one only after reading the flip in two runs' `results.json` `after` lists.
+- **Requests per load** are judged on every warm load: a method that grew but whose count differs between the warm
+  loads (the measure's *counts differ*) is `unstable`.
+- **Typing** counts are judged on every typing pass, as the chains ([above](#typing--re-renders-per-keystroke)).
+
+```mermaid
+sequenceDiagram
+    participant S as san audit frontend --files
+    participant IX as the affected index (test_affected.go)
+    participant B as audits/frontend/baseline.json
+    participant R as the run (seat, servers, run.mjs)
+    S->>IX: each file → its pages, the shell, or its RPCs
+    S->>B: the RPCs each screen was measured calling
+    S->>S: the audited screens reached, one line per file
+    alt no audited screen
+        S-->>S: one line, nothing measured, exit 0
+    else some
+        S->>R: measure only those screens (two dependency passes each)
+        R-->>S: measures.json
+        S->>B: compare (read only — never written)
+        S-->>S: the summary line, a line per change, verdict.txt, exit 0
+    end
+```
+
+### Errors you should expect
+
+| error | meaning |
+| --- | --- |
+| `--files picks the screens itself: give --files or --screen, not both` | `--files` with `--screen` |
+| `--files compares with audits/frontend/baseline.json and never writes it …` | `--files` with `--baseline` — re-take a screen with `--screen <s> --baseline` |
+| `a frontend audit is live in <checkout> (pid …)` | another audit holds the lock — wait for it |
+| `STOP: :8251 is held by pid … — another program holds an e2e port` | a foreign listener appeared on the picked port between the pick and the start |
+| `no free port pair for 1 workers in 8251–8270 / 5251–5270` | every pair is held |
+| `STOP: Docker is not running` / `warehouse_revamp_postgres is not healthy` | start Docker Desktop |
+| `the template step "…": …` | a migration or a seed command failed — `setup.log` in the run folder |
+| `CreateUser …` / `RestockRequestAccept …` (any seed RPC) | the API refused the seed — a handler's rule changed; fix the seed |
+| `the courier-charge events did not settle: n of 55` | the emulator is not pushing to the audit API (30 courier charges + 25 order fees) |
+| `the settlement accounts the orders open did not settle: …` / `the first account's log … did not settle: …` | P4's daily ground: the emulator is not pushing the order-placed or expense-created events to the audit API |
+| `OrderCreate …` / `OrderDraftPush …` / `ExpenseCreate …` / `OpnameSessionCreate …` | the API refused P4's daily seed — a handler's rule changed; fix `audit_frontend_seed_daily.go` |
+| `the production build failed` | `vite-build.log` in the run folder |
+| a screen *never usable* | its ready element or a loading marker stayed past 15 s — `results.json`'s `page_errors` and `<screen>-never-usable.png` |
+| *The save was refused* — `the write was refused (400): …` | the API answered the scripted save with an error (its first 400 bytes follow): the script or the seed gives the write something it rejects — order-create's first run, before the seed set the team's return warehouse |
+| *Typing into the … was not measured* — `React never attached to the audit's hook` | the page loaded no react-dom that reads `__REACT_DEVTOOLS_GLOBAL_HOOK__` (a React that drops the hook) — `run.mjs`, `installRenderHook` |
+| … `not measured: pass 1: locator.click: Timeout …` | a typed field's test id (or its setup's) is gone from the page — the screen's `Typing` in `audit_frontend_screens.go` |
 
 ---
 
@@ -1479,6 +1817,71 @@ composed and is left as it is — it is exactly the string composition would hav
 | --- | --- |
 | `two products would carry one code: product 9 would become "ABC-SHOE-42", which product 4 already carries …` | Two of today's rows compose to one code. Rename one in the product form, then run it again |
 | `column "product_code" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first — product `00008` renames the column |
+
+---
+
+## `expense import-capital`
+
+Brings a SELLING team's Setor / Tarik Modal made on the account page BEFORE capital's second door into Biaya, once
+([prive-and-deposit-on-pengeluaran-are-the-accounts-capital](../business/financial_account/context_decision.md#prive-and-deposit-on-pengeluaran-are-the-accounts-capital),
+[the-expense-types-prototype-is-accepted](../business/financial_account/context_decision.md#the-expense-types-prototype-is-accepted)
+— *old rows: brought into Biaya once, exact type, linked so nothing posts twice*). Each by-hand capital row becomes ONE
+Biaya row: money put in → **Setoran modal**, taken out → **Prive**, origin *account page* (*Dicatat di halaman akun*),
+the row's amount, day, note, who and account, linked to it (`expense_records.account_log_id`). **Safe to re-run**: a
+row already on Biaya — brought by the live door or an earlier run — is counted, never written twice. A warehouse
+team's rows are left on the account page. [`dev setup`](#dev-setup) runs it after `product recompose-codes`.
+
+```sh
+go run ./tools/san expense import-capital --dry-run             # count first — writes nothing
+go run ./tools/san expense import-capital                       # prompts: Local or Production
+go run ./tools/san expense import-capital --dsn "$DATABASE_URL"
+```
+
+| Flag | |
+| --- | --- |
+| `--dry-run` | Run it all in one transaction and roll it back — the counts, nothing written |
+| `--dsn` | The [global flag](#global-options). Skips the Local/Production prompt |
+
+The account rows are read by **financial_account_service's own** `HandCapitalEvents` — every `capital` row with no
+`expense_id` (a row the expense listener posted from Biaya is not one), each built into the very
+`FinancialAccountCapitalRecorded` the account page publishes since the door — and written by **expense_service's own**
+`ImportCapital`, the capital listener's write without the claim. A team's side is asked of **team_service's `TeamByIds`
+handler**, validated as the interceptor would. No migration could have done it: the rows are another service's
+(HARD RULE 3). Nothing posts to the account — the row is the act's own.
+
+### What it does
+
+```mermaid
+sequenceDiagram
+  participant SAN as san expense import-capital
+  participant FA as financial_account_service — HandCapitalEvents
+  participant EX as expense_service — ImportCapital
+  participant TEAM as team_service — TeamByIds handler
+  SAN->>SAN: ONE transaction (rolled back on --dry-run)
+  loop 500 account rows at a time, oldest first
+    SAN->>FA: by-hand capital rows after the last id
+    FA-->>SAN: each as FinancialAccountCapitalRecorded
+    SAN->>EX: import the batch
+    EX->>TEAM: each team's side, once per team
+    EX->>EX: selling — INSERT Setoran modal or Prive ON CONFLICT (account_log_id) DO NOTHING, fold the metric
+    EX->>EX: warehouse or neither — leave it
+  end
+  SAN-->>SAN: imported, already on Biaya, left on the account page
+```
+
+### Output
+
+```
+[Database Local] capital: imported 3, 0 already on Biaya, 1 left on the account page (not a selling team's)
+[Database Local] capital: would import (dry run — nothing written) 3, 0 already on Biaya, 1 left on the account page (not a selling team's)
+```
+
+### Errors you should expect
+
+| Error | Cause |
+| --- | --- |
+| `column "account_log_id" does not exist` / `relation "expense_event_logs" does not exist` | The database is behind. Run [`migrate up-all`](#migrate) first — expense `00008` |
+| `account row N: a capital event names its account row and a change that is not 0` | A capital row of 0 — none is ever written by Setor / Tarik Modal; look at the row before re-running |
 
 ---
 
@@ -1805,7 +2208,7 @@ service's `db_migrations`:
 | `order_daily_reports` (selling) | **event** | `order-placed` · `order-cancelled` · `order-status-changed` · `order-return-accepted` → `selling_v1` `Analytic.FoldHandler` (subs `selling-order-fold-*`) | `orders.created_at` + `order_timeline_logs` (the rows INTO cancel, return, lost, return_completed, and every other move — Order status moves) | (day, metric, **seller team**, shop, warehouse, creator) | `order_event_logs` (`order-placed:<o>`, `order-cancelled:<o>`, `order-status-changed:<row>`, `order-return-accepted:<o>`) | **`order-daily --team`** |
 | `supplier_product_daily_reports` (supplier) | **event** | `restock-accepted` → `supplier_v1` `FoldHandler` (sub `supplier-fold`); `restock-received-count-corrected` → the same (sub `supplier-count-corrected`) | inventory's accepted restocks (`inventory_v1.RestockAcceptedEventsOn` — the accept's own event builder) and received-count corrections (`RestockCountCorrectionEventsOn`) | (day, **supplier**, product, restocking team) | `supplier_event_logs` (`restock-accepted:<r>`) | **`supplier-restock-daily --supplier`** |
 | `supplier_sale_daily_reports` (supplier) | **event** | `order-placed` · `order-cancelled` → `supplier_v1` `SalesFoldHandler` (subs `supplier-order-placed`, `-cancelled`) | selling's orders (`selling_v1.OrderSaleEventsOn`) and inventory's take (`OrderTakeSuppliers`) | (day, **supplier**, product, owning team) | `supplier_sale_orders` (`placed_day`, `cancelled_day` per order) + `supplier_sale_order_parts` | **`supplier-sale-daily --supplier`** |
-| `expense_metric_daily_reports` (expense) | in the expense row's transaction (`metric_fold.go`) | — | `expense_records` | (day, kind, team, shop, person) | — | not needed |
+| `expense_metric_daily_reports` (expense) | in the expense row's transaction (`metric_fold.go`) | — | `expense_records` | (day, kind, flow, type, team, shop, person) | — | **`expense-daily --team`** — never for a lost event (the fold rides the writer's transaction): for the rows from before the key gained `type` (00009, backlog #107), [below](#a-teams-expense-metrics--expense-daily) |
 | `financial_account_daily_reports` (financial_account) | in the log row's transaction (`ledger.go` `post` → `foldDay`, under the account lock) | its listeners write the LOG row; the report rides that transaction | `financial_account_logs` | (account, day) + carried balance | `financial_account_event_logs` dedups the log write | not needed |
 | `inventory_lost_daily_reports` (inventory) | in the loss's transaction (`fold_lost.go`) | — | `warehouse_stock_problems` (lost) | (day, warehouse, team, product, …) | — | not needed |
 | `inventory_stock_daily_changes` · `inventory_door_daily_reports` (inventory) | in the stock transaction (`inventory_ledgers/stock_report.go`, [ready-stock-is-folded-in-the-stock-changes-own-step](../business/analytic/rpc_provide_decision.md#ready-stock-is-folded-in-the-stock-changes-own-step)) | — | `batch_logs`, the door rows | (day, warehouse, owner, product, supplier, type) | — | not needed |
@@ -1816,6 +2219,7 @@ go run ./tools/san report refold --report settlement-shop-daily --shop 57 --date
 go run ./tools/san report refold --report settlement-shop-daily --shop 57 --date 2026-10-10             # the real run
 go run ./tools/san report refold --report settlement-user-daily --user 7 --date 2026-10-10 --dry-run    # one person's day
 go run ./tools/san report refold --report order-daily --team 89 --date 2026-10-30 --dry-run             # a seller team's order metrics
+go run ./tools/san report refold --report expense-daily --team 89 --date 2026-11-10 --dry-run           # a team's expense metrics
 go run ./tools/san report refold --report supplier-restock-daily --supplier 2 --date 2026-07-21 --dry-run
 go run ./tools/san report refold --report supplier-sale-daily --supplier 2 --date 2026-10-30 --dry-run
 ```
@@ -2070,11 +2474,42 @@ A Penjualan repair (`tools/san/report_test.go`, the test database) — a lost pl
 | --- | --- |
 | `⚠ the lost sales claimed here also count for N other supplier day(s) … Run:` | the lost placements or cancels are claimed now; run each printed command so the other suppliers' days — and a cancel's own day — count them too |
 
+### A team's expense metrics — `expense-daily`
+
+[a-wrong-day-is-refolded-from-the-log](../business/settlement/context_decision.md#a-wrong-day-is-refolded-from-the-log),
+backlog #107 ([analytic/expense_metric.md](../acceptances/analytic/expense_metric.md) givens 6–22). The rows of
+`expense_metric_daily_reports` written before expense 00009 carry **type 0** — Analytic's *Expenses* counts them in their
+group and the total, in no type field. This re-fold gives a team's day its types: expense_service's `MetricDayRefold`
+(`expense_v1/metric_refold.go`) reads the team's `expense_records` of the day — the day's expenses by `occurred_at`, the
+corrections MADE that day by `created_at` in WIB, as the fold dates them — and rebuilds every row through the fold's own
+`metricEntryOf`, so a re-fold equals the fold. A row that matches is left; a different amount is set; a row the records no
+longer hold (the untyped row whose expenses now sit under their types) is removed. Write-offs (`STOCK_LOSS`) are not in
+this report (Lost stock's, [stock-loss-stays-out-of-analytic-expenses](../business/analytic/rpc_provide_decision.md#stock-loss-stays-out-of-analytic-expenses)).
+
+It takes the report in `SHARE ROW EXCLUSIVE` **before** reading the records: a create or correction that reaches its fold
+meanwhile waits for the re-fold to commit, then adds on top of the rebuilt row
+(`TestInterleave_MetricDayRefold_AFoldInTheGapWaitsForTheReplace`, raceaudit).
+
+```
+[test] expense-daily · team 390 · 2026-11-10 · DRY RUN — nothing written
+  expense records counted 1
+  kind 2 · flow 0 · type 0 · shop 0 · user 61: row removed — its records now sit under their types, or hold nothing there
+    column                             before          after
+    amount                            600.000              0  ←
+  kind 2 · flow 0 · type 4 · shop 0 · user 61: row added
+    column                             before          after
+    amount                                  0        600.000  ←
+```
+
+(`TestReportRefold_ExpenseDailyGivesOldRowsTheirTypes`, the test database: a payroll row from before the types.) A day
+already right prints each row `unchanged`; a day with no record and no row, `nothing to do`.
+
 ### Errors you should expect
 
 | Error | Cause |
 | --- | --- |
-| `the re-fold rebuilds settlement-shop-daily, settlement-user-daily, order-daily, supplier-restock-daily, supplier-sale-daily` | another `--report` |
+| `the re-fold rebuilds settlement-shop-daily, settlement-user-daily, order-daily, supplier-restock-daily, supplier-sale-daily, expense-daily` | another `--report` |
+| `expense-daily re-folds one team: a team id is required` | `expense-daily` with no `--team` |
 | `--report order-daily re-folds one seller team: give --team, not --shop` (and every report's mirror) | another report's scope flag |
 | `order-daily re-folds one seller team: a team id is required` | `order-daily` with no `--team` |
 | `a supplier re-fold names one supplier: a supplier id is required` | a supplier report with no `--supplier` |
@@ -2163,7 +2598,9 @@ constant beside the handler that serves it):
 | `financial-account-restock-created` | `restock-created` | a restock's payment, goods plus shipping, out of the account it names ([a-created-restock-tells-the-financial-account](../business/inventory/restock_decision.md#a-created-restock-tells-the-financial-account)) — push route `/event/financial-account-restock-created/push` |
 | `financial-account-restock-updated` | `restock-updated` | an edit's difference, or the whole payment moved to another account ([an-edit-sends-the-difference](../business/inventory/restock_decision.md#an-edit-sends-the-difference), [an-edit-may-move-the-payment-to-another-account](../business/inventory/restock_decision.md#an-edit-may-move-the-payment-to-another-account)) — push route `/event/financial-account-restock-updated/push` |
 | `financial-account-restock-cancelled` | `restock-cancelled` | the refund when the money came back ([a-restock-names-its-paying-account](../business/inventory/restock_decision.md#a-restock-names-its-paying-account)) — push route `/event/financial-account-restock-cancelled/push` |
+| `financial-account-restock-refunded` | `restock-refunded` | a restock REFUND resolution's money INTO the account it names (backlog #101, [a-restock-problem-is-settled-by-resolution-rows](../business/inventory/restock_decision.md#a-restock-problem-is-settled-by-resolution-rows)) — push route `/event/financial-account-restock-refunded/push` |
 | `financial-account-expense-created` | `expense-created` | an expense out of the account that paid it — `ads_expense` for an ADS expense, `expense` for the rest; nothing for a STOCK_LOSS or an expense with no account ([an-expense-must-name-the-account-that-paid](../business/financial_account/context_decision.md#an-expense-must-name-the-account-that-paid), [ads-expense-joins-the-types](../business/financial_account/context_decision.md#ads-expense-joins-the-types)) — push route `/event/financial-account-expense-created/push` |
+| `expense-financial-account-capital-recorded` | `financial-account-capital-recorded` | a Setor / Tarik Modal made on the account page — a SELLING team's recorded on Biaya as the same one record, Setoran modal / Prive; a warehouse team's dropped ([prive-and-deposit-on-pengeluaran-are-the-accounts-capital](../business/financial_account/context_decision.md#prive-and-deposit-on-pengeluaran-are-the-accounts-capital)) — push route `/event/expense-financial-account-capital-recorded/push` |
 | `financial-account-expense-adjusted` | `expense-adjusted` | an expense's correction — its signed difference on the ORIGINAL expense's account, a cancel giving the net back ([a-correction-follows-the-expenses-account](../business/financial_account/context_decision.md#a-correction-follows-the-expenses-account)) — push route `/event/financial-account-expense-adjusted/push` |
 | `liability-warehouse-transfer-accepted` | `warehouse-transfer-accepted` | the selling team owes the receiving warehouse the courier's charge at its door, posted once per transfer as a `transfer_fee` ([a-transfer-charge-is-a-transfer-fee](../business/balance/context_decision.md#a-transfer-charge-is-a-transfer-fee)) — push route `/event/liability-warehouse-transfer-accepted/push` |
 | `financial-account-warehouse-transfer-created` | `warehouse-transfer-created` | a warehouse transfer's shipping cost, as `expense`, out of the account it names ([a-transfers-shipping-posts-as-an-expense](../business/financial_account/context_decision.md#a-transfers-shipping-posts-as-an-expense)) — push route `/event/financial-account-warehouse-transfer-created/push` |
@@ -2173,6 +2610,7 @@ constant beside the handler that serves it):
 | `financial-account-custom-shipment-cost-updated` | `custom-shipment-cost-updated` | *Ubah Ongkir*'s difference, or the whole cost moved to another account — push route `/event/financial-account-custom-shipment-cost-updated/push` |
 | `financial-account-custom-shipment-cancelled` | `custom-shipment-cancelled` | the refund of whatever was posted for the parcel's courier — push route `/event/financial-account-custom-shipment-cancelled/push` |
 | `liability-custom-shipment-handed-over` | `custom-shipment-handed-over` | a *Gudang bayar* parcel: the selling team owes the warehouse it shipped from what it paid the courier, posted once per parcel as a `custom_shipment_fee` — push route `/event/liability-custom-shipment-handed-over/push` |
+| `liability-custom-shipment-received` | `custom-shipment-received` | an INBOUND parcel's courier charge at the door, final at its Terima (backlog #101): the selling team owes the warehouse it came to, a `custom_shipment_fee` once per parcel — push route `/event/liability-custom-shipment-received/push` |
 | `inventory-tx-cancel` | `inventory-tx-cancel` | inventory releases the stock take of an order create that failed after it, by the order's key — the backup of the order's direct release ([the-compensation-event-is-inventory-tx-cancel](../business/order/context_decision.md#the-compensation-event-is-inventory-tx-cancel), [the-release-is-direct-then-the-event](../business/order/context_decision.md#the-release-is-direct-then-the-event)). A cancel that meets a stock count is NACKed on purpose and redelivered until the count ends, so its dead-letter holds the ones that outlasted the retry limit — give them back with [`pubsub releases replay`](#pubsub-releases) ([a-stuck-release-is-replayed-by-san](../business/order/context_decision.md#a-stuck-release-is-replayed-by-san), [a-cancel-still-meets-the-count-first](../business/order/context_decision.md#a-cancel-still-meets-the-count-first)) — push route `/event/inventory-tx-cancel/push` |
 | `inventory-order-cancelled` | `order-cancelled` | inventory releases a cancelled order's stock take by the order's key — the cancel no longer releases inside its own flow ([inventory-returns-stock-on-order-cancelled](../business/order/context_decision.md#inventory-returns-stock-on-order-cancelled), [every-release-goes-by-the-key](../business/order/context_decision.md#every-release-goes-by-the-key)). A release that meets a stock count (a cancel that slipped past the order's count check) is NACKed on purpose and redelivered until the count ends; the dead-letter holds the ones that outlasted the retry limit — give them back with [`pubsub releases replay`](#pubsub-releases) once the count is over, which leaves the other consumers' dead-letters on the same `.dlq` alone ([a-stuck-release-is-replayed-by-san](../business/order/context_decision.md#a-stuck-release-is-replayed-by-san), [a-cancel-still-meets-the-count-first](../business/order/context_decision.md#a-cancel-still-meets-the-count-first)) — push route `/event/inventory-order-cancelled/push` |
 

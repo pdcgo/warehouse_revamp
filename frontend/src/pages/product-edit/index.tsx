@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
@@ -19,10 +20,12 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft, Plus, Save } from "lucide-react";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { productClient, rpcError } from "../../api/clients";
+import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
-import { useSaveProduct } from "../../features/products/queries";
+import { SAVE_PRODUCT, useSaveProduct } from "../../features/products/queries";
+import { useSeedOnce } from "../../lib/useSeedOnce";
+import { useProductRecord } from "./queries";
 import { useTeamsByIds } from "../../features/teams/queries";
 import { productCodePart, productCodePrefix } from "./productCode";
 import { CategorySelect } from "../../components/pickers/CategorySelect";
@@ -71,7 +74,6 @@ export function ProductEditPage() {
     }
   }, [editing, current?.teamType, navigate]);
 
-  const [loading, setLoading] = useState(editing);
   const saving = saveProduct.isPending;
   const [error, setError] = useState("");
   // THE PART THE SERVER REFUSED because the code it composes is already held — by any product, archived ones included —
@@ -106,44 +108,33 @@ export function ProductEditPage() {
   const [images, setImages] = useState<ProductImageValue[]>([]);
 
   // On edit, load the full product (including its ordered gallery) so the form is pre-filled and the
-  // page is deep-linkable.
-  useEffect(() => {
-    if (!editing || teamId === undefined) {
+  // page is deep-linkable. A query hook (#122), sitting still while the save runs; the form takes its answer ONCE per
+  // product and team, from the answer given since the page opened — a re-read never overwrites what is being typed.
+  const client = useQueryClient();
+  const record = useProductRecord({
+    teamId: editing ? teamId : undefined,
+    productId,
+    enabled: () => client.isMutating({ mutationKey: SAVE_PRODUCT }) === 0,
+  });
+  const seeded = useSeedOnce(`${teamId}:${productId}`, record.isFetchedAfterMount, () => {
+    if (record.isError) {
+      setError(rpcError(record.error));
       return;
     }
 
-    let cancelled = false;
+    const p = record.data;
+    if (!p) return;
 
-    void (async () => {
-      try {
-        const res = await productClient.productDetail({ teamId, productId: BigInt(productId) });
-        const p = res.product;
-
-        if (!cancelled && p) {
-          setStoredCode(p.productCode);
-          setName(p.name);
-          setDescription(p.description);
-          setCategoryId(p.categoryId);
-          setCrossMarkup(p.crossMarkupBps ? formatMarkupValue(p.crossMarkupBps) : "");
-          setMinimum(p.reservedStock ? String(p.reservedStock) : "");
-          setLockMode(lockModeOf(p));
-          setImages(p.images.map((im) => ({ url: im.url, thumbnailUrl: im.thumbnailUrl })));
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(rpcError(err));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [editing, productId, teamId]);
+    setStoredCode(p.productCode);
+    setName(p.name);
+    setDescription(p.description);
+    setCategoryId(p.categoryId);
+    setCrossMarkup(p.crossMarkupBps ? formatMarkupValue(p.crossMarkupBps) : "");
+    setMinimum(p.reservedStock ? String(p.reservedStock) : "");
+    setLockMode(lockModeOf(p));
+    setImages(p.images.map((im) => ({ url: im.url, thumbnailUrl: im.thumbnailUrl })));
+  });
+  const loading = editing && !seeded;
 
   async function save(event: FormEvent) {
     event.preventDefault();

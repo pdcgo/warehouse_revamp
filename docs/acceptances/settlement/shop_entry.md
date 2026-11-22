@@ -7,18 +7,18 @@ match no order — read on **Penyelesaian › Entri Toko** (`/settlement/shop-en
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
-<tr><td rowspan="4" valign="top">1</td><td rowspan="4" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to see money not tied to an order<br>(withdrawal · shop ads fee · imported row with no order)</td><td rowspan="4" valign="top">open shop entries</td><td>withdrawal, ads fee and unmatched row shown as rows</td><td>⬜ untested</td></tr>
-<tr><td>withdrawal counted in withdrawn, not in received</td><td>⬜ untested</td></tr>
-<tr><td>unmatched row shows its Order ID with order not found</td><td>⬜ untested</td></tr>
-<tr><td>imported row links to its statement</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">2</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to see money not tied to an order<br>(imported row matching 2 active orders)</td><td rowspan="1" valign="top">open shop entries</td><td>row shows its Order ID and both orders</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">3</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to see money not tied to an order<br>(entry belongs to 3 Nov · learned 10 Nov)</td><td rowspan="1" valign="top">open shop entries</td><td>shown on 10 Nov with for 3 Nov</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top">4</td><td rowspan="2" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to find a shop's entries<br>(shop and kind chosen)</td><td rowspan="2" valign="top">filter shop entries</td><td>cards total only the filtered rows</td><td>⬜ untested</td></tr>
-<tr><td>filter kept after reload</td><td>⬜ untested</td></tr>
-<tr><td rowspan="4" valign="top">5</td><td rowspan="4" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to undo a wrong shop entry<br>(imported fee on the wrong shop)</td><td rowspan="4" valign="top">reverse shop entry</td><td>reversing row added on the same shop</td><td>⬜ untested</td></tr>
-<tr><td>original shown as reversed</td><td>⬜ untested</td></tr>
-<tr><td>received back to before</td><td>⬜ untested</td></tr>
-<tr><td>settlement analytic metric back to before</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">6</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to undo a wrong shop entry<br>(already reversed)</td><td rowspan="1" valign="top">reverse shop entry</td><td>cannot reverse it again</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">7</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to undo a wrong shop entry<br>(reversed by 2 people at once)</td><td rowspan="1" valign="top">reverse shop entry</td><td>reversed once</td><td>⬜ untested</td></tr>
+<tr><td rowspan="4" valign="top">1</td><td rowspan="4" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to see money not tied to an order<br>(withdrawal · shop ads fee · imported row with no order)</td><td rowspan="4" valign="top">open shop entries</td><td>withdrawal, ads fee and unmatched row shown as rows</td><td>✅ ok</td></tr>
+<tr><td>withdrawal counted in withdrawn, not in received</td><td>✅ ok</td></tr>
+<tr><td>unmatched row shows its Order ID with order not found</td><td>✅ ok</td></tr>
+<tr><td>imported row links to its statement</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">2</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to see money not tied to an order<br>(imported row matching 2 active orders)</td><td rowspan="1" valign="top">open shop entries</td><td>row shows its Order ID and both orders</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">3</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to see money not tied to an order<br>(entry belongs to 3 Nov · learned 10 Nov)</td><td rowspan="1" valign="top">open shop entries</td><td>shown on 10 Nov with for 3 Nov</td><td>✅ ok</td></tr>
+<tr><td rowspan="2" valign="top">4</td><td rowspan="2" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to find a shop's entries<br>(shop and kind chosen)</td><td rowspan="2" valign="top">filter shop entries</td><td>cards total only the filtered rows</td><td>✅ ok</td></tr>
+<tr><td>filter kept after reload</td><td>✅ ok</td></tr>
+<tr><td rowspan="4" valign="top">5</td><td rowspan="4" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to undo a wrong shop entry<br>(imported fee on the wrong shop)</td><td rowspan="4" valign="top">reverse shop entry</td><td>reversing row added on the same shop</td><td>✅ ok</td></tr>
+<tr><td>original shown as reversed</td><td>✅ ok</td></tr>
+<tr><td>received back to before</td><td>✅ ok</td></tr>
+<tr><td>settlement analytic metric back to before</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">6</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to undo a wrong shop entry<br>(already reversed)</td><td rowspan="1" valign="top">reverse shop entry</td><td>cannot reverse it again</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">7</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to undo a wrong shop entry<br>(reversed by 2 people at once)</td><td rowspan="1" valign="top">reverse shop entry</td><td>reversed once</td><td>✅ ok</td></tr>
 </table>

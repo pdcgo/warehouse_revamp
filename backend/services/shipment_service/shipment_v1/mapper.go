@@ -12,13 +12,14 @@ import (
 
 func toProto(c *shipment_service_models.ShipmentChannel) *shipmentv1.ShipmentChannel {
 	return &shipmentv1.ShipmentChannel{
-		Id:        c.ID,
-		Code:      c.Code,
-		Name:      c.Name,
-		Desc:      c.Desc,
-		IsDeleted: c.IsDeleted,
-		CreatedAt: timestamppb.New(c.CreatedAt),
-		UpdatedAt: timestamppb.New(c.UpdatedAt),
+		Id:          c.ID,
+		Code:        c.Code,
+		Name:        c.Name,
+		Desc:        c.Desc,
+		IsDeleted:   c.IsDeleted,
+		CreatedAt:   timestamppb.New(c.CreatedAt),
+		UpdatedAt:   timestamppb.New(c.UpdatedAt),
+		TrackingUrl: c.TrackingURL,
 	}
 }
 

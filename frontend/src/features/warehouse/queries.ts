@@ -3,6 +3,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 
 import { warehouseFeeClient, warehouseInfoClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
+import type { WarehouseInfo } from "../../gen/warehouse/warehouse/v1/warehouse_info_pb";
 
 /** What the order form is told about the fee for the order on screen — a price, or the warehouse's refusal. */
 export interface WarehouseFeeQuote {
@@ -96,7 +97,8 @@ export function useSetWarehouseFee() {
  */
 export function useWarehouseReceiving(warehouseId: bigint) {
   return useQuery({
-    queryKey: ["warehouseReceiving", warehouseId.toString()],
+    // Under the warehouse's own `warehouseInfo` prefix: a closure added or removed there re-reads this (ClosuresEditor).
+    queryKey: key.warehouseInfo(warehouseId, { receiving: true }),
     enabled: warehouseId > 0n,
     queryFn: async () => {
       const res = await warehouseInfoClient.warehouseReceivingStatus({ warehouseIds: [warehouseId] });
@@ -104,4 +106,32 @@ export function useWarehouseReceiving(warehouseId: bigint) {
       return res.states[warehouseId.toString()] ?? null;
     },
   });
+}
+
+/**
+ * A WAREHOUSE'S PROFILE — its weekly hours, its location and its closures still to come (WarehouseInfoDetail), `null`
+ * when it has none. ONE cache entry per warehouse for every screen that shows it: the team page's Gudang section, and
+ * the edit page — its form AND its closures list, which used to read it twice a load (the speed audit's duplicate,
+ * audits/frontend/warehouse-edit.md). A by-id read on the plain always-fresh default: another warehouse is another
+ * subject, never drawn under this one's address.
+ *
+ * `enabled` may be a FUNCTION — the edit page keeps the read still while its own save runs (pages/warehouse-edit).
+ */
+export function useWarehouseInfo(args: { warehouseId: bigint; enabled?: boolean | (() => boolean) }) {
+  const { warehouseId } = args;
+  const enabled = args.enabled ?? true;
+
+  return useQuery({
+    queryKey: key.warehouseInfo(warehouseId),
+    enabled: () => warehouseId > 0n && (typeof enabled === "function" ? enabled() : enabled),
+    queryFn: async (): Promise<WarehouseInfo | null> =>
+      (await warehouseInfoClient.warehouseInfoDetail({ teamId: warehouseId })).info ?? null,
+  });
+}
+
+/** After a warehouse's profile changed (a closure, its hours): its profile and its receiving state, read again. */
+export function useInvalidateWarehouseInfo() {
+  const client = useQueryClient();
+
+  return (warehouseId: bigint) => client.invalidateQueries({ queryKey: key.warehouseInfo(warehouseId) });
 }

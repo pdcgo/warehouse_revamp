@@ -69,6 +69,9 @@ import { formatRupiahNumber } from "../../lib/money";
 import { PRESSABLE } from "../../lib/motion";
 import { useDebounced } from "../../lib/useDebounced";
 import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
+// Backlog #101 — the inbound reshipping parcels in the incoming list (a-suppliers-reshipping-comes-in-as-a-custom-shipment).
+import { WarehouseInboundRows, inboundStatusOfTab } from "../../features/restockResolution/InboundRows";
+import { useIncomingParcels } from "../../features/restockResolution/queries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -248,6 +251,23 @@ export function RestockWarehousePage() {
     (defaultRange ? 0 : 1);
   // What the rows on screen were asked with, which is what "nothing matches" is about.
   const narrowed = term !== "" || requesterFilter !== 0n || tagPick.length > 0 || actorId !== 0n || !defaultRange;
+
+  // THE INBOUND RESHIPPING PARCELS (backlog #101) — *"the warehouse then sees it in its incoming list like a restock on its
+  // way"*: asked for by `direction` INBOUND, at the top of the tab of their step, following the search; paged on the
+  // list's own page (page N of the parcels over page N of the restocks — one pager reaches both). A filter only a restock
+  // answers (From, the person, the tags, a date window) leaves them out rather than show parcels it did not narrow.
+  const inboundStep = inboundStatusOfTab(tab);
+  const restockOnlyFilter = requesterFilter !== 0n || tagPick.length > 0 || actorId !== 0n || !defaultRange;
+  const incoming = useIncomingParcels({
+    teamId,
+    status: inboundStep ?? undefined,
+    q: term,
+    page,
+    pageSize,
+    enabled: inboundStep !== null && !restockOnlyFilter,
+  });
+  const parcels = inboundStep !== null && !restockOnlyFilter ? (incoming.data?.parcels ?? []) : [];
+  const parcelTotal = inboundStep !== null && !restockOnlyFilter ? (incoming.data?.totalItems ?? 0) : 0;
 
   // Any change to a filter restarts at page 1 — the page number belongs to the OLD question, and page 5 of "everyone" is
   // very likely past the end of "Bandung only".
@@ -455,7 +475,7 @@ export function RestockWarehousePage() {
   const oldestDays = daysSinceUnix(oldestUnix);
 
   function list() {
-    if (requests.length === 0 && !error) {
+    if (requests.length === 0 && parcels.length === 0 && !error) {
       // AN EMPTY LIST SAYS WHAT NEXT (an-empty-list-shows-a-hint) — nothing matches: clear the filters; an empty tab:
       // which status has none; nothing yet: where restocks come from. No action then — a warehouse does not raise one.
       if (narrowed) {
@@ -500,6 +520,7 @@ export function RestockWarehousePage() {
       //                                      [Tandai Tiba] [Terima]        the acts at the door, named
       return (
         <Stack gap="3" data-testid="restock-inbound-table">
+          <WarehouseInboundRows parcels={parcels} phone />
           {requests.map((request) => (
             <Stack
               key={request.id.toString()}
@@ -597,6 +618,7 @@ export function RestockWarehousePage() {
           </Table.Header>
 
           <Table.Body>
+            <WarehouseInboundRows parcels={parcels} phone={false} />
             {requests.map((request) => (
               <Table.Row
                 key={request.id.toString()}
@@ -898,7 +920,7 @@ export function RestockWarehousePage() {
             <GrowingPager
               page={page}
               onPageChange={setPage}
-              hasNext={query.isPlaceholderData ? undefined : page * pageSize < totalItems}
+              hasNext={query.isPlaceholderData ? undefined : page * pageSize < Math.max(totalItems, parcelTotal)}
               resetKey={[
                 tab,
                 term,

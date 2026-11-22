@@ -16,6 +16,7 @@ type MetricColumns struct {
 	Transfer       float64
 	TeamPayment    float64
 	Capital        float64
+	MoneyIn        float64
 	Change         float64
 	OpenBalance    float64
 	CloseBalance   float64

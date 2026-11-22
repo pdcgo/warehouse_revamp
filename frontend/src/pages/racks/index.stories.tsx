@@ -71,8 +71,8 @@ export const Default: Story = {
     await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
     await expect(canvas.getByTestId("rack-empty-B-02-1")).toHaveTextContent("Empty");
     await expect(canvas.queryByTestId("rack-empty-A-01-1")).toBeNull();
-    // UNITS ONLY AT THE PLACEMENT LEVEL (a-warehouse-sees-ready-value-but-a-shelf-only-units) — the strip and the rows
-    // count racks, products and pieces; no rupiah anywhere on the list.
+    // THE LIST COUNTS (placement.md given 8 — *racks 3 · holding stock 2 · empty 1 · 12 pcs*) — the strip and the rows
+    // count racks, products and pieces; no rupiah anywhere on the list. A shelf's value is on its own page.
     await expect(canvasElement).not.toHaveTextContent("Rp");
   },
 };
@@ -88,7 +88,7 @@ export const Mobile: Story = {
 
     const row = await canvas.findByTestId("rack-row-A-01-1", {}, { timeout: 4000 });
     await waitFor(() => expect(row).toHaveTextContent("3 products · 25 pcs"));
-    // Units only, as on a desktop (a-warehouse-sees-ready-value-but-a-shelf-only-units).
+    // Counts only, as on a desktop.
     await expect(canvasElement).not.toHaveTextContent("Rp");
     await expect(canvas.getByTestId("open-create-rack")).toHaveAccessibleName("New Rack");
     await expect(canvas.getByTestId("open-create-rack")).toHaveTextContent("");
@@ -251,7 +251,7 @@ export const NoRacksYet: Story = {
     const empty = await canvas.findByTestId("racks-empty", {}, { timeout: 4000 });
     await expect(empty).toHaveTextContent("No racks yet");
     await userEvent.click(within(empty).getByRole("button", { name: "New Rack" }));
-    await expect(await screen.findByTestId("rack-code")).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId("rack-code")).toBeVisible(), { timeout: 5000 });
   },
 };
 

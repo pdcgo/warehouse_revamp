@@ -1,5 +1,34 @@
 # Development state — order
 
+🔨 **2026-11-20: order tags are live** (backlog #100, `the-order-tags-prototype-is-accepted`; the rules
+`orders-have-their-own-tag-list` with its 🔄 lines — the restock tags' rules on the orders' OWN list, no app-owned order
+tags) — uncommitted.
+- **Backend** (selling): migration `00055_order_tags` (`order_tags` — the orders' own list, unique on `lower(name)` after
+  trim and space-fold, `system` / `custom`, no app task; `order_tag_links` keyed (order, tag) with who / when,
+  `order_tag_links_tag_idx`). `order_tag.proto` + ten RPCs on `OrderService` (rpc.md *Order tags*): the list / the admins'
+  list with counts; create custom (a name that exists answers that tag); create system, rename, delete (Root /
+  Administrator, their own proto messages); a custom tag on / off from the selling team or the shipping warehouse, every
+  role but a monitor, in every status; an admin's system tag on / off; any other order NotFound. `Order.tags` (42) on
+  list rows and the detail; `tag_ids` (ANY of; `OrderListFilter` 17, `OrderStatFilter` 15) as an EXISTS inside
+  `scopedOrders`, so the list, the tab counts, `OrderStat` and `OrderExport` agree; the export gains *Tags* after Status.
+- **Tests** (selling_v1): `order_tags_test.go` (13: one name one tag, a restock tag's name free, spaces, system create,
+  the override stamp, the proto policy, both sides in every status, another team's order / root's every-team read / a
+  return warehouse NotFound, system tags the admins', rename, delete, the list, the filter across list · tabs · stat ·
+  export); 7/7 mutations killed. Race `order_tags_race_test.go` (one name → one tag; put-on vs delete; two renames) —
+  the KEY SHARE mutation killed. Perf `order_tags_perf_test.go` (50 000 orders: every case ≤ 31 ms; the index takes a
+  rare tag's seller list 7.8 → 4.7 ms).
+- **Frontend**: the gate (`orderTagsPrototype.tsx`, `.storybook/orderTagStory.tsx`) is deleted;
+  `features/orders/tags/tagQueries.ts` (the catalogue feed, the usage read, the live writes), `orderTags.ts` (wire
+  mapping, `TAGS_CODEC`); the Tag filter (`?tag=1,2`) on both lists sent as `tag_ids` to the list, the stat and Ekspor;
+  the Tag column, the seller detail's Tag section, the warehouse detail's and the pick page's Tag card always. The stub
+  answers the real RPCs (`.storybook/orderTagScenario.ts`, wired in `stubTransport.ts`); the four `Tags` stories are the
+  pages' own (BEFORE stories dropped; *the statistics and Ekspor follow it* on the seller's list and *the tab counts and
+  Ekspor follow it* on the warehouse's added — they fail when `tag_ids` is not sent). i18n `orders.tags.saveFailed`
+  added. `order_export_test.go`'s seller-file column indexes moved one on for *Tags*.
+- **Not done here**: e2e — no spec exercises order tags yet; `orders.spec.ts` *clicking a row opens that order's detail*
+  clicks the row's 4th cell, which is now the Tags cell (still the row; the comment names *Placed*). Not built (as
+  decided): tags on the order form, drafts and the import.
+
 > 🔀 **2026-10-30 — `frada` merged in.** The order screens now carry its work on our wire: the order list's seven date
 > pills (Dibuat and Tanggal order real, the five status dates ⚠), no tab counts, the statistics read only when opened, the
 > filters in the URL; a draft opens IN the order form (`/orders/new?draft=ID`, the draft page deleted) and its Create
@@ -261,10 +290,10 @@ at the owner's *"build now"*.
 | the fold | Return Arrived counts `OrderReturnAccepted` (`selling-order-fold-return-accepted`), no longer `OrderStatusChanged` to `return_completed` — which nothing publishes |
 | subscriptions | `tools/san/pubsub.go` declares both; [docs/tools/san.md](../../tools/san.md) lists them |
 | frontend | `pages/pick-queue` **Returns** tab (status `return`); `pages/pick-order` **Accept Return** → `components/AcceptReturnDialog.tsx` (missing per line, courier charge + required note, then the labels step); `useAcceptReturn`; the liability history's *"Courier at a return · order #N"*; the daily statement's courier column sums both courier types (`courierAsks`) |
-| why the pick screen | it is where the warehouse's Orders menu goes (`/warehouse-orders`) and it offers the ONE next step per status — a return's is the accept. `pages/returns` / `return-detail` stay preview: they model a return RECORD (codes, received/cancelled), which [the-accept-is-the-status-return-completed](../../business/order/context_decision.md#the-accept-is-the-status-return-completed) decided against |
+| why the pick screen | it is where the warehouse's Orders menu goes (`/warehouse-orders`) and it offers the ONE next step per status — a return's is the accept. `pages/returns` is the warehouse's real Retur list since #110 (`the-retur-list-prototype-is-accepted`; `return-detail` deleted) — before it, they were previews: they model a return RECORD (codes, received/cancelled), which [the-accept-is-the-status-return-completed](../../business/order/context_decision.md#the-accept-is-the-status-return-completed) decided against |
 | tests | Go: `order_return_accept_test.go` (10), `return_courier_charge_test.go` (3, incl. the key not colliding with a restock of the same number), the push handler's override cases, the fold test now on the accept event. Race: `order_return_accept_race_test.go`. Perf: `order_return_accept_perf_test.go`. Stories: `Pages/Order/AcceptReturnDialog` (7), PickOrderPage *AReturnIsAcceptedHere*, *OnlyAReturnOffersTheAccept*, PickQueuePage *TheReturnsTabListsWhatIsComingBack*. E2E: orders.spec *Return: the warehouse accepts a returned parcel…* |
 | stub | `.storybook/returnAcceptStub.ts` + `returnAcceptScenario` / `withOrdersInReturn` (sessionScenario.ts): a story names the orders read in `return`; no fixture moved |
-| ⚠ not built | the stock half (above); **finding the order at a stale-label warehouse** — it is neither end nor the configured one, so no list or scan of its own matches; the server accepts it by id, and a cross-team label search is not designed; a screen naming where a return was accepted (on the wire, not drawn); ~~a forced return from the warehouse's screens~~ ✅ built 2026-11-04 (*Receive Return*, `pages/pick-queue/components/ReceiveReturnDialog.tsx`); a reprint of the labels after the dialog closes |
+| ⚠ not built | the stock half (above); **finding the order at a stale-label warehouse** — it is neither end nor the configured one, so no list or scan of its own matches; the server accepts it by id, and a cross-team label search is not designed; a screen naming where a return was accepted (on the wire, not drawn); ~~a forced return from the warehouse's screens~~ ✅ built 2026-11-04 (*Receive Return*, `features/orders/ReceiveReturnDialog.tsx`); a reprint of the labels after the dialog closes |
 
 ## What exists
 
@@ -370,7 +399,7 @@ cd frontend && npx playwright test e2e/orders.spec.ts      # 19 pass, 2 skipped 
 
 ## 2026-11-05 — the return dialogs stop stretching on desktop
 
-*Receive a Return* (`pages/pick-queue/components/ReceiveReturnDialog.tsx`) and *Accept Return*
+*Receive a Return* (`features/orders/ReceiveReturnDialog.tsx`) and *Accept Return*
 (`features/orders/AcceptReturnDialog.tsx`) used `size={{ base: "full", md: "lg" }}`: Chakra merges a responsive variant,
 so full's min-height survived on desktop and the dialog filled the window. Now `size={isMobile ? "full" : "lg"}` by the
 JS breakpoint (`useIsMobile`). Pinned by `AcceptReturnDialog` *Default* and pick queue *ReceiveNotFound* (dialog shorter
@@ -642,7 +671,7 @@ Decisions: [the-warehouse-order-list-is-accepted](../../technical/frontend/wareh
 | | built |
 | --- | --- |
 | the route | `/warehouse-orders` = the accepted list, moved from `pages/pick-queue-next` into `pages/pick-queue` (`PickQueuePage`; Storybook `Pages/Warehouse/PickQueuePage`, no longer hidden). The old pick queue (three columns, its own tabs) is gone; its `ReceiveReturnDialog` stays in `pages/pick-queue/components/`. `ScanInput` → `features/picking/` (shared with the pick page); `usePickQueue` deleted; the list's `pending.ts` deleted (no mark left) |
-| Set Picked | only on the pick page: `pages/pick-order/components/ItemScan.tsx` under the racks of a `processed` order — per-scan count on the page, an unknown product code or one too many refused with the wrong sound, *Set Picked* on only when every line is exact, one `OrderStatusChange` to `picked`. `NEXT_STEP` lost its plain *Mark Picked*; `steps.ts` `confirm → [toConfirm]` only, so neither the row menu nor Change Step offers *Sudah diambil*. The list's *Scan to Validate* item and `ValidationScanDialog` are gone. The `barcode` mark moved to `pages/pick-order/pending.ts` (`picking.pending.barcode`) |
+| Set Picked | only on the pick page: `features/picking/ItemScan.tsx` (under `pages/pick-order/components/` until #102 moved it, 2026-11-20 — the custom-shipment pick page uses it too) under the racks of a `processed` order — per-scan count on the page, an unknown product code or one too many refused with the wrong sound, *Set Picked* on only when every line is exact, one `OrderStatusChange` to `picked`. `NEXT_STEP` lost its plain *Mark Picked*; `steps.ts` `confirm → [toConfirm]` only, so neither the row menu nor Change Step offers *Sudah diambil*. The list's *Scan to Validate* item and `ValidationScanDialog` are gone. The `barcode` mark moved to `pages/pick-order/pending.ts` (`picking.pending.barcode`) |
 | Scan Label | `pages/pick-queue/components/ScanLabelDialog.tsx` from the header (phone: in the ⋯ with Scan Handover and Receive a Return — three fold). `features/picking/labelLookup.ts` `lookupLabel`: OrderList's own `q` as this warehouse (one page of 100), kept where tracking number, ref or id EQUALS the code in any case (`labelMatch.ts`, unit-tested), an all-digit id pushed off a full page asked by `OrderDetail`; `cancel` split off. One live → `/warehouse-orders/:id`; several → listed (shop, status, date, units) under the ask-warning, none opened, each its own *Open*; none / only cancelled → wrong sound + sentence |
 | the handover | `HandoverScanDialog` asks `lookupLabel` per scan (the 200-loaded-orders map and the `resiLookup` mark are gone): several live → a `several` entry naming each, none handed over; a cancelled twin skipped; the label's other barcode is the same parcel; a scan in flight is not asked twice |
 | Retur | `pages/pick-queue/tabs.ts`: *Retur* after *Sudah diserahkan* = `return` + `return_completed`, through the new **`OrderListFilter.statuses`** (15; `statusFilter` in `order_list.go`, shared with `OrderExport`), counted as the two together, `?step=return`, its own empty sentence. *Receive a Return* in the header |

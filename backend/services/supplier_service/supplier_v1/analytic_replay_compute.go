@@ -44,9 +44,19 @@ var errReplayLockHeld = connect.NewError(
 )
 
 // AnalyticReplayCompute rebuilds every figure row from `start_date` onward — settlement's replay, read for the
-// supplier (the-report-is-processed-like-settlement):
+// supplier (the-report-is-processed-like-settlement), on BOTH of the supplier's reports: the restock figures and
+// PENJUALAN (penjualan-is-the-selling-value-on-the-order-day):
 //
-//	refuse outside the retention, or into the backfilled past → lock → delete two tables on one line → seek → unlock
+//	refuse outside the retention, or into the backfilled past → lock → delete both reports and their claims from
+//	the day, in one transaction → seek every subscription feeding them → unlock
+//
+// PENJUALAN'S CLAIM IS THE ORDER'S ROW (supplier_sale_orders), not a dedup row per event, so the range is cleared by
+// what the seek will bring back — every event published from the day's Jakarta midnight on:
+//   - an order PLACED in the range: its row and its parts are deleted — the placement is redelivered, and with it
+//     the cancel if there was one (a cancel is never before its placement);
+//   - an order placed BEFORE the range but CANCELLED in it: only its cancel is redelivered, so its row keeps the
+//     placement and its parts and loses the cancel's day — the redelivered cancel then takes the parts back again;
+//   - a cancel that came FIRST, its placement not folded yet, in the range: the row is deleted — the cancel comes back.
 //
 // ⚠ THE BACKFILLED PAST CANNOT BE REPLAYED. Figures folded by `san supplier backfill-figures`
 // (past-accepts-are-backfilled-once) were never on the broker, so a seek would not bring them back. A replay must
@@ -128,10 +138,13 @@ func (s *Service) AnalyticReplayCompute(
 
 	day := start.Format(dateLayout)
 
-	var reportRows, eventLogs int64
+	var (
+		reportRows, eventLogs int64
+		sales                 saleReplayCleared
+	)
 
-	// ⚠ ONE PREDICATE, TWO TABLES, ONE TRANSACTION. If the dedup delete failed while the figure delete committed, the
-	// seek would redeliver into a table that still says "already folded" and the range would stay empty.
+	// ⚠ ONE DAY, BOTH REPORTS AND THEIR CLAIMS, ONE TRANSACTION. If a claim delete failed while a figure delete
+	// committed, the seek would redeliver into a claim that still says "already folded" and the range would stay empty.
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		report := tx.Exec(`DELETE FROM supplier_product_daily_reports WHERE day >= CAST(? AS date)`, day)
 		if report.Error != nil {
@@ -146,13 +159,26 @@ func (s *Service) AnalyticReplayCompute(
 		reportRows = report.RowsAffected
 		eventLogs = logs.RowsAffected
 
-		return nil
+		var err error
+
+		sales, err = clearSalesFrom(tx, day)
+
+		return err
 	})
 	if err != nil {
 		return nil, internal(err)
 	}
 
-	// The seek boundary is the Jakarta midnight the delete cut at — one calendar for both.
+	// The response's counts are the restock report's, as its proto has them; Penjualan's are logged.
+	slog.InfoContext(ctx, "replay cleared Penjualan from its day",
+		"start_date", day,
+		"sale_rows", sales.reportRows,
+		"sale_orders", sales.orders,
+		"sale_cancels_reopened", sales.reopened,
+	)
+
+	// The seek boundary is the Jakarta midnight the delete cut at — one calendar for both. The broker seeks every
+	// subscription feeding the two reports: the accepts, the received-count corrections, the placements, the cancels.
 	err = s.broker.Seek(ctx, time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, jakarta))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf(
@@ -165,6 +191,58 @@ func (s *Service) AnalyticReplayCompute(
 		DeletedEventLogs:  eventLogs,
 		EarliestStartDate: earliest.Format(dateLayout),
 	}), nil
+}
+
+// saleReplayCleared is what the replay's delete did to Penjualan.
+type saleReplayCleared struct {
+	// The day rows deleted — every supplier's, from the day on.
+	reportRows int64
+	// The orders' claims deleted with their parts: placed in the range, or a cancel in it with no placement folded.
+	orders int64
+	// The orders placed before the range whose cancel, in it, is forgotten — the seek redelivers it.
+	reopened int64
+}
+
+// clearSalesFrom clears Penjualan from `day` the way the seek rebuilds it (see AnalyticReplayCompute): the day rows,
+// the claims of the orders whose placement comes back, and the cancel's day of the orders whose placement does not.
+// Inside the replay's ONE transaction, under process_event_lock — no sales fold runs meanwhile.
+func clearSalesFrom(tx *gorm.DB, day string) (saleReplayCleared, error) {
+	cleared := saleReplayCleared{}
+
+	report := tx.Exec(`DELETE FROM supplier_sale_daily_reports WHERE day >= CAST(? AS date)`, day)
+	if report.Error != nil {
+		return cleared, report.Error
+	}
+
+	// The parts first — they are what the deleted claims' cancels would take back.
+	parts := tx.Exec(`
+DELETE FROM supplier_sale_order_parts
+WHERE order_id IN (SELECT order_id FROM supplier_sale_orders WHERE placed_day >= CAST(? AS date))`, day)
+	if parts.Error != nil {
+		return cleared, parts.Error
+	}
+
+	orders := tx.Exec(`
+DELETE FROM supplier_sale_orders
+WHERE placed_day >= CAST(@day AS date)
+   OR (placed_day IS NULL AND cancelled_day >= CAST(@day AS date))`, map[string]any{"day": day})
+	if orders.Error != nil {
+		return cleared, orders.Error
+	}
+
+	reopened := tx.Exec(`
+UPDATE supplier_sale_orders
+SET cancelled_day = NULL, updated_at = NOW()
+WHERE placed_day < CAST(@day AS date) AND cancelled_day >= CAST(@day AS date)`, map[string]any{"day": day})
+	if reopened.Error != nil {
+		return cleared, reopened.Error
+	}
+
+	cleared.reportRows = report.RowsAffected
+	cleared.orders = orders.RowsAffected
+	cleared.reopened = reopened.RowsAffected
+
+	return cleared, nil
 }
 
 // refuseBackfilledPast refuses a replay that would delete figures only the backfill wrote. Every row on a day AFTER the

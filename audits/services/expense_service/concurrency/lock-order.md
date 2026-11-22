@@ -25,6 +25,7 @@ expense_records (the corrected expense, FOR UPDATE)  →  expense_records (the n
 | --- | --- | --- | --- |
 | `ExpenseCreate` | `expense_records` INSERT (a new row — no conflict) → `expense_metric_daily_reports` upsert (typed kinds only; a STOCK_LOSS takes none) | the paying account (`PayingAccounts`) and the team's side (`TeamSides`) — both **before** the transaction | `TestRace_MetricFold_CreatesAndCorrectionsOnOneDayRow` |
 | `ExpenseAdjust` (Adjust and Batalkan) | `expense_records` the expense `FOR UPDATE` (the floor check) → INSERT the adjustment → `expense_metric_daily_reports` upsert on the **correction's** day | the team's side — **before** the transaction | `TestRace_ExpenseAdjust_TheFloorHolds`, `TestInterleave_MetricFold_TheSecondCorrectionQueuesOnTheRow` |
+| `CapitalFromAccountHandler` (the capital listener, #99 P2 2026-11-20) and `ImportCapital` | `expense_event_logs` claim (INSERT … ON CONFLICT DO NOTHING; the listener only) → `expense_records` INSERT … ON CONFLICT (`account_log_id`) DO NOTHING (a second arrival of one account row waits on the first's index entry, then does nothing) → `expense_metric_daily_reports` upsert, only when the row was written | the team's side — **before** the transaction | `TestRace_CapitalFromAccount_OneRowArrivingManyTimesAtOnce` (16 arrivals of one account row × 10 rounds → 1 row, 1 fold), `TestRace_CapitalFromAccount_TwoSetorBesideAnExpense` (0 failures, report = records) |
 
 ## Why the report row cannot deadlock or lose an update
 

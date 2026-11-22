@@ -15,6 +15,8 @@ this context). The points it left open are answered here, one by one.
 | [return-md-is-retired](#return-md-is-retired) | `return.md` is deleted — the return's stock half is decided; its links point here |
 | [a-return-door-row-carries-an-optional-note](#a-return-door-row-carries-an-optional-note) | a broken or missing return line takes an optional note, copied onto the order's warehouse note for the platform claim |
 | [the-return-accept-page-is-accepted](#the-return-accept-page-is-accepted) | the accept with its stock half is a page, like Restock Accept: per line missing · broken · racks, a summary, Accept once every sound unit has a rack |
+| [the-retur-menu-is-the-warehouses-return-list](#the-retur-menu-is-the-warehouses-return-list) | Retur is the warehouse's real list of returns, opening the accept page |
+| [the-retur-list-prototype-is-accepted](#the-retur-list-prototype-is-accepted) | the Retur list design is accepted; an accepted return opens the order's page |
 
 ---
 
@@ -187,3 +189,38 @@ with neither has no note field; a blank note is fine. ⚠ Not built — the prot
 ([the-return-accept-page-is-accepted](#the-return-accept-page-is-accepted)) gains the field in the build.
 
 ✅ **Built 2026-11-09** — `order_return_problem_items.note` and `OrderReturnAcceptLine.note` (≤ 200), the field on the page once broken or missing is above 0, copied onto the order's warehouse note; test `TestOrderReturnAccept_BrokenAndMissingAreNamedWithTheNote`, e2e *Note: …*.
+
+---
+
+## the-retur-menu-is-the-warehouses-return-list
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended (pictures `D:/hermes/profiles/revamp_dev/accepts/q_retur/` — today's page and a mock of B) — to: *"Every warehouse team's menu has Inventaris › Retur, and that page lists invented sample returns (RTN-0142…) — a preview made before the return flow was decided. Real returns are accepted from the order's pick page. Frada's note says returns should move to that screen, but marks it 'not a decision'. **A** make Retur the real list of returns, opening the accept page you already approved (a Storybook design first for your OK); **B** take Retur out of the menu until it's designed; **C** leave it as it is for now."* It settles the 📝 note of [inventory/return.md](../../acceptances/inventory/return.md) (*Returns move to the warehouse's own screen*).
+
+**The verdict.** *Inventaris › Retur* (`/inventories/returns`) becomes the warehouse's **real list of returns** — the returns of the orders it ships, from the real data, never invented rows — and a row opens the accept page already accepted ([the-return-accept-page-is-accepted](#the-return-accept-page-is-accepted)). Today's way in (the pick page) stays. What the list shows, its filters and what an accepted return opens are settled at its Storybook prototype.
+
+⚠ Not built — a Storybook prototype first, for the owner's design accept (backlog #110).
+
+✅ **Built 2026-11-20** — *Inventaris › Retur* (`/inventories/returns`, `pages/returns`) is the warehouse's real list of returns, on the existing `OrderList` / `OrderStat` reads (statuses per tab, `date_field` ENTERED_RETURN — no new request; the server's scope gives exactly the returns shipped from here or coming back here); a waiting return opens the accept page, an accepted one the order's page. The invented sample page and `pages/return-detail` are deleted — an old `/inventories/returns/:returnId` link lands on the list. Stories `Pages/Warehouse/ReturnsPage` (+ `/Rows`, `/Filters`, `/States`).
+
+---
+
+## the-retur-list-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended — the one question of the #110 prototype's accept, whose answer also approved the design as drawn (pictures `D:/hermes/profiles/revamp_dev/accepts/accept110/` 01–07, README there): *"What should an accepted return open? **A** the order's page — its accept note already says what was broken or missing; **B** a separate read-only record of the accept (racks per line, broken, missing) — needs a new server read."* The message listed the screens (tabs *Menunggu diterima* / *Sudah diterima* / *Semua* with counts; the returns of the orders this warehouse ships plus those sent to it; *Terima* opens the accept page; a return going elsewhere reads *Kembali ke …* without Terima; one block per return on a phone) and what *as drawn* means (below).
+
+**The verdict.** *Inventaris › Retur* ([the-retur-menu-is-the-warehouses-return-list](#the-retur-menu-is-the-warehouses-return-list)) is accepted as drawn: built on the existing order reads (`OrderList` / `OrderStat` by the return statuses — no new service); a waiting return's *Terima* opens the accept page ([the-return-accept-page-is-accepted](#the-return-accept-page-is-accepted)); an **accepted return opens the order's page**.
+
+*(As drawn — listed to the owner in the accept message:)*
+
+| | |
+| --- | --- |
+| states | two: waiting (`return`) and accepted (`return_completed`) — the system has no *arrived* step |
+| a lost return | leaves the list |
+| a row | the order's resi, its unit count, newest first, no money |
+| filters | search, *Diminta* date, seller, marketplace, courier; tabs and filters kept in the URL |
+| removed | today's invented page (its sample rows, money tiles and the *Paksa Retur* button that did nothing) and `pages/return-detail`; old links go to the new list |
+| kept | the warehouse order list's own Retur tab |
+
+⚠ Not built — go-live is backlog #110.
+
+✅ **Built 2026-11-20** — as drawn: tabs *Menunggu diterima* / *Sudah diterima* / *Semua*, counted by `OrderStat` over the filters; search, the *Diminta* window, seller, marketplace, courier and the tab kept in the URL; *Terima* only on a return addressed here and only for writers, opening `/warehouse-orders/:orderId/accept-return` with the list's address; *Kembali ke …* (or *Belum ada gudang retur*) and no *Terima* otherwise; an accepted row, and every row for a monitor, opens `/warehouse-orders/:id`; a block per return on a phone; the growing pager (10 / 20 / 50). `ReceiveReturnDialog` moved to `features/orders/` (the warehouse order list and Retur both open it, unchanged); the prototype gate, the sample rows and their `returns.*` keys are deleted. The warehouse list's own Retur tab is unchanged. 23 story tests; 30 of 30 story mutations killed.

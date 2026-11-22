@@ -12,6 +12,7 @@ import {
   orderOf,
   rp,
   sellingGround,
+  settled,
   shopEntries,
   shopOf,
 } from "./settlement_import_helpers";
@@ -41,6 +42,9 @@ import { SHOPEE_INCOME, SHOPEE_WITHDRAWAL, shopeeStatement, tiktokStatement, tod
 //   statement and the list reads it Failed; the order the file names has no payout, the shop no entry, the row 0 posted.
 // - `withdrawal recorded to the shop` — a Penarikan Dana that completed: Penyelesaian › Shop entries, narrowed to the
 //   shop and to withdrawals, lists it from Import, and the Withdrawn card reads its amount.
+// - `withdrawal recorded in finance analytic metric` — Analytic › Finance › Account changes by account (7 days): the
+//   account the withdrawal made for the shop (it names none — "Unknown — shop #<id>") reads it as its Withdrawal and as
+//   its closing balance.
 test.describe("selling:all wants to record the platform's payouts — import settlement (TikTok, interrupted, withdrawal)", () => {
   test.describe.configure({ timeout: 180_000 });
 
@@ -295,6 +299,24 @@ test.describe("selling:all wants to record the platform's payouts — import set
             await expect(page.getByTestId("shop-entries-withdrawn")).toHaveText(rp(150_000));
           })
           .toPass({ timeout: 30_000 });
+        await settled(page);
+      });
+
+      await test.step("then: withdrawal recorded in finance analytic metric", async () => {
+        // Analytic › Finance › Account changes by account. The shop names no account, so its first withdrawal made one
+        // for it, named after the shop (a-shop-with-no-account-gets-an-unknown-one): that account's Withdrawal reads the
+        // Rp 150.000 that reached the bank, and its closing balance the same.
+        await expect
+          .soft(async () => {
+            await page.goto(`/analytic?g=account&m=metrics/financial_accounts&r=7d&s=metrics/financial_accounts:withdrawal:desc&n=50`);
+            await settled(page);
+            const row = page.locator('[data-testid^="analytic-row-"]').filter({ hasText: new RegExp(`shop #${shop}(?!\\d)`) });
+            await expect(row).toHaveCount(1, { timeout: 3_000 });
+            const account = (await row.getAttribute("data-testid"))!.replace("analytic-row-", "");
+            await expect(page.getByTestId(`analytic-cell-${account}-withdrawal`)).toHaveText(rp(150_000));
+            await expect(page.getByTestId(`analytic-cell-${account}-closing_balance`)).toHaveText(rp(150_000));
+          })
+          .toPass({ timeout: 45_000 });
       });
     });
   }

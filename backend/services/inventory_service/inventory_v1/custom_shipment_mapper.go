@@ -204,7 +204,30 @@ func customShipmentForWire(db *gorm.DB, id, readerTeamID uint64) (*inventoryv1.C
 		return nil, err
 	}
 
-	return customShipmentToProto(&cs, customShipmentReadsMoney(&cs, readerTeamID), true, missing), nil
+	links, err := parcelLinks(db, []uint64{cs.ID})
+	if err != nil {
+		return nil, err
+	}
+
+	wire := customShipmentToProto(&cs, customShipmentReadsMoney(&cs, readerTeamID), true, missing)
+	withParcelLink(wire, links)
+
+	return wire, nil
+}
+
+// withParcelLink sets a parcel's resolution and — for an inbound one — the stock-in its Terima linked
+// (`restock_custom_shipments`, backlog #101). A parcel no resolution rides keeps 0.
+func withParcelLink(wire *inventoryv1.CustomShipment, links map[uint64]parcelLink) {
+	link, ok := links[wire.GetId()]
+	if !ok {
+		return
+	}
+
+	wire.ResolutionId = link.ResolutionID
+
+	if wire.GetDirection() == inventoryv1.CustomShipmentDirection_CUSTOM_SHIPMENT_DIRECTION_INBOUND {
+		wire.TransactionId = link.InventoryTransactionID
+	}
 }
 
 // customShipmentMissingLines is, per goods-missing trail row named, its lines in the order recorded — each with its
@@ -315,6 +338,16 @@ func customShipmentToProto(
 		HandedOverAtUnix:   unixOrZero(cs.HandedOverAt),
 		CancelledByUserId:  cs.CancelledByUserID,
 		CancelledAtUnix:    unixOrZero(cs.CancelledAt),
+		// Backlog #101 — which way, and the inbound steps.
+		Direction:        customShipmentDirection(cs.Kind),
+		ChargeNote:       cs.ChargeNote,
+		ArrivedByUserId:  cs.ArrivedByUserID,
+		ArrivedAtUnix:    unixOrZero(cs.ArrivedAt),
+		ReceivedByUserId: cs.ReceivedByUserID,
+		ReceivedAtUnix:   unixOrZero(cs.ReceivedAt),
+		LostByUserId:     cs.LostByUserID,
+		LostAtUnix:       unixOrZero(cs.LostAt),
+		LostReason:       cs.LostReason,
 	}
 
 	if cs.TransactionID != nil {
@@ -348,6 +381,23 @@ func customShipmentToProto(
 			line.Total = proto.Float64(item.Total)
 		}
 
+		// INBOUND: the seller's price (its money — never the warehouse's to read) and Terima's count.
+		if cs.Kind == models.CustomShipmentSupplierReshipping {
+			if withMoney {
+				line.PriceUnit = proto.Float64(item.PriceUnit)
+			}
+
+			if item.Received != nil {
+				line.Received = proto.Uint64(uint64(*item.Received))
+			}
+
+			if item.Broken != nil {
+				line.Broken = proto.Uint64(uint64(*item.Broken))
+			}
+
+			line.RackId = item.RackID
+		}
+
 		out.Items = append(out.Items, line)
 	}
 
@@ -360,7 +410,7 @@ func customShipmentToProto(
 			// (the shipping warehouse) reads that the cost was edited, never the figures
 			// (a-warehouse-sees-no-seller-money: not on screen, nor in the data). A goods-missing note is from = to too,
 			// but it is the warehouse's own words: it is never blanked.
-			if !withMoney && l.FromStatus == l.ToStatus && !note {
+			if !withMoney && l.FromStatus == l.ToStatus && !note && l.Kind != models.CustomShipmentLogResiEdit {
 				description = ""
 			}
 
@@ -400,6 +450,10 @@ func customShipmentLogKindToProto(l *models.CustomShipmentLog) inventoryv1.Custo
 		return inventoryv1.CustomShipmentLogKind_CUSTOM_SHIPMENT_LOG_KIND_GOODS_MISSING
 	case models.CustomShipmentLogCostEdit:
 		return inventoryv1.CustomShipmentLogKind_CUSTOM_SHIPMENT_LOG_KIND_COST_EDIT
+	case models.CustomShipmentLogResiEdit:
+		return inventoryv1.CustomShipmentLogKind_CUSTOM_SHIPMENT_LOG_KIND_RESI_EDIT
+	case models.CustomShipmentLogPriceEdit:
+		return inventoryv1.CustomShipmentLogKind_CUSTOM_SHIPMENT_LOG_KIND_PRICE_EDIT
 	default:
 		return inventoryv1.CustomShipmentLogKind_CUSTOM_SHIPMENT_LOG_KIND_STATUS
 	}
@@ -408,6 +462,8 @@ func customShipmentLogKindToProto(l *models.CustomShipmentLog) inventoryv1.Custo
 var customShipmentKinds = map[models.CustomShipmentKind]inventoryv1.CustomShipmentKind{
 	models.CustomShipmentSample: inventoryv1.CustomShipmentKind_CUSTOM_SHIPMENT_KIND_SAMPLE,
 	models.CustomShipmentReship: inventoryv1.CustomShipmentKind_CUSTOM_SHIPMENT_KIND_RESTOCK_RESHIP,
+	// INBOUND (backlog #101).
+	models.CustomShipmentSupplierReshipping: inventoryv1.CustomShipmentKind_CUSTOM_SHIPMENT_KIND_SUPPLIER_RESHIPPING,
 }
 
 func customShipmentKindToProto(k models.CustomShipmentKind) inventoryv1.CustomShipmentKind {
@@ -419,6 +475,11 @@ var customShipmentStatuses = map[models.CustomShipmentStatus]inventoryv1.CustomS
 	models.CustomShipmentPicked:     inventoryv1.CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_PICKED,
 	models.CustomShipmentHandedOver: inventoryv1.CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_HANDED_OVER,
 	models.CustomShipmentCancelled:  inventoryv1.CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_CANCELLED,
+	// INBOUND (backlog #101).
+	models.CustomShipmentOnTheWay: inventoryv1.CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_ON_THE_WAY,
+	models.CustomShipmentArrived:  inventoryv1.CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_ARRIVED,
+	models.CustomShipmentReceived: inventoryv1.CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_RECEIVED,
+	models.CustomShipmentLost:     inventoryv1.CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_LOST,
 }
 
 // customShipmentStatusToProto maps a stored status to the wire; the empty from of the create's trail row is UNSPECIFIED.

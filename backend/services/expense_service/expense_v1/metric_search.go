@@ -57,12 +57,12 @@ func (s *Service) MetricSearch(
 
 	db := s.db.WithContext(ctx)
 
-	grouped := metricRows(db, metricReaderOf(msg.GetTeamId()), filters, metric.adsOnly).
-		Select(key.sql + " AS key, " + metricSums).
-		Group(key.sql)
+	scope := metricRows(db, metricReaderOf(msg.GetTeamId()), filters, metric.adsOnly)
 	if !key.isDay {
-		grouped = grouped.Where(key.sql + " <> 0")
+		scope = scope.Where(key.sql + " <> 0")
 	}
+
+	grouped := metricGrouped(scope, key.sql)
 
 	page := msg.GetPage()
 	limit := int(page.GetLimit())

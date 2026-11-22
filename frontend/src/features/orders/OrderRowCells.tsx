@@ -21,6 +21,7 @@ import {
 import type { Urgency } from "./deadline";
 import { deadlineUrgency, hoursFromNow } from "./deadline";
 import { CopyText } from "../../components/chrome/CopyText";
+import { TrackingLink, useTrackingHref } from "../shipment/CourierTrackingLink";
 
 // THE CELLS THE ORDER TABLE HAS NO SHARED COMPONENT FOR.
 //
@@ -109,12 +110,27 @@ export function OrderRefCell({
  *
  * ⚠ COPYABLE, and the reason is the strongest of any field here: this is what a buyer chasing a parcel
  * quotes, and retyping thirteen characters is how the wrong parcel gets chased.
+ *
+ * THE COURIER'S TRACKING PAGE (the-tracking-link-prototype-is-accepted, the seller's list ↗ included): with the order's
+ * `channelId`, a ↗ after the copy action on the SAME line (one-context-per-column-and-never-three-lines) when the
+ * courier has a link — read from the shared courier catalogue, so a row costs no request. Its click opens the courier's
+ * page in a new tab and never the row's order. A courier with no link: the copyable resi alone, as before.
  */
-export function ReceiptCell({ code }: { code?: string }) {
+export function ReceiptCell({ code, channelId }: { code?: string; channelId?: bigint }) {
   const value = (code ?? "").trim();
+  const trackingHref = useTrackingHref(channelId, value);
 
   if (value === "") {
     return <Nothing testId="order-receipt-none" />;
+  }
+
+  if (trackingHref) {
+    return (
+      <Flex align="center" gap="1.5" wrap="nowrap">
+        <CopyText value={value} mono testId="order-receipt" />
+        <TrackingLink href={trackingHref} testId="order-receipt-track" />
+      </Flex>
+    );
   }
 
   return <CopyText value={value} mono testId="order-receipt" />;

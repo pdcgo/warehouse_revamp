@@ -514,19 +514,28 @@ function build(): Record<string, Fact[]> {
     // it; then the typed kinds of Toko Melati's, Toko Kenanga's and Gudang Pusat's expenses, each read by its own team
     // (and root). A seller's expense sits under Seller (`team`), a warehouse team's under Warehouse (`warehouse`) —
     // the-expense-metrics-follow-the-decisions-already-made. No STOCK_LOSS: it stays out of Analytic's expenses
-    // (stock-loss-stays-out-of-analytic-expenses).
+    // (stock-loss-stays-out-of-analytic-expenses). Each also counts in its TYPE's field (backlog #107 — ads under
+    // Marketplace ads, payroll Basic salary, utilities Electricity, the rest Other money out) — except the rent on the
+    // 1st, which reads as a row from before the types: its group and the total only. All money out, so `total` is the
+    // kinds' sum; a story adds money in and capital itself (addSampleFactsForStory).
     for (const entry of ADS_CORRECTED.filter((c) => c.day === day)) {
       adsToday.push({ day, shop: "16", team: SAMPLE_SELLER, user: entry.user, owner: SAMPLE_SELLER, values: { amount: entry.amount } });
     }
     facts["metrics/ads"]!.push(...adsToday);
 
-    const expense = (side: { team: string } | { warehouse: string }, user: string, kind: string, amount: number) =>
+    const TYPE_OF: Record<string, string> = {
+      ads: "ads_marketplace",
+      payroll: "basic_salary",
+      operational: "electricity",
+      other: "other_out",
+    };
+    const expense = (side: { team: string } | { warehouse: string }, user: string, kind: string, amount: number, untyped = false) =>
       facts["metrics/expenses"]!.push({
         day,
         ...side,
         user,
         owner: "team" in side ? side.team : side.warehouse,
-        values: { [kind]: amount, total: amount },
+        values: untyped ? { [kind]: amount, total: amount } : { [kind]: amount, [TYPE_OF[kind]!]: amount, total: amount },
       });
     const melati = { team: SAMPLE_SELLER };
     const kenanga = { team: SAMPLE_OTHER_SELLER };
@@ -534,16 +543,16 @@ function build(): Record<string, Fact[]> {
 
     for (const ad of adsToday) expense(melati, ad.user!, "ads", ad.values.amount!);
     if (lastOfMonth(day)) expense(melati, "61", "payroll", 7_500_000);
-    if (day.endsWith("-01")) expense(melati, "62", "operational", 2_500_000);
+    if (day.endsWith("-01")) expense(melati, "62", "operational", 2_500_000, true);
     if (day.endsWith("-10")) expense(melati, "62", "operational", 450_000 + Math.round(300_000 * seeded(`eu|${day}`)));
     if (seeded(`eo|${day}`) < 0.08) expense(melati, "65", "other", 50_000 + Math.round(300_000 * seeded(`eoa|${day}`)));
 
     if (lastOfMonth(day)) expense(kenanga, "68", "payroll", 4_000_000);
-    if (day.endsWith("-01")) expense(kenanga, "68", "operational", 1_500_000);
+    if (day.endsWith("-01")) expense(kenanga, "68", "operational", 1_500_000, true);
 
     // Gudang Pusat's own: its staff's pay (Dewi, the owner), the building's rent and power (Budi), packing supplies (Eko).
     if (lastOfMonth(day)) expense(pusat, "64", "payroll", 6_000_000);
-    if (day.endsWith("-01")) expense(pusat, "62", "operational", 3_000_000);
+    if (day.endsWith("-01")) expense(pusat, "62", "operational", 3_000_000, true);
     if (day.endsWith("-10")) expense(pusat, "62", "operational", 600_000 + Math.round(400_000 * seeded(`wu|${day}`)));
     if (seeded(`wo|${day}`) < 0.1) expense(pusat, "65", "other", 40_000 + Math.round(200_000 * seeded(`woa|${day}`)));
 
@@ -573,7 +582,21 @@ let cache: Record<string, Fact[]> | undefined;
 export function sampleFacts(metricId: string): Fact[] {
   cache ??= build();
 
-  return cache[metricId] ?? [];
+  return [...(cache[metricId] ?? []), ...(storyFacts[metricId] ?? [])];
+}
+
+const storyFacts: Record<string, Fact[]> = {};
+
+/**
+ * Storybook only — facts ONE story adds beside the sample (an Expenses day with money in and capital), so the shared
+ * sample, which every other story's totals read, stays as it is. Returns the cleanup, for a story's `beforeEach`.
+ */
+export function addSampleFactsForStory(metricId: string, ...facts: Fact[]): () => void {
+  storyFacts[metricId] = [...(storyFacts[metricId] ?? []), ...facts];
+
+  return () => {
+    delete storyFacts[metricId];
+  };
 }
 
 /** The name of a shop, product or supplier — what the real screen will ask ShopByIds, ProductByIds, SupplierByIds. */

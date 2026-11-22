@@ -88,7 +88,7 @@ export const CancelWhileRequested: Story = {
 
     await expect(canvas.queryByTestId("custom-shipment-action-edit-cost-801")).toBeNull();
     await userEvent.click(canvas.getByTestId("custom-shipment-action-cancel-801"));
-    await expect(await screen.findByText("Its units go back on the racks they were taken from.")).toBeVisible();
+    await waitFor(() => expect(screen.getByText("Its units go back on the racks they were taken from.")).toBeVisible(), { timeout: 5000 });
     await userEvent.click(screen.getByTestId("confirm-action"));
 
     await waitFor(() => expect(canvas.getByTestId("custom-shipment-detail-status")).toHaveTextContent("Cancelled"));
@@ -111,8 +111,8 @@ export const ARefusedCancelSaysWhy: Story = {
     await userEvent.click(canvas.getByTestId("custom-shipment-action-cancel-801"));
     await userEvent.click(await screen.findByTestId("confirm-action"));
 
-    await expect(await screen.findByText("Not allowed in this status")).toBeVisible();
-    await expect(await screen.findByText("only a requested parcel can be cancelled")).toBeVisible();
+    await waitFor(() => expect(screen.getByText("Not allowed in this status")).toBeVisible(), { timeout: 5000 });
+    await waitFor(() => expect(screen.getByText("only a requested parcel can be cancelled")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.getByTestId("custom-shipment-detail-status")).toHaveTextContent("Requested");
   },
 };

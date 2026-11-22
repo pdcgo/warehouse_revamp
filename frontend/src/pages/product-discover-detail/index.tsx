@@ -27,7 +27,6 @@ import { useAvailabilityByWarehouse } from "../../features/inventory/queries";
 import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { DailySection } from "../../features/products/DailySection";
-import { sampleDaily } from "../../features/products/dailySample";
 import { DerivedSection } from "../../features/products/DerivedSection";
 import { sampleDerived } from "../../features/products/derivedSample";
 import { DiscoverBadges } from "../../features/products/DiscoverBadges";
@@ -535,8 +534,9 @@ export function DiscoverProductDetailPage() {
   // full width under the title on a phone — and under it the tabs, only the open one mounted.
   //
   //   Overview        the lens's small figures — Siap, Dikirim, Umur stok — the owner's page's less Rentang HPP
-  //   Pemasok ⚠       the owner's page's tab, with the store it was bought at — and no cost (the-supplier-tab-names-the-store)
-  //   Harian ⚠        the owner's page's sample
+  //   Pemasok         the owner's page's tab, with the store it was bought at — and no cost (the-supplier-tab-names-the-store);
+  //                   real (ProductSupplierGoods), in the lens
+  //   Harian          the owner's page's tab — the last fourteen days, real (ProductDailyMoves), units only, in the lens
   //   Riwayat Stok    the owner's ledger — the team's own product's whole (OwnerStockHistory), another team's units
   //                   (DiscoverStockHistory, stock-history-is-everyones)
   //
@@ -544,8 +544,6 @@ export function DiscoverProductDetailPage() {
   // ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   const picker = <WarehouseFilter value={warehouseId} onChange={setWarehouseId} testId="dd-warehouse-filter" />;
   const warehouseEntry = discoverSection("warehouse");
-  const tabMark = (key: DiscoverWarehouseTab) =>
-    key === "suppliers" ? mark("suppliers") : key === "daily" ? mark("daily") : null;
 
   // THE OVERVIEW'S FIGURES, in the lens — the owner's page's Overview (the-overview-is-small-details) with the CROSS PRICE
   // RANGE where Rentang HPP stood, and no stock age (owner: *"di overview tidak perlu umur [stok], malah butuh rentang
@@ -606,7 +604,6 @@ export function DiscoverProductDetailPage() {
           {DISCOVER_WAREHOUSE_TABS.map((key) => (
             <Tabs.Trigger key={key} value={key} flexShrink={0} whiteSpace="nowrap" data-testid={`dd-tab-${key}`}>
               {t(`products.detail.tab.${key}`)}
-              {tabMark(key)}
             </Tabs.Trigger>
           ))}
           <Tabs.Indicator />
@@ -619,13 +616,15 @@ export function DiscoverProductDetailPage() {
         </Tabs.Content>
 
         {/* PEMASOK — shown even when the product is locked or archived: a team may restock from another team's supplier
-            itself (a-team-restocks-from-another-teams-supplier). No cost: it is the owner's. */}
+            itself (a-team-restocks-from-another-teams-supplier). No cost: it is the owner's — the server sends it to the
+            owning team alone, and even the team's own product shows none here. In the picker's warehouse, as on the owner's
+            page (the-discover-detail-has-the-warehouse-zone). */}
         <Tabs.Content value="suppliers" data-testid="dd-panel-suppliers">
-          <SuppliersSection teamId={teamId} productId={product.id} showCost={false} />
+          <SuppliersSection teamId={teamId} productId={product.id} warehouseId={warehouseId} showCost={false} />
         </Tabs.Content>
 
         <Tabs.Content value="daily" data-testid="dd-panel-daily">
-          <DailySection days={sampleDaily(product.id, Number(lensReady ?? 0n))} />
+          <DailySection teamId={teamId} productId={product.id} warehouseId={warehouseId} />
         </Tabs.Content>
 
         {/* RIWAYAT STOK — every team may read it (owner: *"riwayat stok boleh dibaca semua orang"*,

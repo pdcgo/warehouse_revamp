@@ -56,7 +56,7 @@ func TestCostCreate_RefusesADateThatIsNotADay(t *testing.T) {
 
 	for _, bad := range []string{"2026-02-31", "2026-13-01", "not-a-date"} {
 		_, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Amount: 1000, OccurredAt: bad,
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_ADS), Amount: 1000, OccurredAt: bad,
 			ShopId: adsShop, FinanceAccountId: payingAccount,
 		}))
 		if code := connect.CodeOf(err); code != connect.CodeInvalidArgument {
@@ -74,7 +74,7 @@ func TestExpenseCreate_OnlyAdsNamesAShop(t *testing.T) {
 
 	create := func(kind expensev1.ExpenseKind, shop uint64) (*expensev1.ExpenseRecord, error) {
 		res, err := svc.ExpenseCreate(ctx, connect.NewRequest(&expensev1.ExpenseCreateRequest{
-			TeamId: teamA, Kind: kind, Amount: 800_000, OccurredAt: "2026-07-05", ShopId: shop,
+			TeamId: teamA, Kind: kind, Type: typeFor(kind), Amount: 800_000, OccurredAt: "2026-07-05", ShopId: shop,
 			FinanceAccountId: payingAccount,
 		}))
 		if err != nil {
@@ -128,7 +128,7 @@ func TestExpenseCreate_StoresTheAccountThatPaid(t *testing.T) {
 
 	// No account: the handler does not trust a caller that skipped the validation interceptor.
 	_, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Amount: 1000, OccurredAt: "2026-07-05",
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL), Amount: 1000, OccurredAt: "2026-07-05",
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Fatalf("no account = %v, want InvalidArgument", err)
@@ -156,7 +156,7 @@ func TestExpenseCreate_RefusesAnAccountThatMayNotPay(t *testing.T) {
 
 	for _, tc := range cases {
 		_, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Amount: 1000, OccurredAt: "2026-07-05",
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL), Amount: 1000, OccurredAt: "2026-07-05",
 			FinanceAccountId: tc.account,
 		}))
 		if connect.CodeOf(err) != connect.CodeFailedPrecondition || !strings.Contains(err.Error(), tc.says) {
@@ -185,7 +185,7 @@ func TestExpenseCreate_StockLossNamesNoAccount(t *testing.T) {
 
 	for _, sentAccount := range []uint64{0, payingAccount} {
 		res, err := svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Amount: 30_000, OccurredAt: "2026-07-05",
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS), Amount: 30_000, OccurredAt: "2026-07-05",
 			FinanceAccountId: sentAccount,
 		}))
 		if err != nil {
@@ -217,7 +217,7 @@ func TestExpenseCreate_StockLossIsRefusedThroughTheAPI(t *testing.T) {
 
 	for _, sentAccount := range []uint64{0, payingAccount} {
 		_, err := client.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Amount: 30_000, OccurredAt: "2026-07-05",
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_STOCK_LOSS), Amount: 30_000, OccurredAt: "2026-07-05",
 			FinanceAccountId: sentAccount,
 		}))
 		if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -242,7 +242,7 @@ func TestExpenseCreate_StockLossIsRefusedThroughTheAPI(t *testing.T) {
 
 	// A kind a person does type passes the same interceptor.
 	_, err = client.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Amount: 30_000, OccurredAt: "2026-07-05",
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL), Amount: 30_000, OccurredAt: "2026-07-05",
 		FinanceAccountId: payingAccount,
 	}))
 	if err != nil {
@@ -279,7 +279,7 @@ func TestExpenseCreate_AFractionalAmountIsStoredExact(t *testing.T) {
 	}
 
 	_, err = svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, Amount: 0.00001, OccurredAt: "2026-06-30",
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL), Amount: 0.00001, OccurredAt: "2026-06-30",
 		FinanceAccountId: payingAccount,
 	}))
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -312,7 +312,7 @@ func TestExpenseCreate_FoldsItsAnalyticRow(t *testing.T) {
 
 	for _, amount := range []float64{150_000.25, 49_999.75} {
 		_, err := svc.ExpenseCreate(budi, connect.NewRequest(&expensev1.ExpenseCreateRequest{
-			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Amount: amount, OccurredAt: "2026-10-14",
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_ADS), Amount: amount, OccurredAt: "2026-10-14",
 			ShopId: adsShop, FinanceAccountId: payingAccount,
 		}))
 		if err != nil {
@@ -321,7 +321,7 @@ func TestExpenseCreate_FoldsItsAnalyticRow(t *testing.T) {
 	}
 
 	_, err := svc.ExpenseCreate(asCaller(1, warehouseTeam, role_basev1.Role_ROLE_UNSPECIFIED), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: warehouseTeam, Kind: expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, Amount: 3_000_000, OccurredAt: "2026-10-01",
+		TeamId: warehouseTeam, Kind: expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL), Amount: 3_000_000, OccurredAt: "2026-10-01",
 		FinanceAccountId: payingAccount,
 	}))
 	if err != nil {
@@ -358,7 +358,7 @@ func TestExpenseCreate_AFailedFoldKeepsNoExpense(t *testing.T) {
 	}
 
 	_, err = svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Amount: 5_000_000, OccurredAt: "2026-10-31",
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL), Amount: 5_000_000, OccurredAt: "2026-10-31",
 		FinanceAccountId: payingAccount,
 	}))
 	if connect.CodeOf(err) != connect.CodeInternal {

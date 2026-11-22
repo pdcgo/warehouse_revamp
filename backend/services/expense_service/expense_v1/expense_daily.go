@@ -79,7 +79,9 @@ func (s *Service) ExpenseDaily(
 	err = query.
 		// Every row, as `totals` sums them, so the buckets add up to the footer beside them — an adjustment counts on its
 		// expense's day, with its sign (an-adjustment-counts-on-the-day-it-fixes).
-		Select(bucket + " AS day, kind, COUNT(*) AS entries, COALESCE(SUM(amount), 0) AS total").
+		// Signed by the type's direction, as ExpenseList's totals — so the statement's footer and the list's headline
+		// stay one number (a money-in row counts minus).
+		Select(bucket + " AS day, kind, COUNT(*) AS entries, COALESCE(SUM(" + signedAmountSQL() + "), 0) AS total").
 		Group(bucket + ", kind").
 		Scan(&rows).
 		Error

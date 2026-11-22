@@ -10,6 +10,7 @@ import {
   IconButton,
   Menu,
   Portal,
+  Skeleton,
   Stack,
   Text,
   TreeView,
@@ -36,16 +37,14 @@ import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { toaster } from "../../components/feedback/Toaster";
 import { FilterBar, FilterSearch } from "../../components/chrome/FilterBar";
 import { type CategoryTreeNode, categoryTreeRoot } from "../../features/categories/categoryTree";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { useIsMobile } from "../../layouts/shell";
 import { textCodec, useUrlState } from "../../lib/urlState";
 import { CreateCategoryDialog } from "./components/CreateCategoryDialog";
 import { MoveCategoryDialog } from "./components/MoveCategoryDialog";
 import { RenameCategoryDialog } from "./components/RenameCategoryDialog";
-import { CATEGORIES_PENDING } from "./pending";
-import { useCategories, useDeleteCategory } from "./queries";
-import { sampleProductCount } from "./sampleProductCounts";
+import { useBranchCountOption } from "./branchCountMock";
+import { categoryProducts, productCountShown } from "./productCounts";
+import { useCategories, useCategoryProductCounts, useDeleteCategory } from "./queries";
 
 // A row's actions are their own clicks and keys — the tree under them must not open, close or move its focus.
 const stop = (e: MouseEvent | KeyboardEvent) => e.stopPropagation();
@@ -55,6 +54,8 @@ const stop = (e: MouseEvent | KeyboardEvent) => e.stopPropagation();
 // *Tambah Sub-kategori* did in an 11rem column (owner: a screenshot, *"bug"*), before the label became *＋ Sub-kategori*
 // (*"tidak ada teks yang lebih singkat?"*).
 const PRODUCTS_W = "6rem";
+// The mock of option C (own · whole branch) needs room for both figures — its own column width, the mock's alone.
+const PRODUCTS_BOTH_W = "10rem";
 const COUNT_W = "7rem";
 const ACTIONS_W = "11rem";
 
@@ -69,18 +70,24 @@ const ACTIONS_W = "11rem";
 //   Kategori                                                       [＋ Kategori Baru]
 //   Pohon kategori produk — satu untuk semua tim.
 //   [⌕ Cari kategori        ×]                                          [⇕ Buka Semua]
-//   Nama                              Sub-kategori   Produk ⚠1                  Aksi
-//   ▸ Elektronik                                 1         102   [＋ Sub-kategori] [⋯]
-//   ▸ Rumah Tangga                               1           9   [＋ Sub-kategori] [⋯]
+//   Nama                              Sub-kategori   Produk                     Aksi
+//   ▸ Makanan                                    1         120   [＋ Sub-kategori] [⋯]
+//   ▸ Minuman                                    —           0   [＋ Sub-kategori] [⋯]
 //   ⋯ → Ubah Nama · Pindahkan · Hapus (off, with its reason, while it has sub-categories)
 //
 // Everything is read from the one full-tree read the page already made: the child counts, the search (the matches and
 // the path to each), the branches to open. The tree arrives SHUT — the top level — and one button opens or shuts all.
+//
+// PRODUK IS COUNTED (the-product-count-is-a-marked-sample, real since #115): ProductCategoryCounts gives every team's live
+// products filed on each node, and the page makes a branch's figure from them and the tree (productCounts.ts) — the
+// WHOLE BRANCH for now, the owner's Q3 (own vs whole branch) held as option A.
 export function CategoriesPage() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const query = useCategories();
+  const productCounts = useCategoryProductCounts();
   const deleteCategory = useDeleteCategory();
+  const branchCount = useBranchCountOption();
 
   // THE SEARCH LIVES IN THE URL (a-lists-filters-live-in-the-url).
   const [q, setQ] = useUrlState("q", "", textCodec);
@@ -106,6 +113,15 @@ export function CategoriesPage() {
       }),
     [categories],
   );
+
+  // How many products each holds, its own and its whole branch's — from the WHOLE tree too, for the same reason; undefined
+  // until the count has landed.
+  const products = useMemo(
+    () => (productCounts.data ? categoryProducts(categories, productCounts.data) : undefined),
+    [categories, productCounts.data],
+  );
+  const productsError = productCounts.isError ? rpcError(productCounts.error) : "";
+  const productsW = branchCount === "C" ? PRODUCTS_BOTH_W : PRODUCTS_W;
 
   // How many sub-categories each has — from the WHOLE tree, so a search does not shrink the count beside a match.
   const childCount = useMemo(() => {
@@ -239,12 +255,16 @@ export function CategoriesPage() {
     );
   }
 
-  // One row, as a table's: the chevron (a branch) or its room (a leaf), the name, its sub-categories, its products (⚠ a
-  // sample), the actions. On a phone there is no heading row, so the counts say what they are, on one line.
+  // One row, as a table's: the chevron (a branch) or its room (a leaf), the name, its sub-categories, its products, the
+  // actions. On a phone there is no heading row, so the counts say what they are, on one line.
   function row(node: CategoryTreeNode, isBranch: boolean) {
     const category = node.category!;
     const count = childCount.get(node.id) ?? 0;
-    const products = sampleProductCount(category.id);
+    // What the Produk column reads — productCountShown makes the one choice (the owner's Q3); undefined while loading.
+    const held = products?.get(node.id) ?? (products ? { own: 0, branch: 0 } : undefined);
+    const shown = held ? productCountShown(held, branchCount) : undefined;
+    const figure = shown?.figure ?? null;
+    const total = shown?.total;
 
     return (
       <>
@@ -266,7 +286,11 @@ export function CategoriesPage() {
         </Text>
         {isMobile ? (
           <Text fontSize="xs" color="fg.muted" whiteSpace="nowrap" flexShrink={0} data-testid={`category-children-${node.id}`}>
-            {[count > 0 ? t("catalog.categories.childCount", { count }) : "", t("catalog.categories.productCount", { count: products })]
+            {[
+              count > 0 ? t("catalog.categories.childCount", { count }) : "",
+              figure !== null ? t("catalog.categories.productCount", { count: figure }) : shown ? "—" : "",
+              total !== undefined ? t("catalog.categories.productTotal", { count: total }) : "",
+            ]
               .filter(Boolean)
               .join(" · ")}
           </Text>
@@ -281,15 +305,26 @@ export function CategoriesPage() {
             >
               {count > 0 ? count : "—"}
             </Text>
-            <Text
-              w={PRODUCTS_W}
+            <Box
+              w={productsW}
               flexShrink={0}
               textAlign="end"
-              color={products > 0 ? undefined : "fg.subtle"}
+              whiteSpace="nowrap"
+              color={(figure ?? 0) > 0 || (total ?? 0) > 0 ? undefined : "fg.subtle"}
               data-testid={`category-products-${node.id}`}
             >
-              {products}
-            </Text>
+              {shown === undefined ? (
+                productsError ? (
+                  "—"
+                ) : (
+                  <Skeleton h="4" w="8" ms="auto" data-testid={`category-products-loading-${node.id}`} />
+                )
+              ) : (
+                [figure ?? "—", total !== undefined ? t("catalog.categories.productTotal", { count: total }) : ""]
+                  .filter((part) => part !== "")
+                  .join(" · ")
+              )}
+            </Box>
           </>
         )}
         {actions(category)}
@@ -352,11 +387,9 @@ export function CategoriesPage() {
             <Text w={COUNT_W} textAlign="end">
               {t("catalog.categories.childrenColumn")}
             </Text>
-            {/* ⚠ THE PRODUCTS ARE A SAMPLE — the mark on the column it belongs to. */}
-            <HStack w={PRODUCTS_W} gap="1" justify="end">
-              <Text>{t("catalog.categories.productsColumn")}</Text>
-              <NotImplemented list={CATEGORIES_PENDING} id="productCount" />
-            </HStack>
+            <Text w={productsW} textAlign="end">
+              {t("catalog.categories.productsColumn")}
+            </Text>
             <Text w={ACTIONS_W} textAlign="end">
               {t("catalog.actions")}
             </Text>
@@ -430,10 +463,6 @@ export function CategoriesPage() {
         <CreateCategoryDialog compact={isMobile} />
       </Flex>
 
-      {/* What this page cannot do yet — the product counts, invented. On a phone, with no heading row to carry the mark,
-          this strip is where it is said. */}
-      <NotImplementedSummary list={CATEGORIES_PENDING} />
-
       <FilterBar
         testId="categories-filter"
         active={q.trim() !== ""}
@@ -452,6 +481,12 @@ export function CategoriesPage() {
       {error && (
         <Text color="error.fg" data-testid="categories-error">
           {error}
+        </Text>
+      )}
+      {/* The tree still draws when only the count fails; its Produk column then waits, and this says why. */}
+      {productsError && (
+        <Text color="error.fg" data-testid="categories-products-error">
+          {productsError}
         </Text>
       )}
 

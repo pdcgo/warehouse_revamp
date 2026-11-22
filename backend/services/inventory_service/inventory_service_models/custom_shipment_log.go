@@ -13,6 +13,11 @@ const (
 	// CustomShipmentLogGoodsMissing is the warehouse's *Barang tidak ketemu* — from = to = requested, its lines in
 	// `custom_shipment_missing_lines`, its note the description (missing-goods-leave-a-note-on-the-custom-shipment).
 	CustomShipmentLogGoodsMissing CustomShipmentLogKind = "goods_missing"
+	// CustomShipmentLogResiEdit is the seller's *Ubah Resi* on an inbound parcel (00060) — from = to, the old and new resi.
+	CustomShipmentLogResiEdit CustomShipmentLogKind = "resi_edit"
+	// CustomShipmentLogPriceEdit is the seller's price edit on an inbound parcel (00060) — from = to, its prices (seller
+	// money: blank for the warehouse).
+	CustomShipmentLogPriceEdit CustomShipmentLogKind = "price_edit"
 )
 
 // CustomShipmentLog is a row of `custom_shipment_logs` (00057, its kind 00059) — one status change, one cost edit (a

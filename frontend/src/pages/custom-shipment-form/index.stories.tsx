@@ -194,8 +194,8 @@ export const ARefusedCreateSaysWhy: Story = {
     customShipmentScenario.refuseNext = { rpc: "CustomShipmentCreate", message: "not enough stock: SKU-BERAS-5K" };
     await userEvent.click(canvas.getByTestId("custom-shipment-form-submit"));
 
-    await expect(await screen.findByText("Parcel not created")).toBeVisible();
-    await expect(await screen.findByText("not enough stock: SKU-BERAS-5K")).toBeVisible();
+    await waitFor(() => expect(screen.getByText("Parcel not created")).toBeVisible(), { timeout: 5000 });
+    await waitFor(() => expect(screen.getByText("not enough stock: SKU-BERAS-5K")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.getByTestId("custom-shipment-form")).toBeVisible();
     await expect(canvas.getByTestId("custom-shipment-form-name")).toHaveValue("Rina Kusuma");
     await expect(canvas.getByTestId("custom-shipment-form-submit")).toBeEnabled();

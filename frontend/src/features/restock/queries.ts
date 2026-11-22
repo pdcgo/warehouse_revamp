@@ -13,6 +13,7 @@ import {
 } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import { firstOfMonthBack, jakartaDayEndUnix, jakartaDayStartUnix, jakartaToday } from "../../lib/jakartaDay";
 import { useDebounced } from "../../lib/useDebounced";
+import { RestockSettledFilter } from "../../gen/warehouse/inventory/v1/restock_resolution_pb";
 import { restocksFromList, restockListRowData } from "./adapt";
 import { restockSummaryOf } from "./sellingStat";
 
@@ -47,6 +48,11 @@ export interface RestockListArgs {
   q?: string;
   /** Empty = any tag. A restock is in when it carries ANY of these (#87, the-restock-tags-prototype-is-accepted). */
   tagIds?: bigint[];
+  /**
+   * By the settled mark (backlog #101) — UNSPECIFIED = either. The seller's Hilang tab sends UNSETTLED with LOST: a
+   * settled lost restock leaves the tab and stays under Semua (the-restock-resolutions-prototype-is-accepted).
+   */
+  settled?: RestockSettledFilter;
   page: number;
   pageSize: number;
 }
@@ -67,6 +73,7 @@ export function useRestockRequests(args: RestockListArgs) {
     toUnix = 0n,
     q = "",
     tagIds = NO_TAGS,
+    settled = RestockSettledFilter.UNSPECIFIED,
     page,
     pageSize,
   } = args;
@@ -87,6 +94,7 @@ export function useRestockRequests(args: RestockListArgs) {
       toUnix: toUnix.toString(),
       q,
       tagIds: tagIds.map(String),
+      settled,
       page,
       pageSize,
     }),
@@ -107,6 +115,7 @@ export function useRestockRequests(args: RestockListArgs) {
           toUnix,
           q,
           tagIds,
+          settled,
         },
         dataRequest: restockListRowData(),
         page: { page, limit: pageSize },

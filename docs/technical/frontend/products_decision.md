@@ -81,6 +81,7 @@ The rules every screen follows are in [context_decision.md](context_decision.md)
 | [in-transit-is-its-own-figure-beside-siap-and-dikirim](#in-transit-is-its-own-figure-beside-siap-and-dikirim) | goods in transit between warehouses is its own figure beside Siap and Dikirim on every product screen — the list column, the phone block, the stat strip, the product page |
 | [the-in-transit-column-shows-while-any-is-in-transit](#the-in-transit-column-shows-while-any-is-in-transit) | the in-transit prototype is accepted; the list's Dalam transfer column shows only while the view has units in transit — the tile, the phone fact and the product page always show |
 | [the-product-pages-side-cards-stack-when-narrow](#the-product-pages-side-cards-stack-when-narrow) | a product's page stands its side cards beside its main column only when the page area holds both — else they go below, as the restock pages do |
+| [masuk-and-keluar-are-every-movement-by-its-direction](#masuk-and-keluar-are-every-movement-by-its-direction) | Keluar Masuk Harian: Masuk and Keluar are every movement by its direction on its day, so each row adds up |
 
 ## the-product-screens-follow-the-screen-rules
 
@@ -716,6 +717,10 @@ list — Riwayat Stok on the same page included — still keeps it.
 the whole header sticky, the picker above the figures and over every section (Batch included), and the figures only
 once, lensed. Its sections and its nav stand; those three rows are stale.
 
+✅ **Built 2026-11-21** — Pemasok (now a tab of the warehouse card, [the-suppliers-are-a-tab-of-their-own](#the-suppliers-are-a-tab-of-their-own)) reads the picker's warehouse: `SuppliersSection` takes the page's `warehouseId` and asks `ProductSupplierGoods` with it.
+
+✅ **Built 2026-11-21** — Keluar Masuk Harian (a tab of the warehouse card) reads the picker's warehouse: `DailySection` takes the page's `warehouseId` and asks `ProductDailyMoves` with it; 0 = every warehouse (`TheDaysFollowThePicker`).
+
 ## the-title-row-is-the-sticky-bar
 
 > Owner, in chat (2026-10-24): *"judul di atas card info produk … yang data stat ready, ongoing jangan jadi 4, 1 1 ke
@@ -781,6 +786,10 @@ away with only the name sticking. Its two zones stand; those rows are stale.
 **What it replaces** (HARD RULE 11): [the-warehouse-picker-splits-the-page](#the-warehouse-picker-splits-the-page) had the
 picker and its overview as summary cards in the open, then Harga Modal, Keluar Masuk Harian and Riwayat Stok as cards
 one after another, and Pemasok in the product-wide zone. The two zones stand; that arrangement is stale.
+
+✅ **Built 2026-11-21** — Keluar Masuk Harian is REAL and unmarked: `InventoryService.ProductDailyMoves` ([inventory rpc.md](../../services/inventory_service/rpc.md#keluar-masuk-harian--productdailymoves-built-2026-11-21)) answers the last fourteen Jakarta days, today first — date, in, out, on hand as decided — from the daily fold `inventory_stock_daily_changes`, never the ledger; *Sisa* is today's stock read back day by day, so every day says Sisa kemarin + Masuk − Keluar = Sisa. Units only. `dailySample.ts` and the tab's `daily` pending mark are gone. ⚠ awaiting the owner (#114 Q2): which movements are Masuk and which Keluar — built as option A, every movement by its direction (Sisa kemarin + Masuk − Keluar = Sisa); the mapping is one Go func (`dailySide`), B a one-line change. Stories `pages/product-detail/stories/Daily.stories.tsx` (`TheDaysAreReal`, `TheDaysFollowThePicker`, `APhoneReadsEachDayAsALine`); the owner's pictures A/B/C are `DailyQ2.stories.tsx` (B and C mock stories).
+
+🔄 *(2026-11-21)* The daily tab's Masuk / Keluar: [masuk-and-keluar-are-every-movement-by-its-direction](#masuk-and-keluar-are-every-movement-by-its-direction) — owner *"A"*, as built.
 
 ## the-stock-headline-stands-out
 
@@ -924,6 +933,10 @@ flowchart LR
 **What it replaces** (HARD RULE 11): [the-warehouse-zone-is-tabs](#the-warehouse-zone-is-tabs)'s *"Overview … then
 Pemasok"* and [the-overview-reads-like-info](#the-overview-reads-like-info)'s *"then Pemasok"*. The card, the picker and
 the other tabs stand.
+
+✅ **Built 2026-11-21** — the Pemasok tab is real and unmarked: `InventoryService.ProductSupplierGoods` groups the owner's restock batches per supplier and store, in the Per Gudang picker's warehouse; the tab's ⚠ and its `suppliers` pending entry are gone on both pages. Stories `pages/product-detail/stories/Suppliers.stories.tsx`; `EveryGapIsMarked` now pins the tab unmarked.
+
+✅ **Built 2026-11-21** — the Keluar Masuk Harian tab is real and unmarked too (`ProductDailyMoves`): the tabs read Overview, Harga Modal, Pemasok, Keluar Masuk Harian, Riwayat Stok with no ⚠; `EveryGapIsMarked` pins both tabs unmarked.
 
 ## the-warehouse-tabs-are-lines-on-a-phone
 
@@ -1509,6 +1522,10 @@ table keeps its columns but is now titled **Harga per Gudang**, its mark on the 
 Setiap Gudang* heading is stale. [the-discover-detail-is-the-product-page](#the-discover-detail-is-the-product-page)'s
 *Per Gudang* and *Pemasok ⚠* rows, and its verdict that the warehouse tabs are *"not carried over"*, are stale too.
 
+✅ **Built 2026-11-21** — the Pemasok tab is real here too (`ProductSupplierGoods`), follows the card's picker (`TheSuppliersFollowThePicker`) and shows no cost even on the team's own product; its `suppliers` mark is gone.
+
+✅ **Built 2026-11-21** — the Keluar Masuk Harian tab is real here too: the same `DailySection` and `ProductDailyMoves`, asked of the product's OWNER team's fold for any selling team (`DiscoverStockHistory`'s policy), units only — no value field exists on the wire; it follows the card's picker; its `daily` mark is gone (`AnotherTeamsDaysAreReal`, `AnotherTeamsDaysFollowThePicker`). ⚠ awaiting the owner (#114 Q2): which movements are Masuk and which Keluar — built as option A, every movement by its direction (Sisa kemarin + Masuk − Keluar = Sisa); the mapping is one Go func (`dailySide`), B a one-line change.
+
 ## the-supplier-tab-names-the-store
 
 > Owner, in chat (2026-10-30): *"pemasok di keduanya ada toko pemasoknya, lalu kalau ada linknya bearti toko pemasok bisa
@@ -1533,6 +1550,8 @@ Toko Melati      [Shopee]
 store — the sample of [the-warehouse-picker-splits-the-page](#the-warehouse-picker-splits-the-page)'s *⚠ sections* row; and
 the discover detail's own sample (`sampleSuppliers.ts`, deleted) named a supplier and a store with no figures. The two
 disagreed about one product; they no longer can.
+
+✅ **Built 2026-11-21** — the rows are REAL (`InventoryService.ProductSupplierGoods`, [inventory rpc.md](../../services/inventory_service/rpc.md#who-supplies-a-product--productsuppliergoods-built-2026-11-21)): per supplier and the store it was bought at, from the owner's batches a restock minted (a transfer-in is not a delivery) — Kiriman the restocks, Unit their accepted good units with received-count corrections counted in, Kiriman terakhir the newest accept; lines naming no store read — under their supplier; a deleted supplier or store is badged. *Modal terakhir* ⚠ is read as the newest delivery's batch unit cost as the batch holds it now, and the server sends it to the OWNING team only — another team's answer carries no cost field at all. Names from `SupplierByIds` / `SupplierChannelByIds` / `TeamByIds`; `supplierSample.ts` is deleted. Stories `TheSuppliersAreReal`, `TheSuppliersFollowThePicker`, `ALongListPagesAndADeletedSupplierIsBadged`, `APhoneReadsEachSupplierAsABlock`; on the discover detail `AnotherTeamsSuppliersShowNoCost`, `YourOwnProductsSuppliersShowNoCostHere`.
 
 ## stock-history-is-everyones
 
@@ -1877,3 +1896,11 @@ order. Wider, they stand beside it as today.
 | a phone | unchanged — one column already |
 
 ✅ Built 2026-11-15 — the product page chooses its two columns by the page area's measured width through the restock pages' `useSideBySide` (moved to `components/chrome/sideBySide.ts`, shared, not copied), floor `BATCH_SECTION_FLOOR_PX` = 701 (the Batch table's narrowest in English 651 px — Indonesian 607 — + the card's 50) + the gap + 20rem; below it the stacked layout (Cross and the derived figures under Batch, in their order). At 1440 with the sidebar open: stacked, the Batch table whole, no horizontal scroll; at 1440 alone and 1920 with the sidebar: beside. Stories `ProductDetail/Expiry` (1440 + sidebar below, 1920 + sidebar beside, the sidebar closing, phone); e2e `the_expiry_is_read_off_the_box.spec.ts` (1440 with the app's sidebar).
+
+---
+
+## masuk-and-keluar-are-every-movement-by-its-direction
+
+> Owner (Heri), in chat (2026-11-21): *"A"*, as recommended — to (#114, pictures `D:/hermes/profiles/revamp_dev/accepts/q114/` 01–04): on the product page's *Keluar Masuk Harian* tab (and the Discover detail's), which movements are *Masuk* and which *Keluar*? The example day: 12 restocked, 1 returned, 5 picked, a count −1, 3 sent to another warehouse. A: every movement by its direction on its day — Masuk 13, Keluar 9 — so *Sisa kemarin + Masuk − Keluar = Sisa* (the bridge shape of [rincian-answers-two-questions](financial_accounts_decision.md#rincian-answers-two-questions)); B: sales and purchases only — Masuk 12, Keluar 5, the rest not shown, the day no longer adding up; C: A with the kinds named under each figure (*Restok 12 · Retur 1*). No earlier rule covered it (only the sample's own comment).
+
+**The verdict.** **Masuk** is every movement that adds units to the product's stock on that Jakarta day (restock, a return put back, a found parcel, a count up, a transfer in, …), **Keluar** every one that takes units away (orders picked, a count down, a transfer out, a sample, …), each kind netted on its own day — a cancelled pick put back today lowers today's Keluar. So each row adds up: yesterday's Sisa + Masuk − Keluar = today's Sisa. The kinds are not named under the figures. As built in #114 (`dailySide`, the mapping's one function, `dailyCounted = nil`).

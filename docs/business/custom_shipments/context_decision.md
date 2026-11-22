@@ -16,6 +16,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-goods-missing-badge-is-on-both-lists](#the-goods-missing-badge-is-on-both-lists) | the goods-missing badge shows on the team list and the warehouse queue |
 | [the-goods-missing-prototype-is-accepted](#the-goods-missing-prototype-is-accepted) | the goods-missing control, dialog, trail row and badges, as drawn |
 | [the-reship-line-counts-the-units-not-found](#the-reship-line-counts-the-units-not-found) | the reship line's sentence adds the units not found |
+| [a-suppliers-reshipping-comes-in-as-a-custom-shipment](#a-suppliers-reshipping-comes-in-as-a-custom-shipment) | a supplier's reshipping comes in as an inbound custom shipment; restock_custom_shipments joins a restock, its resolution, the parcel and the stock movement; it arrives Tiba → Terima, or Hilang; units at the seller's price; the restock's door charge; created with the reshipping resolution (🔄 A, B, A, A); the stock-in is linked, the price moves no money and is editable until Terima (🔄 A, A, A) |
 
 ---
 
@@ -39,6 +40,10 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 ✅ Built 2026-11-19 (P2, backend) — both kinds are listed: `CustomShipmentList` (every side, paged, filtered by status, kind, warehouse and free text) and `CustomShipmentReshipOptions` (what a reship can send). Tests `custom_shipment_list_test.go`, `custom_shipment_reship_options_test.go`.
 
 ✅ Built 2026-11-19 (P5, screens) — both kinds on one list and one form: *Sampel* and *Kirim balik ke supplier* on the selling team's *Kirim Paket* (`/inventories/custom-shipments`), the kind a filter beside the status tabs; the in-person sample stays on Rack detail. Stories `pages/custom-shipments/*.stories.tsx`, `pages/custom-shipment-form/index.stories.tsx`.
+
+🔄 *(2026-11-20)* **The word.** In the restock's resolutions, sending a problem restock's goods back to the supplier is a **`return`**, and `reshipping` is the supplier sending them again ([a-restock-problem-is-settled-by-resolution-rows](../inventory/restock_decision.md#a-restock-problem-is-settled-by-resolution-rows), owner *"A"*). The *restock reship* kind above is that `return`; the draft's *"Reshipping Restock back to supplier"* is read the same way.
+
+🔄 *(2026-11-20)* **Both ways now.** A supplier's reshipping comes **in** as a custom shipment — [a-suppliers-reshipping-comes-in-as-a-custom-shipment](#a-suppliers-reshipping-comes-in-as-a-custom-shipment). *A parcel the warehouse sends out* above is the outbound kinds only.
 
 ---
 
@@ -214,3 +219,38 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 ⚠ Not built (backlog #88 P6 follow-up).
 
 ✅ Built 2026-11-19 (P6 follow-up) — the reship form's broken line reads *"{left} left · {broken} broken, {sent} on a parcel, {gone} not found"* from `ReshipLine.not_found` (no proto change); without a gone unit the sentence is unchanged, and with gone units but none on a parcel it reads *"{left} left · {broken} broken, {gone} not found"* *(Not asked — the build's default: each part only when it holds a unit, as the sentence always did)*. en/id `customShipment.form.brokenLeftAfterSentGone` / `brokenLeftAfterGone`; stories `pages/custom-shipment-form/index.stories.tsx` (*A reship line counts the units not found*, *A reship line, not found only*).
+
+---
+
+## a-suppliers-reshipping-comes-in-as-a-custom-shipment
+
+> Owner (Heri), in chat (2026-11-20): *"B, and we have table `restock_custom_shipments` to connect restock and custom shipment. that contain restock_id, resolution_id, custom_shipment_id, and inventory_transaction_id"* — after asking *"is custom shipping is support to track supplier send to warehouse ? its important for reshipping type"* (no: custom shipments only go out; an inbound parcel from a supplier is a restock — courier, resi, label photo, Tiba / Terima / Hilang). The options: how should a supplier's `reshipping` come in? A as a new restock linked to the problem restock (recommended); B an **inbound kind on custom shipments** (supplier → warehouse), with arrival steps of its own. **B, against my recommendation**, plus the link table in his own words.
+
+**The verdict.** Custom shipments now go **both ways**: besides the two outbound kinds ([a-custom-shipment-is-a-parcel-that-is-not-an-order](#a-custom-shipment-is-a-parcel-that-is-not-an-order) — a sample; a problem restock's goods sent back, the `return`), a **supplier's reshipping** comes **in** as a custom shipment to the warehouse. A restock and its custom shipments are joined by **`restock_custom_shipments`**:
+
+| field | |
+| --- | --- |
+| `restock_id` | the problem restock |
+| `resolution_id` | its resolution row ([a-restock-problem-is-settled-by-resolution-rows](../inventory/restock_decision.md#a-restock-problem-is-settled-by-resolution-rows)) the parcel carries out |
+| `custom_shipment_id` | the parcel — a `return` going out, or a `reshipping` coming in |
+| `inventory_transaction_id` | the stock movement the parcel made |
+
+⚠ My reading of the last column — the owner may correct it: for a `reshipping`, the stock-in when the supplier's goods are counted in; for a `return`, the movement of the units sent back if one is written (the broken units are on no rack today, so a `return` may write none).
+
+*(Not decided yet, asked one at a time: how the inbound parcel arrives — its steps at the warehouse; what the received units are worth and whether any money moves; who creates the inbound parcel and when.)* ⛔ Not built — custom shipments are outbound only today.
+
+🔄 *(2026-11-20)* **Settled in chat — how the inbound parcel arrives.** Owner: *"A"*, as recommended — A: a restock box's steps: **Tiba** (the warehouse signs for it at the door), **Terima** (it counts the box in — good units go on racks as stock; units that arrive broken or short are written down, so they stay open on the problem restock), **Hilang** if the parcel never comes; B: Terima only; C: no count, the seller marks it received. So an inbound reshipping parcel arrives through **Tiba → Terima**, or ends **Hilang**, worked by the crew as a restock box is ([lost-is-set-only-before-the-box-arrives](../inventory/restock_decision.md#lost-is-set-only-before-the-box-arrives) and the Tiba / Terima rules apply alike).
+
+🔄 *(2026-11-20)* **Settled in chat — what the received units are worth.** Owner: *"B"* — **against my recommendation** (A: no new money, the units at the problem restock's unit price — `the-problem-price-is-filled-by-the-system`) — B: **the seller types a price** for the received units, e.g. when the supplier sends a different product or value; C: value 0. So the inbound parcel's units enter stock at **the price the seller types**, and the parcel may carry a product other than the problem restock's. ⚠ My reading — the owner may correct it: typing the price **moves no money** (the goods were paid for in the problem restock; the price only values the stock), and the seller types it with the parcel's lines, editable until Terima.
+
+🔄 *(2026-11-20)* **Settled in chat — the inbound parcel's courier charge.** Owner: *"A"*, as recommended — A: as a restock box: a charge the courier asks at the door is paid by the warehouse, noted at Tiba and final at Terima, and the team owes it back through Team Balance ([the-courier-charge-is-noted-at-tiba-and-final-at-terima](../inventory/restock_decision.md#the-courier-charge-is-noted-at-tiba-and-final-at-terima), [the-warehouse-cost-is-the-couriers-charge-at-the-door](../inventory/restock_decision.md#the-warehouse-cost-is-the-couriers-charge-at-the-door)) — usually 0 when the supplier pays the shipping; B: the outbound two ways chosen at create; C: none recorded. So the inbound parcel takes **the restock's door charge**, not the outbound parcels' two ways.
+
+🔄 *(2026-11-20)* **Settled in chat — who creates the inbound parcel, and when.** Owner: *"A"*, as recommended — A: the selling team, while it records the `reshipping` resolution on the problem restock: the lines (product, count, price), the courier and resi if it has them (the resi editable until Tiba, as a restock's), the warehouse it comes to (opening on the problem restock's warehouse); the warehouse then sees it in its incoming list like a restock on its way; B: the team creates the parcel on its own and links it after; C: the warehouse creates it when the box shows up. So **recording a `reshipping` resolution creates its inbound parcel**, by the selling team, in the same step.
+
+🔄 *(2026-11-20)* **Confirmed in chat — `inventory_transaction_id`.** Owner: *"A"*, as recommended — A: a `reshipping` row links the stock-in made at its Terima; a `return` links none — the broken units sent back are on no rack; B: a `return` also writes a stock movement typed `return` and links it. So the ⚠ reading of that column above **is his rule**: the stock-in of the reshipped goods, and empty for a `return`.
+
+🔄 *(2026-11-20)* **Confirmed in chat — the typed price moves no money.** Owner: *"A"*, as recommended — A: no; the goods were paid for in the problem restock, so the price the seller types only values the new stock and no account changes; B: the difference from the problem restock's price posts to the account. So the ⚠ reading *typing the price moves no money* above **is his rule**.
+
+🔄 *(2026-11-20)* **Confirmed in chat — the price is editable until Terima.** Owner: *"A"*, as recommended — A: until Terima — once the warehouse counts the box in, the units are stock at that price, as a restock's lines stay editable until it is accepted ([the-lines-stay-editable-until-accepted](../inventory/restock_decision.md#the-lines-stay-editable-until-accepted)); B: until Tiba; C: never — fixed at the resolution. So the seller may change the inbound parcel's prices **until Terima**; the ⚠ reading above **is his rule**.
+
+✅ Built (phase 1, backend) 2026-11-20 — backlog #101: kind `supplier_reshipping` (INBOUND), statuses `on_the_way` → `arrived` (Tiba) → `received` (Terima), or `lost`; created by `RestockResolutionCreate` with its `reshipping` row and the `restock_custom_shipments` link in one transaction; `CustomShipmentResiSet` (until Tiba), `CustomShipmentPricesSet` (until Terima, no money), `CustomShipmentMarkLost` (while on its way), `CustomShipmentArrive` (the door charge noted), `CustomShipmentReceive` (good units on a rack as a stock-in at the seller's price, its transaction linked; broken / short written on the line; the charge final and posted to Team Balance by liability from `CustomShipmentReceived`, event 414, as a `custom_shipment_fee`). A `return` row rides an outbound reship — made with it (`CustomShipmentCreate.resolution`) or linked. The warehouse reads no seller price. Migration `00060`; docs [rpc.md](../../services/inventory_service/rpc.md#restock-resolutions-and-the-inbound-parcel-backlog-101-p1--backend-built-2026-11-20). The screens are phase 2.

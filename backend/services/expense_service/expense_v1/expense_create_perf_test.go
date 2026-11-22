@@ -51,7 +51,7 @@ func TestPerf_ExpenseCreate(t *testing.T) {
 	}{
 		{"ExpenseCreate ads", func() error {
 			res, err := svc.ExpenseCreate(ctx, connect.NewRequest(&expensev1.ExpenseCreateRequest{
-				TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Amount: 250_000, OccurredAt: "2026-10-30",
+				TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_ADS), Amount: 250_000, OccurredAt: "2026-10-30",
 				ShopId: adsShop, FinanceAccountId: payingAccount,
 			}))
 			if err == nil {

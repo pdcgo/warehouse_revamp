@@ -2,11 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { FORMER_USER_ID } from "../../../../.storybook/fixtures";
-import { rackHistoryByForStory } from "../../../../.storybook/rackStub";
+import { rackHistoryByForStory, rackSampleForStory } from "../../../../.storybook/rackStub";
 import { RACK_DETAIL_META, loaded, openMove, openSample, pickRack, type } from "./kit";
 
 // RACK DETAIL — Riwayat, one ledger with two lenses: every movement, or Penempatan — what decided goods live here. Who
-// moved it, and a former user. The page's stories are grouped by the part of the screen they are about
+// moved it, a former user, and who received a sample. The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
 const meta = {
@@ -83,5 +83,47 @@ export const HistoryNamesAFormerUser: Story = {
 
     await waitFor(() => expect(table).toHaveTextContent("Former user #69"));
     await expect(table).not.toHaveTextContent("erased69");
+  },
+};
+
+// WHO RECEIVED A SAMPLE (a-sample-keeps-its-recipient; placement.md given 17 — *sample in the rack's history with who
+// received it*): 2 Kopi handed to Pak Budi off A-01-1 — the sample row says *given to Pak Budi* on a line of its own under
+// what happened, and no other row names anybody. The staff's note is not that line.
+export const ASampleNamesWhoReceivedIt: Story = {
+  name: "A sample names who received it",
+  beforeEach: () => rackSampleForStory(41n, 71n, 2n, "Pak Budi", "for the product photos"),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const table = await canvas.findByTestId("rack-history-table", {}, { timeout: 4000 });
+
+    await waitFor(() => expect(table).toHaveTextContent(/sample/i));
+    const lines = table.querySelectorAll<HTMLElement>('[data-testid^="rack-history-row-"][data-testid$="-recipient"]');
+    await expect(lines).toHaveLength(1);
+    await expect(lines[0]).toHaveTextContent(/^given to Pak Budi$/);
+    // On the sample's own row — the one that took 2 off the shelf.
+    const row = lines[0].closest<HTMLElement>('tr[data-testid^="rack-history-row-"]');
+    await expect(row).not.toBeNull();
+    await expect(row!).toHaveTextContent(/sample/i);
+    await expect(row!).toHaveTextContent("-2");
+    await expect(table).not.toHaveTextContent("for the product photos");
+  },
+};
+
+// …and on a phone: the block's own line under *Sampel · Kopi Arabika 250g · …*, nothing past the screen's edge.
+export const ASampleNamesWhoReceivedItOnAPhone: Story = {
+  name: "A sample names who received it, phone",
+  globals: { viewport: { value: "mobile1" } },
+  beforeEach: () => rackSampleForStory(41n, 71n, 2n, "Pak Budi", "for the product photos"),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const ledger = await canvas.findByTestId("rack-history-table", {}, { timeout: 4000 });
+
+    await waitFor(() => expect(ledger).toHaveTextContent(/sample/i));
+    await expect(ledger.tagName).not.toBe("TABLE");
+    const lines = ledger.querySelectorAll<HTMLElement>('[data-testid^="rack-history-row-"][data-testid$="-recipient"]');
+    await expect(lines).toHaveLength(1);
+    await expect(lines[0]).toHaveTextContent(/^given to Pak Budi$/);
+    await expect(lines[0]).toBeVisible();
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   },
 };

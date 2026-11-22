@@ -156,6 +156,8 @@ a recommendation. The owner and the agent then decide together. The agent bases 
 - **The agent's own passing test does not make a then `✅ ok`.** It is reported in chat, and the then stays `⬜ untested`
   until the owner says it has been checked. Only the thens the owner names are written `ok`.
 
+🔄 *(2026-11-20, owner "B")* **The tester sets the status from its green test results** — ✅ when the check passes for every role the given names, ❌ with its Errors entry when it fails on an app bug, 🚧 while the check is a `test.fail` for what is not built. The owner's own word always wins. This replaces the bullets above that keep a passing test at ⬜ and change a status only on the owner's instruction: [the-tester-sets-a-thens-status-from-its-green-results](../development_lifecycle_decision.md#the-tester-sets-a-thens-status-from-its-green-results).
+
 ## acceptances-are-markdown
 
 Plain markdown and no runner. The owner tests a then by hand, or the agent tests it on the owner's instruction, and the status
@@ -174,6 +176,8 @@ frontend/e2e/restock.spec.ts            the check: the agent's regression test
 A then that is `❌ error` or `🚧 unimplemented` keeps its check, marked **`test.fail`** with the status in its reason. The
 suite stays green while the system is wrong. The day the system gets it right, the check turns red, and that is the sign
 to ask the owner to change the status.
+
+🔄 *(2026-11-20, owner "B")* When the system gets a 🚧 then right, its `test.fail` check turns red: the tester then turns it into a real check and sets the status from the green run — no ask ([the-tester-sets-a-thens-status-from-its-green-results](../development_lifecycle_decision.md#the-tester-sets-a-thens-status-from-its-green-results)).
 
 ## only-the-discussion-changes-a-row
 

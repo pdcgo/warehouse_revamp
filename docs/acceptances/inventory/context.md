@@ -5,14 +5,14 @@ The first big feature. The focus is **restock**. Inventory needs products, but p
 
 | small feature | ✅ ok | ❌ error | 🚧 unimplemented | ⬜ untested |
 | --- | --- | --- | --- | --- |
-| [restock](restock.md) | 57 | | 30 | 99 |
-| [placement](placement.md) | | | | 25 |
+| [restock](restock.md) | 181 | | 5 | |
+| [placement](placement.md) | 25 | | | |
 | [batch](batch.md) | | | | |
 | [transaction](transaction.md) | | | | |
 | [opname](opname.md) | | | | |
 | [warehouse_transfer](warehouse_transfer.md) | | | | |
-| [order](order.md) | | | 21 | 232 |
+| [order](order.md) | 251 | | 1 | 1 |
 | [adjustment](adjustment.md) | | | | |
-| [return](return.md) — the same givens as [order](order.md#return) | | | 1 | 41 |
+| [return](return.md) — the same givens as [order](order.md#return) | 41 | | 1 | |
 
 An empty row has not been discussed yet.

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Field, Textarea } from "@chakra-ui/react";
+import { Field, Text, Textarea } from "@chakra-ui/react";
 
 import { rpcError } from "../../api/clients";
 import { toaster } from "../../components/feedback/Toaster";
@@ -8,19 +8,22 @@ import { DatePicker } from "../../components/datetime/DatePicker";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { RadioPills } from "../../components/inputs/RadioPills";
 import { CapitalDirection, type FinancialAccount } from "../../gen/warehouse/financial_account/v1/financial_account_pb";
+import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { toDateInputValue } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import { FormDialog } from "./FormDialog";
 import { useCapital } from "./queries";
-// ⚠ #99 PROTOTYPE (expense types) — inert live.
-import { useExpenseTypes } from "../expense/expenseTypesPrototype";
-import { CapitalOnExpensesHint } from "../expense/ExpenseTypesParts";
+import { useTeam } from "../team/TeamContext";
 
 // Setor / Tarik Modal — the business owner's own money, put in or taken out (capital-joins-the-types; the
 // action's name, `capital-reads-setor-tarik-modal`).
 //
 // The person picks a DIRECTION and types a positive amount; the sign is the server's to apply. Nobody
 // types a minus into a money field here.
+//
+// ON A SELLING TEAM'S ACCOUNT the act is also Biaya's Setoran modal / Prive — one record, two doors
+// (prive-and-deposit-on-pengeluaran-are-the-accounts-capital; the server records it there from the account row), and the
+// dialog says so in one line. A warehouse team's Setor / Tarik Modal stays on the account page alone: no line.
 export function CapitalDialog({
   teamId,
   account,
@@ -35,8 +38,7 @@ export function CapitalDialog({
   const { t } = useTranslation();
   const today = toDateInputValue(new Date());
   const capital = useCapital();
-  // #99 PROTOTYPE: null live. In a story, the act also lands on Pengeluaran — the same one record.
-  const types = useExpenseTypes();
+  const onBiaya = useTeam().current?.teamType === TeamType.SELLING;
 
   const [error, setError] = useState("");
   const [direction, setDirection] = useState(CapitalDirection.IN);
@@ -53,7 +55,6 @@ export function CapitalDialog({
       { teamId, accountId: account.id, direction, amount: value, occurredOn, note },
       {
         onSuccess: () => {
-          types?.capitalMade({ teamId, accountId: account.id, inward: direction === CapitalDirection.IN, amount: value, occurredOn, note });
           toaster.create({
             type: "success",
             title: t(direction === CapitalDirection.IN ? "financialAccounts.toast.capitalIn" : "financialAccounts.toast.capitalOut", {
@@ -89,7 +90,11 @@ export function CapitalDialog({
           { value: String(CapitalDirection.OUT), label: t("financialAccounts.capital.out"), testId: "capital-out" },
         ]}
       />
-      <CapitalOnExpensesHint />
+      {onBiaya && (
+        <Text fontSize="xs" color="fg.muted" data-testid="capital-on-expenses-hint">
+          {t("expenses.types.capitalOnExpenses")}
+        </Text>
+      )}
 
       <Field.Root required>
         <Field.Label>{t("financialAccounts.amount")}</Field.Label>

@@ -70,6 +70,7 @@ counts it in, and *the accept is what receives the stock*. The design is
 | `RestockRequestExport` | selling team (+ Root, Administrator) | any | the selling list AS A FILE — a server stream: the list's own predicate and filter (the tab and the courier included), the raising side only, every page in the list's order, the screen's columns, ending in an expiring link to a private `TABLE_EXPORT`; not a read (the monitor is refused) — see [the selling list as a file](#restockrequestexport--the-selling-list-as-a-file-built-2026-11-16) |
 | `RestockReceiptPhoto` | warehouse (+ Root, Administrator) | any | a signed link to the seller's label photo — below |
 | `RestockDoorPhotos` | either side (+ Root, Administrator) | any | signed links to the photos the warehouse kept at Terima — the courier's slip and each line's broken units — see [the door's photos](#restockdoorphotos--either-side-opens-the-doors-photos-built-2026-11-16) |
+| `RestockResolutionCreate` / `RestockRequestSettle` | selling team (`selling:all`) | lost, or accepted with a problem tag, or settled — unchanged | a resolution row (refund / return / reshipping) and *Tandai Selesai* — see [restock resolutions](#restock-resolutions-and-the-inbound-parcel-backlog-101-p1--backend-built-2026-11-20) (backlog #101) |
 
 ### Lifecycle
 
@@ -858,6 +859,7 @@ P1 Create and Detail, P2 the two lists, P3 the four moves, P6 the goods-missing 
 | `CustomShipmentCostSet` / `Cancel` | Root, Administrator, selling Owner / Admin / CS (the build's default, as a transfer's) | requested / picked, status kept · requested → cancelled | P3, [below](#the-moves--costset-cancel-picked-handover-p3-built-2026-11-19): the owning team only |
 | `CustomShipmentPicked` / `Handover` | Root, Administrator, warehouse Owner / Admin / Staff (the build's default, as a transfer's) | requested → picked → handed_over | P3, [below](#the-moves--costset-cancel-picked-handover-p3-built-2026-11-19): the shipping warehouse only |
 | `CustomShipmentMissingReport` | the same warehouse roles — the picking roles; a write, never a monitor | requested, status kept | P6, [below](#barang-tidak-ketemu--customshipmentmissingreport-p6-built-2026-11-19): the shipping warehouse only; one trail row, nothing else |
+| `CustomShipmentResiSet` / `PricesSet` / `MarkLost` · `Arrive` / `Receive` | the selling roles · the warehouse roles | INBOUND only: on_the_way → arrived → received, or lost | backlog #101 — the supplier's reshipping, [below](#restock-resolutions-and-the-inbound-parcel-backlog-101-p1--backend-built-2026-11-20); an outbound parcel is FailedPrecondition |
 
 - **A sample takes its stock AT CREATE** — the take a transfer's out-leg writes (`postSystemPickedTake`, shared with
   `PostTransferOut`): the team's batches oldest first, the racks holding the fewest first, a rack a count holds never
@@ -1122,6 +1124,101 @@ sequenceDiagram
     S->>S: Batalkan, or wait - a cancelled reship's named units never offered again
 ```
 
+## Restock resolutions and the inbound parcel (backlog #101 P1 — backend built 2026-11-20)
+
+[a-restock-problem-is-settled-by-resolution-rows](../../business/inventory/restock_decision.md#a-restock-problem-is-settled-by-resolution-rows),
+[a-suppliers-reshipping-comes-in-as-a-custom-shipment](../../business/custom_shipments/context_decision.md#a-suppliers-reshipping-comes-in-as-a-custom-shipment)
+(each with its 🔄 lines); the API shaped on the accepted prototype's
+([the-restock-resolutions-prototype-is-accepted](../../technical/frontend/restock_decision.md#the-restock-resolutions-prototype-is-accepted)).
+Proto `restock_resolution.proto` (messages) + `restock_request.proto` (2 RPCs, `RestockRequest` 53–57, filter
+`settled`) + `custom_shipment.proto` (5 RPCs, kind `SUPPLIER_RESHIPPING`, statuses 5–8, `direction`); events 413
+`RestockRefunded`, 414 `CustomShipmentReceived`. Migration `00060_restock_resolutions.sql`. Code: `restock_resolutions.go`
+(shared), `restock_resolution_create.go`, `restock_request_settle.go`, `custom_shipment_inbound.go` (the parcel's
+create + state machine), `custom_shipment_{resi_set,prices_set,mark_lost,arrive,receive}.go`.
+
+| RPC | Who (request policy) | Moves | Notes |
+| --- | --- | --- | --- |
+| `RestockRequestService.RestockResolutionCreate` | Root, Administrator, selling Owner / Admin / CS (`selling:all`) — the restock's OWN team (another reads NotFound); a write, never a monitor | — | one row on a restock that is **LOST**, or **ACCEPTED** carrying *Barang kurang* / *Barang rusak*, or already settled (it stays settled); anything else FailedPrecondition. **REFUND**: `refund_amount` > 0 and `finance_account_id` one of the team's ACTIVE accounts (asked before the tx, as a transfer's shipping); after commit `RestockRefunded`. **RETURN**: `custom_shipment_id` = an existing, not-cancelled RESTOCK_RESHIP of this restock not yet a row; never on LOST. **RESHIPPING**: `reshipping` = the inbound parcel, created in the same tx. Each type carries its own fields only (InvalidArgument). `idempotency_key` unique per restock: a reuse is AlreadyExists |
+| `RestockRequestService.RestockRequestSettle` | the same | — | *Tandai Selesai*: `settled_at` / `settled_by_user_id` / `settled_by_is_override` set and the problem tags off, one tx; once (a second FailedPrecondition); only on what takes resolutions. No row required |
+| `CustomShipmentService.CustomShipmentCreate` + `resolution` | unchanged | — | a RESTOCK_RESHIP with `resolution` set is ALSO the restock's RETURN row — the row and its link written in the create's tx (the restock row already locked); a SAMPLE with it InvalidArgument; the same eligibility (not on LOST) |
+| `CustomShipmentResiSet` | the selling roles; the owning team | on_the_way, kept | the resi until Tiba; a trail row `resi_edit` (`JNE-1 → JNE-2`, read whole by both sides) |
+| `CustomShipmentPricesSet` | the selling roles; the owning team | on_the_way / arrived, kept | the seller's price per line until Terima; the parcel's total re-summed; a trail row `price_edit` (`WG-1 Rp 9.000 → Rp 9.500`) BLANK for the warehouse. Moves no money |
+| `CustomShipmentMarkLost` | the selling roles; the owning team | on_the_way → lost | a reason; nothing moves |
+| `CustomShipmentArrive` | Root, Administrator, warehouse Owner / Admin / Staff; the warehouse it comes to | on_the_way / lost → arrived | Tiba: the courier's charge at the door NOTED (`shipping_cost`, `charge_note` — a note required above 0); no event, no money |
+| `CustomShipmentReceive` | the warehouse roles; the warehouse it comes to | on_the_way / arrived → received | Terima — below |
+
+**Terima** (`custom_shipment_receive.go`, one `StockTransaction`): per line `received` (broken included, ≤ the line),
+`broken` (≤ received), `rack_id` (required when good units remain; a rack of THIS warehouse — another's NotFound); every
+line once. The GOOD units are a stock-in through `inventory_mutations.PostRestock` at the **seller's typed price** (a batch
+per line, the parcel's supplier on it), its `inventory_transactions.id` written to `restock_custom_shipments`; an
+all-broken / empty count writes none. The charge is FINAL here (replaces Tiba's). Short or broken units **reopen** the
+restock: the settled mark lifted, and on an ACCEPTED restock *Barang kurang* (short) / *Barang rusak* (broken) back on
+(`putAppTags`); a LOST restock's reopen is the mark alone (it carries no problem tag, so it is listed under Hilang again).
+After commit `CustomShipmentReceived` (414, `custom-shipment-received:<id>`): `door_charge` → liability posts a
+`custom_shipment_fee` keyed by the parcel (the selling team owes the warehouse), 0 posts nothing.
+
+**Reads.** `RestockRequestDetail` carries `resolutions[]` (oldest first, each with its parcel and stock-in) and
+`resolution_count`; a REFUND's amount and account are UNSET / 0 for the receiving warehouse
+(a-warehouse-sees-no-seller-money). Every restock row carries `settled_at_unix` / `settled_by_user_id` /
+`settled_by_is_override`; `RestockRequestList` rows their `resolution_count` (one grouped statement per page,
+`withResolutionCounts`). `RestockRequestListFilter.settled` (UNSPECIFIED as before · SETTLED · UNSETTLED) narrows the
+list's one predicate (`restockListScope`) — the seller's Hilang tab is `status = LOST, settled = UNSETTLED`, so a settled
+lost restock leaves it and stays under Semua; the problem filter needs nothing (settling takes the tags off). The parcel
+reads carry `direction`, the inbound steps' actors and times, `charge_note`, `lost_reason`, `resolution_id`, and (inbound)
+`transaction_id` = the Terima's stock-in; an inbound line its `price_unit` (UNSET for the warehouse), `received`,
+`broken`, `rack_id`. `CustomShipmentListFilter.direction`: unasked, the selling team and root read both ways and a
+WAREHOUSE reads OUTBOUND only (its queue as before); INBOUND is the warehouse's incoming list.
+
+**Money.** A REFUND is never typed in financial_account (restock-is-never-typed-by-hand): `RestockRefunded` (413,
+`restock-refunded:<resolution id>` — one per row, so a redelivery or republish posts once) → the restock listener posts a
+`restock` row INTO the named account, `Restock #<id> refund` — the cancel's path. The reshipping's price moves no money.
+
+**Lock order** (audits/services/inventory_service/concurrency/lock-order.md): the RESTOCK row first for every resolution
+write, the settle and an inbound Terima, then the parcel row, then the ledgers — a settle and a reopening Terima are judged
+one after the other.
+
+**Performance** (perfaudit). `TestPerf_RestockRequestListResolutionCounts` — the problem book's 50 000 restocks with
+29 166 resolution rows: the list goes 6 → 7 statements; the counts' read is an index-only scan on
+`restock_resolutions_restock_key` for a page of 20 (0.05–0.09 ms executed) and a bitmap scan on it for 200 (0.16–0.21 ms);
+median walls 8.5–20 ms, the same as `TestPerf_RestockRequestListProblemCounts` in the same session (no resolution read
+to speak of). `TestPerf_CustomShipmentList` (70 000 parcels) with the direction predicate and the links' read: the
+warehouse queue 4.0 ms / 2.7 ms generic (P6: 4.1 / 3.1), its *all* page still the count's seq scan it was (12–14 ms, the
+OR predicate unchanged in shape). No index added, no audit file.
+
+```mermaid
+sequenceDiagram
+    participant S as Selling team
+    participant I as Inventory
+    participant FA as financial_account
+    participant W as Warehouse
+    participant L as liability
+
+    S->>I: RestockResolutionCreate REFUND - amount, account
+    I->>I: lock restock, eligible, insert row
+    I-->>FA: RestockRefunded 413 - restock row INTO the account
+    S->>I: RestockResolutionCreate RESHIPPING - lines, courier
+    I->>I: lock restock, row, inbound parcel on_the_way, link
+    S->>I: RestockRequestSettle - mark set, problem tags off
+    W->>I: CustomShipmentArrive - door charge noted
+    W->>I: CustomShipmentReceive - good on a rack, broken, short
+    I->>I: lock restock, lock parcel, stock-in at seller price, link tx, reopen if short or broken
+    I-->>L: CustomShipmentReceived 414 - custom_shipment_fee, team owes warehouse
+```
+
+**The Riwayat's rows (backlog #101 P2, built 2026-11-20 — the owner's 🔄 A on
+[a-restock-problem-is-settled-by-resolution-rows](../../business/inventory/restock_decision.md#a-restock-problem-is-settled-by-resolution-rows)).**
+Each resolution, each *Tandai Selesai* and each reopen writes ONE `restock_logs` row in its own transaction — never
+rewritten, so settled → reopened → settled reads three. The row keeps the restock's status (from = to, as an edit's) and
+is told apart by its stored word (`resolution recorded` / `settled` / `reopened`), read onto the wire as
+`RestockLog.kind` (`RestockLogKind` RESOLUTION / SETTLED / REOPENED; UNSPECIFIED on every other row, and never read off a
+row that changed the status). What it names rides `restock_log_changes` (migration `00061` widened its field CHECK and
+its line CHECK): a RESOLUTION row one `RESOLUTION` change (`after` = the `restock_resolutions.id` — the row's money stays
+in `resolutions`, so a warehouse reader is answered none); a REOPENED row `PARCEL` (the inbound parcel) and, per product,
+`PARCEL_SHORT` / `PARCEL_BROKEN` (the units). Writers: RestockResolutionCreate and CustomShipmentCreate's `resolution`
+(after the row), RestockRequestSettle (at the mark's instant), CustomShipmentReceive (only when the count LIFTS the mark;
+its actor the counting member). The step overrides the lists read (`restockStepOverrides`) skip them — they keep the
+status. `inventory_v1/restock_settlement_log.go`; tests `restock_settlement_log_test.go`.
+
 ## Stock lives on the decided ledgers — and what that changes about reads
 
 Every reader reads the ledgers ([database-schema.md § The decided ledgers](../../database-schema.md#the-decided-ledgers-00025-00026)),
@@ -1229,6 +1326,18 @@ does not know what any warehouse holds.
 
 ### A warehouse reads a shelf in units (2026-11-12)
 
+🔄 **Reversed 2026-11-20 (backlog #109)** — the owner's acceptance gives `warehouse:all` a rack's *each product with its
+units and value* ([inventory/placement.md](../../acceptances/inventory/placement.md) given 11, the 🔄 2026-11-20 line of
+[a-warehouse-sees-ready-value-but-a-shelf-only-units](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-ready-value-but-a-shelf-only-units)).
+`shelfInUnits` is deleted: `RackDetail` and `RackStock` give EVERY reader the money — the summary's `total_value` and
+`unknown_cost_products`, each line's `unit_cost`, `cost_known` and `value`, all set (a 0 included) — a warehouse role as
+Root, the Administrator and the monitor. The fields stay `optional` (the wire is unchanged); the rack page draws them
+where sent, so a warehouse sees *Harga/pcs · Nilai*, the tile's value and a phone block's price line again. Performance:
+a warehouse's read runs `unitCosts` again — 4 statements for `RackDetail`, one more per `RackStock` page — exactly the
+other readers' unchanged cost. The rack LIST stays counts (given 8). Tests `TestRackDetail_EveryReaderIsGivenTheShelfsValue`,
+`TestRackDetail_AnEmptyShelfIsAZeroForEveryReader`, `TestRackStock_EveryReaderIsGivenEachLinesPriceAndValue`; stories
+`RackDetail / Shelf` *A warehouse reads the value* (+ phone). The text below is the 2026-11-12 state, kept as the record.
+
 [a-warehouse-sees-ready-value-but-a-shelf-only-units](../../business/analytic/rpc_provide_decision.md#a-warehouse-sees-ready-value-but-a-shelf-only-units):
 at the **placement level** — a rack and what sits on it — a caller acting with a warehouse role is given **units only**,
 no unit price and no value. Who that is is the Analytic stock metrics' warehouse reader: `shelfInUnits(ctx)`
@@ -1306,6 +1415,8 @@ The rules, as the stub played them and the handlers now keep:
 | `RackList` STOCK slice | real today: each rack's stock count and product count for the Racks page, one grouped `SUM`/`COUNT` over the page's racks, only when asked — a picker never pays for it |
 | `RackStat` | the Racks list's card strip over EVERY rack the list matches, never the page (built 2026-11-16, [the-rack-list-leads-with-its-figures](../../technical/frontend/racks_decision.md#the-rack-list-leads-with-its-figures)): `rack_count`, `filled_count` (stock count above 0), `empty_count`, `stock_count` (pieces). RackList's own scope (`rackListScope` — the search narrows them too) and RackList's roles; ONE statement, the warehouse's shelf rows summed per rack and left-joined to the matched racks. Perf: 10 000 racks, 40 000 shelf rows in one warehouse — 1 query, 19–38 ms (a seq scan of `product_placements`, the planner's pick when one warehouse is ~44% of the table); a 1 000-rack warehouse 2 ms on `product_placements_take_idx`. A covering index was measured and not added: no gain on the dense case |
 | `RackSample.recipient` | required, who received it, kept on the transaction ([a-sample-keeps-its-recipient](../../business/inventory/transaction_decision.md#a-sample-keeps-its-recipient)). No member of the owning team is asked to agree, and the sample posts nothing to balance ([a-sample-is-a-stock-out-at-batch-value](../../business/inventory/transaction_decision.md#a-sample-is-a-stock-out-at-batch-value)) |
+| who received it, read back (2026-11-20, backlog #108) | `StockMovement.recipient` (18) on a SAMPLE row of `RackHistory` and `StockHistory` (with or without a batch) — the row's `inventory_transactions.recipient`, by the transaction's primary key (`recipientExpr`, `ledger_history.go`), asked only by a sample row (`CASE WHEN l.change_type = 'sample'`); empty on every other row; the staff's note stays in `reason`. Same readers as the history (no policy change). The rack page's history draws *given to Pak Budi* / *diberikan kepada Pak Budi* on the row's own line (`MovementTable`, testid `<ledger>-row-<id>-recipient`). Perf `TestPerf_RackHistory_ASamplesRecipient` (`-tags perfaudit`; one rack with 5 000 rows, every fifth a sample, over the ledgers' background): still 3 statements; median wall page 1 6.1 → 7.0 ms, page 100 (offset 4 950) 19.1 → 23.6 ms — the skipped rows are projected too, so each sample before the page costs one PK probe, as `is_override` does — the samples-only page 10.0 → 12.1 ms; under every audit threshold, no audit file. `OwnerStockHistory` (`OwnerMovement`) carries it since #111 — next row. Test `TestRackHistory_ASampleRowNamesWhoReceivedIt` |
+| who received it, on the owner's own history (2026-11-21, backlog #111) | `OwnerMovement.recipient` (18 — `OwnerStockHistory` answers its own message, not `StockMovement`, so the field was added proto-first) on a SAMPLE row only, from #108's one lookup: `recipientExpr(change_type, transaction_id)` now takes the two column expressions, and `OwnerStockHistory` reads it as `recipientExpr("p.change_type", "p.movement_id")` in the same outer select as `is_override` — on the PAGE's rows only, outside the running-balance window and past the OFFSET, so a deep page pays nothing for the samples it skips. Same readers as before (selling roles of the owning team; the discover read of another team's product, `DiscoverMovement`, carries no recipient). The product page's Riwayat Stok (and the discover detail on the team's own product, `HistorySection`) draws *given to Pak Budi* / *diberikan kepada Pak Budi* through `MovementTable` (testid `pd-history-row-<id>-recipient`). Perf `TestPerf_OwnerStockHistory_ASamplesRecipient` (`-tags perfaudit`; one owner batch with 5 000 rows, every fifth a sample, over the ledgers' background): still 2 statements; median wall page 1 25.6 → 27.2 ms, page 100 (offset 4 950) 24.2 → 25.6 ms, under `force_generic_plan` 23.1 → 25.6 / 25.5 → 25.4 ms — within the run-to-run spread, no audit file. Test `TestOwnerStockHistory_ASampleRowNamesWhoReceivedIt` |
 
 ---
 
@@ -2970,6 +3081,104 @@ under `force_generic_plan` 17.0 / 18.0 / 18.5 ms (24.6 / 27.7 / 27.1) — never 
 drops the per-row `refExpr` lookups). It inherits the owner's read's one open finding — the product's batches found by a
 seq scan of `batches` (≈ 4.5 ms at 50 000), [OwnerStockHistory.md](../../../audits/services/inventory_service/performances/OwnerStockHistory.md)
 Finding 2. No index added; no new audit file.
+
+## Who supplies a product — `ProductSupplierGoods` (built 2026-11-21)
+
+**Pemasok**, the Per Gudang tab of the product's own page AND of its discover detail
+([the-suppliers-are-a-tab-of-their-own](../../technical/frontend/products_decision.md#the-suppliers-are-a-tab-of-their-own),
+[the-supplier-tab-names-the-store](../../technical/frontend/products_decision.md#the-supplier-tab-names-the-store),
+[the-discover-detail-has-the-warehouse-zone](../../technical/frontend/products_decision.md#the-discover-detail-has-the-warehouse-zone)):
+one row per supplier and the store it was bought at — Kiriman, Unit, Kiriman terakhir and, to the OWNING team only, Modal
+terakhir. `inventory_v1/product_supplier_goods.go`; the screen is `features/products/SuppliersSection` (`useProductSupplierGoods`),
+names joined in the browser from supplier_service's `SupplierByIds` / `SupplierChannelByIds` and team_service's `TeamByIds`.
+
+| | |
+| --- | --- |
+| who | Root, Administrator, selling Owner, Admin, CS (`DiscoverStockHistory`'s policy); the admin team's monitor and an agent (`NO_SIDE_EFFECTS`). No warehouse role — a warehouse has no product page. Pinned by `TestProductSupplierGoods_TheSellingSideReads` |
+| scope | `team_id` (`use_scope`) authorizes only — the rows are the product's owner's whoever asks ([another-team-sees-everything-of-a-supplier](../../business/supplier/context_decision.md#another-team-sees-everything-of-a-supplier)); the owner comes from product_service (`ProductReader.Facts`) |
+| ask | `filter.product_id` (any team's), `filter.warehouse_id` — the page's picker ([the-warehouse-picker-splits-the-page](../../technical/frontend/products_decision.md#the-warehouse-picker-splits-the-page)), 0 = every warehouse — and `page` (required: a product's (supplier, store) pairs grow, HARD RULE 9; the tab hides its pager while page 1 holds them) |
+| a delivery | a batch of the owner's a RESTOCK minted (`inventory_transactions.tx_type = 'restock'`), naming a supplier. A transfer-in or a return copies the supplier onto the batch it mints and is NOT a delivery (`TestSupplierGoods_ATransferIsNotARestock`'s rule); a cancelled restock never minted a batch ([a-restock-is-cancelled-only-while-ongoing](../../business/inventory/restock_decision.md#a-restock-is-cancelled-only-while-ongoing)). A line that arrived with no good unit and was corrected up later has its batch minted by the correction's `adjustment` transaction — still its restock's one delivery, dated at the accept |
+| Kiriman | the distinct restock transactions among them |
+| Unit | their good units — each batch's `init_stock_count` ([each-figure-is-read-at-the-accept](../../business/supplier/context_decision.md#each-figure-is-read-at-the-accept)) — plus every received-count correction since (`restock_count_corrections.units_out`, signed; [a-received-count-correction-counts-on-its-own-day](../../business/inventory/adjustment_decision.md#a-received-count-correction-counts-on-its-own-day)): accepted 20, corrected to 18, reads 18 |
+| Kiriman terakhir | the newest delivery's accept |
+| Modal terakhir | ⚠ the scoping's reading: the newest delivery's **batch unit cost as the batch holds it now** (`price_unit`, the page's own *Modal* — Harga Modal's layers — after any Koreksi Harga), never the supplier's line price. Proto3 `optional`: SET only when `team_id` is the product's owner; another team's answer has no such field at all — proven on the JSON and the binary wire by `TestProductSupplierGoods_AnotherTeamGetsNoCost` |
+| store 0 | lines that named the supplier and no store ([a-line-with-no-store-links-under-the-supplier](../../business/supplier/context_decision.md#a-line-with-no-store-links-under-the-supplier)) — the Toko pemasok cell reads —; a line naming no supplier is no row |
+| order | the newest delivery first, then supplier and store ids; each row keyed by its 1-based position (a pair has no id of its own) |
+| unknown product | an empty page |
+
+```mermaid
+sequenceDiagram
+    participant S as Product page or discover detail
+    participant I as ProductSupplierGoods — inventory
+    participant P as product_service (in-process)
+    participant DB as Postgres
+    participant N as supplier_service and team_service
+    S->>I: team, product, warehouse lens, page
+    I->>I: policy — selling roles, scope the team (authorizes only)
+    I->>P: Facts — the product's owner
+    I->>DB: ONE statement — the owner's batches of the product once, restock-minted ones grouped per supplier and store, corrections added, newest first, the page and its total
+    I-->>S: supplier, store, deliveries, units, last delivery — and the last cost only when the team is the owner
+    S->>N: SupplierByIds, SupplierChannelByIds, TeamByIds — the names, deleted ones badged
+```
+
+**Performance** (`inventory_v1/product_supplier_goods_perf_test.go`, `-tags perfaudit`; the ledger background plus 250 000
+restocked batches of other products — 303 600 batches — and ONE product bought 3 000 times from 40 suppliers × 3 stores in
+20 warehouses, 600 transfer-ins of it and 100 corrections; median of 5, one seed, custom and generic plan): the lens
+1.3–2.2 ms (`batches_last_price_idx`); every warehouse 9.7–10.9 ms with `00062` (`batches_owner_product_all_idx ON batches
+(team_id, product_id)`, a pure index — [a-pure-index-is-added-without-asking](../../technical/architecture/context_decision.md#a-pure-index-is-added-without-asking)),
+12.7–15.1 ms without it on the same seed, where the batch read was a parallel seq scan of 38 ms or a non-leading scan of
+`batches_last_price_idx` of 1.6 ms, by plan → 0.08 ms. The rest of the 10 ms is the 3 600 batches' transaction-type
+probes and the aggregate — an ordinary product reads in about a millisecond. The order take is unchanged by the index
+(`TestPerf_OrderTakeLatency_Committed`: 1 line 8.2 → 7.9 ms median, 20 lines 15.4 → 14.5). It also closes
+[OwnerStockHistory.md](../../../audits/services/inventory_service/performances/OwnerStockHistory.md) Finding 2 for the two
+history reads. No new audit file (fast).
+
+## Keluar Masuk Harian — `ProductDailyMoves` (built 2026-11-21)
+
+**Keluar Masuk Harian**, the Per Gudang tab of the product's own page AND of its discover detail
+([the-warehouse-zone-is-tabs](../../technical/frontend/products_decision.md#the-warehouse-zone-is-tabs) — *"the last
+fourteen days: date, in, out, on hand"*,
+[the-discover-detail-has-the-warehouse-zone](../../technical/frontend/products_decision.md#the-discover-detail-has-the-warehouse-zone)):
+the last fourteen Jakarta days, today first — each day's Masuk, Keluar, Sisa and each change type's net units.
+`inventory_v1/product_daily_moves.go`; the screen is `features/products/DailySection` (`useProductDailyMoves`), shared by
+both pages.
+
+| | |
+| --- | --- |
+| who | `DiscoverStockHistory`'s and `ProductSupplierGoods`' policy — Root, Administrator, selling Owner, Admin, CS; the admin team's monitor and an agent (`NO_SIDE_EFFECTS`). No warehouse role. Pinned by `TestProductDailyMoves_TheSellingSideReads` |
+| scope | `team_id` (`use_scope`) authorizes only — the days are the product's OWNER's whoever asks ([stock-history-is-everyones](../../technical/frontend/products_decision.md#stock-history-is-everyones)); the owner comes from product_service (`ProductReader.Facts`). **Units only, for every caller**: the answer has no value or price field at all (`TestProductDailyMoves_AnotherTeamReadsTheSameUnitsAndNoValue`) |
+| ask | `filter.product_id` (any team's), `filter.warehouse_id` — the page's picker ([the-warehouse-picker-splits-the-page](../../technical/frontend/products_decision.md#the-warehouse-picker-splits-the-page)), 0 = every warehouse; no page (always fourteen rows) |
+| the source | the daily fold `inventory_stock_daily_changes` (per Jakarta day, warehouse, owner, product, supplier, change type — written in each stock change's own transaction), NEVER the ledger: a hot product's thousands of order rows are not read |
+| kinds | each change type's NET units on the day (`StockChangeType`: order, restock, return, transfer in/out, sample, broken, lost, found, adjustment, restock and transfer corrections). A take and its cancel on one day net in one row; a cancel on a later day lands on ITS day, positive (`TestProductDailyMoves_ACancelOnALaterDayLandsOnItsDay`). A price correction moves no unit and is never a kind |
+| Masuk / Keluar | ⚠ awaiting the owner (#114 Q2) — which movements are Masuk and which Keluar. Built as **option A**: every kind's net goes to Masuk when positive and to Keluar when negative, so *Sisa kemarin + Masuk − Keluar = Sisa* on every day. The mapping is ONE func (`dailySide`); option B (sales and purchases only — the balance then not adding up) is the one line `var dailyCounted = []string{"restock", "order"}`. Pictures A/B/C: Storybook `Pages/Products/ProductDetail/DailyQ2` |
+| Sisa | on hand at the end of the day, READ BACKWARDS FROM TODAY as Ready stock reads its position (`inventory_metric_ready.go`): Σ the product's batches now (`stock_count`) − Σ its changes after that day. Today's Sisa is the page's Siap; a day is a Jakarta day (`TestProductDailyMoves_SisaIsTodaysStockAndTheDayIsJakartas`: 23:30 WIB stays on its day) |
+| one snapshot | ONE statement — today's batches and the fold rows from the first day on, `UNION ALL` — so a stock change landing between two reads cannot leave Sisa off by its units |
+| unknown product | fourteen empty days |
+
+✅ *(2026-11-21)* **Q2 settled — option A, as built**: owner *"A"* ([masuk-and-keluar-are-every-movement-by-its-direction](../../technical/frontend/products_decision.md#masuk-and-keluar-are-every-movement-by-its-direction)). The ⚠ above no longer holds.
+
+```mermaid
+sequenceDiagram
+    participant S as Product page or discover detail
+    participant I as ProductDailyMoves — inventory
+    participant P as product_service (in-process)
+    participant DB as Postgres
+    S->>I: team, product, warehouse lens
+    I->>I: policy — selling roles, scope the team (authorizes only)
+    I->>P: Facts — the product's owner
+    I->>DB: ONE statement — the owner's batches of the product now, and its fold rows from 13 days ago, net per day and change type
+    I->>I: Masuk and Keluar per day (dailySide — Q2 held, option A), Sisa walked back from today's stock
+    I-->>S: fourteen days, today first — day, Masuk, Keluar, Sisa, kinds — units only
+```
+
+**Performance** (`inventory_v1/product_daily_moves_perf_test.go`, `-tags perfaudit`; the inventory metrics' busy year —
+1 467 200 fold rows, 20 warehouses × 30 sellers × 10 000 products — plus ONE hot product of seller 100 with every change
+type in all 20 warehouses on each of the last 30 days (7 200 fold rows) and 1 000 batches; median of 5, custom and generic
+plan): the hot product over every warehouse 4.7 / 5.0 ms, in one warehouse 3.0 / 3.2 ms, an ordinary product 2.0–2.2 ms —
+within the scoping's ≤ 5 ms bar (`MetricData.md`'s precedent). The batches come from `batches_owner_product_idx` /
+`batches_take_idx`; the fold from a bitmap scan of `inventory_stock_daily_changes_team_day_idx` (the seller's 14 days, the
+product filtered in the heap). No index added — a third fold index would sit on every stock change's write path. No new
+audit file (fast).
 
 ## Broken, lost, and found — the warehouse reimburses the owner (business_level §Warehouse 5)
 

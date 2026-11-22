@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { Box, Button, Flex, Heading, Icon, IconButton, Spacer, Stack, Tabs, Text } from "@chakra-ui/react";
 import { ArrowLeft, BellRing, Plus } from "lucide-react";
 
-import { rpcError, teamClient } from "../../api/clients";
+import { rpcError } from "../../api/clients";
 import { ChangeLogPanel } from "../../features/liability/ChangeLogPanel";
 import { TermsPanel } from "./components/TermsPanel";
 import { LimitSetOnYou } from "./components/LimitSetOnYou";
@@ -19,7 +18,7 @@ import { PairSummary } from "./components/PairSummary";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { toaster } from "../../components/feedback/Toaster";
 import { canCancelPayment, canRequestPayment } from "../../lib/roles";
-import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
+import { useTeamsByIds } from "../../features/teams/queries";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import {
   LiabilityLogDirection,
@@ -169,18 +168,9 @@ export function LiabilityDetailPage() {
   const requestPayment = useRequestPayment();
   const cancelPayment = useCancelPayment();
 
-  // The counterparty is another team — resolve its name and kind (#142).
-  const teamQuery = useQuery({
-    queryKey: ["team-by-ids", [counterpartyId.toString()]],
-    enabled: counterpartyId > 0n,
-    queryFn: async () =>
-      teamsByIds(
-        await teamClient.teamByIds({
-          filter: { ids: [counterpartyId] },
-          dataRequest: teamByIdsRowData(),
-        }),
-      ),
-  });
+  // The counterparty is another team — resolve its name and kind (#142). A name lookup (useTeamsByIds, `referenceQuery`,
+  // keyed `key.teams` by the id set — #122), shared with every screen that names the same team.
+  const teamQuery = useTeamsByIds({ ids: [counterpartyId] });
   const counterparty = teamQuery.data?.[counterpartyId.toString()];
 
   // ON A PHONE THE TABS SCROLL IN ONE ROW, and the picked one is kept in view — as the order page's section

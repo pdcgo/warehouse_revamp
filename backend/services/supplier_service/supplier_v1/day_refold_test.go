@@ -280,7 +280,8 @@ func TestDayRefold_Restock_ADryRunWritesNothing(t *testing.T) {
 	}
 }
 
-// IT REFUSES while a replay holds the fold's lock, and an unknown report, no supplier, a bad date, no log.
+// IT REFUSES while a replay holds the fold's lock — either report: the replay clears Penjualan too — and an unknown
+// report, no supplier, a bad date, no log.
 func TestDayRefold_Refuses(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
@@ -288,10 +289,14 @@ func TestDayRefold_Refuses(t *testing.T) {
 
 	setEventLock(t, db, `{"lock":true}`)
 
-	_, err := svc.DayRefold(context.Background(),
-		supplier_v1.DayRefoldInput{Report: supplier_v1.ReportRestockDaily, SupplierID: rfSupplier, Day: rfDay}, log)
-	if !errors.Is(err, supplier_v1.ErrRefoldLocked) {
-		t.Fatalf("under a replay's lock: %v, want ErrRefoldLocked", err)
+	var err error
+
+	for _, report := range []string{supplier_v1.ReportRestockDaily, supplier_v1.ReportSaleDaily} {
+		_, err = svc.DayRefold(context.Background(),
+			supplier_v1.DayRefoldInput{Report: report, SupplierID: rfSupplier, Day: rfDay}, log)
+		if !errors.Is(err, supplier_v1.ErrRefoldLocked) {
+			t.Fatalf("%s under a replay's lock: %v, want ErrRefoldLocked", report, err)
+		}
 	}
 
 	for name, in := range map[string]supplier_v1.DayRefoldInput{

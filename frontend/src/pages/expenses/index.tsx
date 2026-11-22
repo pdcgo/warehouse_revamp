@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Badge,
-  Card,
   Flex,
   HStack,
   Heading,
@@ -11,7 +10,6 @@ import {
   Input,
   Menu,
   Portal,
-  SimpleGrid,
   Spacer,
   Spinner,
   Stack,
@@ -22,9 +20,9 @@ import { Ban, MoreHorizontal, SlidersHorizontal } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import type { ExpenseRecord } from "../../gen/warehouse/expense/v1/expense_pb";
-import { ExpenseKind } from "../../gen/warehouse/expense/v1/expense_pb";
+import { ExpenseKind, ExpenseType } from "../../gen/warehouse/expense/v1/expense_pb";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
-import { COST_FILTER_KINDS, ExpenseKindSelect, expenseKindLabel } from "../../components/pickers/ExpenseKindSelect";
+import { COST_FILTER_KINDS } from "../../components/pickers/ExpenseKindSelect";
 import { Pagination } from "../../components/chrome/Pagination";
 import { toaster } from "../../components/feedback/Toaster";
 import { formatRupiah, formatSignedRupiah } from "../../lib/money";
@@ -42,8 +40,7 @@ import { AdjustExpenseDialog } from "./components/AdjustExpenseDialog";
 import { RecordExpenseDialog } from "./components/RecordExpenseDialog";
 import { useExpenseAccountNames } from "./components/accountName";
 import { useAdjustExpense, useExpenses } from "./queries";
-// ⚠ #99 PROTOTYPE (expense types) — every part below draws today's screen unless a story mounts the prototype.
-import { useExpenseTypes } from "../../features/expense/expenseTypesPrototype";
+import { EXPENSE_TYPES } from "../../features/expense/expenseTypes";
 import {
   ExpenseKindText,
   ExpenseOriginLine,
@@ -51,7 +48,7 @@ import {
   ExpenseTypeMarks,
   ExpenseTypeTotals,
   amountTone,
-} from "../../features/expense/ExpenseTypesParts";
+} from "./components/ExpenseTypeParts";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -61,6 +58,8 @@ const MONTH_CODEC: UrlCodec<string> = {
   decode: (raw) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(raw) ? raw : undefined),
 };
 const KIND_CODEC = enumCodec(COST_FILTER_KINDS);
+// ONE TYPE of the group (expense-types-sit-under-groups) — `?type=`, beside `?kind=`.
+const TYPE_CODEC = enumCodec(EXPENSE_TYPES.map((d) => d.id));
 
 
 // ExpensesPage lists what a team spent in a month (#170) — the money no order caused.
@@ -80,6 +79,8 @@ export function ExpensesPage() {
   // month is the default, so it is left out: a bare link means "this month" whenever it is opened.
   const [month, setMonth] = useUrlState("month", thisMonth(), MONTH_CODEC);
   const [kind, setKind] = useUrlState<ExpenseKind>("kind", ExpenseKind.UNSPECIFIED, KIND_CODEC);
+  // The filter's one type — picking one also sets its group, so an old `?kind=` link still opens the whole group.
+  const [type, setType] = useUrlState<ExpenseType>("type", ExpenseType.UNSPECIFIED, TYPE_CODEC);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [adjusting, setAdjusting] = useState<ExpenseRecord | null>(null);
@@ -94,13 +95,10 @@ export function ExpensesPage() {
   // policy at all, so it is offered neither Record nor a row's actions (the server would refuse every one).
   const mayMove = canWrite(current) && canMoveExpenses(current?.role);
 
-  const query = useExpenses({ teamId, month, kind, page, pageSize });
+  const query = useExpenses({ teamId, month, kind, type, page, pageSize });
   const adjustExpense = useAdjustExpense();
-  // #99 PROTOTYPE: null live. In a story it plays ExpenseList (types, money in, capital) in memory.
-  const types = useExpenseTypes();
-  const proto = types?.list({ teamId, month, kind, page, pageSize });
 
-  const expenses = proto?.expenses ?? query.data?.expenses ?? [];
+  const expenses = query.data?.expenses ?? [];
   const totals = query.data?.totals;
 
   // THE PAYING ACCOUNT, BY NAME (an-expense-must-name-the-account-that-paid) — the accounts' own read, one per page. An
@@ -117,9 +115,9 @@ export function ExpensesPage() {
   const creators = useActors(expenses.map((e) => e.createdBy)).data;
   const creatorOf = (cost: ExpenseRecord) =>
     personName(creators?.get(cost.createdBy.toString()), `#${cost.createdBy}`);
-  const totalItems = proto?.totalItems ?? query.data?.totalItems ?? 0;
-  const loading = proto ? false : query.isPending;
-  const error = proto ? "" : query.isError ? rpcError(query.error) : "";
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending;
+  const error = query.isError ? rpcError(query.error) : "";
 
   // `mutateAsync`, not `mutate`, because ConfirmDialog AWAITS its onConfirm to hold the button in its
   // loading state — a fire-and-forget `mutate` would resolve instantly and the dialog would close
@@ -133,7 +131,7 @@ export function ExpensesPage() {
     if (teamId === undefined) return;
 
     try {
-      await (types?.adjust ?? adjustExpense.mutateAsync)({
+      await adjustExpense.mutateAsync({
         teamId,
         expenseId: cost.id,
         amount: -cost.netAmount,
@@ -283,21 +281,14 @@ export function ExpensesPage() {
     />
   );
 
-  const kindFilter = types ? (
+  // THE FILTER — a group, or one type of it (expense-types-sit-under-groups); both in the URL.
+  const kindFilter = (
     <ExpenseTypeFilter
       kind={kind}
-      onKindChange={(k) => {
+      type={type}
+      onChange={(k, ty) => {
         setKind(k);
-        setPage(1);
-      }}
-    />
-  ) : (
-    <ExpenseKindSelect
-      filter
-      testId="expenses-kind-filter"
-      value={kind}
-      onChange={(k) => {
-        setKind(k);
+        setType(ty);
         setPage(1);
       }}
     />
@@ -359,7 +350,7 @@ export function ExpensesPage() {
                 </Text>
               </Stack>
 
-              <Stack gap="0" align="end" flexShrink={0} color={amountTone(types, cost)}>
+              <Stack gap="0" align="end" flexShrink={0} color={amountTone(cost)}>
                 {amountOf(cost, isAdjustment)}
               </Stack>
 
@@ -425,7 +416,7 @@ export function ExpensesPage() {
                 <Table.Cell data-testid={`expense-by-${cost.id}`}>
                   <ActorName name={creatorOf(cost)} isOverride={cost.isOverride} />
                 </Table.Cell>
-                <Table.Cell textAlign="end" color={amountTone(types, cost)}>
+                <Table.Cell textAlign="end" color={amountTone(cost)}>
                   {amountOf(cost, isAdjustment)}
                 </Table.Cell>
 
@@ -468,66 +459,9 @@ export function ExpensesPage() {
 
       {/* The summary — per kind and in total, for the WHOLE month rather than the page below. The
           server computes them (#168) precisely so this cannot drift into a page-derived figure. */}
-      {/* #99 PROTOTYPE: the month by group with its types under it — nothing live. */}
-      {proto && <ExpenseTypeTotals rows={proto.month} isMobile={isMobile} />}
-
-      {!loading && totals && !proto && (
-        <Card.Root data-testid="expenses-totals" size={isMobile ? "sm" : undefined}>
-          <Card.Body>
-            {isMobile ? (
-              // COMPACT ON A PHONE: the month's total on its own line, the three kinds under it, three to a row.
-              <Stack gap="2">
-                <Flex align="baseline" gap="2">
-                  <Text fontSize="sm" color="fg.muted">
-                    {t("expenses.total")}
-                  </Text>
-                  <Spacer />
-                  <Text fontWeight="bold" whiteSpace="nowrap" data-testid="expenses-total">
-                    {formatRupiah(totals.total)}
-                  </Text>
-                </Flex>
-                <SimpleGrid columns={3} gap="2">
-                  {[ExpenseKind.ADS, ExpenseKind.PAYROLL, ExpenseKind.OPERATIONAL].map((k) => (
-                    <Stack key={k} gap="0" minW="0">
-                      <Text fontSize="xs" color="fg.muted" truncate>
-                        {expenseKindLabel(t, k)}
-                      </Text>
-                      <Text fontSize="sm" whiteSpace="nowrap" data-testid={`expenses-total-kind-${k}`}>
-                        {formatRupiah(totals.byKind[k] ?? 0n)}
-                      </Text>
-                    </Stack>
-                  ))}
-                </SimpleGrid>
-              </Stack>
-            ) : (
-              <SimpleGrid columns={4} gap="card">
-                {[ExpenseKind.ADS, ExpenseKind.PAYROLL, ExpenseKind.OPERATIONAL].map((k) => (
-                  <Stack key={k} gap="0">
-                    <Text fontSize="xs" color="fg.muted">
-                      {expenseKindLabel(t, k)}
-                    </Text>
-                    <Text fontWeight="medium" data-testid={`expenses-total-kind-${k}`}>
-                      {/* A kind with nothing this month is ABSENT from the map (#168), which reads as
-                          0 here — the only place absent and zero are allowed to look the same, because
-                          on a summary card they mean the same thing. */}
-                      {formatRupiah(totals.byKind[k] ?? 0n)}
-                    </Text>
-                  </Stack>
-                ))}
-
-                <Stack gap="0">
-                  <Text fontSize="xs" color="fg.muted">
-                    {t("expenses.total")}
-                  </Text>
-                  <Text fontWeight="medium" data-testid="expenses-total">
-                    {formatRupiah(totals.total)}
-                  </Text>
-                </Stack>
-              </SimpleGrid>
-            )}
-          </Card.Body>
-        </Card.Root>
-      )}
+      {/* THE MONTH CARD (the-expense-types-prototype-is-accepted): Biaya · Uang masuk · Modal · Total bulan ini, then
+          each group with its types — the server's figures, signed by the type's direction. */}
+      {!loading && totals && <ExpenseTypeTotals totals={totals} isMobile={isMobile} />}
 
       <Flex gap={isMobile ? "2" : "card"} wrap={isMobile ? "nowrap" : "wrap"}>
         {isMobile && monthInput}

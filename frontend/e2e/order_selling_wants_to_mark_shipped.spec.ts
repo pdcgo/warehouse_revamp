@@ -19,7 +19,8 @@ import { expectMoveCounted, expectMovesOffered } from "./order_moves_metric";
 // - the order's action table (features/orders/rowActions.ts, every-allowed-move-has-a-button): `shipping` offers Mark as
 //   Shipped; `shipped` offers Complete Order (the status diagram's `shipped → completed`).
 // - the order page's Pengiriman (pages/order-detail/pending.ts `shippingTracking`, kind `missing`): the courier trail is
-//   not modelled — "nothing reads the courier back yet" — and the screen marks it so.
+//   not modelled — "nothing reads the courier back yet" — and the screen marks it so. What the order offers instead is
+//   the courier's own page (an-orders-resi-links-to-the-couriers-tracking-page, a-tracking-link-must-carry-the-resi).
 //
 // `selling:all` → EVERY selling role (selling:owner, selling:admin, selling:cs), each in its own browser session, each on
 // an order of its own. The then the WAREHOUSE sees is read by one warehouse role (warehouse:staff, the crew) on a second
@@ -39,27 +40,34 @@ import { expectMoveCounted, expectMovesOffered } from "./order_moves_metric";
 //   badge; the order as the warehouse reads it is ORDER_STATUS_SHIPPED.
 // - `order can be completed` — the order's page offers Complete Order; pressing it makes the order ORDER_STATUS_COMPLETED.
 // - `shipped recorded in analytic metric` — Analytic › Order › Order status moves (`metrics/orders/moves`, #84) counts a
-//   mark shipped as a Shipped, shipping → shipped (the-order-metric-ids-name-what-moved). Its own test, on a shop of its
-//   own with TWO shipping orders of which the test marks ONE shipped, read as selling:owner: Add Metric › Order offers
+//   mark shipped as a Shipped, shipping → shipped (the-order-metric-ids-name-what-moved). Its own test per role — EVERY
+//   selling role on a shop of its own with TWO shipping orders of which the role marks ONE shipped, read as that role:
+//   Add Metric › Order offers
 //   Order status moves, and Analytic by shop over the last 7 days, filtered to that shop, reads `created_count` 2 (the
 //   fold landed) and `shipped_count` exactly 1 — the untouched order, still shipping, adds nothing
 //   (order_moves_metric.ts). (Every earlier move — confirmed, picked, handed over — happened to BOTH orders.)
-// - 🚧 `parcel tracking shown on order` — no courier trail is read back: the page's Pengiriman draws an INVENTED trail for
-//   a shipped order (shipmentMock.ts) under the ⚠ mark `not-implemented-shippingTracking`. Its own test, as test.fail:
-//   the shipped order's outbound leg must draw a trail (shipment-outbound-trail) that the screen does not mark as missing.
+// - `parcel tracking shown on order` — NOW the resi links to the courier's own tracking page
+//   (an-orders-resi-links-to-the-couriers-tracking-page, docs/business/shipment/context_decision.md — the owner's answer
+//   to this row: "later we add A, but now B"; the aggregator that would draw the trail ON the order is the Later part,
+//   not built and not checked here). Built by #103: the role's shipped order, on a courier whose link root keeps
+//   (`https://…{resi}…`), shows ↗ beside its resi on its page — in the Info reference (order-reference-track) and in
+//   Pengiriman's leg (shipment-outbound-track) — opening the courier's page for THIS resi (URL-encoded), in a new tab.
+//   Read in each role's own test, on the order that role marked shipped. (Until #103 it was a 🚧 test.fail of its own,
+//   asking for a trail.)
 //
 // GROUND (beforeAll, as root, through the API): a selling team of its own (root owns it) with a user per selling role, a
-// Shopee shop (root and the CS on it), a warehouse it returns to with a warehouse:staff user, 10 units of one product
-// accepted onto a rack there. Orders of 1 unit, each walked by the warehouse to `shipping` (processed → picked →
-// shipping): one per role, one for the tracking check, one for the warehouse's refused move; plus the metric check's own
-// shop with its two. Seeded in beforeAll so a worker restarted after a failure seeds its own.
+// Shopee shop (root and the CS on it), a warehouse it returns to with a warehouse:staff user, 14 units of one product
+// accepted onto a rack there, and a courier of its own whose tracking link root keeps (ShipmentChannelCreate with
+// `trackingUrl`). Orders of 1 unit on that courier, each walked by the warehouse to `shipping` (processed → picked →
+// shipping): one per role, one for the warehouse's refused move; plus the metric check's own shop with its two. Seeded
+// in beforeAll so a worker restarted after a failure seeds its own.
 
 const RPC = "/warehouse.selling.v1.OrderService";
 const SUFFIX = Date.now().toString().slice(-6);
 const PASSWORD = "e2e-markshipped-pass-1";
 const PRODUCT = `Sabun Kirim ${SUFFIX}`;
 const SKU = `MKK${SUFFIX}`;
-const STOCK = 10;
+const STOCK = 14;
 
 const ROLES = [
   { key: "own", role: "ROLE_SELLING_OWNER", label: "selling:owner" },
@@ -70,10 +78,10 @@ type Key = (typeof ROLES)[number]["key"];
 
 const COND = "status: shipping · 1 order";
 
-// The orders, by slot: one per role (its key), the tracking check's, the warehouse's refused move's, and the metric
-// check's two (on their own shop).
-const SLOTS = ["own", "adm", "cs", "track", "crew"] as const;
-const METRIC_SLOTS = ["mta", "mtb"] as const;
+// The orders, by slot: one per role (its key), the warehouse's refused move's, and per role the metric check's two (on
+// that role's own shop: m<key>a is moved, m<key>b stays).
+const SLOTS = ["own", "adm", "cs", "crew"] as const;
+const metricSlots = (key: Key) => [`m${key}a`, `m${key}b`] as const;
 
 const userOf = (key: Key) => `e2emk${key}${SUFFIX}`;
 const nameOf = (key: Key) => `Mark Shipped ${key} ${SUFFIX}`;
@@ -82,11 +90,19 @@ const WH_USER = `e2emkwh${SUFFIX}`;
 const refOf = (slot: string) => `MK${SUFFIX}${slot.toUpperCase()}`;
 const resiOf = (slot: string) => `JM${SUFFIX}${slot.toUpperCase()}`;
 
+// The run's own courier and the tracking link root keeps on it — `{resi}` where the number goes (a-tracking-link-must-
+// carry-the-resi). The order page opens it with the order's resi URL-encoded in place of `{resi}`.
+const COURIER = `mkc_${SUFFIX}`;
+const TRACKING_URL = `https://lacak.e2e-kurir.example/cek?awb={resi}&src=mk${SUFFIX}`;
+const trackOf = (resi: string) => TRACKING_URL.split("{resi}").join(encodeURIComponent(resi));
+
 const ground = {
   team: "",
   warehouse: "",
   shop: "",
-  metricShop: "",
+  // role key → the metric check's own shop
+  metricShops: {} as Record<string, string>,
+  courier: "",
   // slot → order id
   orders: {} as Record<string, string>,
   // role key → user id
@@ -242,7 +258,9 @@ async function seed(browser: Browser) {
     return id;
   };
   ground.shop = await shop(`E2E Kirim Shop ${SUFFIX}`, `MKP${SUFFIX}`);
-  ground.metricShop = await shop(`E2E Kirim Metric Shop ${SUFFIX}`, `MKQ${SUFFIX}`);
+  for (const r of ROLES) {
+    ground.metricShops[r.key] = await shop(`E2E Kirim Metric Shop ${r.key} ${SUFFIX}`, `MKQ${r.key.toUpperCase()}${SUFFIX}`);
+  }
 
   // The product's units on the warehouse's rack, paid from the seller's operational account.
   const rack = String((await ok(page, "inventory.v1.RackService/RackCreate", { teamId: ground.warehouse, code: `mk-${SUFFIX}` })).rack.id);
@@ -284,11 +302,21 @@ async function seed(browser: Browser) {
     lines: [{ itemId: restock.request.items[0].id, receivedCount: STOCK, placements: [{ placementId: rack, quantity: STOCK }] }],
   });
 
-  // GIVEN — every order placed by root and walked by the warehouse to the courier: confirmed, picked, handed over.
+  // GIVEN — every order placed by root and walked by the warehouse to the courier: confirmed, picked, handed over. On the
+  // run's own courier, whose tracking link root keeps.
+  ground.courier = String(
+    (
+      await ok(page, "shipment.v1.ShipmentChannelService/ShipmentChannelCreate", {
+        code: COURIER,
+        name: `E2E Kurir Lacak ${SUFFIX}`,
+        trackingUrl: TRACKING_URL,
+      })
+    ).channel.id,
+  );
   const place = async (slot: string, shopId: string) => {
     const placed = await ok(page, "selling.v1.OrderService/OrderCreate", {
       idempotencyKey: `e2e-mkship-${slot}-${SUFFIX}`,
-      shipmentChannelId: "1",
+      shipmentChannelId: ground.courier,
       teamId: ground.team,
       shopId,
       warehouseId: ground.warehouse,
@@ -306,7 +334,7 @@ async function seed(browser: Browser) {
     ground.orders[slot] = id;
   };
   for (const slot of SLOTS) await place(slot, ground.shop);
-  for (const slot of METRIC_SLOTS) await place(slot, ground.metricShop);
+  for (const r of ROLES) for (const slot of metricSlots(r.key)) await place(slot, ground.metricShops[r.key]!);
 
   await page.close();
 }
@@ -390,6 +418,22 @@ test.describe(`selling:all wants to mark an order shipped (${COND})`, () => {
         await wh.close();
       }
 
+      await test.step("then: parcel tracking shown on order", async () => {
+        // NOW a link to the courier's own page for this parcel (an-orders-resi-links-to-the-couriers-tracking-page): ↗
+        // beside the resi in the Info reference and in Pengiriman's leg, opening in a new tab.
+        await page.goto(`/orders/${orderId}`);
+        await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "shipped", { timeout: 15_000 });
+        const href = trackOf(resiOf(r.key));
+        await expect.soft(page.getByTestId("order-reference-receipt")).toContainText(resiOf(r.key));
+        const reference = page.getByTestId("order-reference-track");
+        await expect.soft(reference).toHaveAttribute("href", href);
+        await expect.soft(reference).toHaveAttribute("target", "_blank");
+        await expect.soft(reference).toHaveAttribute("rel", /noopener/);
+        const leg = page.getByTestId("section-shipping").getByTestId("shipment-outbound");
+        await expect.soft(leg).toContainText(resiOf(r.key));
+        await expect.soft(leg.getByTestId("shipment-outbound-track")).toHaveAttribute("href", href);
+      });
+
       await test.step("then: order can be completed", async () => {
         await page.goto(`/orders/${orderId}`);
         await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "shipped", { timeout: 15_000 });
@@ -432,53 +476,25 @@ test.describe(`selling:all wants to mark an order shipped (${COND})`, () => {
     }
   });
 
-  // The metric check — its own test: it moves one order of a shop of its own (see the head of this file).
-  test(`selling:owner mark shipped order (${COND}): shipped recorded in analytic metric`, async ({ page }) => {
-    await signInAs(page, "own");
-    const [orderId, left] = [ground.orders.mta!, ground.orders.mtb!];
-    const shop = ground.metricShop;
-    expect(await orderOf(page, orderId).then((o) => o.status)).toBe("ORDER_STATUS_SHIPPING");
+  // The metric check — its own test per role: each moves one order of the role's own shop (see the head of this file).
+  for (const r of ROLES) {
+    test(`${r.label} mark shipped order (${COND}): shipped recorded in analytic metric`, async ({ page }) => {
+      await signInAs(page, r.key);
+      const [moved, kept] = metricSlots(r.key);
+      const [orderId, left] = [ground.orders[moved]!, ground.orders[kept]!];
+      const shop = ground.metricShops[r.key]!;
+      expect(await orderOf(page, orderId).then((o) => o.status)).toBe("ORDER_STATUS_SHIPPING");
 
-    // WHEN — Mark as Shipped on one of the shop's two orders; the other stays shipping.
-    await markShipped(page, orderId, refOf("mta"));
-    expect((await orderOf(page, orderId)).status).toBe("ORDER_STATUS_SHIPPED");
-    expect((await orderOf(page, left)).status).toBe("ORDER_STATUS_SHIPPING");
+      // WHEN — Mark as Shipped on one of the shop's two orders; the other stays shipping.
+      await markShipped(page, orderId, refOf(moved));
+      expect((await orderOf(page, orderId)).status).toBe("ORDER_STATUS_SHIPPED");
+      expect((await orderOf(page, left)).status).toBe("ORDER_STATUS_SHIPPING");
 
-    await test.step("then: shipped recorded in analytic metric", async () => {
-      // Order status moves is offered under Order, and the shop's Shipped reads the ONE mark shipped.
-      await expectMovesOffered(page);
-      await expectMoveCounted(page, shop, "shipped_count");
-    });
-  });
-
-  // 🚧 — its own test, LAST in the file, so the expected failure hides none of the thens above (see the head of this file).
-  test(`selling:owner mark shipped order (${COND}): parcel tracking shown on order`, async ({ page }) => {
-    test.fail(
-      true,
-      "🚧 unimplemented (docs/acceptances/inventory/order.md) — nothing reads the courier's trail back; the order page draws an invented one under the shippingTracking mark",
-    );
-
-    await signInAs(page, "own");
-    const orderId = ground.orders.track!;
-    expect((await orderOf(page, orderId)).status).toBe("ORDER_STATUS_SHIPPING");
-
-    // WHEN — Mark as Shipped.
-    await markShipped(page, orderId, refOf("track"));
-    expect((await orderOf(page, orderId)).status).toBe("ORDER_STATUS_SHIPPED");
-
-    await test.step("then: parcel tracking shown on order", async () => {
-      await page.goto(`/orders/${orderId}`);
-      await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "shipped", { timeout: 15_000 });
-      const leg = page.getByTestId("section-shipping").getByTestId("shipment-outbound");
-      await expect(leg).toBeVisible();
-      // The order's own number is on the leg — the leg is this order's.
-      await expect(leg).toContainText(resiOf("track"));
-      // A trail is drawn…
-      await expect.soft(leg.getByTestId("shipment-outbound-trail")).toBeVisible({ timeout: 3_000 });
-      // …and the screen does not mark it as missing (the trail is the courier's, not an invented one).
-      await expect.soft(leg.getByTestId("not-implemented-shippingTracking"), "the trail is marked not implemented").toHaveCount(0, {
-        timeout: 3_000,
+      await test.step("then: shipped recorded in analytic metric", async () => {
+        // Order status moves is offered under Order, and the shop's Shipped reads the ONE mark shipped.
+        await expectMovesOffered(page);
+        await expectMoveCounted(page, shop, "shipped_count");
       });
     });
-  });
+  }
 });

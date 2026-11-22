@@ -1,4 +1,5 @@
 import { inventoryClient, productClient } from "../../api/clients";
+import { key, referenceQuery } from "../../api/queryClient";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { productByIdsRowData, productListRowData, productsFromByIds } from "../../features/products/adapt";
 import { PAGE_SIZE, SEARCH_RESOLVE_LIMIT } from "./ProductPickerShell";
@@ -37,7 +38,8 @@ export interface ResolvedIds {
  * has no owner axis, so "my catalogue, in this building" can only be asked as "these 500 ids, in this
  * building". A 400-product catalogue is two round-trips before the first row renders.
  *
- * Cached by the caller for the dialog's life — it is a fact about a team, not about a page.
+ * Cached through the query cache for the team (`ownCatalogueIdsQuery` below) — it is a fact about a team, not about a
+ * page.
  */
 export async function ownCatalogueIds(teamId: bigint): Promise<ResolvedIds> {
   const ids: bigint[] = [];
@@ -149,4 +151,29 @@ export async function stockedPage(args: {
 /** The page a picker shows when its resolve matched nothing — see the warning on `stockedPage`. */
 export function noMatches(capped: boolean): PickerPage {
   return { products: [], total: 0, capped, ready: new Map() };
+}
+
+// ── THROUGH THE QUERY CACHE (#121) ──────────────────────────────────────────────────────────────────────────────
+//
+// What a stocked page is NARROWED by — which ids are my catalogue, which ids a term matches — is a catalogue fact, not
+// stock: a picker feed. So the two resolves are read through the cache (`referenceQuery`, by name) and reused for every
+// page turn and every reopen, instead of a component ref the own picker had to clear by hand on a team change (the
+// team is in the key now) and a search re-resolved on every page turn. Under `products`, so a product created or
+// renamed marks them stale. The stocked page itself stays always fresh (features/products/pickerQueries.ts): it is
+// what the building holds.
+
+export function ownCatalogueIdsQuery(teamId: bigint) {
+  return {
+    ...referenceQuery,
+    queryKey: key.products(teamId, { catalogueIds: true }),
+    queryFn: () => ownCatalogueIds(teamId),
+  };
+}
+
+export function catalogueSearchQuery(args: { scopeTeamId: bigint; q: string; own: boolean }) {
+  return {
+    ...referenceQuery,
+    queryKey: key.products(args.scopeTeamId, { catalogueSearch: args.q, own: args.own }),
+    queryFn: () => searchCatalogueIds(args),
+  };
 }

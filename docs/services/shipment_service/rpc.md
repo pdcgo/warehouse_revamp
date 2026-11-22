@@ -1,7 +1,8 @@
 # shipment_service — complex RPC flows
 
-The channel catalogue's RPCs are single-table CRUD and need no entry. `ReceiptCheck` does: it touches no table, but
-its request passes three gates before the handler runs, and every answer about the file comes back as a RESULT.
+The channel catalogue's RPCs are single-table CRUD and need no entry — except for what the courier's TRACKING LINK
+asks of a write and of the screens that read it (below). `ReceiptCheck` does: it touches no table, but its request
+passes three gates before the handler runs, and every answer about the file comes back as a RESULT.
 
 ## ReceiptCheck — read an uploaded shipping label
 
@@ -84,3 +85,64 @@ sequenceDiagram
 Code: `backend/services/shipment_service/shipment_v1/receipt_check.go` (the slots: `receiptChecksAtOnce`,
 `tryHoldCheck`, `readLabel`), `backend/services/shipment_service/register.go`,
 `frontend/src/features/shipment/receiptCheck.ts`.
+
+## ShipmentChannelCreate / ShipmentChannelUpdate — the tracking link
+
+Root keeps one optional link per courier, `tracking_url`, the courier's own tracking page with `{resi}` where the
+number goes ([an-orders-resi-links-to-the-couriers-tracking-page](../../business/shipment/context_decision.md#an-orders-resi-links-to-the-couriers-tracking-page),
+[the-tracking-link-prototype-is-accepted](../../business/shipment/context_decision.md#the-tracking-link-prototype-is-accepted)). The write checks it before
+anything else; the order screens read it from the courier catalogue they already hold.
+
+```mermaid
+sequenceDiagram
+    participant UI as Channel Pengiriman form
+    participant V as validator
+    participant A as access interceptor
+    participant H as Create or Update
+    participant DB as shipment_channels
+    UI->>UI: trackingLinkProblem(link) on leaving the field — Simpan off until fixed
+    UI->>V: tracking_url, trimmed
+    alt over 500 characters
+        V-->>UI: InvalidArgument
+    end
+    V->>A: the request
+    alt not root
+        A-->>UI: Unauthenticated, or PermissionDenied
+    end
+    A->>H: root
+    H->>H: checkTrackingURL — empty is fine, otherwise https, then holds the resi, then an address
+    alt refused
+        H-->>UI: InvalidArgument, the reason in its own words — nothing written
+    end
+    H->>DB: INSERT, or UPDATE name, desc, tracking_url and updated_at in one statement — empty clears it
+    DB-->>H: the row, CHECK tracking_url shape as the last word
+    H-->>UI: the channel with its tracking_url
+```
+
+| the link | answer |
+| --- | --- |
+| `""` | taken — the courier has no link; its orders' resi stays copy-only |
+| not starting `https://` (any case) | `InvalidArgument` *the tracking link must start with https://* |
+| no `{resi}` | `InvalidArgument` *the tracking link must hold {resi} where the resi goes* ([a-tracking-link-must-carry-the-resi](../../business/shipment/context_decision.md#a-tracking-link-must-carry-the-resi)) |
+| a space, or no host | `InvalidArgument` *the tracking link is not a web address* |
+| over 500 characters | `InvalidArgument` from the validator (`max_len`) |
+
+**Why these choices:**
+
+- **One rule, two places.** The form's `trackingLinkProblem` (`frontend/src/features/shipment/trackingLink.ts`) and the
+  handler's `trackingURLProblem` refuse the same links in the same order, so the form's words are what the server would
+  say; the server is the one that counts.
+- **Update writes every editable field as sent** — name, desc and the link, like desc before it: an empty link clears
+  it. The code is still never sent ([a-code-never-changes](../../business/shipment/context_decision.md#a-code-never-changes)).
+- **Reads are unchanged in shape.** `ShipmentChannelList` and `ShipmentChannelByIds` return the column with the rest of
+  the row, deleted channels included ([a-deleted-channel-still-resolves-by-id](../../business/shipment/context_decision.md#a-deleted-channel-still-resolves-by-id)),
+  so an old order on a deleted courier still opens its link. One more text column on a catalogue of a dozen rows — no
+  new query, no perf audit.
+- **The screens ask nothing new per row.** The seller's order page, the warehouse's order page and the seller's list
+  read the link from the session's courier catalogue (`features/shipping/catalogue.ts`, one `ShipmentChannelList` with
+  deleted channels, shared by every courier badge) and fill every `{resi}` with the order's resi, URL-encoded
+  (`trackingHref`).
+
+Code: `backend/services/shipment_service/shipment_v1/tracking_url.go`, `shipment_channel_create.go`,
+`shipment_channel_update.go`, migration `00003_add_shipment_channel_tracking_url.sql`;
+`frontend/src/features/shipment/CourierTrackingLink.tsx`.

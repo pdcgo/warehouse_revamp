@@ -12,7 +12,8 @@ import (
 )
 
 // ShipmentChannelCreate adds a courier. A code already held by ANY row is refused, and when that row is
-// deleted the message says to restore it (a-deleted-code-is-restored-not-recreated).
+// deleted the message says to restore it (a-deleted-code-is-restored-not-recreated). Its optional tracking link is
+// checked first (tracking_url.go).
 //
 // The pre-check only chooses the MESSAGE. Two creates racing past it both reach the INSERT, and the
 // unique index refuses the second as AlreadyExists (dbError) — correctness never rests on the check.
@@ -22,9 +23,14 @@ func (s *Service) ShipmentChannelCreate(
 ) (*connect.Response[shipmentv1.ShipmentChannelCreateResponse], error) {
 	code := req.Msg.GetCode()
 
+	trackingURL, err := checkTrackingURL(req.Msg.GetTrackingUrl())
+	if err != nil {
+		return nil, err
+	}
+
 	var existing []shipment_service_models.ShipmentChannel
 
-	err := s.db.
+	err = s.db.
 		WithContext(ctx).
 		Where("code = ?", code).
 		Limit(1).
@@ -44,9 +50,10 @@ func (s *Service) ShipmentChannelCreate(
 	}
 
 	channel := shipment_service_models.ShipmentChannel{
-		Code: code,
-		Name: req.Msg.GetName(),
-		Desc: req.Msg.GetDesc(),
+		Code:        code,
+		Name:        req.Msg.GetName(),
+		Desc:        req.Msg.GetDesc(),
+		TrackingURL: trackingURL,
 	}
 
 	err = s.db.

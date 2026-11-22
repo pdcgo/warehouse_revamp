@@ -165,6 +165,16 @@ func NewServer(cfg *Config, mux *http.ServeMux) *http.Server {
 	}
 }
 
+// corsMaxAgeSecs is how long a browser may keep a pre-check's answer (Access-Control-Max-Age). Without it Chromium
+// keeps one for 5 s, so a screen re-sends an OPTIONS round trip before each of its request shapes on almost every
+// visit — 4–10 per screen load, measured by `san audit frontend` (backlog #127). 7200 s is Chromium's own cap (a
+// longer value is cut to it; Firefox's is a day): asking more buys nothing in the browser this app is used in.
+// What it costs: nothing refused gets through. A kept answer only spares the browser the OPTIONS round trip; the real
+// request is still answered by the server's current rules (an origin taken off the list gets no
+// Access-Control-Allow-Origin, so its page cannot read the answer), and a request needing a header or method the kept
+// answer lacks is pre-checked afresh.
+const corsMaxAgeSecs = 7200
+
 func withCORS(cfg *Config, handler http.Handler) http.Handler {
 	// connectcors.AllowedHeaders() covers only the CONNECT PROTOCOL headers
 	// (Content-Type, Connect-Protocol-Version, timeouts, …). It does NOT include Authorization
@@ -185,6 +195,7 @@ func withCORS(cfg *Config, handler http.Handler) http.Handler {
 		AllowedMethods: allowedMethods,
 		AllowedHeaders: allowedHeaders,
 		ExposedHeaders: connectcors.ExposedHeaders(),
+		MaxAge:         corsMaxAgeSecs,
 	})
 
 	app := middleware.Handler(handler)

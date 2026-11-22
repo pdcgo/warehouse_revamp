@@ -11,6 +11,8 @@ import { readyAt } from "./restock_helpers";
 // its thens live here, one test.describe per given + when, one test.step("then: …") per then. The rows' statuses are the
 // owner's, set by hand — never by this file. (the_return_goes_back_on_the_shelf.spec.ts keeps the older end-to-end
 // regression of the same page: wrong warehouse, door rows on the note, the minted batch.)
+// order_warehouse_wants_to_accept_return_stock.spec.ts holds the return's stock half — the batches the accept mints,
+// their price, expiry and supplier, the markup, the newest-first door, who bears it (givens 84–87).
 //
 // Business rules:
 // - only-the-return-warehouse-accepts-a-return + the-return-warehouse-is-read-when-the-return-happens

@@ -104,11 +104,9 @@ const InventoryPage = lazy(() =>
 const StockForward = lazy(() =>
   import("./pages/inventory/StockForward").then((m) => ({ default: m.StockForward })),
 );
+// Inventaris › Retur — the warehouse's real list of returns (the-retur-list-prototype-is-accepted).
 const ReturnsPage = lazy(() =>
   import("./pages/returns").then((m) => ({ default: m.ReturnsPage })),
-);
-const ReturnDetailPage = lazy(() =>
-  import("./pages/return-detail").then((m) => ({ default: m.ReturnDetailPage })),
 );
 // The stock count's sessions (docs/business/inventory/opname.md) — they replaced the one-rack count page.
 const OpnameSessionsPage = lazy(() =>
@@ -237,6 +235,14 @@ const CustomShipmentDetailPage = lazy(() =>
 );
 const CustomShipmentPickPage = lazy(() =>
   import("./pages/custom-shipment-pick").then((m) => ({ default: m.CustomShipmentPickPage })),
+);
+// Restock resolutions (backlog #101, the-restock-resolutions-prototype-is-accepted): the supplier's reshipping — recorded
+// from the restock's *Catat Resolusi → Kirim Ulang* — and its inbound parcel, read by either side.
+const RestockReshippingFormPage = lazy(() =>
+  import("./pages/restock-reshipping-form").then((m) => ({ default: m.RestockReshippingFormPage })),
+);
+const CustomShipmentInboundPage = lazy(() =>
+  import("./pages/custom-shipment-inbound").then((m) => ({ default: m.CustomShipmentInboundPage })),
 );
 const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
 const UserDetailPage = lazy(() =>
@@ -505,6 +511,8 @@ export const router = createBrowserRouter([
       { path: "inventories/restock/new", element: write(<RestockFormPage key="create" />) },
       { path: "inventories/restock/:requestId", element: <RestockDetailRoute /> },
       { path: "inventories/restock/:requestId/edit", element: write(<RestockFormPage key="edit" />) },
+      // #101 — the selling team's *Kirim Ulang* (the page itself answers another team type with one line).
+      { path: "inventories/restock/:requestId/reshipping", element: write(<RestockReshippingFormPage />) },
       // The warehouse ACCEPTS a delivery here (#157) — a page, not a dialog.
       { path: "inventories/restock/:requestId/accept", element: write(<RestockAcceptPage />) },
       // THE LABELS HAVE ONE ADDRESS (owner: *"pakai 1 alamat saja"*, the-labels-have-one-address) — one restock or
@@ -535,6 +543,8 @@ export const router = createBrowserRouter([
       { path: "inventories/custom-shipments", element: <CustomShipmentRoute /> },
       { path: "inventories/custom-shipments/new", element: write(<CustomShipmentFormPage />) },
       { path: "inventories/custom-shipments/:shipmentId", element: <CustomShipmentDetailRoute /> },
+      // #101 — an inbound reshipping parcel, one page for both sides (its acts by the reader's side).
+      { path: "inventories/custom-shipments/in/:parcelId", element: <CustomShipmentInboundPage /> },
       // The old Stock address FORWARDS — a warehouse to its Products, anyone else to /inventory (StockForward). Not a
       // loader redirect: where it goes depends on the current team, which only TeamProvider knows.
       { path: "inventories/stock", element: <StockForward /> },
@@ -542,9 +552,10 @@ export const router = createBrowserRouter([
       // catalogue entry it does not own.
       { path: "inventories/products/:productId", element: <WarehouseProductPage /> },
       { path: "inventories/returns", element: <ReturnsPage /> },
-      // One return's receive & inspect record (#163) — reached by clicking a row; a PAGE, not a
-      // dialog (CLAUDE.md).
-      { path: "inventories/returns/:returnId", element: <ReturnDetailPage /> },
+      // The invented return-detail page (RTN codes, refund values) is gone with the sample list
+      // (the-retur-list-prototype-is-accepted): a waiting return is read and accepted on the accept page, an accepted one on
+      // the order's page. An old link or bookmark lands on the list — a loader redirect, as above.
+      { path: "inventories/returns/:returnId", loader: () => redirect("/inventories/returns") },
       // Where the retired one-rack count lived: an old link or bookmark lands on the counts — a loader redirect, as above.
       { path: "inventories/opname", loader: () => redirect("/inventories/opname/sessions") },
       // Under /inventories/opname/sessions — where the menu's Opname points — so it stays lit on every count screen

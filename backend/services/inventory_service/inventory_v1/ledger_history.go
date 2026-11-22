@@ -118,6 +118,19 @@ func overrideExpr(transactionID string) string {
 	return `COALESCE((SELECT t.is_override FROM inventory_transactions t WHERE t.id = ` + transactionID + `), FALSE)`
 }
 
+// recipientExpr is who received a SAMPLE row's units — its inventory transaction's `recipient`
+// (a-sample-keeps-its-recipient), read by the transaction's primary key as overrideExpr reads the flag. Only a sample row
+// asks: every other row reads empty without a lookup, so a page costs one index probe per sample on it and no more.
+// It takes the row's change type and transaction id as column expressions, so the rack's, the product's and the batch's
+// histories (`l.change_type`, `l.transaction_id`) and the owner's page (`p.change_type`, `p.movement_id`) read it alike.
+// ⚠ The CASE does not spare a sample row an OFFSET skips — a select under the LIMIT still probes it (the rack and batch
+// selects below pay that on a deep page); the owner's history reads it on the page's own rows only.
+func recipientExpr(changeType, transactionID string) string {
+	return `CASE WHEN ` + changeType + ` = 'sample'
+		THEN COALESCE((SELECT t.recipient FROM inventory_transactions t WHERE t.id = ` + transactionID + `), '')
+		ELSE '' END`
+}
+
 // historyRow is one log row as the history screens read it.
 type historyRow struct {
 	ID          uint64
@@ -134,6 +147,8 @@ type historyRow struct {
 	CreatedAt   time.Time
 	// The row's inventory transaction was an override (inventory_transactions.is_override) — overrideExpr.
 	IsOverride bool
+	// Who received a sample row's units (inventory_transactions.recipient) — recipientExpr; empty on every other row.
+	Recipient string
 	// The batch's price before and after the row, and the value it changed — a batch row's (priceExprs); 0 on a rack row.
 	PriceUnitBefore float64
 	PriceUnitAfter  float64
@@ -160,6 +175,7 @@ func (r *historyRow) proto() *inventoryv1.StockMovement {
 		ActorUserId: r.ActorID,
 		CreatedAt:   r.CreatedAt.UTC().Format(time.RFC3339),
 		IsOverride:  r.IsOverride,
+		Recipient:   r.Recipient,
 
 		PriceUnitBefore: r.PriceUnitBefore,
 		PriceUnitAfter:  r.PriceUnitAfter,
@@ -191,7 +207,8 @@ func priceExprs(alias string) string {
 // placementHistorySelect reads `product_placement_logs AS l` as history rows: the rack, never a batch.
 var placementHistorySelect = `l.id, l.product_id, l.warehouse_id, l.placement_id, 0 AS batch_id, l.change_type, l.transaction_id,
 	l.stock_change AS change, l.stock_after AS after, l.description, ` + refExpr("l") + ` AS ref, l.actor_id, l.created_at,
-	` + overrideExpr("l.transaction_id") + ` AS is_override`
+	` + overrideExpr("l.transaction_id") + ` AS is_override,
+	` + recipientExpr("l.change_type", "l.transaction_id") + ` AS recipient`
 
 // batchRackJoin gives each `batch_logs AS l` row of `batches AS b` THE RACK IT MOVED ON (backlog #47). A batch row
 // carries no rack, so the rack is read from the rack rows (`product_placement_logs`) its transaction wrote for the
@@ -237,7 +254,8 @@ var batchHistorySelect = `CASE WHEN COALESCE(rk.part, 1) = 1 THEN l.id ELSE ((rk
 	CASE WHEN rk.exact THEN rk.part_change ELSE l.change_count END AS change,
 	CASE WHEN rk.exact THEN l.stock_count_after - rk.later_change ELSE l.stock_count_after END AS after,
 	l.description, ` + refExpr("l") + ` AS ref, l.actor_id, l.created_at,
-	` + overrideExpr("l.transaction_id") + ` AS is_override, ` + priceExprs("l") + `,
+	` + overrideExpr("l.transaction_id") + ` AS is_override,
+	` + recipientExpr("l.change_type", "l.transaction_id") + ` AS recipient, ` + priceExprs("l") + `,
 	CASE WHEN rk.exact THEN l.change_valuation * rk.part_change / l.change_count ELSE l.change_valuation END AS part_value`
 
 // labelCountCorrections sets the KOREKSI JUMLAH TERIMA label on every history row a received-count correction wrote —

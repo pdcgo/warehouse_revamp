@@ -7,8 +7,8 @@ checked in the feature it comes from. Rules: [guide.md](../guide.md).
 
 | small feature | ✅ ok | ❌ error | 🚧 unimplemented | ⬜ untested |
 | --- | --- | --- | --- | --- |
-| [payment](payment.md) | | | 6 | 45 |
-| [credit_limit](credit_limit.md) | | | | 14 |
-| [position](position.md) | | | | 21 |
+| [payment](payment.md) | 51 | | | |
+| [credit_limit](credit_limit.md) | 14 | | | |
+| [position](position.md) | 21 | | | |
 
 An empty row has not been discussed yet.

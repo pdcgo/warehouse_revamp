@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Flex, Heading, Icon, SimpleGrid, Spacer, Stack, Table, Text } from "@chakra-ui/react";
 import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { warehouseInfoClient } from "../../../api/clients";
 import { Weekday } from "../../../gen/warehouse/warehouse/v1/warehouse_info_pb";
-import type { DayHours, WarehouseInfo } from "../../../gen/warehouse/warehouse/v1/warehouse_info_pb";
+import type { DayHours } from "../../../gen/warehouse/warehouse/v1/warehouse_info_pb";
 import { useTeam } from "../../../features/team/TeamContext";
+import { useWarehouseInfo } from "../../../features/warehouse/queries";
 import { isGlobalAdmin } from "../../../lib/roles";
 import { DetailField } from "./TeamDetailCommon";
 
@@ -53,31 +52,16 @@ function ScheduleTable({ title, hours, testId }: { title: string; hours: DayHour
 
 // WarehouseInfoSection is the WAREHOUSE-only part of a team detail page (#79): the physical location
 // and the two weekly schedules (operating + order-receiving), read-only, with a shortcut to the edit
-// page. Hours + location come from WarehouseInfoDetail (#39).
+// page. Hours + location come from WarehouseInfoDetail (#39) — through the warehouse's profile query (#122), the same
+// cache entry the edit page reads, so an edit saved there is read afresh here. A failed read shows an empty schedule,
+// as it always has.
 export function WarehouseInfoSection({ teamId }: { teamId: bigint }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { current } = useTeam();
   const admin = isGlobalAdmin(current?.role);
 
-  const [info, setInfo] = useState<WarehouseInfo | undefined>(undefined);
-
-  useEffect(() => {
-    let alive = true;
-
-    warehouseInfoClient
-      .warehouseInfoDetail({ teamId })
-      .then((res) => {
-        if (alive) setInfo(res.info);
-      })
-      .catch(() => {
-        if (alive) setInfo(undefined);
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [teamId]);
+  const info = useWarehouseInfo({ warehouseId: teamId }).data ?? undefined;
 
   return (
     <Stack gap="card" data-testid="warehouse-detail-section">

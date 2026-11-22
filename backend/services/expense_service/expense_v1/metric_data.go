@@ -23,8 +23,9 @@ import (
 //     an-expense-correction-counts-for-who-made-it) — the report holds it there; this read only sums.
 //   - `as_of_unix` is the read's own time: the report is written in the expense's own transaction, so it never lags.
 //
-// ONE statement for every asked metric: the five sums, grouped by the key (or not at all, for the headline); Ads
-// expense's `amount` is the ADS sum. Asked alone, Ads expense reads the ADS rows only.
+// ONE statement for every asked metric: metricSums — the kinds, the total, money in, capital and every type — grouped by
+// the key (or not at all, for the headline), in two steps (metricGrouped); Ads expense's `amount` is the ADS sum. Asked
+// alone, Ads expense reads the ADS rows only.
 func (s *Service) MetricData(
 	ctx context.Context,
 	req *connect.Request[expensev1.MetricDataRequest],
@@ -100,7 +101,7 @@ func metricSummary(
 
 	var sums MetricSums
 
-	err := rows.Select(metricSums).Scan(&sums).Error
+	err := metricGrouped(rows, "").Scan(&sums).Error
 	if err != nil {
 		return nil, metricDBError(err)
 	}
@@ -142,10 +143,6 @@ func metricByKey(
 		return nil, err
 	}
 
-	query := rows.
-		Select(key.sql + " AS key, " + metricSums).
-		Group(key.sql)
-
 	if key.isDay {
 		if keys.GetDays() == nil {
 			return nil, invalidMetric("%s is keyed by days", group)
@@ -172,7 +169,7 @@ func metricByKey(
 		if len(days) > 0 {
 			var found []metricDayRow
 
-			err = query.Where(key.sql+" IN ?", days).Scan(&found).Error
+			err = metricGrouped(rows.Where(key.sql+" IN ?", days), key.sql).Scan(&found).Error
 			if err != nil {
 				return nil, metricDBError(err)
 			}
@@ -223,7 +220,7 @@ func metricByKey(
 	if len(ids) > 0 {
 		var found []metricIDRow
 
-		err = query.Where(key.sql+" IN ?", ids).Scan(&found).Error
+		err = metricGrouped(rows.Where(key.sql+" IN ?", ids), key.sql).Scan(&found).Error
 		if err != nil {
 			return nil, metricDBError(err)
 		}

@@ -48,7 +48,7 @@ func TestExpenseOverride_EachRowCarriesItsTypist(t *testing.T) {
 
 	create := func(ctx context.Context) uint64 {
 		res, err := svc.ExpenseCreate(ctx, connect.NewRequest(&expensev1.ExpenseCreateRequest{
-			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Amount: 5_000_000, OccurredAt: "2026-09-28",
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL), Amount: 5_000_000, OccurredAt: "2026-09-28",
 			FinanceAccountId: payingAccount,
 		}))
 		if err != nil {

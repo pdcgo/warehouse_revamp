@@ -4,14 +4,16 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { asTeam, routedPage } from "../../../../.storybook/pageStory";
 import { asRole } from "../../../../.storybook/sessionScenario";
 import { BCA_OPERASIONAL, EXPENSE_TEAM } from "../../../../.storybook/expenseFixtures";
-import { MONTH, expenseTypesDecorator } from "../../../features/expense/expenseTypesStoryKit";
+import { expenseScenario } from "../../../../.storybook/expenseStub";
+import { MONTH, withTypedExpenses } from "../../../features/expense/expenseTypesStoryKit";
 import { PHONE_VIEWPORTS } from "../../../features/warehouseTransfer/storyPhone";
-import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
+import { ExpenseKind, ExpenseType } from "../../../gen/warehouse/expense/v1/expense_pb";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { formatRupiah } from "../../../lib/money";
 import { ExpensesPage } from "../index";
 
-// ⚠ STORYBOOK-ONLY PROTOTYPE — backlog #99: THE RECORD DIALOG, opened from Pengeluaran (so the month behind it moves
+// THE RECORD DIALOG WITH THE TYPES — backlog #99 P1, live against the real stubs (the-expense-types-prototype-is-accepted,
+// expense-types-sit-under-groups, an-expense-must-name-the-account-that-paid): THE RECORD DIALOG, opened from Pengeluaran (so the month behind it moves
 // when a row is saved). The picker lists the types under their group's heading; the amount stays positive and the type
 // says the direction — a badge under the picker, *Masuk ke* for the account on money in; Prive and Setoran modal say
 // they are the account's capital row, the same record as Setor / Tarik Modal, and pick among every account.
@@ -24,7 +26,7 @@ import { ExpensesPage } from "../index";
 //   | PriveIsCapital        | Prive: the capital line, *Taken from*, and every account offered (BCA Gaji too)        |
 //   | RecordADeposit        | a Setoran modal saved: its row with Capital and In, Capital and the month total lower  |
 //   | OnlyMarketplaceAdsNamesAShop | Konten · endorse sits under Iklan and names no shop; Iklan marketplace needs one |
-//   | Live                  | today's dialog, the prototype not mounted: the kind picker, nothing new               |
+//   | AnOrdinaryCostIsPaidFrom | Listrik: *Paid from*, operational accounts only (no BCA Gaji), no direction mark      |
 
 const Routed = routedPage([{ path: "/expenses", element: <ExpensesPage /> }], "/expenses");
 
@@ -35,8 +37,8 @@ const meta = {
   beforeEach: () => {
     asTeam(EXPENSE_TEAM)();
     asRole(Role.SELLING_OWNER)();
+    withTypedExpenses();
   },
-  decorators: [expenseTypesDecorator],
 } satisfies Meta;
 
 export default meta;
@@ -178,6 +180,10 @@ export const RecordADeposit: Story = {
     await expect(canvas.getByTestId("expenses-total")).toHaveTextContent(rp(MONTH.total - 500_000));
     // Spending does not move — capital is never an expense.
     await expect(canvas.getByTestId("expenses-total-spending")).toHaveTextContent(rp(MONTH.spending));
+    // What the dialog SENT: the type, and its group as the kind.
+    await expect(expenseScenario.lastCreate?.type).toBe(ExpenseType.CAPITAL_DEPOSIT);
+    await expect(expenseScenario.lastCreate?.kind).toBe(ExpenseKind.OTHER);
+    await expect(expenseScenario.lastCreate?.amount).toBe(500_000);
   },
 };
 
@@ -197,16 +203,20 @@ export const OnlyMarketplaceAdsNamesAShop: Story = {
   },
 };
 
-// LIVE — today's dialog, the prototype not mounted: the kind picker, no direction, the account field as it was.
-export const Live: Story = {
-  name: "Live · today's dialog",
-  parameters: { live: true },
+// AN ORDINARY COST — *Paid from*, among the operational accounts only (BCA Gaji is not one), no capital line.
+export const AnOrdinaryCostIsPaidFrom: Story = {
+  name: "An ordinary cost · paid from",
   play: async ({ canvasElement }) => {
-    await openRecord(canvasElement, "expenses-total");
+    await openRecord(canvasElement);
+    await pickType("electricity");
 
-    await expect(screen.getByTestId("expense-kind-select")).toBeInTheDocument();
-    await expect(screen.queryByTestId("expense-type-select")).toBeNull();
-    await expect(screen.queryByTestId("expense-direction")).toBeNull();
+    await expect(screen.getByTestId("expense-direction")).toHaveAttribute("data-direction", "out");
+    await expect(screen.queryByTestId("expense-capital-line")).toBeNull();
     await expect(accountLabel()).toHaveTextContent("Paid from");
+
+    await userEvent.click(screen.getByTestId("expense-paid-from"));
+    const bca = await screen.findByTestId(`expense-paid-from-option-${BCA_OPERASIONAL}`);
+    await waitFor(() => expect(bca).toBeVisible());
+    await expect(screen.queryByTestId("expense-paid-from-option-1302")).toBeNull();
   },
 };

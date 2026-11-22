@@ -1,12 +1,28 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@chakra-ui/react";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
-import { asTeam } from "../../../../.storybook/pageStory";
+import { asTeam, marker, routedPage } from "../../../../.storybook/pageStory";
 import { asRole } from "../../../../.storybook/sessionScenario";
 import { resetRestockStub } from "../../../../.storybook/restockStub";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
-import { ARRIVED, BERAS, CAHAYA, CAHAYA_STORE, EditAccepted, EditArrived, EditOngoing, FORM_META, loaded, pickProducts } from "./kit";
+import { restockClient } from "../../../api/clients";
+import { RestockFormPage } from "../index";
+import {
+  ARRIVED,
+  BERAS,
+  CAHAYA,
+  CAHAYA_STORE,
+  EditAccepted,
+  EditArrived,
+  EditOngoing,
+  FORM_META,
+  loaded,
+  ONGOING,
+  pickProducts,
+} from "./kit";
 
 // RESTOCK FORM — an edit, by status and by team — on a phone, by another team, arrived (the lines stay open, a line
 // may be added with a note), and accepted (not editable).
@@ -162,5 +178,79 @@ export const AnAcceptedRestockIsNotEditable: Story = {
     // Reached by a link, so back is the list (a-form-returns-where-it-was-opened).
     await userEvent.click(canvas.getByTestId("restock-not-editable-back"));
     await canvas.findByTestId("at-restock-list");
+  },
+};
+
+// ── A re-read under the open form (#122) ────────────────────────────────────────────────────────
+
+// A story-only control standing in for "something made the restock stale" — another write invalidates `restock`, and
+// the restock answers again under the open form.
+function StoryReread() {
+  const client = useQueryClient();
+
+  return (
+    <Button size="xs" mt="4" data-testid="story-reread" onClick={() => void client.invalidateQueries({ queryKey: ["restock"] })}>
+      Read the restock again
+    </Button>
+  );
+}
+
+const EditOngoingWithReread = routedPage(
+  [
+    {
+      path: "/inventories/restock/:requestId/edit",
+      element: (
+        <>
+          <RestockFormPage key="edit" />
+          <StoryReread />
+        </>
+      ),
+    },
+    marker("/inventories/restock/:requestId", "at-restock-detail"),
+    marker("/inventories/restock", "at-restock-list"),
+  ],
+  `/inventories/restock/${ONGOING.id}/edit`,
+);
+
+let detailAnswers = 0;
+
+/**
+ * A RE-READ NEVER OVERWRITES WHAT IS BEING TYPED — the draft is seeded ONCE per restock. The restock answers again,
+ * changed meanwhile (its note rewritten elsewhere), and the note and the order id being typed stay exactly as typed.
+ */
+export const ARereadKeepsWhatWasTyped: Story = {
+  name: "A re-read of the restock keeps what was typed",
+  beforeEach: () => {
+    detailAnswers = 0;
+    const real = restockClient.restockRequestDetail.bind(restockClient);
+    const spy = spyOn(restockClient, "restockRequestDetail").mockImplementation(async (req, options) => {
+      const res = await real(req, options);
+      detailAnswers += 1;
+      if (detailAnswers === 1 || !res.request) return res;
+
+      return { ...res, request: { ...res.request, note: "Rewritten elsewhere", invoiceRefId: "INV-ELSEWHERE" } };
+    });
+
+    return () => spy.mockRestore();
+  },
+  render: () => <EditOngoingWithReread />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, "restock-edit-page");
+    await waitFor(() => expect(canvas.getByTestId("restock-line-0")).toBeVisible(), { timeout: 5000 });
+
+    const note = canvas.getByTestId("restock-note");
+    await userEvent.clear(note);
+    await userEvent.type(note, "Diketik sendiri", { delay: 30 });
+    const invoice = canvas.getByTestId("restock-invoice-ref");
+    await userEvent.clear(invoice);
+    await userEvent.type(invoice, "INV-77", { delay: 30 });
+
+    await userEvent.click(canvas.getByTestId("story-reread"));
+    await waitFor(() => expect(detailAnswers).toBe(2));
+    // The answer is in: give it a render to land on the form.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    await expect(canvas.getByTestId("restock-note")).toHaveValue("Diketik sendiri");
+    await expect(canvas.getByTestId("restock-invoice-ref")).toHaveValue("INV-77");
   },
 };

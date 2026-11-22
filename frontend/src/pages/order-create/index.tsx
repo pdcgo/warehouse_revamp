@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useBlocker, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -22,7 +22,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { ArrowLeft, ChevronsDownUp, ChevronsUpDown, Trash2 } from "lucide-react";
-import { type orderClient, rpcError, teamClient } from "../../api/clients";
+import { type orderClient, rpcError } from "../../api/clients";
 import { awaitAnswer } from "../../features/orders/createAnswer";
 import { NoAnswerPanel } from "./components/NoAnswerPanel";
 import { useTeam } from "../../features/team/TeamContext";
@@ -32,34 +32,25 @@ import { useShopOptions } from "../../features/shops/queries";
 import { useDeleteOrderDrafts, useOrderDraft } from "../../features/orderDrafts/queries";
 import { DraftProductHints } from "./components/DraftProductHints";
 import { DraftAddressText } from "./components/DraftAddressText";
-import { addressOf } from "./draftAddress";
+import { addressTouched, initialOrderForm, isDirty, orderFormActions, orderFormReducer } from "./formState";
+import type { OrderRequest } from "./formState";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { useIsMobile } from "../../layouts/shell";
 import { useStockTakeQuote } from "../../features/inventory/queries";
-import {
-  MarketplaceInfoForm,
-  emptyMarketplaceInfo,
-} from "../../components/orders/MarketplaceInfoForm";
-import type { MarketplaceInfoValue } from "../../components/orders/MarketplaceInfoForm";
+import { MarketplaceInfoForm } from "../../components/orders/MarketplaceInfoForm";
 import { OrderItemCard } from "../../components/orders/OrderItemCard";
-import type { PickedProduct } from "../../components/products/ProductSelect";
-import { emptyAddress } from "../../components/customers/AddressPicker";
-import type { AddressValue } from "../../components/customers/AddressPicker";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { RadioPills } from "../../components/inputs/RadioPills";
-
-/** What the order is filled from — its own lines, or bundles — and never both (an-order-holds-items-or-bundles). */
-type OrderContents = "items" | "bundles";
 import { CurrencyInput } from "../../components/inputs/CurrencyInput";
 import { DatePicker } from "../../components/datetime/DatePicker";
-import { dateTimeInputToUnix, todayDateInput, unixToDateTimeInput } from "../../lib/datetime";
+import { dateTimeInputToUnix, todayDateInput } from "../../lib/datetime";
 import { useProductsByIds } from "../../features/products/queries";
 import { usePresetProduct } from "../../features/products/presetProduct";
 import { cameFrom } from "../../lib/cameFrom";
 import { useTeams } from "../../features/teams/queries";
-import type { BundleDraft } from "../../features/orders/form/bundles";
-import { type PickedBundle, bundleFor, bundleLines, fillFor } from "../../features/orders/form/bundles";
+import { bundleLines } from "../../features/orders/form/bundles";
 import { useWarehouseFeeQuote } from "../../features/warehouse/queries";
+import { useTeamDetail } from "../../features/teams/queries";
 import { BundleCard } from "../../features/orders/form/BundleCard";
 import { CreditLimitPanel } from "../../features/orders/form/CreditLimitPanel";
 import type { CreditRow } from "../../features/orders/form/CreditLimitPanel";
@@ -76,68 +67,18 @@ import { ShippingReceiptCard } from "../../features/orders/form/ShippingReceiptC
 import { WarehouseBand } from "../../features/orders/form/WarehouseBand";
 import { OrderChecksDialog } from "../../features/orders/form/OrderChecksDialog";
 import { DuplicateRefDialog } from "../../features/orders/form/DuplicateRefDialog";
-import { type DuplicateFinding, findDuplicateRef, warns } from "../../features/orders/form/duplicateRef";
-import type { CheckFinding, ReceiptScan } from "../../features/orders/form/checks";
-import { applyScan, runOrderChecks, scanReceipt, suggestMarketplace } from "../../features/orders/form/checks";
+import { findDuplicateRef, warns } from "../../features/orders/form/duplicateRef";
+import { runOrderChecks, scanReceipt, suggestMarketplace } from "../../features/orders/form/checks";
 import { MarketplaceBadge, marketplaceLabel } from "../../components/badges/MarketplaceBadge";
 import { ExtraInfoCard } from "../../features/orders/form/ExtraInfoCard";
 import { TotalsInvoicePanel } from "../../features/orders/form/TotalsInvoicePanel";
 import type { InvoiceRow } from "../../features/orders/form/TotalsInvoicePanel";
 import { toaster } from "../../components/feedback/Toaster";
 import { CustomerInfoForm } from "../../components/customers/CustomerInfoForm";
-import { emptyReceipt, hasReceipt } from "../../components/orders/ReceiptUpload";
-import type { ReceiptValue } from "../../components/orders/ReceiptUpload";
-import type { LineDraft } from "../../features/orders/lines";
+import { hasReceipt } from "../../components/orders/ReceiptUpload";
 import { TakeRefusalAlert } from "../../features/orders/TakeRefusalAlert";
-import { type TakeRefusal, takeRefusalOf } from "../../features/orders/takeRefusal";
-import {
-  availabilityOf,
-  byProduct,
-  canSubmit,
-  lineFor,
-  lineStock,
-  toQty,
-  toRupiah,
-} from "../../features/orders/lines";
-
-// The address is OPTIONAL (#118) — exactly as the free text it replaces was: an order can be taken
-// before the address is known. An untouched picker sends NOTHING rather than a message full of empty
-// strings, so "no address" stays distinguishable from "an address of blanks".
-function addressTouched(a: AddressValue): boolean {
-  return Object.values(a).some((v) => v.trim() !== "");
-}
-
-// The source of a HAND-WRITTEN draft — one saved from this form before Save as Draft was removed
-// (a-draft-becomes-an-order-through-order-create); every other draft names the app that pushed it. Its reference is
-// ours, no marketplace's, so it is not copied into the order's ref (a manual draft has its ref typed).
-const DRAFT_SOURCE = "manual";
-
-// Everything the leave-guard counts as WORK, as one comparable string. On a draft the form opens already filled, so
-// "dirty" means changed since it was seeded, not merely non-empty — leaving a draft untouched loses nothing (the draft
-// is still on the list), and must not ask whether to discard it.
-interface WorkFields {
-  customerName: string;
-  customerPhone: string;
-  shopId: bigint;
-  orderRef: string;
-  shipmentChannelId: string;
-  note: string;
-  receipt: boolean;
-  address: AddressValue;
-  platformTotal: string;
-  lines: LineDraft[];
-  bundles: number;
-  receiptCode: string;
-  orderDate: string;
-  deadline: string;
-  buyerUsername: string;
-}
-
-function workSignature(w: WorkFields): string {
-  return JSON.stringify({ ...w, lines: w.lines.map((l) => [l.productId, l.quantity]) }, (_, v) =>
-    typeof v === "bigint" ? v.toString() : v,
-  );
-}
+import { takeRefusalOf } from "../../features/orders/takeRefusal";
+import { availabilityOf, byProduct, canSubmit, lineStock, toQty, toRupiah } from "../../features/orders/lines";
 
 // `?draft=` comes from a URL, so it is whatever somebody typed. Anything that is not a positive whole
 // number means NO DRAFT — the query is disabled at 0n and the card renders nothing, which is the right
@@ -199,89 +140,55 @@ export function OrderCreatePage() {
   const openedFrom = cameFrom(location);
   const deleteDrafts = useDeleteOrderDrafts();
   const [confirmDeleteDraft, setConfirmDeleteDraft] = useState(false);
-  // What the form held right after it was seeded — the leave-guard's "nothing changed" on a draft.
-  const [seedSignature, setSeedSignature] = useState<string | null>(null);
-
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [address, setAddress] = useState<AddressValue>(emptyAddress);
-  // The marketplace side of the order — WHICH storefront sold it, and what THAT storefront calls it.
-  // One piece of state because they are one fact: a shop with no reference cannot be looked up again,
-  // and a reference with no shop has nowhere to be looked up in.
-  const [marketplace, setMarketplace] = useState<MarketplaceInfoValue>(emptyMarketplaceInfo);
+  // ── THE FORM'S STATE — ONE REDUCER (no-global-store-every-read-is-a-query-hook, formState.ts) ─────────────────────
+  //
+  // Everything the person types — the buyer and the address, the marketplace side (the shop, the storefront's ref, the
+  // sell price), the warehouse, the courier, the receipt and what its file said, the note, the lines or the bundles, the
+  // dates — with what the form was seeded from and where Create stands, in ONE state changed only by its actions. What
+  // each field means, and the rule each action keeps, is written in formState.ts; `act` holds its setters, each a stable
+  // function, as the `useState` setters it replaced were.
+  //
+  // The warehouse is the one field that may open filled: a product page's warehouse lens, when it opened the form with
+  // one (a-product-page-opens-the-order-and-restock-forms) — never on a draft, which seeds its own.
+  const [form, dispatch] = useReducer(
+    orderFormReducer,
+    { warehouseId: draftMode ? 0n : preset.warehouseId },
+    initialOrderForm,
+  );
+  const act = useMemo(() => orderFormActions(dispatch), []);
+  const {
+    customerName,
+    customerPhone,
+    address,
+    marketplace,
+    warehouseId,
+    shipmentChannelId,
+    receiptCode,
+    scan,
+    filledFromFile,
+    receipt,
+    note,
+    lines,
+    bundles,
+    contents,
+    switchingTo,
+    orderDate,
+    deadline,
+    buyerUsername,
+    checkingRef,
+    duplicate,
+    gate,
+    sent,
+    retry,
+    error,
+    refusal,
+  } = form;
   const shopId = marketplace.shopId;
 
-  // Which warehouse fulfils this order (#72). REQUIRED: from #69 the order takes its stock out of this
-  // warehouse the moment it is placed, so the form cannot submit without one.
-  //
-  // Pre-filled from the team's configured default (#145), which is not the same as guessing. A default
-  // the SYSTEM invents would move real goods out of the wrong building; a default the TEAM configured
-  // is the team stating where it ships from, and it stays visible and changeable on every order. The
-  // server also still refuses an order that names no warehouse, so nothing here can let one through.
-  // A product page's warehouse lens, when it opened the form with one (a-product-page-opens-the-order-and-restock-forms)
-  // — set before the team's default arrives, so the default (which only fills an untouched field) leaves it alone.
-  const [warehouseId, setWarehouseId] = useState<bigint>(() => (draftMode ? 0n : preset.warehouseId));
-  // The courier — a shipment channel id (shipment-channel-is-an-id-into-shipment-service). 0n = none picked; the server
-  // refuses an order without one (no-order-without-a-courier).
-  const [shipmentChannelId, setShipmentChannelId] = useState<bigint>(0n);
-  // The resi as TEXT — the number the buyer is given, beside the courier and the file it is printed
-  // on. Sent as `receipt_code`, the order's own field for it.
-  const [receiptCode, setReceiptCode] = useState("");
-  // WHAT THE RECEIPT FILE SAYS (owner, rule 1) — read once per attached file and kept, because it is
-  // used twice: to fill what is still empty, and to question what was typed when Create is pressed.
-  const [scan, setScan] = useState<ReceiptScan | null>(null);
-  const [filledFromFile, setFilledFromFile] = useState(false);
-  // THE FILE ITSELF, held only while its numbers are read (receipt-check-takes-the-file-bytes). The order
-  // keeps the document reference below; the bytes are read from HERE, beside the upload, never from
-  // storage — so the check starts the moment the file is picked.
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  // What the checks found on the last attempt to place. Empty = the dialog is closed.
-  const [gate, setGate] = useState<CheckFinding[]>([]);
-  // WHAT THE DUPLICATE-REF CHECK FOUND on the last Create (a-duplicate-ref-is-warned-not-refused). null = the dialog is
-  // closed. `checkingRef` holds Create busy while the lookup runs, so a second press cannot start a second one.
-  const [duplicate, setDuplicate] = useState<DuplicateFinding | null>(null);
-  const [checkingRef, setCheckingRef] = useState(false);
-
-  // The shipping receipt — the courier's slip photographed, or the marketplace's PDF (owner). What
-  // is held here is a REFERENCE to a document already uploaded, never the file: the bytes went
-  // straight to storage the moment it was picked, so submitting the order writes three short strings.
-  const [receipt, setReceipt] = useState<ReceiptValue>(emptyReceipt);
-
-  // Whatever the person taking the order needs the next person to know (owner). Free text on purpose:
-  // "deliver after 5pm", "wrap the glass one", "second attempt, the first parcel came back" are
-  // instructions to a HUMAN, and no dropdown ever fits the case actually in front of them.
-  const [note, setNote] = useState("");
-
-  // Starts EMPTY, not with a blank line. Lines arrive by picking products, so a placeholder row with
-  // no product would be a row you cannot remove and cannot use — the same conclusion the restock form
-  // reached (#165). The Create button is what refuses an order with nothing on it.
-  const [lines, setLines] = useState<LineDraft[]>([]);
-
-  // ── …AND WHAT THE NEW CARDS HOLD ────────────────────────────────────────────────────────
-  //
-  // Everything below is real on screen and NOT YET SENT — each one is an entry in `pending.ts`,
-  // marked on its card and listed at the top of the page. The exception is the bundle: its
-  // products ARE placed, as ordinary lines (see `allLines`); only the grouping is lost.
-  const [bundles, setBundles] = useState<BundleDraft[]>([]);
-  // ITEMS OR BUNDLES, NEVER BOTH (owner: *"order create items dan bundle cuma boleh pilih salah satu"*,
-  // `an-order-holds-items-or-bundles`) — one radio pill chooses which card the order is filled from. Items first: a draft
-  // seeds items, and most orders are typed line by line. Leaving a card that already holds something asks first
-  // (`switchingTo`), because the switch empties it.
-  const [contents, setContents] = useState<OrderContents>("items");
-  const [switchingTo, setSwitchingTo] = useState<OrderContents | null>(null);
-  // WHEN THE ORDER HAPPENED — and it starts EMPTY (owner).
-  //
-  // ⚠ NO DEFAULT OF TODAY. It was pre-filled with now, on the argument that most orders are typed in
-  // as they come; the trouble is that a date nobody chose is indistinguishable from one somebody did,
-  // so every order typed a day late carries a wrong date that looks deliberate. An empty field asks
-  // the question; a filled one answers it on the person's behalf and is never revisited.
-  const [orderDate, setOrderDate] = useState("");
-  const [deadline, setDeadline] = useState("");
-  const [buyerUsername, setBuyerUsername] = useState("");
   // THE RIGHT RAIL, COLLAPSED (owner). The three money cards explain themselves the first time and
-  // are read for their figures every time after that — so the prose is a toggle, not a fixture.
+  // are read for their figures every time after that — so the prose is a toggle, not a fixture. A screen toggle, not
+  // anything the order says, so it stays out of the form's state.
   const [compact, setCompact] = useState(false);
-
 
   // ── THE FORM LOCK (the-form-locks-until-it-is-answered, no-answer-is-only-a-lost-connection) ─────────────────────
   //
@@ -293,13 +200,9 @@ export function OrderCreatePage() {
   //   stays locked on the frozen payload and offers Try Again, which re-checks the shop + ref and resends under a NEW key.
   //
   // Why locked: an edit made while the first submit may still land would be a second, different order typed over the
-  // first — the person must first learn what happened to the one they sent.
-  type SentRequest = ReturnType<typeof orderRequest>;
-  const [sent, setSent] = useState<{ phase: "waiting" | "noAnswer"; request: SentRequest } | null>(null);
+  // first — the person must first learn what happened to the one they sent. (`sent` is the form's — formState.ts.)
   const locked = sent !== null;
   const saving = sent?.phase === "waiting";
-  // What Try Again's re-check found (a-try-again-always-warns) — null = its warning is closed.
-  const [retry, setRetry] = useState<DuplicateFinding | null>(null);
   // The locked fieldset: `inert` on top of `disabled`, so the controls a fieldset cannot disable (a file drop zone, a
   // radio pill, a clickable row) take no click and no focus either.
   const lockRef = useRef<HTMLFieldSetElement>(null);
@@ -323,12 +226,6 @@ export function OrderCreatePage() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [locked]);
 
-  const [error, setError] = useState("");
-  // WHY THE WAREHOUSE REFUSED THE LAST CREATE, when it did (a-refusal-names-its-reason-and-every-line) — kept apart
-  // from `error` because it is not a sentence to print but a reason and the lines it names, each one a line on this
-  // form the person has to change.
-  const [refusal, setRefusal] = useState<TakeRefusal | null>(null);
-
   // A REF, not state, and this is load-bearing rather than a style choice. The save navigates in the
   // same tick it records success, and a `setState` has not landed by then — so a state flag would still
   // read false when the blocker below runs, and every successful order would be met with "discard
@@ -340,97 +237,38 @@ export function OrderCreatePage() {
   // Only ever fills an UNTOUCHED field: if the answer arrives after somebody has already picked one,
   // it must not overwrite them. Reading `warehouseId` inside the updater rather than depending on it
   // keeps this a one-shot fill instead of a rule that fights the person typing.
+  //
+  // The team is read through its query hook (#122) — the same entry the team's own pages read — and the fill stays ONE
+  // SHOT per team: it takes the answer given since the form opened (never a cached one from an earlier visit), once, so
+  // a re-read cannot put a default back into a field the person cleared. A failed read fills nothing: no default is an
+  // ordinary state, not an error worth showing — the field is required and already visible, so the person simply
+  // picks one as they did before.
+  //
+  // #123: the fill is the form's `defaultWarehouse` action, and its once-per-team is the reducer's (`filledDefaultFor`).
+  const team = useTeamDetail({ teamId: teamId ?? 0n, enabled: teamId !== undefined });
+
   useEffect(() => {
-    if (teamId === undefined) return;
+    if (teamId === undefined || !team.isFetchedAfterMount) return;
 
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const res = await teamClient.teamDetail({ teamId });
-        const preferred = res.team?.info?.defaultWarehouseId ?? 0n;
-
-        if (!cancelled && preferred !== 0n) {
-          setWarehouseId((chosen) => (chosen === 0n ? preferred : chosen));
-        }
-      } catch {
-        // No default is an ordinary state, not an error worth showing: the field is required and
-        // already visible, so the person simply picks one as they did before.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [teamId]);
+    dispatch({ type: "defaultWarehouse", teamId, preferred: team.data?.info?.defaultWarehouseId ?? 0n });
+  }, [teamId, team.isFetchedAfterMount, team.data]);
 
   // SEED FROM THE PRODUCT'S PAGE, once — the product as the first line, quantity 1, as a pick would add it. After this
-  // the form is the person's; its "nothing changed" is the form as seeded, so leaving untouched asks nothing.
-  const seededPreset = useRef<string | null>(null);
-  const [capturePreset, setCapturePreset] = useState(false);
+  // the form is the person's; its "nothing changed" is the form as seeded, so leaving untouched asks nothing. The seed
+  // is the form's `seedPreset` action, taken once per product (`seededPreset`), its "nothing changed" with it.
   useEffect(() => {
-    if (!presetMode || !preset.product || seededPreset.current === preset.productId.toString()) return;
-    seededPreset.current = preset.productId.toString();
-    setLines([{ ...lineFor(preset.product), quantity: preset.quantity }]);
-    setCapturePreset(true);
+    if (!presetMode || !preset.product) return;
+
+    dispatch({ type: "seedPreset", productId: preset.productId, product: preset.product, quantity: preset.quantity });
   }, [presetMode, preset.product, preset.productId, preset.quantity]);
 
   // SEED FROM THE DRAFT, once per draft — after this the form is the person's. The draft's warehouse wins over the
   // team's default: the app read where this order ships from. A draft the app pushed carries the marketplace's own
-  // order id; one saved from this form carries a reference of ours, which is no marketplace's and is not copied.
-  const seededDraft = useRef("");
-
+  // order id; one saved from this form carries a reference of ours, which is no marketplace's and is not copied. The
+  // seed is the form's `seedDraft` action (formState.ts), taken once per draft (`seededDraft`): a re-read of the same
+  // draft never puts its values back over what was typed.
   useEffect(() => {
-    if (!draft || seededDraft.current === draft.id.toString()) return;
-    seededDraft.current = draft.id.toString();
-
-    const orderRef = draft.source !== DRAFT_SOURCE ? draft.externalId : "";
-    // What the buyer paid — the draft's own `platform_total` (the-draft-price-is-platform-total); when the app sent none,
-    // the rows' prices summed (`the-draft-sell-price-starts-from-the-rows`). The CS may type over it either way.
-    const scraped = draft.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-    // ⚠ The draft's figure and the rows' prices are doubles since selling 00041/00042, kept EXACT
-    // (a-draft-keeps-its-platform-total-as-typed, the-backend-never-rounds-money): the seed is the figure itself, a
-    // fraction included, and the order places exactly that.
-    const seededTotal = draft.platformTotal > 0 ? draft.platformTotal : scraped;
-    const platformTotal = Number.isFinite(seededTotal) && seededTotal > 0 ? String(seededTotal) : "";
-    // The platform's own dates and the buyer's username, as the app pushed them — empty when it sent none.
-    const seededOrderDate = draft.platformCreatedAtUnix > 0n ? unixToDateTimeInput(draft.platformCreatedAtUnix) : "";
-    const seededDeadline =
-      draft.platformShipmentDeadlineUnix > 0n ? unixToDateTimeInput(draft.platformShipmentDeadlineUnix) : "";
-    const seededAddress = addressOf(draft);
-    // NO LINE IS SEEDED: a draft stores no mapping (a-draft-stores-no-mapping) — its scraped lines are the text above
-    // the products, and the person picks ours.
-    const seededLines: LineDraft[] = [];
-
-    setCustomerName(draft.customerName);
-    setCustomerPhone(draft.customerPhone);
-    setAddress(seededAddress);
-    setShipmentChannelId(draft.shipmentChannelId);
-    setMarketplace((prev) => ({ ...prev, shopId: draft.shopId, orderExternalRefId: orderRef, platformTotal }));
-    setOrderDate(seededOrderDate);
-    setDeadline(seededDeadline);
-    setBuyerUsername(draft.buyerUsername);
-    if (draft.warehouseId > 0n) setWarehouseId(draft.warehouseId);
-    setLines(seededLines);
-    setSeedSignature(
-      workSignature({
-        customerName: draft.customerName,
-        customerPhone: draft.customerPhone,
-        shopId: draft.shopId,
-        orderRef,
-        shipmentChannelId: draft.shipmentChannelId.toString(),
-        note: "",
-        receipt: false,
-        address: seededAddress,
-        platformTotal,
-        lines: seededLines,
-        bundles: 0,
-        receiptCode: "",
-        orderDate: seededOrderDate,
-        deadline: seededDeadline,
-        buyerUsername: draft.buyerUsername,
-      }),
-    );
+    if (draft) dispatch({ type: "seedDraft", draft });
   }, [draft]);
 
   // ⚠ EVERY PRODUCT ON THE ORDER, picked by hand or arrived inside a bundle. One list, because
@@ -449,40 +287,18 @@ export function OrderCreatePage() {
   // what a person typed — so `applyScan` leaves a filled box alone, and the disagreement it would
   // have caused is raised at Create instead, where somebody can look at both.
   //
-  // Reading the LIVE values through refs keeps this an effect about the FILE: it runs when a file is
-  // picked, not on every keystroke in the two fields it may fill.
-  const refsNow = useRef({ orderRefId: "", trackingCode: "" });
-  refsNow.current = { orderRefId: marketplace.orderExternalRefId, trackingCode: receiptCode };
+  // The fill is the form's `scanned` action, which reads the LIVE values in the reducer — so this stays an effect about
+  // the FILE: it runs when a file is picked, not on every keystroke in the two fields it may fill. A file that is
+  // replaced or removed before its read answers fills nothing (`cancelled`, and the reducer's own file check).
+  const receiptFile = form.receiptFile;
 
   useEffect(() => {
-    if (!receiptFile) {
-      setScan(null);
-      setFilledFromFile(false);
-      return;
-    }
+    if (!receiptFile) return;
 
     let cancelled = false;
-    // A new file is a new answer: the last file's notice must not stand beside this one while it is read.
-    setScan(null);
-    setFilledFromFile(false);
 
     void scanReceipt(receiptFile).then((found) => {
-      if (cancelled || !found) return;
-
-      setScan(found);
-
-      const filled = applyScan(found, refsNow.current);
-      if (filled.orderRefId !== refsNow.current.orderRefId) {
-        setMarketplace((prev) => ({ ...prev, orderExternalRefId: filled.orderRefId }));
-      }
-      if (filled.trackingCode !== refsNow.current.trackingCode) {
-        setReceiptCode(filled.trackingCode);
-      }
-
-      setFilledFromFile(
-        filled.orderRefId !== refsNow.current.orderRefId ||
-          filled.trackingCode !== refsNow.current.trackingCode,
-      );
+      if (!cancelled && found) dispatch({ type: "scanned", file: receiptFile, found });
     });
 
     return () => {
@@ -530,121 +346,9 @@ export function OrderCreatePage() {
   // cards take a plain bigint because none of them has anything to say about "no team yet".
   const cardTeamId = teamId ?? 0n;
 
-  // The picker hands back the WHOLE ticked set, so this RECONCILES — it does not append (#165).
-  //
-  // A product that is still ticked keeps the line it already had, with the quantity and price typed
-  // into it. Rebuilding the list from the picked set would be shorter to write and would silently
-  // reset every number on screen the next time somebody opened the picker to add one more product.
-  function pickProducts(products: PickedProduct[]) {
-    setLines((prev) => {
-      const ticked = new Set(products.map((p) => p.id.toString()));
-      const kept = prev.filter((l) => ticked.has(l.productId.toString()));
-
-      const known = new Set(kept.map((l) => l.productId.toString()));
-      const added = products.filter((p) => !known.has(p.id.toString())).map(lineFor);
-
-      return [...kept, ...added];
-    });
-  }
-
-  function patchLine(productId: bigint, patch: Partial<LineDraft>) {
-    setLines((prev) => prev.map((l) => (l.productId === productId ? { ...l, ...patch } : l)));
-  }
-
-  // Dropping ONE product without opening the dialog. Unticking it in the picker does the same thing —
-  // they are the same edit, because the picker's ticks are derived from these lines rather than held
-  // separately.
-  function removeLine(productId: bigint) {
-    setLines((prev) => prev.filter((l) => l.productId !== productId));
-  }
-
-  // ── Bundles ───────────────────────────────────────────────────────────────────────────────────
-
-  function addBundle(picked: PickedBundle) {
-    // A key per ADDED bundle: the same bundle can sit on one order twice, at different quantities.
-    setBundles((prev) => [...prev, bundleFor(picked, `${picked.id}-${prev.length + 1}`)]);
-  }
-
-  function setBundleQuantity(key: string, quantity: string) {
-    setBundles((prev) => prev.map((b) => (b.key === key ? { ...b, quantity } : b)));
-  }
-
-  // ── Items or bundles ──────────────────────────────────────────────────────────────────────────
-  //
-  // A switch from an empty card is immediate; from one that holds lines or bundles it waits for the confirm, which then
-  // empties the card being left — an order never carries both (an-order-holds-items-or-bundles).
-  function chooseContents(next: OrderContents) {
-    if (next === contents) return;
-
-    const holding = contents === "items" ? lines.length : bundles.length;
-    if (holding > 0) {
-      setSwitchingTo(next);
-      return;
-    }
-
-    setContents(next);
-  }
-
-  async function confirmSwitch() {
-    if (switchingTo === null) return;
-
-    if (contents === "items") setLines([]);
-    else setBundles([]);
-    setContents(switchingTo);
-    setSwitchingTo(null);
-  }
-
-  function removeBundle(key: string) {
-    setBundles((prev) => prev.filter((b) => b.key !== key));
-  }
-
-  // Filling a slot is the same reconcile as picking lines: the picker's ticked set IS the slot.
-  function fillSlot(key: string, slotId: string, products: PickedProduct[]) {
-    setBundles((prev) =>
-      prev.map((bundle) => {
-        if (bundle.key !== key) return bundle;
-
-        return {
-          ...bundle,
-          slots: bundle.slots.map((slot) => {
-            if (slot.id !== slotId) return slot;
-
-            const ticked = new Set(products.map((p) => p.id.toString()));
-            const kept = slot.fills.filter((f) => ticked.has(f.productId.toString()));
-            const known = new Set(kept.map((f) => f.productId.toString()));
-            const added = products
-              .filter((p) => !known.has(p.id.toString()))
-              .map((p) => fillFor(p, slot.ruleQty));
-
-            return { ...slot, fills: [...kept, ...added] };
-          }),
-        };
-      }),
-    );
-  }
-
-  function setFillQuantity(key: string, slotId: string, productId: bigint, quantity: string) {
-    setBundles((prev) =>
-      prev.map((bundle) =>
-        bundle.key === key
-          ? {
-              ...bundle,
-              slots: bundle.slots.map((slot) =>
-                slot.id === slotId
-                  ? {
-                      ...slot,
-                      fills: slot.fills.map((f) =>
-                        f.productId === productId ? { ...f, quantity } : f,
-                      ),
-                    }
-                  : slot,
-              ),
-            }
-          : bundle,
-      ),
-    );
-  }
-
+  // The lines, the bundles and the items-or-bundles switch are the form's actions (formState.ts): a pick RECONCILES
+  // the ticked set (#165), every added bundle gets its own key, and leaving a card that holds something waits for the
+  // confirm, which empties it (an-order-holds-items-or-bundles).
 
   // ── Who owns what, and what that costs ────────────────────────────────────────────────────────
 
@@ -772,51 +476,8 @@ export function OrderCreatePage() {
 
   // Anything typed at all. Used only to decide whether leaving needs a confirmation — the warehouse is
   // excluded on purpose, because it arrives PRE-FILLED and a page nobody has touched must not claim to
-  // have unsaved work.
-  const workNow = workSignature({
-    customerName,
-    customerPhone,
-    shopId,
-    orderRef: marketplace.orderExternalRefId,
-    shipmentChannelId: shipmentChannelId.toString(),
-    note,
-    receipt: hasReceipt(receipt),
-    address,
-    platformTotal: marketplace.platformTotal,
-    lines,
-    bundles: bundles.length,
-    receiptCode,
-    orderDate,
-    deadline,
-    buyerUsername,
-  });
-  // The preset form's seed, taken on the render after its line went in — what "untouched" means for it.
-  useEffect(() => {
-    if (capturePreset && lines.length > 0) {
-      setSeedSignature(workNow);
-      setCapturePreset(false);
-    }
-  }, [capturePreset, lines.length, workNow]);
-  const dirty =
-    draftMode || presetMode
-    ? seedSignature !== null && workNow !== seedSignature
-    : customerName.trim() !== "" ||
-    customerPhone.trim() !== "" ||
-    shopId > 0n ||
-    marketplace.orderExternalRefId.trim() !== "" ||
-    shipmentChannelId > 0n ||
-    note.trim() !== "" ||
-    hasReceipt(receipt) ||
-    addressTouched(address) ||
-    toRupiah(marketplace.platformTotal) > 0 ||
-    lines.length > 0 ||
-    // The cards that do not submit are still WORK: somebody who typed a deadline and a tracking
-    // number has something to lose, whether or not the server will ever see it.
-    bundles.length > 0 ||
-    receiptCode.trim() !== "" ||
-    orderDate !== "" ||
-    deadline !== "" ||
-    buyerUsername.trim() !== "";
+  // have unsaved work. On a draft or a product page's form it is "changed since it was seeded" (`isDirty`).
+  const dirty = isDirty(form, draftMode || presetMode);
 
   // A half-typed order is real work — several lines, an address, a customer on the phone — and a
   // mis-aimed click on Back or a sidebar link threw all of it away silently. `useBlocker` stops the
@@ -846,7 +507,7 @@ export function OrderCreatePage() {
       return;
     }
 
-    setCheckingRef(true);
+    dispatch({ type: "set", field: "checkingRef", value: true });
     const finding = await findDuplicateRef({
       teamId,
       shopId,
@@ -854,10 +515,10 @@ export function OrderCreatePage() {
       // Only when the draft loaded — the same rule `orderDraftId` is sent by below.
       finalizingDraftId: externalDraft.data ? externalDraftId : 0n,
     });
-    setCheckingRef(false);
+    dispatch({ type: "set", field: "checkingRef", value: false });
 
     if (warns(finding)) {
-      setDuplicate(finding);
+      dispatch({ type: "set", field: "duplicate", value: finding });
       return;
     }
 
@@ -867,7 +528,7 @@ export function OrderCreatePage() {
   // THE SECOND STEP — what the order says about itself. Reached straight from Create when the ref is not recorded, or
   // from the duplicate warning's Create Anyway.
   function runChecks() {
-    setDuplicate(null);
+    dispatch({ type: "set", field: "duplicate", value: null });
 
     const findings = runOrderChecks({
       orderRefId: marketplace.orderExternalRefId,
@@ -880,7 +541,7 @@ export function OrderCreatePage() {
     });
 
     if (findings.length > 0) {
-      setGate(findings);
+      dispatch({ type: "set", field: "gate", value: findings });
       return;
     }
 
@@ -892,12 +553,12 @@ export function OrderCreatePage() {
       return;
     }
 
-    setGate([]);
+    dispatch({ type: "set", field: "gate", value: [] });
     await send(orderRequest(teamId));
   }
 
   // WHAT CREATE SENDS, minus its key — built once per Create and FROZEN in `sent`, so Try Again resends exactly this.
-  function orderRequest(teamId: bigint) {
+  function orderRequest(teamId: bigint): OrderRequest {
     return {
       teamId,
       shopId,
@@ -955,11 +616,8 @@ export function OrderCreatePage() {
   // ONE SEND — Create's, and every Try Again's — of a frozen request, under a key of its own. The form locks first and
   // stays locked until the answer (createAnswer.ts): the order opens it; the SERVER's error gives the form back as
   // typed; no answer keeps it locked on `request` and shows the Try Again panel.
-  async function send(request: SentRequest) {
-    setRetry(null);
-    setError("");
-    setRefusal(null);
-    setSent({ phase: "waiting", request });
+  async function send(request: OrderRequest) {
+    dispatch({ type: "send", request });
 
     // THIS SUBMIT'S OWN KEY (the-frontend-mints-the-idempotency-key, every-submit-mints-a-new-key) — minted HERE, inside
     // every submit, never when the form opens and never reused: a resubmit after an error, a draft's finalize and a
@@ -986,19 +644,14 @@ export function OrderCreatePage() {
 
     if (answer.kind === "none") {
       // NOTHING CAME BACK — the form stays locked on what was sent, and the person decides (Try Again).
-      setSent({ phase: "noAnswer", request });
+      dispatch({ type: "noAnswer", request });
       return;
     }
 
     // THE SERVER ANSWERED: the form is the person's again, exactly as typed. The warehouse refusing the take (short
     // stock, a borrowed product below its reserve) says WHY and names the lines; anything else is a sentence.
-    setSent(null);
     const refused = takeRefusalOf(answer.error);
-    if (refused) {
-      setRefusal(refused);
-    } else {
-      setError(rpcError(answer.error));
-    }
+    dispatch({ type: "answered", refusal: refused ?? null, error: refused ? "" : rpcError(answer.error) });
   }
 
   // TRY AGAIN (a-try-again-always-warns): never sends straight away. It re-runs the duplicate check on the FROZEN shop +
@@ -1008,22 +661,21 @@ export function OrderCreatePage() {
     if (sent?.phase !== "noAnswer" || checkingRef) return;
 
     const { request } = sent;
-    setCheckingRef(true);
+    dispatch({ type: "set", field: "checkingRef", value: true });
     const finding = await findDuplicateRef({
       teamId: request.teamId,
       shopId: request.shopId,
       ref: request.orderExternalRefId,
       finalizingDraftId: request.orderDraftId,
     });
-    setCheckingRef(false);
-    setRetry(finding);
+    dispatch({ type: "set", field: "checkingRef", value: false });
+    dispatch({ type: "set", field: "retry", value: finding });
   }
 
   // GO BACK from Try Again's warning: the form is the person's again — as it was sent — and the next Create is a new
   // submit like any other (its own duplicate check, its own key).
   function goBackFromRetry() {
-    setRetry(null);
-    setSent(null);
+    dispatch({ type: "goBackFromRetry" });
   }
 
   // What a refused line is called on THIS form — the name the person picked it by, else its id.
@@ -1185,7 +837,7 @@ export function OrderCreatePage() {
               Above it, the warehouse would be answered before the reader knew what they were looking
               at. */}
           <Box {...lockFade}>
-            <WarehouseBand value={warehouseId} onChange={setWarehouseId} refusal={feeRefusal} />
+            <WarehouseBand value={warehouseId} onChange={act.warehouseId} refusal={feeRefusal} />
           </Box>
 
       {/* ⚠ `minmax(0, 1fr)` ON A PHONE TOO, not `1fr`. A track's minimum is `auto` — its widest child —
@@ -1207,21 +859,16 @@ export function OrderCreatePage() {
             <ShippingReceiptCard
               teamId={cardTeamId}
               receipt={receipt}
-              onReceiptChange={(next) => {
-                setReceipt(next);
-                // Removed: what the file said leaves with it. (Numbers it already filled stay — they
-                // are in the boxes now, and a person may have checked them against the paper.)
-                if (!hasReceipt(next)) setReceiptFile(null);
-              }}
-              onReceiptFile={setReceiptFile}
+              // Removed: what the file said leaves with it — the form's `receipt` action. (Numbers it already filled
+              // stay — they are in the boxes now, and a person may have checked them against the paper.)
+              onReceiptChange={act.receipt}
+              onReceiptFile={act.receiptFile}
               orderRefId={marketplace.orderExternalRefId}
-              onOrderRefIdChange={(orderExternalRefId) =>
-                setMarketplace({ ...marketplace, orderExternalRefId })
-              }
+              onOrderRefIdChange={act.orderRef}
               trackingCode={receiptCode}
-              onTrackingCodeChange={setReceiptCode}
+              onTrackingCodeChange={act.receiptCode}
               shipmentChannelId={shipmentChannelId}
-              onShipmentChannelChange={setShipmentChannelId}
+              onShipmentChannelChange={act.shipmentChannelId}
               courierRequired
               filledFromFile={filledFromFile}
               scanResult={scan?.result}
@@ -1247,7 +894,7 @@ export function OrderCreatePage() {
                     <MarketplaceInfoForm
                       teamId={cardTeamId}
                       value={marketplace}
-                      onChange={setMarketplace}
+                      onChange={act.marketplace}
                       required
                       hideTotal
                       hideOrderRef
@@ -1268,7 +915,7 @@ export function OrderCreatePage() {
                           variant="outline"
                           data-testid="order-marketplace-suggestion-apply"
                           onClick={() =>
-                            setMarketplace({ ...marketplace, marketplace: suggestedMarketplace })
+                            dispatch({ type: "marketplacePatch", patch: { marketplace: suggestedMarketplace } })
                           }
                         >
                           {t("orderForm.source.useIt", { name: marketplaceLabel(suggestedMarketplace) })}
@@ -1292,9 +939,7 @@ export function OrderCreatePage() {
                         fraction
                         value={marketplace.platformTotal}
                         data-testid="order-marketplace-total"
-                        onChange={(platformTotal) =>
-                          setMarketplace({ ...marketplace, platformTotal })
-                        }
+                        onChange={act.sellPrice}
                       />
                       <Field.HelperText>{t("orderForm.source.sellPriceHelp")}</Field.HelperText>
                     </Field.Root>
@@ -1326,7 +971,7 @@ export function OrderCreatePage() {
                           reached yet. */}
                       <DatePicker
                         value={orderDate}
-                        onChange={setOrderDate}
+                        onChange={act.orderDate}
                         withTime
                         clearable
                         max={todayDateInput()}
@@ -1352,7 +997,7 @@ export function OrderCreatePage() {
               </Text>
               <RadioPills
                 value={contents}
-                onChange={chooseContents}
+                onChange={act.chooseContents}
                 ariaLabel={t("orderForm.contents.label")}
                 testId="order-contents"
                 options={[
@@ -1370,9 +1015,9 @@ export function OrderCreatePage() {
                 stock={stock}
                 costs={costs}
                 busy={quoteBusy}
-                onPick={pickProducts}
-                onPatch={patchLine}
-                onRemove={removeLine}
+                onPick={act.pickProducts}
+                onPatch={act.patchLine}
+                onRemove={act.removeLine}
               />
             ) : (
               /* THE SAME QUESTION ASKED IN BUNDLES. Its own card: a bundle's slots are edited against a ceiling, and
@@ -1383,11 +1028,11 @@ export function OrderCreatePage() {
                 bundles={bundles}
                 stock={stock}
                 costs={costs}
-                onAdd={addBundle}
-                onQuantity={setBundleQuantity}
-                onRemove={removeBundle}
-                onFill={fillSlot}
-                onFillQuantity={setFillQuantity}
+                onAdd={act.addBundle}
+                onQuantity={act.bundleQuantity}
+                onRemove={act.removeBundle}
+                onFill={act.fillSlot}
+                onFillQuantity={act.fillQuantity}
               />
             )}
 
@@ -1409,11 +1054,11 @@ export function OrderCreatePage() {
                 goes. */}
             <CustomerInfoForm
               customerName={customerName}
-              onCustomerNameChange={setCustomerName}
+              onCustomerNameChange={act.customerName}
               customerPhone={customerPhone}
-              onCustomerPhoneChange={setCustomerPhone}
+              onCustomerPhoneChange={act.customerPhone}
               address={address}
-              onAddressChange={setAddress}
+              onAddressChange={act.address}
               // A DRAFT'S ADDRESS AS THE MARKETPLACE WROTE IT (the-cs-edits-the-whole-address-before-create), read beside
               // the editable picker — every part of which the person may change before Create.
               addressHint={draft ? <DraftAddressText address={draft.address} /> : undefined}
@@ -1425,9 +1070,9 @@ export function OrderCreatePage() {
 
             <ExtraInfoCard
               deadline={deadline}
-              onDeadlineChange={setDeadline}
+              onDeadlineChange={act.deadline}
               buyerUsername={buyerUsername}
-              onBuyerUsernameChange={setBuyerUsername}
+              onBuyerUsernameChange={act.buyerUsername}
             />
           </Stack>
         </GridItem>
@@ -1487,7 +1132,7 @@ export function OrderCreatePage() {
                 may-I-owe → is-it-worth-it → what-does-it-come-to, and this is what follows. */}
             <NoteAndSubmitCard
               note={note}
-              onNoteChange={setNote}
+              onNoteChange={act.note}
               unmappedReturns={unmappedReturns}
               compact={compact}
               saving={saving || checkingRef}
@@ -1506,7 +1151,7 @@ export function OrderCreatePage() {
         finding={duplicate}
         selfUserId={identity?.identityId}
         placing={saving}
-        onGoBack={() => setDuplicate(null)}
+        onGoBack={() => dispatch({ type: "set", field: "duplicate", value: null })}
         onCreateAnyway={runChecks}
       />
 
@@ -1518,7 +1163,7 @@ export function OrderCreatePage() {
         selfUserId={identity?.identityId}
         placing={saving}
         onGoBack={goBackFromRetry}
-        onDismiss={() => setRetry(null)}
+        onDismiss={() => dispatch({ type: "set", field: "retry", value: null })}
         onCreateAnyway={() => {
           if (sent) void send(sent.request);
         }}
@@ -1528,7 +1173,7 @@ export function OrderCreatePage() {
       <OrderChecksDialog
         findings={gate}
         placing={saving}
-        onClose={() => setGate([])}
+        onClose={() => dispatch({ type: "set", field: "gate", value: [] })}
         onPlaceAnyway={() => void place()}
       />
 
@@ -1536,7 +1181,7 @@ export function OrderCreatePage() {
       <ConfirmDialog
         open={switchingTo !== null}
         onOpenChange={(open) => {
-          if (!open) setSwitchingTo(null);
+          if (!open) act.cancelSwitch();
         }}
         title={t(switchingTo === "bundles" ? "orderForm.contents.toBundlesTitle" : "orderForm.contents.toItemsTitle")}
         message={
@@ -1545,7 +1190,7 @@ export function OrderCreatePage() {
             : t("orderForm.contents.dropBundles", { count: bundles.length })
         }
         confirmLabel={t("orderForm.contents.switch")}
-        onConfirm={confirmSwitch}
+        onConfirm={act.confirmSwitch}
       />
 
       <ConfirmDialog

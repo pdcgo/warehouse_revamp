@@ -31,12 +31,16 @@ import { useRestockTags } from "../../features/restock/tagQueries";
 import { type RestockSectionKey, restockSection, restockSectionDomId } from "../../features/restock/sections";
 import { SIDE_COLUMN, useSideBySide } from "../../components/chrome/sideBySide";
 import { ProductsPanel } from "./components/ProductsPanel";
+// Backlog #101 — a problem or lost restock's Resolusi (the-restock-resolutions-prototype-is-accepted).
+import { ResolutionSection } from "../../features/restockResolution/ResolutionSection";
+import { settlementOf, takesResolutions } from "../../features/restockResolution/resolutions";
 import { RESTOCK_SELLING_DETAIL_PENDING } from "./pending";
 
 // The page's sections in its own order (owner: *"kurasa selling juga sama, infonya di atas ongkir berarti"*,
 // the-restock-page-leads-with-the-box): the box, then the info about it — Kiriman over the money.
 // "tags" (#87) — under the money on the right, before the note below.
-const SELLING_ORDER: RestockSectionKey[] = ["products", "delivery", "payment", "courier", "tags", "note", "timeline"];
+// "resolutions" (#101) — under the products, whose problem it settles; on a problem or lost restock only.
+const SELLING_ORDER: RestockSectionKey[] = ["products", "resolutions", "delivery", "payment", "courier", "tags", "note", "timeline"];
 
 // THE PRODUCTS CARD AT ITS NARROWEST — the warehouse page's rule (owner: *"A"*, the-delivery-card-stacks-when-the-page-is-
 // narrow) applied to its twin, which had the same fault: the lines table's min-content, 779px on 503 counted in (the
@@ -111,7 +115,13 @@ export function RestockSellingDetailPage() {
   const chargeNoted = request !== null && !accepted && courierCharge(request) > 0;
   // THE TAGS (backlog #87) — read and changed through the live RPCs (tagQueries.ts).
   const tagsApi = useRestockTags();
-  const keys = SELLING_ORDER.filter((key) => key !== "courier" || accepted || chargeNoted);
+  // #101: the Resolusi section on a problem (Diterima with problem counts) or lost restock — settled ones included, which
+  // keep taking rows (🔄 A); the settled mark from the restock's own read.
+  const resolves = request !== null && takesResolutions(request);
+  const settled = request !== null && settlementOf(request) !== undefined;
+  const keys = SELLING_ORDER.filter(
+    (key) => (key !== "courier" || accepted || chargeNoted) && (key !== "resolutions" || resolves),
+  );
   // The info and money column only where the PAGE AREA holds it beside the products (the-delivery-card-stacks-when-the-
   // page-is-narrow) — measured on the main column before the first paint, never the viewport's `xl`, which ignores the
   // sidebar: at 1440 and 1600 with the sidebar open the products table scrolled sideways beside it.
@@ -190,6 +200,12 @@ export function RestockSellingDetailPage() {
               {t("restock.detail.missingBadge", { count: Number(missing) })}
             </Badge>
           )}
+          {/* #101 — marked settled by the selling team. */}
+          {settled && (
+            <Badge colorPalette="success" flexShrink={0} data-testid={stuck ? undefined : "restock-detail-settled"}>
+              {t("restockResolution.settledBadge")}
+            </Badge>
+          )}
         </>
       }
       actions={
@@ -265,6 +281,9 @@ export function RestockSellingDetailPage() {
   );
   // THE RESTOCK'S TAGS (#87): one set, the warehouse's screen reads the same (custom-tags-are-shared-system-tags-are-the-
   // admins-and-the-apps). Under the money on the right where there is room, else before the note.
+  // #101 — the resolution rows, Catat Resolusi and Tandai Selesai.
+  const resolutions =
+    resolves && section("resolutions", <ResolutionSection request={request} teamId={teamId} />, "restock-detail-resolutions-section");
   const tags = section(
     "tags",
     <RestockTagsBox requestId={request.id} tags={tagsOfRequest(request)} api={tagsApi} />,
@@ -326,6 +345,7 @@ export function RestockSellingDetailPage() {
           <Grid templateColumns={wide ? `minmax(0, 1fr) ${SIDE_COLUMN}` : "minmax(0, 1fr)"} gap="section" alignItems="start" minW="0">
             <Stack gap="section" minW="0">
               {products}
+              {resolutions}
               {!wide && delivery}
               {!wide && payment}
               {!wide && courier}

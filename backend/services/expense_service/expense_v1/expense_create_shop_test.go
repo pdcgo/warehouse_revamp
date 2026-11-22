@@ -23,7 +23,7 @@ import (
 
 func adsOn(shopID uint64) *connect.Request[expensev1.ExpenseCreateRequest] {
 	return connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Amount: 250_000, OccurredAt: "2026-11-18",
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_ADS), Amount: 250_000, OccurredAt: "2026-11-18",
 		ShopId: shopID, FinanceAccountId: payingAccount,
 	})
 }
@@ -108,7 +108,7 @@ func TestExpenseCreate_NoShopAsksNothing(t *testing.T) {
 
 	for _, s := range []*expense_v1.Service{svc, counting} {
 		res, err := s.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Amount: 1_000_000, OccurredAt: "2026-11-18",
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_PAYROLL), Amount: 1_000_000, OccurredAt: "2026-11-18",
 			FinanceAccountId: payingAccount,
 		}))
 		if err != nil {

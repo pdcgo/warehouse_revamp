@@ -33,6 +33,8 @@ type entry struct {
 	isOverride       bool
 	groupID          uint64
 	counterAccountID uint64
+	// The expense a row of the expense listener was posted from; 0 for every other row.
+	expenseID uint64
 }
 
 // lockAccounts loads the team's accounts FOR UPDATE, in id order. Another team's account, or one that does
@@ -102,6 +104,7 @@ func post(tx *gorm.DB, account *m.FinancialAccount, e entry) (m.FinancialAccount
 		OccurredAt:       e.occurredAt,
 		GroupID:          e.groupID,
 		CounterAccountID: e.counterAccountID,
+		ExpenseID:        e.expenseID,
 	}
 
 	err := tx.Create(&row).Error

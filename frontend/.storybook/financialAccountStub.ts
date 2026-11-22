@@ -65,6 +65,8 @@ type StubLog = {
   counterAccountId: bigint;
   /** Root or the System Administrator moved it from outside the team (`is_override`); absent reads false. */
   isOverride?: boolean;
+  /** The expense the row was posted from (`expense_id` — the history's *dari Biaya #N*); absent reads 0. */
+  expenseId?: bigint;
 };
 
 // The signed-in person every hand row is recorded under — the stub's CheckAccess answers Ani.
@@ -165,15 +167,50 @@ export function accountLogByForStory(logId: bigint, actorId: bigint, isOverride:
 }
 
 /**
- * A STORY'S SETUP: one more row on an account's book, as the server would post it — the #99 expense-types prototype's
- * capital rows (a Prive typed on Pengeluaran, a Setor Modal made on the account page). Returns its id.
+ * A STORY'S SETUP: one more row on an account's book, as the server would post it — a row the expense listener posted
+ * from a Biaya record (`expenseId`, the history's *dari Biaya #N*: a Prive typed on Pengeluaran is a `capital` row, money
+ * in a `money_in` one) or a Setor Modal made on the account page (`expenseId` 0). Returns its id.
  * `resetFinancialAccounts` (preview's beforeEach) drops it.
  */
-export function postLogForStory(accountId: bigint, changeType: T, change: number, description: string, occurredOn: string): bigint {
+export function postLogForStory(
+  accountId: bigint,
+  changeType: T,
+  change: number,
+  description: string,
+  occurredOn: string,
+  expenseId = 0n,
+): bigint {
   const a = accounts.find((x) => x.id === accountId);
   if (!a) throw new Error(`no account ${accountId} in the stub`);
 
-  return post(a, changeType, change, description, occurredOn).id;
+  const row = post(a, changeType, change, description, occurredOn);
+  row.expenseId = expenseId;
+
+  return row.id;
+}
+
+/**
+ * CAPITAL'S SECOND DOOR (prive-and-deposit-on-pengeluaran-are-the-accounts-capital): a Setor / Tarik Modal made on the
+ * account page is told on — the server publishes FinancialAccountCapitalRecorded for every team, and expense_service
+ * records a SELLING team's as Biaya's Setoran modal / Prive. The expense stub listens (expenseStub.ts registers at load,
+ * as the real listener subscribes), so a story walks from the account page to Biaya on the same act.
+ */
+export interface CapitalRecordedForStory {
+  logId: bigint;
+  teamId: bigint;
+  accountId: bigint;
+  /** Signed as the row's change: plus put in, minus taken out. */
+  change: number;
+  occurredOn: string;
+  note: string;
+  actorId: bigint;
+}
+
+const capitalListeners: ((act: CapitalRecordedForStory) => void)[] = [];
+
+/** The expense stub's subscription — once, at module load. */
+export function onCapitalRecordedForStory(listener: (act: CapitalRecordedForStory) => void) {
+  capitalListeners.push(listener);
 }
 
 /**
@@ -248,6 +285,7 @@ function wireLog(l: StubLog) {
     groupId: l.groupId,
     counterAccountId: l.counterAccountId,
     isOverride: l.isOverride ?? false,
+    expenseId: l.expenseId ?? 0n,
   };
 }
 
@@ -653,6 +691,19 @@ export const financialAccountService: Partial<ServiceImpl<typeof FinancialAccoun
       req.occurredOn,
     );
 
+    // After the row: the broker hears it (financial_account_v1/capital_recorded.go) — every team's.
+    for (const listener of capitalListeners) {
+      listener({
+        logId: row.id,
+        teamId: row.teamId,
+        accountId: row.accountId,
+        change: row.change,
+        occurredOn: row.occurredOn,
+        note,
+        actorId: row.actorId,
+      });
+    }
+
     return { log: wireLog(row) };
   },
 
@@ -736,6 +787,7 @@ const CHANGE_FIELD: Record<number, string> = {
   [T.TRANSFER]: "transfer",
   [T.TEAM_PAYMENT]: "teamPayment",
   [T.CAPITAL]: "capital",
+  [T.MONEY_IN]: "moneyIn",
 };
 
 /** One key's figures — the AccountChangeMetric's fields by their JS names. */

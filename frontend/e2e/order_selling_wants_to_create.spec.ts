@@ -41,6 +41,9 @@ import { listLanded, pickTeam } from "./pickers";
 //   Rp 2.000. Read as the role that ordered, except selling:cs, which liability does not serve — read as selling:owner.
 // - `sale recorded in order settlement` — the order's Settlement section reads the Rp 100.000 the marketplace paid.
 // - `order recorded in analytic metric` — Analytic › Orders created, last 7 days, by shop, filtered to the role's shop: 1.
+// - `warehouse fee recorded in analytic metric` — (typed in, own product: the one given that names it) Analytic,
+//   Warehouse Fee, last 7 days, by shop, filtered to the role's shop: 1 fee transaction of Rp 2.000, read as the role
+//   that ordered (the-warehouse-fee-prototype-is-accepted — the fee frozen on the order, on its placement day).
 // - `recorded at 1 supplier` — the supplier's Statistics by product, the product's row: 2 sold for Rp 100.000.
 // The figures that land on a fold or a listener (liability, settlement, analytic, supplier) are re-read until they do.
 //
@@ -605,6 +608,19 @@ test.describe("selling:all wants to create an order", () => {
             })
             .toPass({ timeout: 30_000 });
         });
+
+        // Only the (typed in, own product) given names this then.
+        if (c.key === "ty") {
+          await test.step("then: warehouse fee recorded in analytic metric", async () => {
+            await expect
+              .soft(async () => {
+                await page.goto(`/analytic?g=shop&m=metrics/warehouse_fee&r=7d&shop=${shop}`);
+                await expect(page.getByTestId(`analytic-cell-${shop}-transaction_count`)).toHaveText("1", { timeout: 3_000 });
+                await expect(page.getByTestId(`analytic-cell-${shop}-amount`)).toHaveText(m.fee, { timeout: 3_000 });
+              })
+              .toPass({ timeout: 30_000 });
+          });
+        }
 
         await test.step("then: recorded at 1 supplier", async () => {
           await expect

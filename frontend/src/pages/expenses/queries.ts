@@ -8,6 +8,7 @@ import {
   type ExpenseListResponseItem,
   type ExpenseKind,
   type ExpenseRecord,
+  type ExpenseType,
   ExpenseRecordSchema,
   type ExpenseRowItem,
 } from "../../gen/warehouse/expense/v1/expense_pb";
@@ -43,6 +44,10 @@ function expensesFromList(items: ExpenseListResponseItem[], ids: bigint[]): Expe
           netAmount: r.netAmount,
           financeAccountId: r.financeAccountId,
           isOverride: r.isOverride,
+          // Group › Type on the row (expense-types-sit-under-groups); UNSPECIFIED on a row from before the types.
+          type: r.type,
+          // The door — ACCOUNT_PAGE for a Setor / Tarik Modal made on the account page (*Dicatat di halaman akun*).
+          origin: r.origin,
         }),
       );
     }
@@ -58,6 +63,8 @@ interface ExpenseListArgs {
   teamId: bigint | undefined;
   month: string;
   kind: ExpenseKind;
+  /** One type of the group, or UNSPECIFIED for the whole group (expense-types-sit-under-groups). */
+  type: ExpenseType;
   page: number;
   pageSize: number;
 }
@@ -67,18 +74,18 @@ interface ExpenseListArgs {
 // `enabled` replaces the old `if (teamId === undefined) return` guard at the top of the loader: the
 // team is not known on first paint (TeamProvider is still resolving memberships), and firing an
 // unscoped request in that window would be rejected by the interceptor anyway.
-export function useExpenses({ teamId, month, kind, page, pageSize }: ExpenseListArgs) {
+export function useExpenses({ teamId, month, kind, type, page, pageSize }: ExpenseListArgs) {
   return useQuery({
     // The team is IN the key, and it is not optional — see api/queryClient.ts. Same filters, two
     // teams, two different answers.
-    queryKey: key.expenses(teamId, { month, kind, page, pageSize }),
+    queryKey: key.expenses(teamId, { month, kind, type, page, pageSize }),
     enabled: teamId !== undefined,
     queryFn: async () => {
       const { from, to } = monthRange(month);
 
       const res = await expenseClient.expenseList({
         teamId: teamId!,
-        filter: { from, to, kind },
+        filter: { from, to, kind, type },
         dataRequest: [ExpenseListDataType.EXPENSE],
         page: { page, limit: pageSize },
       });
@@ -124,7 +131,10 @@ export function useInvalidateExpenses() {
 
 interface SaveExpenseVars {
   teamId: bigint;
+  /** The type's group — sent beside the type, which decides it (expense-types-sit-under-groups). */
   kind: ExpenseKind;
+  /** Required — it decides the group, the direction and the account's change type. */
+  type: ExpenseType;
   amount: number;
   occurredAt: string;
   shopId: bigint;

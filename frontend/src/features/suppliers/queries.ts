@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supplierChannelClient, supplierClient } from "../../api/clients";
-import { key, listQuery } from "../../api/queryClient";
+import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { SortState } from "../../components/chrome/SortableHeader";
 import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
 import { SupplierListScope, SupplierRowSort } from "../../gen/warehouse/supplier/v1/supplier_pb";
@@ -21,6 +21,7 @@ import {
   supplierByIdsRowData,
   supplierChannelRowData,
   supplierChannelsFromList,
+  supplierListRowData,
   supplierListWithChannelsData,
 } from "./adapt";
 import { figureBand } from "./figureRanges";
@@ -115,6 +116,38 @@ export function useSuppliers(args: {
       }));
 
       return { suppliers, totalItems: Number(res.pageInfo?.totalItems ?? 0n) };
+    },
+  });
+}
+
+// How many suppliers the PICKER loads. A team buys from a handful — dozens at most — so the whole list is fetched and
+// filtered in the browser. Said plainly because it IS a cap: a team with more suppliers than this would find the surplus
+// silently unselectable. The fix that day is SupplierList's `q` driving a server-side search — not today's trade,
+// because a server-side search starts empty and the supplier an edit form holds would not be in it to resolve
+// (SupplierSelect's remount note).
+export const SUPPLIER_OPTIONS_LIMIT = 200;
+
+// THE PICKER FEED — SupplierSelect's options (#121): this team's OWN live suppliers, whole, by name. Another team's are
+// Discover's question; a deleted one is never offered (a-deleted-supplier-is-kept-for-its-figures — SupplierList leaves
+// it out). `referenceQuery` (HARD RULE 10's one buy-out, by name): it is read to choose a supplier, not worked from, and
+// the picker mounts on every restock form. Under the team's `suppliers` prefix, so a supplier added, renamed or deleted
+// on My Supplier (useInvalidateSuppliers) is in — or out of — every picker straight away.
+export function useSupplierOptions(args: { teamId: bigint }) {
+  const { teamId } = args;
+
+  return useQuery({
+    ...referenceQuery,
+    queryKey: key.suppliers(teamId, { options: true }),
+    enabled: teamId > 0n,
+    queryFn: async () => {
+      const res = await supplierClient.supplierList({
+        teamId,
+        filter: { scope: SupplierListScope.OWN },
+        dataRequest: supplierListRowData(),
+        page: { page: 1, limit: SUPPLIER_OPTIONS_LIMIT },
+      });
+
+      return suppliersFromList(res.items, res.ids);
     },
   });
 }
@@ -273,8 +306,8 @@ export function useInvalidateSuppliers() {
 //
 //   - A RestockRequest stores `supplier_id` alone (restock_request.proto) — no denormalised name — so
 //     renaming a supplier cannot stale a cached restock row.
-//   - SupplierSelect, which shows a supplier's name outside this domain, fetches it itself in an
-//     effect and holds no query cache entry, so there is nothing there to invalidate.
+//   - SupplierSelect, which shows a supplier's name outside this domain, reads `useSupplierOptions` above (#121) —
+//     under this same `suppliers` prefix, so a supplier added, renamed or deleted reaches every picker already open.
 //   - The restock screens DO cache one, but through `useSuppliersByIds` above — so it sits under this
 //     same `suppliers` prefix and a rename already reaches it.
 //

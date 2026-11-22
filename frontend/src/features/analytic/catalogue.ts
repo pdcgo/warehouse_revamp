@@ -33,6 +33,7 @@ import {
   InventoryTransferMetricSchema,
 } from "../../gen/warehouse/inventory/v1/inventory_analytic_pb";
 import { AdsExpenseMetricSchema, ExpensesMetricSchema } from "../../gen/warehouse/expense/v1/expense_analytic_pb";
+import { EXPENSE_TYPES, type ExpenseTypeDef } from "../expense/expenseTypes";
 
 // THE METRIC CATALOGUE. Every metric is SERVED and read off its generated descriptor with `getOption` — its id, its
 // filters, its groups, its fields' kinds and which can sort — so the screen states nothing the proto already does: the
@@ -313,12 +314,32 @@ export const INVENTORY_METRICS: MetricDef[] = [
 ];
 
 /**
+ * THE THREE #99 SUMMARIES expense_service still serves on Expenses — money in, capital out (Prive), capital in (Setoran
+ * modal), each positive — which the screen does NOT offer (the-expense-metric-shows-each-type-not-the-three-summaries):
+ * the 18 type fields and the total say the same money once, and Setoran modal would read twice in Indonesian. The proto
+ * keeps them, so nothing on the wire changes; the catalogue leaves them out, and with them every headline card, column,
+ * graph line and sort — a link sorted by one opens on the default sort (parseSort finds no such field). Finance's Account
+ * changes keeps its own `money_in`: another metric, another field.
+ */
+export const EXPENSE_SUMMARIES_NOT_SHOWN: string[] = ["money_in", "capital_out", "capital_in"];
+
+/**
+ * Expenses AS EXPENSE_SERVICE SERVES IT — every field of its message, the three summaries included. The screen never
+ * offers it (EXPENSE_METRICS[1] is); the Storybook stub answers the wire with it, as expense_service does.
+ */
+export const EXPENSES_AS_SERVED: MetricDef = servedMetric(ExpensesMetricSchema, "expenses", "expense", "expense");
+
+/**
  * THE EXPENSE METRICS, served by expense_service (the-expense-prototype-is-accepted) from its own records, written in the
  * expense's transaction (expense-figures-are-read-from-its-own-records):
  *   Ads expense — `metrics/ads`, `amount`: the typed ads; filters team, shop, user, date range; groups shop, seller,
  *     warehouse, created by, time (expense-has-ads-and-expenses).
- *   Expenses — `metrics/expenses`: one money field per TYPED kind (Ads, Payroll, Operational, Other) and their total; no
- *     Stock loss (stock-loss-stays-out-of-analytic-expenses); the same filters and groups without shop.
+ *   Expenses — `metrics/expenses`: one money field per TYPED kind (Ads, Payroll, Operational, Other — each group's
+ *     spending), the month total as Biaya's moves (spending − money in + Prive − Setoran modal) and ONE FIELD PER
+ *     EXPENSE TYPE (EXPENSE_TYPE_FIELDS — backlog #107, acceptance analytic/expense_metric.md givens 6–22), each
+ *     labelled with Biaya's own words for the type — 23 figures; no Stock loss (stock-loss-stays-out-of-analytic-
+ *     expenses); the same filters and groups without shop. The three #99 summaries its message also carries are not
+ *     offered (EXPENSE_SUMMARIES_NOT_SHOWN).
  * A correction counts on the day it is MADE and for the person who MADE it (an-expense-correction-counts-on-the-day-it-
  * is-made, an-expense-correction-counts-for-who-made-it); a selling team's expense sits under Seller, a warehouse team's
  * under Warehouse; every member reads its own team's, root every team's. Grouped by Seller or Warehouse the headline
@@ -326,7 +347,7 @@ export const INVENTORY_METRICS: MetricDef[] = [
  */
 export const EXPENSE_METRICS: MetricDef[] = [
   servedMetric(AdsExpenseMetricSchema, "ads", "expense", "expense"),
-  servedMetric(ExpensesMetricSchema, "expenses", "expense", "expense"),
+  { ...EXPENSES_AS_SERVED, fields: EXPENSES_AS_SERVED.fields.filter((f) => !EXPENSE_SUMMARIES_NOT_SHOWN.includes(f.name)) },
 ];
 
 /**
@@ -358,11 +379,30 @@ export const METRICS: MetricDef[] = [
 ];
 
 /**
- * The expense kinds a person TYPES, as Expenses' fields, in `ExpenseKind`'s order (ADS 1 … OTHER 4) — read off the
- * message: every field but the total. STOCK_LOSS (5) is not one of them: a loss is read as Lost stock and as Team
- * Balance, never here (stock-loss-stays-out-of-analytic-expenses).
+ * The expense kinds a person TYPES, as Expenses' fields, in `ExpenseKind`'s order (ADS 1 … OTHER 4) — each group's
+ * SPENDING. STOCK_LOSS (5) is not one of them: a loss is read as Lost stock and as Team Balance, never here
+ * (stock-loss-stays-out-of-analytic-expenses). Money in, Prive and Setoran modal are never in a group's spending — but in
+ * `total`, which moves as Biaya's *Total bulan ini*: Prive raises it, Setoran modal and money in lower it
+ * (the-expense-types-prototype-is-accepted; backlog #107), each read on screen through its TYPE field (the #99 summaries
+ * are not offered — EXPENSE_SUMMARIES_NOT_SHOWN). With only money-out rows, `total` is the four kinds' sum.
  */
-export const EXPENSE_KIND_FIELDS: string[] = EXPENSE_METRICS[1]!.fields.map((f) => f.name).filter((name) => name !== "total");
+export const EXPENSE_KIND_FIELDS: string[] = ["ads", "payroll", "operational", "other"];
+
+/** A type's field name — its words' key in snake case: `bankFee` → `bank_fee` (expense_analytic.proto, 8 + its number). */
+const typeFieldOf = (def: ExpenseTypeDef) => def.key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+
+/**
+ * EXPENSES' TYPE FIELDS — one per expense type, after the total, in the types' order (backlog #107;
+ * expense-types-sit-under-groups): each the type's rows' net, signed by its direction as Biaya's month card shows it —
+ * money in (Piutang luar diterima, Setoran modal, Uang masuk lain) minus — so the type fields and the rows from before
+ * the types (in their group only) add up to `total`.
+ */
+export const EXPENSE_TYPE_FIELDS: string[] = EXPENSE_TYPES.map(typeFieldOf);
+
+/** The expense type an Expenses field is, or undefined for a kind or the total. */
+export function expenseTypeOfField(name: string): ExpenseTypeDef | undefined {
+  return EXPENSE_TYPES.find((d) => typeFieldOf(d) === name);
+}
 
 /**
  * ⚠ PROTOTYPES — metrics drawn for the owner's design accept, in Storybook only. They never reach the live screen: only a

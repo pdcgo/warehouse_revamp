@@ -93,9 +93,12 @@ func (s *Service) ExpenseAdjust(
 		}
 
 		adjustment = expense_service_models.ExpenseRecord{
-			TeamID:           expense.TeamID,
-			ShopID:           expense.ShopID,
-			Kind:             expense.Kind,
+			TeamID: expense.TeamID,
+			ShopID: expense.ShopID,
+			Kind:   expense.Kind,
+			// The expense's type, copied — a type's total and the account's change type take the correction where the
+			// mistake is.
+			Type:             expense.Type,
 			Amount:           amount,
 			OccurredAt:       expense.OccurredAt,
 			Note:             msg.GetNote(),

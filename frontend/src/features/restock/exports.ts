@@ -1,5 +1,6 @@
 import { restockClient } from "../../api/clients";
 import type { RestockDateField, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import type { RestockSettledFilter } from "../../gen/warehouse/inventory/v1/restock_resolution_pb";
 import { useFileExport } from "../../lib/useFileExport";
 
 // THE SELLING RESTOCK LIST AS A FILE (the-restock-list-exports-and-filters-by-courier, on one-export-is-the-list-as-a-file
@@ -22,6 +23,8 @@ export interface RestockExportFilter {
   q: string;
   /** Empty = any tag; else ANY of them — the list's Tag filter (#87). */
   tagIds: bigint[];
+  /** The Hilang tab's UNSETTLED (backlog #101) — the file holds what the tab holds. */
+  settled: RestockSettledFilter;
 }
 
 export function useRestockExport(teamId: bigint | undefined) {

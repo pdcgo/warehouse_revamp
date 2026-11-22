@@ -71,13 +71,17 @@ import { RowActions } from "./components/RowActions";
 import { StepBackDialog } from "./components/StepBackDialog";
 import { HandoverScanDialog } from "./components/HandoverScanDialog";
 import { FindParcelDialog } from "./components/FindParcelDialog";
-import { ReceiveReturnDialog } from "./components/ReceiveReturnDialog";
+import { ReceiveReturnDialog } from "../../features/orders/ReceiveReturnDialog";
 import { ScanLabelDialog } from "./components/ScanLabelDialog";
 import { printReceiptsPath } from "../print-receipts/path";
 import { WarehouseStatusBadge } from "./components/WarehouseStatusBadge";
 // CETAK ULANG LABEL (a-changed-label-asks-the-warehouse-to-reprint): the badge beside the status, the phone block's line
 // and the *Perlu cetak ulang* filter — drawn from the server's `reprint_label` (the-reprint-label-prototype-is-accepted).
 import { ReprintLabelBlockLine, ReprintLabelFilter, StatusWithReprint } from "../../features/orders/ReprintLabel";
+import { RestockTagChips } from "../../features/restock/RestockTagChips";
+import { OrderTagFilter } from "../../features/orders/tags/OrderTagFilter";
+import { NO_TAGS, TAGS_CODEC, tagsOfOrder } from "../../features/orders/tags/orderTags";
+import { NO_ORDER_TAGS, useOrderTagCatalogue } from "../../features/orders/tags/tagQueries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -130,6 +134,10 @@ export function PickQueuePage() {
   // PERLU CETAK ULANG (the-reprint-label-prototype-is-accepted): only the orders marked Cetak ulang label — on the server,
   // so the tab counts follow it; `?reprint=1` in the address like every filter here.
   const [reprint, setReprint] = useUrlState("reprint", false, boolCodec);
+  // ORDER TAGS (backlog #100, the-order-tags-prototype-is-accepted): the warehouse sees and filters the same tags the
+  // selling team does — the order's own — several at once, an order shown when it carries ANY; on the server
+  // (`tag_ids`), so the tab counts and Ekspor follow; `?tag=1,2` in the address like every filter here.
+  const [tagIds, setTagIds] = useUrlState("tag", NO_TAGS, TAGS_CODEC);
 
   // ── THE WORKBENCH (`a-warehouse-step-moves-by-the-old-systems-table`, `scanning-is-the-crews-hands`) ──
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -146,6 +154,8 @@ export function PickQueuePage() {
   // The warehouse's Owner, Admin and Staff move orders and receive returns; a monitoring team reads only
   // (the-admin-team-monitors-read-only). Printing and exporting are reads, so they stay.
   const mayWrite = canWrite(current);
+  // The Tag filter's options — the orders' one list, every team's (OrderTagList, a picker feed).
+  const tagCatalogue = useOrderTagCatalogue(current?.teamId).data ?? NO_ORDER_TAGS;
 
   const debouncedSearch = useDebounced(search.trim());
   const filters: OrderFilters = useMemo(() => {
@@ -159,8 +169,9 @@ export function PickQueuePage() {
       marketplace,
       shipmentChannelId: courier,
       reprintLabel: reprint,
+      tagIds,
     };
-  }, [debouncedSearch, range, sellerId, marketplace, courier, reprint]);
+  }, [debouncedSearch, range, sellerId, marketplace, courier, reprint, tagIds]);
   const filterCount = [
     search.trim() !== "",
     !isAllDates(range),
@@ -168,6 +179,7 @@ export function PickQueuePage() {
     marketplace !== Marketplace.UNSPECIFIED,
     courier > 0n,
     reprint,
+    tagIds.length > 0,
   ].filter(Boolean).length;
   const filtered = filterCount > 0;
 
@@ -309,6 +321,7 @@ export function PickQueuePage() {
       setMarketplace(Marketplace.UNSPECIFIED);
       setCourier(0n);
       setReprint(false);
+      setTagIds(NO_TAGS);
     });
   }
 
@@ -454,6 +467,11 @@ export function PickQueuePage() {
           />
         </FilterField>
 
+        {/* THE TAG FILTER, beside the courier's (as on the seller's restock list). */}
+        <FilterField w="15rem" testId="warehouse-orders-tag-filter">
+          <OrderTagFilter tags={tagCatalogue} value={tagIds} onChange={(ids) => refilter(() => setTagIds(ids))} />
+        </FilterField>
+
         <ReprintLabelFilter checked={reprint} onChange={(on) => refilter(() => setReprint(on))} />
 
       </FilterBar>
@@ -547,6 +565,7 @@ export function PickQueuePage() {
                         team={teamName(order.teamId)}
                         shops={shopNames}
                         typist={typistOf(order.createdByUserId)}
+                        tags={tagsOfOrder(order)}
                         selected={selected.has(String(order.id))}
                         onToggle={() => toggle(order.id)}
                         onOpen={() => navigate(`/warehouse-orders/${order.id}`)}
@@ -592,6 +611,8 @@ export function PickQueuePage() {
                             </Flex>
                           </Table.ColumnHeader>
                           <Table.ColumnHeader>{t("picking.table.status")}</Table.ColumnHeader>
+                          {/* The order's tags after its status, as on the restock lists (the-order-tags-prototype-is-accepted). */}
+                          <Table.ColumnHeader>{t("orders.tags.column")}</Table.ColumnHeader>
                           <Table.ColumnHeader>{t("warehouseOrders.col.created")}</Table.ColumnHeader>
                           <Table.ColumnHeader>
                             {t("warehouseOrders.col.mpDate")}
@@ -634,6 +655,9 @@ export function PickQueuePage() {
                               </Table.Cell>
                               <Table.Cell>
                                 <StatusWithReprint order={order} status={<WarehouseStatusBadge status={order.status} />} />
+                              </Table.Cell>
+                              <Table.Cell data-testid={`order-tags-cell-${order.id}`}>
+                                <RestockTagChips tags={tagsOfOrder(order)} testId={`order-tags-${order.id}`} />
                               </Table.Cell>
                               <Table.Cell>
                                 <DateAgoCell unix={order.createdAtUnix} testId={`pick-queue-created-${order.id}`} />
@@ -697,7 +721,7 @@ export function PickQueuePage() {
                 page={page}
                 onPageChange={setPage}
                 hasNext={query.isPlaceholderData ? undefined : page * pageSize < totalItems}
-                resetKey={[tab, debouncedSearch, JSON.stringify(range), sellerId, marketplace, courier, pageSize].join("|")}
+                resetKey={[tab, debouncedSearch, JSON.stringify(range), sellerId, marketplace, courier, pageSize, tagIds.join(",")].join("|")}
                 pageSize={pageSize}
                 pageSizeOptions={PAGE_SIZE_OPTIONS}
                 onPageSizeChange={(n) => {
@@ -758,6 +782,7 @@ function OrderBlock({
   team,
   shops,
   typist,
+  tags,
   selected,
   onToggle,
   onOpen,
@@ -769,6 +794,8 @@ function OrderBlock({
   shops: ShopNames;
   /** Who typed it in; "" when that was never recorded. */
   typist: string;
+  /** The order's tags (the-order-tags-prototype-is-accepted), the system's first — a line of chips under the status. */
+  tags: ReturnType<typeof tagsOfOrder>;
   selected: boolean;
   onToggle: () => void;
   onOpen: () => void;
@@ -807,6 +834,8 @@ function OrderBlock({
           <Box onClick={(e) => e.stopPropagation()}>{actions}</Box>
         </Flex>
         <ReprintLabelBlockLine order={order} />
+        {/* The order's tags — a line of chips under the status, wrapping across the block (as a restock's). */}
+        {tags.length > 0 && <RestockTagChips tags={tags} max={3} wrap testId={`order-tags-${order.id}`} />}
         <Flex align="center" gap="1.5" minW="0" wrap="wrap">
           {facts.shop && <MarketplaceBadge marketplace={facts.shop.marketplace} size="sm" />}
           <Text fontSize="sm" lineClamp={1}>

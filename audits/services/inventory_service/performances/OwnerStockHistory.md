@@ -54,6 +54,12 @@ non-leading columns (0.3 ms, 152 buffers) or `Seq Scan on batches b` (3.6 ms at 
 table. **→ Proposal:** a full `(team_id, product_id)` index; a pure index, but its gain at revamp's volumes is ≤ 3 ms and
 it is not this feature's — left for the owner's next audit of the owner reads.
 
+✅ **Closed 2026-11-21 by `00062`** — `batches_owner_product_all_idx ON batches (team_id, product_id)`, added for Pemasok
+(`ProductSupplierGoods`, which reads the same batches; a pure index, `a-pure-index-is-added-without-asking`) and serving
+both history reads too. Measured on Pemasok's seed (303 600 batches): the product's batch read 38 ms (parallel seq scan) or
+1.6 ms (`batches_last_price_idx`'s non-leading columns), by plan → 0.08 ms; the order take unchanged
+([inventory rpc.md](../../../../docs/services/inventory_service/rpc.md#who-supplies-a-product--productsuppliergoods-built-2026-11-21)).
+
 ## Still open — the owner's history computes `ref` for every row, not the page 🟡
 
 The running-balance window's select carries `refExpr`, so its two lookups run for every row of the product before
@@ -68,3 +74,4 @@ owner; not needed at revamp's volumes.
 | 2026-11-12 | First audit (Koreksi Harga's read half: `priceExprs` added to both reads — per-row arithmetic, nil): the `refExpr` scans found and fixed by `00041`; Finding 2 and the per-row `ref` left open |
 | 2026-11-13 | A batch's `StockHistory` names each row's rack (backlog #47, `batchRackJoin`: one indexed lateral on `product_placement_logs_transaction_idx` per batch row, count and page; a row over several racks splits one per rack). `TestPerf_StockHistory_ABatchsRacks` — 3 000 takes → 5 001 rows, 305 000 rack rows: page 1 1.9 → 13.9 ms median (count 14 ms), page 100 12 → 58 ms (two ≈ 30 ms statements). Under every threshold — no new finding; `OwnerStockHistory` unchanged |
 | 2026-11-16 | Its sibling `DiscoverStockHistory` (backlog #69, another team's Riwayat Stok — the same statement less the price, `refExpr` and override columns, less the price corrections): `TestPerf_DiscoverStockHistory`, one seed — page 1 15.5 ms (this read 19.7), page 100 18.8 (22.7), the lens 16.6 (23.5); generic plan 17.0 / 18.0 / 18.5 (24.6 / 27.7 / 27.1). It inherits Finding 2 (the `batches` seq scan, ≈ 4.5 ms at 50 000) — still open, no index added |
+| 2026-11-21 | Finding 2 closed by `00062` (`batches_owner_product_all_idx ON batches (team_id, product_id)`), added for Pemasok's `ProductSupplierGoods` (`TestPerf_ProductSupplierGoods`): its every-warehouse read 12.7–15.1 → 9.7–10.9 ms median at 303 600 batches; the take's committed probe unchanged (1 line 8.2 → 7.9 ms, 20 lines 15.4 → 14.5). The history reads were not re-timed |

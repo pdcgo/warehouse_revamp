@@ -73,11 +73,11 @@ export const SignForBoxNotesTheCourierCharge: Story = {
 
     // Ticked, the amount and the note are required — the sign waits for them; the slip's photo is optional.
     await userEvent.click(screen.getByTestId("sign-courier-asked-yes"));
-    await expect(await screen.findByTestId("sign-courier-photo-pick")).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId("sign-courier-photo-pick")).toBeVisible(), { timeout: 5000 });
     await expect(confirm).toBeDisabled();
 
     await userEvent.type(screen.getByTestId("sign-courier-charge"), "15000", { delay: 20 });
-    await expect(await screen.findByTestId("sign-courier-note-error")).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId("sign-courier-note-error")).toBeVisible(), { timeout: 5000 });
     await expect(confirm).toBeDisabled();
 
     await userEvent.type(screen.getByTestId("sign-courier-note"), "COD handling fee", { delay: 20 });

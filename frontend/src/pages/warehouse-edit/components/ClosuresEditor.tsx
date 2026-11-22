@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Card, Field, Flex, Heading, HStack, Icon, IconButton, Input, Stack, Text } from "@chakra-ui/react";
 import { Plus, Trash2 } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 
 import { rpcError, warehouseInfoClient } from "../../../api/clients";
+import type { WarehouseClosure } from "../../../gen/warehouse/warehouse/v1/warehouse_info_pb";
+import { useInvalidateWarehouseInfo } from "../../../features/warehouse/queries";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { DatePicker } from "../../../components/datetime/DatePicker";
 import { toaster } from "../../../components/feedback/Toaster";
@@ -12,22 +14,20 @@ import { toaster } from "../../../components/feedback/Toaster";
 // ONE-OFF CLOSURES (a-warehouse-records-its-holidays) — a holiday, a stock-take: whole days, both inclusive, with the
 // reason the order form's closed-day warning names. Edited by whoever edits the hours, here, one at a time — each is
 // saved on its own, so it sits outside the hours form's Save. It refuses nothing: it only changes the warning.
-export function ClosuresEditor({ warehouseId }: { warehouseId: bigint }) {
+//
+// THE LIST IS THE PAGE'S READ — `closures` comes from the edit page's WarehouseInfoDetail (useWarehouseInfo), the one
+// read of the warehouse's profile a load (#122; it used to ask for it again here). A write re-reads that profile AND the
+// warehouse's receiving state — both under its `warehouseInfo` key — so the list and the order form's closed-day warning
+// move together.
+export function ClosuresEditor({ warehouseId, closures }: { warehouseId: bigint; closures: WarehouseClosure[] }) {
   const { t } = useTranslation();
-  const client = useQueryClient();
-  const key = ["warehouseClosures", warehouseId.toString()];
-
-  const query = useQuery({
-    queryKey: key,
-    queryFn: async () => (await warehouseInfoClient.warehouseInfoDetail({ teamId: warehouseId })).info?.closures ?? [],
-  });
+  const invalidateWarehouseInfo = useInvalidateWarehouseInfo();
 
   const [firstDay, setFirstDay] = useState("");
   const [lastDay, setLastDay] = useState("");
   const [reason, setReason] = useState("");
 
-  const invalidate = () =>
-    Promise.all([client.invalidateQueries({ queryKey: key }), client.invalidateQueries({ queryKey: ["warehouseReceiving"] })]);
+  const invalidate = () => invalidateWarehouseInfo(warehouseId);
 
   const add = useMutation({
     mutationFn: () => warehouseInfoClient.warehouseClosureAdd({ teamId: warehouseId, firstDay, lastDay, reason: reason.trim() }),
@@ -60,8 +60,6 @@ export function ClosuresEditor({ warehouseId }: { warehouseId: bigint }) {
       toaster.create({ type: "error", title: t("warehouseHours.closureDeleteFailed"), description: rpcError(err) });
     }
   }
-
-  const closures = query.data ?? [];
 
   return (
     <Card.Root data-testid="warehouse-closures">

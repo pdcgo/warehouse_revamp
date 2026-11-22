@@ -23,7 +23,7 @@ import { timeSpine } from "../analytic/provider";
 // All `listQuery`: a window, a grain, a grouping or a page change refines the same question about the same team, so the
 // previous figures stay on screen while the next ones load. Pair with RefreshOverlay.
 
-/** One key's figures as this screen reads them — the nine change types, their net, and the balance at the two edges. */
+/** One key's figures as this screen reads them — the ten change types, their net, and the balance at the two edges. */
 export interface Metric {
   expense: number;
   adsExpense: number;
@@ -35,6 +35,8 @@ export interface Metric {
   transfer: number;
   teamPayment: number;
   capital: number;
+  /** Money in typed on Biaya (money-in-on-biaya-is-its-own-change-type). */
+  moneyIn: number;
   change: number;
   /** The balance at the key's first day in the window (the metric's `opening_balance` position). */
   openBalance: number;
@@ -52,6 +54,7 @@ const ZERO: Metric = {
   transfer: 0,
   teamPayment: 0,
   capital: 0,
+  moneyIn: 0,
   change: 0,
   openBalance: 0,
   closeBalance: 0,
@@ -74,6 +77,7 @@ function metricOf(m: AccountChangeMetric | undefined): Metric {
     transfer: m.transfer,
     teamPayment: m.teamPayment,
     capital: m.capital,
+    moneyIn: m.moneyIn,
     change: m.change,
     openBalance: m.openingBalance,
     closeBalance: m.closingBalance,

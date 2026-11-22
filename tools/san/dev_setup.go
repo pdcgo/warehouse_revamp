@@ -164,7 +164,8 @@ func readDevSeeds() (devSeeds, error) {
 // setupDatabase is every data step of `dev setup`: the schema first, then the rows that need it.
 //
 // Each step is the SAME function its own command runs — `migrate up-all`, `supplier backfill-figures`,
-// `supplier backfill-links`, `supplier backfill-warehouses`, `product recompose-codes`, `seed dev`, `seed categories`,
+// `supplier backfill-links`, `supplier backfill-warehouses`, `product recompose-codes`, `expense import-capital`, `seed dev`,
+// `seed categories`,
 // `region load-seed` — so setup cannot drift from doing them one at a time.
 //
 // The `supplier move` step is retired with the command (existing-suppliers-move-with-their-ids): inventory_service's
@@ -212,6 +213,16 @@ func setupDatabase(ctx context.Context, db *sql.DB, target, password string, see
 	fmt.Println("→ product recompose-codes")
 
 	err = recomposeCodesOn(ctx, db, target)
+	if err != nil {
+		return err
+	}
+
+	// A selling team's Setor / Tarik Modal made on the account page before capital's second door, brought into Biaya as
+	// the same one record (prive-and-deposit-on-pengeluaran-are-the-accounts-capital). After the schema (expense 00008);
+	// a second setup finds every row already there.
+	fmt.Println("→ expense import-capital")
+
+	err = importCapitalOn(ctx, db, target)
 	if err != nil {
 		return err
 	}

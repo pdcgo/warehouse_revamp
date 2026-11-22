@@ -262,10 +262,12 @@ func (x *AdsExpenseMetricByDay) GetItems() map[string]*AdsExpenseMetric {
 	return nil
 }
 
-// EXPENSES — every expense a person TYPES, one field per kind and their total: Ads, Payroll, Operational, Other. The
-// STOCK_LOSS expense is not in it (stock-loss-stays-out-of-analytic-expenses) — a loss is read as Lost stock and as Team
-// Balance. A transfer's shipping is not in it either: it is a paying-account row, never an Expenses-screen record
-// (a-transfers-shipping-posts-as-an-expense). No shop: only an ads expense names one.
+// EXPENSES — every expense a person TYPES: one field per kind (Ads, Payroll, Operational, Other — each group's spending),
+// the month's total, money in and capital, and one field per expense TYPE (expense-types-sit-under-groups; acceptance
+// analytic/expense_metric.md givens 6–22: *<type> shown*). The STOCK_LOSS expense is not in it
+// (stock-loss-stays-out-of-analytic-expenses) — a loss is read as Lost stock and as Team Balance. A transfer's shipping is
+// not in it either: it is a paying-account row, never an Expenses-screen record (a-transfers-shipping-posts-as-an-expense).
+// No shop: only an ads expense names one.
 //
 // Who reads: as Ads expense.
 type ExpensesMetric struct {
@@ -278,8 +280,60 @@ type ExpensesMetric struct {
 	Operational float64 `protobuf:"fixed64,3,opt,name=operational,proto3" json:"operational,omitempty"`
 	// EXPENSE_KIND_OTHER.
 	Other float64 `protobuf:"fixed64,4,opt,name=other,proto3" json:"other,omitempty"`
-	// The four kinds' sum — every typed expense, never a stock loss.
-	Total         float64 `protobuf:"fixed64,5,opt,name=total,proto3" json:"total,omitempty"`
+	// THE MONTH TOTAL as Biaya's *Total bulan ini* moves (the-expense-types-prototype-is-accepted; acceptance
+	// analytic/expense_metric.md givens 6–22, financial_account/expense.md givens 17–22): spending − money_in +
+	// capital_out − capital_in — Prive raises it, Setoran modal and money in lower it. Equal to every type field below
+	// summed plus the rows from before the types (each in its group's spending only). Never a stock loss. ⚠ Until backlog
+	// #107 it was the four kinds' sum, spending only; each of the four above stays its group's SPENDING — every money-out
+	// type but Prive — and money in and capital stay their own fields below.
+	Total float64 `protobuf:"fixed64,5,opt,name=total,proto3" json:"total,omitempty"`
+	// Uang masuk — Piutang luar diterima and Uang masuk lain, positive (a correction signed), on the same days and people
+	// as the rest.
+	MoneyIn float64 `protobuf:"fixed64,6,opt,name=money_in,json=moneyIn,proto3" json:"money_in,omitempty"`
+	// Modal keluar — Prive, the owner's capital taken out, positive.
+	CapitalOut float64 `protobuf:"fixed64,7,opt,name=capital_out,json=capitalOut,proto3" json:"capital_out,omitempty"`
+	// Modal masuk — Setoran modal, the owner's capital put in, positive.
+	CapitalIn float64 `protobuf:"fixed64,8,opt,name=capital_in,json=capitalIn,proto3" json:"capital_in,omitempty"`
+	// EXPENSE_TYPE_ADS_MARKETPLACE — Iklan › Iklan marketplace (spending). Each type field is its rows' signed net, as Biaya's
+	// month card shows the type (ExpenseTotals.by_type): money out plus, money in (Piutang luar diterima, Setoran modal,
+	// Uang masuk lain) minus — so the type fields and the rows from before the types add up to `total`. A row from before
+	// the types (type 0) is in no type field, only in its group's. Appended in ExpenseType's order: field 8 + the type's
+	// number.
+	AdsMarketplace float64 `protobuf:"fixed64,9,opt,name=ads_marketplace,json=adsMarketplace,proto3" json:"ads_marketplace,omitempty"`
+	// EXPENSE_TYPE_CONTENT_ENDORSE — Iklan › Konten · endorse.
+	ContentEndorse float64 `protobuf:"fixed64,10,opt,name=content_endorse,json=contentEndorse,proto3" json:"content_endorse,omitempty"`
+	// EXPENSE_TYPE_BASIC_SALARY — Gaji › Gaji pokok.
+	BasicSalary float64 `protobuf:"fixed64,11,opt,name=basic_salary,json=basicSalary,proto3" json:"basic_salary,omitempty"`
+	// EXPENSE_TYPE_BONUS — Gaji › Bonus.
+	Bonus float64 `protobuf:"fixed64,12,opt,name=bonus,proto3" json:"bonus,omitempty"`
+	// EXPENSE_TYPE_CONTRIBUTIONS — Gaji › Iuran (BPJS).
+	Contributions float64 `protobuf:"fixed64,13,opt,name=contributions,proto3" json:"contributions,omitempty"`
+	// EXPENSE_TYPE_ELECTRICITY — Operasional › Listrik.
+	Electricity float64 `protobuf:"fixed64,14,opt,name=electricity,proto3" json:"electricity,omitempty"`
+	// EXPENSE_TYPE_INTERNET — Operasional › Internet · paket data.
+	Internet float64 `protobuf:"fixed64,15,opt,name=internet,proto3" json:"internet,omitempty"`
+	// EXPENSE_TYPE_KITCHEN — Operasional › Dapur · makan tim.
+	Kitchen float64 `protobuf:"fixed64,16,opt,name=kitchen,proto3" json:"kitchen,omitempty"`
+	// EXPENSE_TYPE_TOOLS — Operasional › Alat.
+	Tools float64 `protobuf:"fixed64,17,opt,name=tools,proto3" json:"tools,omitempty"`
+	// EXPENSE_TYPE_EQUIPMENT — Operasional › Perlengkapan.
+	Equipment float64 `protobuf:"fixed64,18,opt,name=equipment,proto3" json:"equipment,omitempty"`
+	// EXPENSE_TYPE_BANK_FEE — Operasional › Biaya bank.
+	BankFee float64 `protobuf:"fixed64,19,opt,name=bank_fee,json=bankFee,proto3" json:"bank_fee,omitempty"`
+	// EXPENSE_TYPE_DISCREPANCY — Operasional › Selisih · transaksi tak tercatat (the checklist's *adjustment*).
+	Discrepancy float64 `protobuf:"fixed64,20,opt,name=discrepancy,proto3" json:"discrepancy,omitempty"`
+	// EXPENSE_TYPE_OUTSIDE_DEBT_PAID — Lainnya › Utang luar dibayar (spending).
+	OutsideDebtPaid float64 `protobuf:"fixed64,21,opt,name=outside_debt_paid,json=outsideDebtPaid,proto3" json:"outside_debt_paid,omitempty"`
+	// EXPENSE_TYPE_OUTSIDE_RECEIVABLE_RECEIVED — Lainnya › Piutang luar diterima: money in, minus.
+	OutsideReceivableReceived float64 `protobuf:"fixed64,22,opt,name=outside_receivable_received,json=outsideReceivableReceived,proto3" json:"outside_receivable_received,omitempty"`
+	// EXPENSE_TYPE_PRIVE — Lainnya › Prive: capital out, plus (never in a group's spending).
+	Prive float64 `protobuf:"fixed64,23,opt,name=prive,proto3" json:"prive,omitempty"`
+	// EXPENSE_TYPE_CAPITAL_DEPOSIT — Lainnya › Setoran modal: capital in, minus.
+	CapitalDeposit float64 `protobuf:"fixed64,24,opt,name=capital_deposit,json=capitalDeposit,proto3" json:"capital_deposit,omitempty"`
+	// EXPENSE_TYPE_OTHER_OUT — Lainnya › Uang keluar lain (spending).
+	OtherOut float64 `protobuf:"fixed64,25,opt,name=other_out,json=otherOut,proto3" json:"other_out,omitempty"`
+	// EXPENSE_TYPE_OTHER_IN — Lainnya › Uang masuk lain: money in, minus.
+	OtherIn       float64 `protobuf:"fixed64,26,opt,name=other_in,json=otherIn,proto3" json:"other_in,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -345,6 +399,153 @@ func (x *ExpensesMetric) GetOther() float64 {
 func (x *ExpensesMetric) GetTotal() float64 {
 	if x != nil {
 		return x.Total
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetMoneyIn() float64 {
+	if x != nil {
+		return x.MoneyIn
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetCapitalOut() float64 {
+	if x != nil {
+		return x.CapitalOut
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetCapitalIn() float64 {
+	if x != nil {
+		return x.CapitalIn
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetAdsMarketplace() float64 {
+	if x != nil {
+		return x.AdsMarketplace
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetContentEndorse() float64 {
+	if x != nil {
+		return x.ContentEndorse
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetBasicSalary() float64 {
+	if x != nil {
+		return x.BasicSalary
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetBonus() float64 {
+	if x != nil {
+		return x.Bonus
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetContributions() float64 {
+	if x != nil {
+		return x.Contributions
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetElectricity() float64 {
+	if x != nil {
+		return x.Electricity
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetInternet() float64 {
+	if x != nil {
+		return x.Internet
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetKitchen() float64 {
+	if x != nil {
+		return x.Kitchen
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetTools() float64 {
+	if x != nil {
+		return x.Tools
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetEquipment() float64 {
+	if x != nil {
+		return x.Equipment
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetBankFee() float64 {
+	if x != nil {
+		return x.BankFee
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetDiscrepancy() float64 {
+	if x != nil {
+		return x.Discrepancy
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetOutsideDebtPaid() float64 {
+	if x != nil {
+		return x.OutsideDebtPaid
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetOutsideReceivableReceived() float64 {
+	if x != nil {
+		return x.OutsideReceivableReceived
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetPrive() float64 {
+	if x != nil {
+		return x.Prive
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetCapitalDeposit() float64 {
+	if x != nil {
+		return x.CapitalDeposit
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetOtherOut() float64 {
+	if x != nil {
+		return x.OtherOut
+	}
+	return 0
+}
+
+func (x *ExpensesMetric) GetOtherIn() float64 {
+	if x != nil {
+		return x.OtherIn
 	}
 	return 0
 }
@@ -1308,7 +1509,7 @@ const file_warehouse_expense_v1_expense_analytic_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12<\n" +
-	"\x05value\x18\x02 \x01(\v2&.warehouse.expense.v1.AdsExpenseMetricR\x05value:\x028\x01\"\xf0\x01\n" +
+	"\x05value\x18\x02 \x01(\v2&.warehouse.expense.v1.AdsExpenseMetricR\x05value:\x028\x01\"\xa4\t\n" +
 	"\x0eExpensesMetric\x12\x1c\n" +
 	"\x03ads\x18\x01 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x03ads\x12$\n" +
@@ -1319,7 +1520,52 @@ const file_warehouse_expense_v1_expense_analytic_proto_rawDesc = "" +
 	"\x05other\x18\x04 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x05other\x12 \n" +
 	"\x05total\x18\x05 \x01(\x01B\n" +
-	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x05total:(\x9a\xb5\x18$\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x05total\x12%\n" +
+	"\bmoney_in\x18\x06 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\amoneyIn\x12+\n" +
+	"\vcapital_out\x18\a \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\n" +
+	"capitalOut\x12)\n" +
+	"\n" +
+	"capital_in\x18\b \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\tcapitalIn\x123\n" +
+	"\x0fads_marketplace\x18\t \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x0eadsMarketplace\x123\n" +
+	"\x0fcontent_endorse\x18\n" +
+	" \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x0econtentEndorse\x12-\n" +
+	"\fbasic_salary\x18\v \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\vbasicSalary\x12 \n" +
+	"\x05bonus\x18\f \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x05bonus\x120\n" +
+	"\rcontributions\x18\r \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\rcontributions\x12,\n" +
+	"\velectricity\x18\x0e \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\velectricity\x12&\n" +
+	"\binternet\x18\x0f \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\binternet\x12$\n" +
+	"\akitchen\x18\x10 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\akitchen\x12 \n" +
+	"\x05tools\x18\x11 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x05tools\x12(\n" +
+	"\tequipment\x18\x12 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\tequipment\x12%\n" +
+	"\bbank_fee\x18\x13 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\abankFee\x12,\n" +
+	"\vdiscrepancy\x18\x14 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\vdiscrepancy\x126\n" +
+	"\x11outside_debt_paid\x18\x15 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x0foutsideDebtPaid\x12J\n" +
+	"\x1boutside_receivable_received\x18\x16 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x19outsideReceivableReceived\x12 \n" +
+	"\x05prive\x18\x17 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x05prive\x123\n" +
+	"\x0fcapital_deposit\x18\x18 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x0ecapitalDeposit\x12'\n" +
+	"\tother_out\x18\x19 \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\botherOut\x12%\n" +
+	"\bother_in\x18\x1a \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\aotherIn:(\x9a\xb5\x18$\n" +
 	"\x03\x01\x04\b\x12\x01\x01\x1a\b\x01\t\v\n" +
 	"\x02\x03\x04\x05\"\x10metrics/expenses\"\xbf\x01\n" +
 	"\x12ExpensesMetricByID\x12I\n" +

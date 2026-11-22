@@ -12,15 +12,15 @@
 //   a-move-writes-one-transaction-per-owning-team     one transaction per owning team, in team id order.
 //   a-move-writes-two-rack-rows-and-no-batch-row      a row per rack touched, kind MOVE; no batch rows.
 //   a-sample-names-the-rack-it-was-taken-from         a sample takes from the request's rack; kind SAMPLE.
+//   a-sample-keeps-its-recipient                      a sample row carries who received it (`recipient`), the staff's
+//                                                     note alone in `reason`; every other row names nobody.
 //   a-rack-shows-its-stock-count-for-now              `on_hand` is the stock count, nothing else; RackList's STOCK
 //                                                     slice sums it per rack and counts its products.
 //   (the built registry)                              a code is unique among the warehouse's undeleted racks
 //                                                     (AlreadyExists); a rack holding stock cannot be deleted.
-//   a-warehouse-sees-ready-value-but-a-shelf-only-units  a WAREHOUSE reader (sessionScenario.role a warehouse role)
-//                                                     reads RackDetail and RackStock in units only: the summary's value
-//                                                     and unknown-cost count and each line's price, cost-known and
-//                                                     value are left UNSET. Root, the Administrator and the admin
-//                                                     team's monitor (no role in the warehouse) keep them.
+//   a-warehouse-sees-ready-value-but-a-shelf-only-units  (🔄 2026-11-20, backlog #109) EVERY reader — a warehouse role
+//                                                     included — reads RackDetail's value and unknown-cost count and
+//                                                     each RackStock line's price, cost-known and value.
 //
 // WRITEABLE: a move made in one step is on the shelf in the next. preview.tsx resets it in its `beforeEach`.
 
@@ -34,15 +34,8 @@ import {
   type RackListResponseItemSchema,
   type RackService,
 } from "../src/gen/warehouse/inventory/v1/rack_pb";
-import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { products, racks } from "./fixtures";
-import { sessionScenario } from "./sessionScenario";
 import { SELF_ID } from "./userStub";
-
-// A WAREHOUSE READS A SHELF IN UNITS ONLY (a-warehouse-sees-ready-value-but-a-shelf-only-units) — the server's
-// `shelfInUnits`: the caller acts with a warehouse role in the scoped team.
-const WAREHOUSE_ROLES = new Set<Role>([Role.WAREHOUSE_OWNER, Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_STAFF]);
-const shelfInUnits = () => WAREHOUSE_ROLES.has(sessionScenario.role);
 
 interface ShelfLine {
   productId: bigint;
@@ -63,6 +56,8 @@ interface Movement {
   reason: string;
   ref: string;
   createdAt: string;
+  // Who received a sample (a-sample-keeps-its-recipient) — empty on every other row.
+  recipient: string;
 }
 
 export interface RackWrite {
@@ -107,6 +102,7 @@ function receivedMovements(): Movement[] {
         reason: "",
         ref: "",
         createdAt: RECEIVED_AT,
+        recipient: "",
       });
     }
   }
@@ -144,10 +140,25 @@ export const rackStubScenario: {
    * the refetch starts and would hide a page that swaps itself for its skeleton while it waits (backlog #45).
    */
   readLatencyMs: number;
+  /**
+   * The same, for ONE of those reads — e.g. a shelf answering after its header, so a story can see what the page draws
+   * between the two (another rack's address: never the previous rack's rows, backlog #120). Overrides `readLatencyMs`.
+   */
+  readLatencyOf: Partial<Record<RackRead, number>>;
+  /**
+   * EVERY RACK READ, in the order asked — the method and the page size it asked for (RackStock's 200 is a dialog's whole
+   * rack, 20 the shelf's page). What a story reads to see what a write re-reads: each part once (backlog #120).
+   */
+  reads: { method: RackRead | "rackList"; limit?: number }[];
 } = {
   raceBeforeNextWrite: null,
   readLatencyMs: 0,
+  readLatencyOf: {},
+  reads: [],
 };
+
+/** The three reads the rack page makes. */
+type RackRead = "rackDetail" | "rackStock" | "rackHistory";
 
 export function resetRackStub() {
   rackRows = structuredClone(racks);
@@ -161,6 +172,8 @@ export function resetRackStub() {
   historyActorOf = {};
   rackStubScenario.raceBeforeNextWrite = null;
   rackStubScenario.readLatencyMs = 0;
+  rackStubScenario.readLatencyOf = {};
+  rackStubScenario.reads = [];
 }
 
 /** For a story: who the rack history names on every row — e.g. a former user (erase-keeps-the-row). */
@@ -171,6 +184,15 @@ export function rackHistoryByForStory(userId: bigint) {
 /** For a story: who ONE history row names, and whether it was an override — the rest keep `rackHistoryByForStory`'s. */
 export function rackHistoryRowByForStory(movementId: bigint, userId: bigint, isOverride = false) {
   historyActorOf[movementId.toString()] = { userId, isOverride };
+}
+
+/**
+ * For a story: a sample already on `rackId`'s ledger — `quantity` of `productId` handed to `recipient`, the staff's `note`
+ * beside it (a-sample-keeps-its-recipient). The shelf drops by the units, as RackSample's would.
+ */
+export function rackSampleForStory(rackId: bigint, productId: bigint, quantity: bigint, recipient: string, note = "") {
+  const rack = rackRows.find((r) => r.id === rackId)!;
+  write(rack, productId, -quantity, MovementKind.SAMPLE, note, "", recipient);
 }
 
 resetRackStub();
@@ -279,6 +301,7 @@ function write(
   kind: MovementKind,
   reason: string,
   ref: string,
+  recipient = "",
 ) {
   const shelf = shelfOf(rack.id);
   let line = shelf.find((l) => l.productId === productId);
@@ -302,6 +325,7 @@ function write(
     reason,
     ref,
     createdAt: new Date().toISOString(),
+    recipient,
   });
 }
 
@@ -431,13 +455,8 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
       rack,
       summary: {
         totalOnHand: lines.reduce((acc, l) => acc + l.onHand, 0n),
-        // Unset, not 0, for a warehouse.
-        ...(shelfInUnits()
-          ? {}
-          : {
-              totalValue: lines.reduce((acc, l) => acc + Number(l.onHand) * l.unitCost, 0),
-              unknownCostProducts: lines.filter((l) => l.unitCost === 0).length,
-            }),
+        totalValue: lines.reduce((acc, l) => acc + Number(l.onHand) * l.unitCost, 0),
+        unknownCostProducts: lines.filter((l) => l.unitCost === 0).length,
         lastCountedAt: counted ?? "",
       },
     };
@@ -462,10 +481,9 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
                   {
                     productId: l.productId,
                     onHand: l.onHand,
-                    // Unset, not 0, for a warehouse — all three.
-                    ...(shelfInUnits()
-                      ? {}
-                      : { unitCost: l.unitCost, costKnown: l.unitCost > 0, value: Number(l.onHand) * l.unitCost }),
+                    unitCost: l.unitCost,
+                    costKnown: l.unitCost > 0,
+                    value: Number(l.onHand) * l.unitCost,
                     counting: l.counting,
                   },
                 ]),
@@ -587,9 +605,9 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
     }
 
     const { transactions, refOf } = transactionsFor(req.lines.map((l) => l.productId));
-    const reason = req.description ? `${req.recipient} — ${req.description}` : req.recipient;
+    // Who received it is the transaction's own fact; the note stays the staff's (a-sample-keeps-its-recipient).
     for (const line of req.lines) {
-      write(rack, line.productId, -line.quantity, MovementKind.SAMPLE, reason, refOf(line.productId));
+      write(rack, line.productId, -line.quantity, MovementKind.SAMPLE, req.description, refOf(line.productId), req.recipient);
     }
 
     last = { kind: "sample", transactions };
@@ -597,11 +615,13 @@ export const rackService: Partial<ServiceImpl<typeof RackService>> = {
   },
 };
 
-// The three reads the rack page makes, answered after `readLatencyMs` when a story asks for a slow network.
-for (const read of ["rackDetail", "rackStock", "rackHistory"] as const) {
+// The three reads the rack page makes, answered after `readLatencyMs` (or that read's `readLatencyOf`) when a story asks
+// for a slow network — and every rack read, RackList too, recorded in `reads`.
+for (const read of ["rackDetail", "rackStock", "rackHistory", "rackList"] as const) {
   const answer = rackService[read] as (req: unknown, ctx: unknown) => unknown;
   (rackService as Record<string, unknown>)[read] = (req: unknown, ctx: unknown) => {
-    const ms = rackStubScenario.readLatencyMs;
+    rackStubScenario.reads.push({ method: read, limit: (req as { page?: { limit?: number } }).page?.limit });
+    const ms = read === "rackList" ? 0 : (rackStubScenario.readLatencyOf[read] ?? rackStubScenario.readLatencyMs);
     if (ms <= 0) return answer(req, ctx);
 
     return new Promise((resolve, reject) =>

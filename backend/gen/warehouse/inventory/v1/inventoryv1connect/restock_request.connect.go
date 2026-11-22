@@ -123,6 +123,12 @@ const (
 	// RestockRequestServiceRestockRequestSystemTagRemoveProcedure is the fully-qualified name of the
 	// RestockRequestService's RestockRequestSystemTagRemove RPC.
 	RestockRequestServiceRestockRequestSystemTagRemoveProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestSystemTagRemove"
+	// RestockRequestServiceRestockResolutionCreateProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockResolutionCreate RPC.
+	RestockRequestServiceRestockResolutionCreateProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockResolutionCreate"
+	// RestockRequestServiceRestockRequestSettleProcedure is the fully-qualified name of the
+	// RestockRequestService's RestockRequestSettle RPC.
+	RestockRequestServiceRestockRequestSettleProcedure = "/warehouse.inventory.v1.RestockRequestService/RestockRequestSettle"
 )
 
 // RestockRequestServiceClient is a client for the warehouse.inventory.v1.RestockRequestService
@@ -213,6 +219,16 @@ type RestockRequestServiceClient interface {
 	// An admin's system tag on / off a restock — never the app's own.
 	RestockRequestSystemTagAdd(context.Context, *connect.Request[v1.RestockRequestSystemTagAddRequest]) (*connect.Response[v1.RestockRequestSystemTagAddResponse], error)
 	RestockRequestSystemTagRemove(context.Context, *connect.Request[v1.RestockRequestSystemTagRemoveRequest]) (*connect.Response[v1.RestockRequestSystemTagRemoveResponse], error)
+	// RESTOCK RESOLUTIONS (backlog #101; messages in restock_resolution.proto) — the selling team settles a problem restock
+	// (Diterima carrying a problem tag) or a lost one (Hilang) by resolution rows (a-restock-problem-is-settled-by-
+	// resolution-rows). One row per call, under the restock row's lock: a REFUND (amount + account, posted to the account
+	// after commit by RestockRefunded), a RETURN (links an existing outbound reship of this restock — a new one is made with
+	// its row by CustomShipmentCreate's `resolution`), a RESHIPPING (creates its inbound parcel in the same transaction).
+	// Also on a SETTLED restock, which stays settled; never a RETURN on a Hilang one.
+	RestockResolutionCreate(context.Context, *connect.Request[v1.RestockResolutionCreateRequest]) (*connect.Response[v1.RestockResolutionCreateResponse], error)
+	// *Tandai Selesai* — the settled mark on the restock, its problem tags (*Barang kurang* / *Barang rusak*) off, in one
+	// transaction under the restock row's lock. A settled restock is refused (already settled).
+	RestockRequestSettle(context.Context, *connect.Request[v1.RestockRequestSettleRequest]) (*connect.Response[v1.RestockRequestSettleResponse], error)
 }
 
 // NewRestockRequestServiceClient constructs a client for the
@@ -419,6 +435,18 @@ func NewRestockRequestServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestSystemTagRemove")),
 			connect.WithClientOptions(opts...),
 		),
+		restockResolutionCreate: connect.NewClient[v1.RestockResolutionCreateRequest, v1.RestockResolutionCreateResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockResolutionCreateProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockResolutionCreate")),
+			connect.WithClientOptions(opts...),
+		),
+		restockRequestSettle: connect.NewClient[v1.RestockRequestSettleRequest, v1.RestockRequestSettleResponse](
+			httpClient,
+			baseURL+RestockRequestServiceRestockRequestSettleProcedure,
+			connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestSettle")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -454,6 +482,8 @@ type restockRequestServiceClient struct {
 	restockRequestTagRemove        *connect.Client[v1.RestockRequestTagRemoveRequest, v1.RestockRequestTagRemoveResponse]
 	restockRequestSystemTagAdd     *connect.Client[v1.RestockRequestSystemTagAddRequest, v1.RestockRequestSystemTagAddResponse]
 	restockRequestSystemTagRemove  *connect.Client[v1.RestockRequestSystemTagRemoveRequest, v1.RestockRequestSystemTagRemoveResponse]
+	restockResolutionCreate        *connect.Client[v1.RestockResolutionCreateRequest, v1.RestockResolutionCreateResponse]
+	restockRequestSettle           *connect.Client[v1.RestockRequestSettleRequest, v1.RestockRequestSettleResponse]
 }
 
 // RestockRequestCreate calls warehouse.inventory.v1.RestockRequestService.RestockRequestCreate.
@@ -611,6 +641,17 @@ func (c *restockRequestServiceClient) RestockRequestSystemTagRemove(ctx context.
 	return c.restockRequestSystemTagRemove.CallUnary(ctx, req)
 }
 
+// RestockResolutionCreate calls
+// warehouse.inventory.v1.RestockRequestService.RestockResolutionCreate.
+func (c *restockRequestServiceClient) RestockResolutionCreate(ctx context.Context, req *connect.Request[v1.RestockResolutionCreateRequest]) (*connect.Response[v1.RestockResolutionCreateResponse], error) {
+	return c.restockResolutionCreate.CallUnary(ctx, req)
+}
+
+// RestockRequestSettle calls warehouse.inventory.v1.RestockRequestService.RestockRequestSettle.
+func (c *restockRequestServiceClient) RestockRequestSettle(ctx context.Context, req *connect.Request[v1.RestockRequestSettleRequest]) (*connect.Response[v1.RestockRequestSettleResponse], error) {
+	return c.restockRequestSettle.CallUnary(ctx, req)
+}
+
 // RestockRequestServiceHandler is an implementation of the
 // warehouse.inventory.v1.RestockRequestService service.
 type RestockRequestServiceHandler interface {
@@ -699,6 +740,16 @@ type RestockRequestServiceHandler interface {
 	// An admin's system tag on / off a restock — never the app's own.
 	RestockRequestSystemTagAdd(context.Context, *connect.Request[v1.RestockRequestSystemTagAddRequest]) (*connect.Response[v1.RestockRequestSystemTagAddResponse], error)
 	RestockRequestSystemTagRemove(context.Context, *connect.Request[v1.RestockRequestSystemTagRemoveRequest]) (*connect.Response[v1.RestockRequestSystemTagRemoveResponse], error)
+	// RESTOCK RESOLUTIONS (backlog #101; messages in restock_resolution.proto) — the selling team settles a problem restock
+	// (Diterima carrying a problem tag) or a lost one (Hilang) by resolution rows (a-restock-problem-is-settled-by-
+	// resolution-rows). One row per call, under the restock row's lock: a REFUND (amount + account, posted to the account
+	// after commit by RestockRefunded), a RETURN (links an existing outbound reship of this restock — a new one is made with
+	// its row by CustomShipmentCreate's `resolution`), a RESHIPPING (creates its inbound parcel in the same transaction).
+	// Also on a SETTLED restock, which stays settled; never a RETURN on a Hilang one.
+	RestockResolutionCreate(context.Context, *connect.Request[v1.RestockResolutionCreateRequest]) (*connect.Response[v1.RestockResolutionCreateResponse], error)
+	// *Tandai Selesai* — the settled mark on the restock, its problem tags (*Barang kurang* / *Barang rusak*) off, in one
+	// transaction under the restock row's lock. A settled restock is refused (already settled).
+	RestockRequestSettle(context.Context, *connect.Request[v1.RestockRequestSettleRequest]) (*connect.Response[v1.RestockRequestSettleResponse], error)
 }
 
 // NewRestockRequestServiceHandler builds an HTTP handler from the service implementation. It
@@ -900,6 +951,18 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestSystemTagRemove")),
 		connect.WithHandlerOptions(opts...),
 	)
+	restockRequestServiceRestockResolutionCreateHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockResolutionCreateProcedure,
+		svc.RestockResolutionCreate,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockResolutionCreate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	restockRequestServiceRestockRequestSettleHandler := connect.NewUnaryHandler(
+		RestockRequestServiceRestockRequestSettleProcedure,
+		svc.RestockRequestSettle,
+		connect.WithSchema(restockRequestServiceMethods.ByName("RestockRequestSettle")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.RestockRequestService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RestockRequestServiceRestockRequestCreateProcedure:
@@ -962,6 +1025,10 @@ func NewRestockRequestServiceHandler(svc RestockRequestServiceHandler, opts ...c
 			restockRequestServiceRestockRequestSystemTagAddHandler.ServeHTTP(w, r)
 		case RestockRequestServiceRestockRequestSystemTagRemoveProcedure:
 			restockRequestServiceRestockRequestSystemTagRemoveHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockResolutionCreateProcedure:
+			restockRequestServiceRestockResolutionCreateHandler.ServeHTTP(w, r)
+		case RestockRequestServiceRestockRequestSettleProcedure:
+			restockRequestServiceRestockRequestSettleHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1089,4 +1156,12 @@ func (UnimplementedRestockRequestServiceHandler) RestockRequestSystemTagAdd(cont
 
 func (UnimplementedRestockRequestServiceHandler) RestockRequestSystemTagRemove(context.Context, *connect.Request[v1.RestockRequestSystemTagRemoveRequest]) (*connect.Response[v1.RestockRequestSystemTagRemoveResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestSystemTagRemove is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockResolutionCreate(context.Context, *connect.Request[v1.RestockResolutionCreateRequest]) (*connect.Response[v1.RestockResolutionCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockResolutionCreate is not implemented"))
+}
+
+func (UnimplementedRestockRequestServiceHandler) RestockRequestSettle(context.Context, *connect.Request[v1.RestockRequestSettleRequest]) (*connect.Response[v1.RestockRequestSettleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.RestockRequestService.RestockRequestSettle is not implemented"))
 }

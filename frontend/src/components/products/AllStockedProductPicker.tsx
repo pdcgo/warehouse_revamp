@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ProductPickerShell } from "./ProductPickerShell";
-import { noMatches, searchCatalogueIds, stockedPage } from "./stockedSource";
+import { catalogueSearchQuery, noMatches, stockedPage } from "./stockedSource";
 import type { PickedProduct } from "./ProductSelect";
 
 export interface AllStockedProductPickerProps {
@@ -42,18 +43,22 @@ export function AllStockedProductPicker({
   trigger,
 }: AllStockedProductPickerProps) {
   const { t } = useTranslation();
+  const client = useQueryClient();
 
   return (
     <ProductPickerShell
       scopeTeamId={teamId}
       noTeamMessage={t("productPicker.noTeamAll")}
       loadKey={`all-stocked:${teamId}:${warehouseId}`}
+      // The rows are what the building holds — read always fresh (HARD RULE 10).
+      stocked
       load={async ({ page, q }) => {
         if (q === "") {
           return stockedPage({ scopeTeamId: teamId, warehouseId, productIds: [], page, capped: false });
         }
 
-        const { ids, capped } = await searchCatalogueIds({ scopeTeamId: teamId, q, own: false });
+        // The term's catalogue matches through the cache (#121) — resolved once per term, not again on every page turn.
+        const { ids, capped } = await client.fetchQuery(catalogueSearchQuery({ scopeTeamId: teamId, q, own: false }));
 
         // Nothing in the catalogue matched, so nothing in the warehouse can. Said HERE rather than
         // sent as an empty filter, which inventory reads as "no narrowing at all" — i.e. everything.

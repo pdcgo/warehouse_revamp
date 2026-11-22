@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Box, Flex, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { courierCodeOf, useShippingCatalogue } from "../../../features/shipping/catalogue";
+import { TrackingLink, useTrackingHref } from "../../../features/shipment/CourierTrackingLink";
 
 import { CopyText } from "../../../components/chrome/CopyText";
 
@@ -19,6 +20,10 @@ import { CopyText } from "../../../components/chrome/CopyText";
 //
 // ⚠ NO RETURN RESI (the-return-leg-waits-for-tracking): there is no return shipment record, and the
 // return resi is asked again when tracking is designed.
+//
+// THE COURIER'S TRACKING PAGE (the-tracking-link-prototype-is-accepted): beside the copyable resi, a ↗ *Lacak di situs
+// kurir* opening the courier's own page on this parcel in a new tab — when the courier has a link (read from the same
+// shared catalogue that names the courier here; features/shipment/CourierTrackingLink.tsx). No link: the resi alone.
 export function OrderReferences({
   channelId = 0n,
   receiptCode,
@@ -33,6 +38,7 @@ export function OrderReferences({
   const { t } = useTranslation();
   const { couriers, loading } = useShippingCatalogue();
   const courier = courierCodeOf(couriers, channelId, loading);
+  const trackingHref = useTrackingHref(channelId, receiptCode);
 
   return (
     <Stack gap="3" data-testid="order-references">
@@ -46,6 +52,7 @@ export function OrderReferences({
                 </Text>
               )}
               <CopyText value={receiptCode} mono fontSize="md" />
+              {trackingHref && <TrackingLink href={trackingHref} hint testId="order-reference-track" />}
             </Flex>
           ) : undefined}
         </Reference>

@@ -102,6 +102,7 @@
     - `transfer`
     - `team_payment`
     - `capital`
+    - `money_in` — money in typed on Biaya ([money-in-on-biaya-is-its-own-change-type](./context_decision.md#money-in-on-biaya-is-its-own-change-type))
     - `opening_balance`
 
 ## How we Update The Ledger.

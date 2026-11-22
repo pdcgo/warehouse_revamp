@@ -7,6 +7,7 @@ import "warehouse/common/v1/page.proto";
 import "warehouse/common/v1/list.proto";
 import "warehouse/marketplace/v1/marketplace.proto";
 import "warehouse/role_base/v1/role.proto";
+import "warehouse/selling/v1/order_tag.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
 
@@ -170,6 +171,36 @@ service OrderService {
     // A READ — no row, no event, no file (an-agent-only-reads-for-now, the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // ── ORDER TAGS (backlog #100, orders-have-their-own-tag-list; messages in order_tag.proto) ─────────────────────────
+  //
+  // The orders' OWN tag list — apart from the restocks' — one for every team, system and custom tags.
+  //
+  // The orders' list, every team's — the lists' Tag filter and the order pages' add box.
+  rpc OrderTagList(OrderTagListRequest) returns (OrderTagListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // The admins' Kelola tag pesanan: each tag with how many orders carry it.
+  rpc OrderTagManageList(OrderTagManageListRequest) returns (OrderTagManageListResponse) {
+    // A READ — it writes nothing.
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // A custom tag; a name already on the orders' list answers that tag, never a twin.
+  rpc OrderTagCreate(OrderTagCreateRequest) returns (OrderTagCreateResponse);
+  // A system tag, by an admin; the same one-name-one-tag answer.
+  rpc OrderTagSystemCreate(OrderTagSystemCreateRequest) returns (OrderTagSystemCreateResponse);
+  // Rename, the admins' alone.
+  rpc OrderTagRename(OrderTagRenameRequest) returns (OrderTagRenameResponse);
+  // Delete, the admins' alone — off every order too.
+  rpc OrderTagDelete(OrderTagDeleteRequest) returns (OrderTagDeleteResponse);
+  // A custom tag on / off an order — either side, every role but a monitor, every status.
+  rpc OrderTagAdd(OrderTagAddRequest) returns (OrderTagAddResponse);
+  rpc OrderTagRemove(OrderTagRemoveRequest) returns (OrderTagRemoveResponse);
+  // An admin's system tag on / off an order.
+  rpc OrderSystemTagAdd(OrderSystemTagAddRequest) returns (OrderSystemTagAddResponse);
+  rpc OrderSystemTagRemove(OrderSystemTagRemoveRequest) returns (OrderSystemTagRemoveResponse);
 }
 
 // An order's status: the eleven of the order context's status diagram
@@ -568,6 +599,11 @@ message Order {
   // WHEN THE WAREHOUSE LAST PRINTED ITS LABEL on the print page (`orders.label_printed_at`); 0 = never. The seller's
   // Edit Resi reads it to say a change asks the warehouse to print again. The order page's label viewer is not a print.
   int64 label_printed_at_unix = 41;
+
+  // ITS TAGS (orders-have-their-own-tag-list, the-order-tags-prototype-is-accepted) — from the orders' own list, the
+  // system's first, then by name; ONE set, the same on the selling side and the shipping warehouse's. OrderList fills it
+  // on its rows and OrderDetail on its order (the pick page reads that). `order_count` is 0 here.
+  repeated OrderTag tags = 42;
 }
 
 // WHICH DATE a list's date window reads (the-date-filter-switches-created-or-platform). The two answer different
@@ -853,6 +889,16 @@ message OrderListFilter {
   // PERLU CETAK ULANG (the-reprint-label-prototype-is-accepted): only the orders marked `Order.reprint_label` — the
   // rule written there. false = no filter. Mirrored on OrderStatFilter, so the tabs count the same set.
   bool reprint_label = 16;
+
+  // Only orders carrying ANY of these order tags (the-order-tags-prototype-is-accepted: several tags, any of them). Empty
+  // = any tag or none. Mirrored on OrderStatFilter and inside scopedOrders, so the rows, the tab counts, the Statistik
+  // and Ekspor narrow alike.
+  repeated uint64 tag_ids = 17 [(buf.validate.field).repeated = {
+    max_items: 50
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
 }
 
 // OrderListDataType selects which slices the response carries per order.
@@ -1503,6 +1549,14 @@ message OrderStatFilter {
 
   // Only the orders marked Cetak ulang label, as on OrderListFilter.
   bool reprint_label = 14;
+
+  // Only orders carrying ANY of these order tags, as on OrderListFilter.
+  repeated uint64 tag_ids = 15 [(buf.validate.field).repeated = {
+    max_items: 50
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
 }
 
 message OrderStatRequest {

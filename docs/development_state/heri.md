@@ -7,12 +7,31 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
-## 2026-11-20 · disputes resolved, reprint label
+## 2026-11-21 · tracking link, phone order page, expense types, racks
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **An order's resi links to the courier's tracking page** | on the seller's and the warehouse's order page (and the seller's order list) the resi has a ↗ that opens the courier's own tracking page; root keeps each courier's tracking link on the couriers screen |
+| **The warehouse's order page works on a phone** | its tabs sit in one row at the top so cards use the full width, items read as one block each, and the header is one row with an icon action; the seller's status journey no longer overlaps on a small phone |
+| **Analytic › Expenses shows each expense type** | the 18 expense types each have their own figure, and the total matches Biaya's month total |
+| **Racks: value, recipients and the Retur list** | a warehouse reads a rack's value again; a sample's recipient shows in the rack's history and in the owning team's own stock history; Inventaris › Retur lists the real returns |
+| **san_ops_pipeline — our own CI/CD, first version** | a pipeline is now a YAML file (jobs, steps that are shell commands, one file importing another) that a Go library runs one job at a time: a failing step skips what needs it, every run leaves its logs and a summary in `.san_ops_pipeline_cache/`, and cmd shows a live view of the run. Revamp does not use it yet — `san pipeline run` comes next |
+| **The product page's supplier tab, daily in/out and category counts are real** | Pemasok lists each supplier and store the product came from (deliveries, units, the last delivery); Keluar Masuk Harian shows the last 14 days' moves in and out; the category page counts a category's whole branch; Penjualan can be re-processed for a date range |
+| **A manual ledger entry names who added it** | an entry added by hand on an order's settlement shows the person's name, not a user number |
+| **A big supplier's product tab opens fast** | a database index serves the supplier's goods lookup that took about a second |
+| **The built app no longer opens on a blank page** | the production build crashed on load (two code bundles waited on each other); it now draws the sign-in page — the test runs never used that build, so nothing had caught it |
+| **Each screen's speed is measured** | a tool opens a screen in a browser and counts its requests, repeated requests, calls that wait on each other, the time until it is usable and what one save re-reads; the first 10 screens have a baseline, and every slice that changes a screen is checked against it |
+| **The rack page refreshes once after a change** | after moving goods or recording a sample the page re-reads each part once (9 requests became 5), and another rack never flashes the previous one's rows |
+
+## 2026-11-20 · disputes resolved, reprint label, expense types
 
 | What shipped | What it means for a person |
 | --- | --- |
 | **Disputes resolved has its own count** | Analytic › Order status moves now shows *Sengketa selesai* — an order whose dispute was resolved, on that day; Completed still counts it as before |
 | **A changed label tells the warehouse to reprint** | after a seller changes an order's resi or label once it was printed, the warehouse list, the pick page and the print page show *Cetak ulang label* until it is printed again, and the parcel cannot be handed over before that |
+| **Costs have types, and capital can be recorded from the account page** | Biaya asks for a type (Iklan, Gaji, Operasional, Lainnya and their 18 kinds); money coming in shows as *Uang masuk* on the account and in its report; Setor / Tarik Modal on a team's account page writes one row on Biaya |
+| **Orders have tags** | orders get their own tag list (apart from restocks'): the selling team and the shipping warehouse tag an order in any status, and the order lists filter by tag |
+| **A restock problem is settled by its resolutions** | a restock with missing or broken goods records how each part was settled — a refund (money back to the account), a resend from the supplier coming in as a parcel — and stays a problem restock until the team marks it settled |
 
 ## 2026-11-19 · analytic order moves, restock and sign-in fixes, the import page
 

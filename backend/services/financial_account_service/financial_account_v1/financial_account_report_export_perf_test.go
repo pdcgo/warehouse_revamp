@@ -18,7 +18,7 @@ import (
 func TestPerf_FinancialAccountReportExport(t *testing.T) {
 	b := perfSetup(t)
 	store := &fakeReportExports{}
-	svc := financial_account_v1.NewService(b.db, anyShop{}, store)
+	svc := financial_account_v1.NewService(b.db, anyShop{}, store, nil)
 
 	// The seed's days are UTC dates of today; the window is laid out from the same day.
 	today := time.Now().UTC()

@@ -74,6 +74,9 @@ import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState 
 import { PaymentBreakdown } from "./components/PaymentBreakdown";
 import { RestockSummary } from "./components/RestockSummary";
 import { RESTOCK_SELLING_PENDING } from "./pending";
+// Backlog #101 — how a problem / lost restock reads once resolutions are recorded (*N resolusi* / *Selesai*).
+import { ResolutionMark } from "../../features/restockResolution/ListMarks";
+import { RestockSettledFilter } from "../../gen/warehouse/inventory/v1/restock_resolution_pb";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -169,6 +172,10 @@ export function RestockSellingPage() {
   // server filters on and the label the empty state names can never drift apart.
   const activeTab = restockTab(tab);
   const status = activeTab.status;
+  // THE HILANG TAB IS LOST + UNSETTLED (backlog #101): a lost restock the seller marked settled leaves it and stays under
+  // Semua — the server's filter, so the pager counts what the tab holds. The Hilang card above the tabs still counts every
+  // lost restock (the owner's 🔄 A on the-restock-resolutions-prototype-is-accepted).
+  const settled = status === RestockRequestStatus.LOST ? RestockSettledFilter.UNSETTLED : RestockSettledFilter.UNSPECIFIED;
 
   const { fromUnix, toUnix } = resolveRange(range);
 
@@ -184,6 +191,7 @@ export function RestockSellingPage() {
     toUnix,
     q: term,
     tagIds: tagPick,
+    settled,
     page,
     pageSize,
   });
@@ -308,6 +316,7 @@ export function RestockSellingPage() {
       toUnix,
       q: term,
       tagIds: tagPick,
+      settled,
     });
   const open = (request: RestockRequest) => navigate(`/inventories/restock/${request.id}`);
 
@@ -559,6 +568,7 @@ export function RestockSellingPage() {
                   <RestockStatusBadge status={request.status} />
                   {missingBadge(request)}
                   {brokenBadge(request)}
+                  <ResolutionMark request={request} />
                   {/* Root's restock from outside carries the "by Root team" badge after the name
                       (an-override-shows-a-platform-badge); that line may take two rows rather than cut the badge off. */}
                   <Text
@@ -658,7 +668,12 @@ export function RestockSellingPage() {
                   </Table.Cell>
                   <Table.Cell>
                     <Stack gap="1" align="start">
-                      <RestockStatusBadge status={request.status} />
+                      {/* #101 — *N resolusi* / *Selesai* beside the status (the first line is the short one, so the column
+                          does not widen). */}
+                      <HStack gap="1">
+                        <RestockStatusBadge status={request.status} />
+                        <ResolutionMark request={request} compact />
+                      </HStack>
                       {problemBadges(request)}
                     </Stack>
                   </Table.Cell>

@@ -166,7 +166,7 @@ func TestExpenseList_ReadsTheOverrideStamp(t *testing.T) {
 
 	for _, ctx := range []context.Context{rootOutside(teamA), ownerIn(teamA)} {
 		_, err := svc.ExpenseCreate(ctx, connect.NewRequest(&expensev1.ExpenseCreateRequest{
-			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, Amount: 250_000, OccurredAt: "2026-07-03",
+			TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_OPERATIONAL), Amount: 250_000, OccurredAt: "2026-07-03",
 			FinanceAccountId: payingAccount,
 		}))
 		if err != nil {

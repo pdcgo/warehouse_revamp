@@ -17,6 +17,7 @@ is the one decision that touches them — 🔄 superseded 2026-10-31 by [a-produ
 | [a-branch-slides-open-and-shut](#a-branch-slides-open-and-shut) | a branch's children slide open and shut — height and fade in 180ms — and the chevron turns with them |
 | [a-branch-shows-the-hand](#a-branch-shows-the-hand) | a branch, which opens on a click, shows the hand cursor; a leaf keeps the arrow |
 | [a-picked-branch-keeps-its-whole-subtree](#a-picked-branch-keeps-its-whole-subtree) | picking a category branch keeps the branch and every category under it | owner, as recommended | — |
+| [a-categorys-count-is-its-whole-branch](#a-categorys-count-is-its-whole-branch) | a category's Produk count is its whole branch — the same set Discover's Kategori filter keeps |
 
 ## the-category-page-is-a-tree
 
@@ -134,6 +135,10 @@ Nama                              Sub-kategori   Produk ⚠1                  Ak
   fails on the old code), and on `Components/Chrome/CompactActions`, `ADisabledActionDoesNothing` (fails on the old
   code too).
 
+✅ **Built 2026-11-21** (backlog #115, Statistics P5) — the figures are COUNTED, the sample and its mark gone: `ProductService.ProductCategoryCounts` (Root / Administrator, unscoped, `NO_SIDE_EFFECTS`) answers every team's live (unarchived — ⚠ the scoping's reading, a build default) products filed directly on each category, one `GROUP BY category_id` ([product rpc.md](../../services/product_service/rpc.md#the-kategori-pages-product-count--productcategorycounts-built-2026-11-21)); the page makes a branch's figure from them and the tree it holds (`pages/categories/productCounts.ts`). `pending.ts`, `sampleProductCounts.ts`, the ⚠ on the heading, the summary strip and `catalog.categories.pending.*` are deleted. ⚠ **HELD — the owner's Q3, own vs whole branch** (*not settled* above): built as **A**, the whole branch — the set Discover's Kategori keeps ([a-picked-branch-keeps-its-whole-subtree](#a-picked-branch-keeps-its-whole-subtree)) — the choice in ONE function (`productCountShown`); B and C are Storybook mock stories only (`branchCountMock.tsx`), pictures in `accepts/q115/`. Tests: Go `product_category_counts_test.go`, `access_interceptors/product_category_counts_test.go`, perf `product_category_counts_perf_test.go`; stories `stories/ProductCount.stories.tsx` (A, A phone, Mock B, Mock C), `Tree` *Product count* (replaces `TheProductCountIsASampleAndSaysSo`), `Mobile`; unit `productCounts.test.ts`.
+
+🔄 *(2026-11-21)* The open point — own products or the whole branch — is settled: [a-categorys-count-is-its-whole-branch](#a-categorys-count-is-its-whole-branch), owner *"A"*, as built.
+
 ## a-branch-slides-open-and-shut
 
 > Owner, in chat (2026-10-17): *"animasi kurang, tidak smooth"* — a branch's children appeared and vanished at once;
@@ -173,3 +178,11 @@ Nama                              Sub-kategori   Produk ⚠1                  Ak
 **The verdict.** A picked category keeps the products filed **under it or under any category below it** — *Makanan* keeps Makanan, Snack and Keripik products; *Keripik* keeps Keripik's alone. Any node may be picked, a branch or an end category. ⚠ Not built.
 
 ✅ **Built 2026-11-14** — Discover's Kategori sends `ProductDiscoverRequest.category_id`; product_service reads the node and every node below it once (`category_v1.SubtreeIDs`, a recursive CTE over category_service's own table, through the composition root's `CategoryTree` seam) and keeps products filed on any of them; any node may be picked. Tests `subtree_test.go`, `product_discover_filters_test.go`, story `Filters/KategoriKeepsTheBranch`, e2e `the_discover_cards.spec.ts` (Kategori).
+
+---
+
+## a-categorys-count-is-its-whole-branch
+
+> Owner (Heri), in chat (2026-11-21): *"A"*, as recommended — to (#115, pictures `D:/hermes/profiles/revamp_dev/accepts/q115/` 01–04): on **Kategori**, the *Produk* count beside a branch (*Makanan* holding *Snack › Keripik*; 8 filed on Makanan, 40 on Snack, 72 on Keripik) — A: the whole branch, Makanan 120 · Snack 112 · Keripik 72, the same set Discover's Kategori filter keeps ([a-picked-branch-keeps-its-whole-subtree](#a-picked-branch-keeps-its-whole-subtree)); B: only the products filed directly on that node, Makanan 8 · Snack 40 · Keripik 72 (a node with none reads —); C: both, *8 · 120 total*. It answers the point [the-product-count-is-a-marked-sample](#the-product-count-is-a-marked-sample) left *"the owner's call when the count is built"* (and [a-product-has-one-category](../../business/product/context_decision.md#a-product-has-one-category)'s *"stays the screen's question"*).
+
+**The verdict.** A category's *Produk* figure is **its whole branch**: the live products filed on it and on every category under it, so a branch here reads the same number Discover keeps when that branch is picked. One figure per row; the own-only count is not shown. As built in #115 (`productCountShown`, `pages/categories/productCounts.ts`).

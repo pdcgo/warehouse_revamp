@@ -130,8 +130,14 @@ message AccountChangeMetric {
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
+  // The change type MONEY_IN (money-in-on-biaya-is-its-own-change-type) — the tenth. Numbered after the positions (13,
+  // appended), declared beside `capital` so the screens read it with the other change types, before the net.
+  double money_in = 13 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
 
-  // The net — the nine above summed: `closing_balance − opening_balance`.
+  // The net — the ten above summed: `closing_balance − opening_balance`.
   double change = 11 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY

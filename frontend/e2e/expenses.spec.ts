@@ -123,8 +123,8 @@ test("Expenses: record, adjust, and cancel — the totals follow each step, ever
   // The page carries this picker TWICE — once as the list filter, once in this form — so each names
   // its own testid (the filter is "expenses-kind-filter"). Without that, both the trigger and every
   // option are ambiguous and a test has to select by position.
-  await page.getByTestId("expense-kind-select").click();
-  await page.getByTestId("expense-kind-select-3").click(); // OPERATIONAL
+  await page.getByTestId("expense-type-select").click();
+  await page.getByTestId("expense-type-select-electricity").click(); // Operasional › Listrik — a type is picked since #99
   await page.getByTestId("expense-amount").fill("800000");
   // The date picker is a button opening a calendar (it stopped being a native <input type="date">),
   // so today is CLICKED. `[data-today]` is the day cell the calendar marks itself — no date maths in
@@ -211,8 +211,8 @@ test("Expenses: the account that paid goes down on record and comes back on canc
   // RECORD — OPERATIONAL, so no shop; paid from the new account.
   await page.goto("/expenses");
   await page.getByTestId("open-record-cost").click();
-  await page.getByTestId("expense-kind-select").click();
-  await page.getByTestId("expense-kind-select-3").click(); // OPERATIONAL
+  await page.getByTestId("expense-type-select").click();
+  await page.getByTestId("expense-type-select-internet").click(); // Operasional › Internet — a type is picked since #99
   await page.getByTestId("expense-amount").fill("250000");
   await page.getByTestId("expense-note").fill(note);
   await page.getByTestId("expense-paid-from").click();

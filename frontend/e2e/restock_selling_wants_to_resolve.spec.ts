@@ -5,38 +5,49 @@ import { SUFFIX, login, api } from "./restock_helpers";
 
 // ── selling:all wants to record the supplier's solution — the checks behind docs/acceptances/inventory/restock.md ─────
 //
-// WHEN `resolve restock problem`, two givens:
-//   A (status: accepted · missing items · money refunded · operational account) — 10 × Rp 10.000 ordered, 8 in the box:
-//     2 missing, and the supplier pays the Rp 20.000 for them back into the paying (operational) account.
-//   B (status: accepted · broken items · goods resent) — 10 in the box, 2 of them broken: the supplier sends 2 again.
+// WHEN `resolve restock problem`, givens 33 and 34 here (36 and 37 in restock_selling_wants_to_resolve_more.spec.ts):
+//   33 (status: accepted · missing items · money refunded · operational account) — 10 × Rp 10.000 ordered, 8 in the box:
+//      2 missing, and the supplier pays the Rp 20.000 for them back.
+//   34 (status: accepted · broken items · goods resent) — 10 in the box, 2 of them broken: the supplier sends 2 again.
 //
-// EVERY THEN IS 🚧 unimplemented. The rows come from a discussion, not a decision (restock.md's 📝 note under
-// § resolve: missing and broken units are settled with the supplier; goods sent again are proposed as a NEW restock that
-// names the one it settles). Nothing is built for it: no RPC, and an accepted restock's page offers no action at all
-// (SellingRestockActions: accepted · lost · cancelled → nothing). So each then is its own test, marked `test.fail` with
-// the status (guide.md) — its own, because `test.fail` flips a whole test and would hide a then that turns real while
-// the others do not. Each runs as selling:owner on its own restock (and, for A, its own operational account, so no
-// balance read is moved by another test), as the 🚧 checks of create / mark lost restock do; the day one turns red the
-// then is built — ask the owner, then run it as every selling role on the built test ids.
+// BUILT by backlog #101 (the-restock-resolutions-prototype-is-accepted, a-restock-problem-is-settled-by-resolution-rows
+// and every 🔄 under it): the restock's page has a Resolusi section (a problem restock — Diterima with *Barang kurang* /
+// *Barang rusak* — or a Hilang one); *Catat Resolusi* → Refund (amount, the account opening on the restock's paying
+// account, a note) · Retur ke Supplier · Kirim Ulang (its own page: lines from the problem units, courier, resi,
+// warehouse) — each a resolution row; a refund posts INTO its account through inventory's RestockRefunded
+// (restock-is-never-typed-by-hand: financial_account writes *Restock #N refund*, async — read polled); each row is written
+// into the restock's Riwayat as it happens (a `restock_logs` row of kind `resolution`).
 //
-// FIELD-AGNOSTIC, because how it will be built is not known: the GIVEN is proven on the rendered restock page (accepted,
-// its missing or broken count shown); the WHEN looks for a resolve action under any name it could be built with and
-// clicks it — softly, so each test goes on to read its then where that then must land:
-//   - `solution recorded on restock` — the restock's page shows a solution (a `solution`/`resol…` test id, or the word).
-//   - `solution shown in restock timeline` — the restock's Riwayat gains a row.
-//   - `operational account balance increases by refund` — the paying account reads its balance + Rp 20.000.
-//   - `refund recorded in operational account history` — that account gains a line naming the restock.
-//   - `resent goods arrive as new restock` — the team's restock list gains one, and its warehouse's inbound queue reads
-//     1 restock · 2 pcs (an accepted restock is not in it).
-test.describe("selling:all wants to record the supplier's solution", () => {
-  test.describe.configure({ timeout: 120_000 });
+// Each given runs as EVERY selling role, each role on its OWN restock and its OWN operational account, so no figure is
+// moved by another test. The WHEN is the screen's: the restock's page → Catat Resolusi → Refund / Kirim Ulang. Each then
+// is its own step, named exactly as its row and read SOFTLY where it lands, so one failing then does not hide the next:
+//   - `solution recorded on restock` — the resolution row on the restock's Resolusi section: its type, a refund's amount
+//     and account, a reshipping's parcel and its step, the note, who.
+//   - `solution shown in restock timeline` — the Riwayat row of kind `resolution`, naming the same refund.
+//   - `operational account balance increases by refund` — the paying account's balance on its page, + Rp 20.000.
+//   - `refund recorded in operational account history` — that account's line *Restock #N refund*.
+//   - `resent goods arrive as new restock` — ⚠ CONFLICT with a-suppliers-reshipping-comes-in-as-a-custom-shipment (owner,
+//     2026-11-20, "B" against the recommendation of a new linked restock): a supplier's reshipping arrives as an INBOUND
+//     CUSTOM SHIPMENT, not a new restock; the row comes from a 2026-11-16 discussion (restock.md's 📝 note), not a
+//     decision. So it is its OWN test (selling:owner — one role is enough for a conflict check), whose then looks for
+//     the new restock the row expects and is marked test.fail with the conflict; beside it every role's test proves
+//     what IS built as `regression: resent goods arrive as an inbound parcel` — the Kirim Ulang parcel exists, is linked
+//     from the resolution row, and is on the warehouse's Restok Masuk (on its way; its Tiba / Terima are
+//     custom_shipments_*'s to drive).
+test.describe("resolve restock problem", () => {
+  test.describe.configure({ timeout: 150_000 });
 
   const PASSWORD = "e2e-acceptance-pass-1";
-  const OWNER = `e2ervown${SUFFIX}`;
-  const STAFF = `e2ervwst${SUFFIX}`;
+  const SERVICE = "inventory.v1.RestockRequestService";
+  const ROLES = [
+    { given: "selling:owner", role: "ROLE_SELLING_OWNER", key: "own" },
+    { given: "selling:admin", role: "ROLE_SELLING_ADMIN", key: "adm" },
+    { given: "selling:cs", role: "ROLE_SELLING_CS", key: "cs" },
+  ] as const;
   const COND_REFUND = "status: accepted · missing items · money refunded · operational account";
   const COND_RESENT = "status: accepted · broken items · goods resent";
-  const SERVICE = "inventory.v1.RestockRequestService";
+  const CONFLICT =
+    "conflict: a-suppliers-reshipping-comes-in-as-a-custom-shipment — resent goods arrive as an inbound parcel, not a new restock";
 
   const ORDERED = 10;
   const TOTAL = 100_000; // Rp 10.000 a unit
@@ -47,42 +58,45 @@ test.describe("selling:all wants to record the supplier's solution", () => {
   const ACCEPTED = 2;
   const rupiah = (n: number) => `Rp ${n.toLocaleString("id-ID")}`;
 
-  // One restock per 🚧 then: given A's four, given B's two. ⚠ No key — so no resi — may carry the words the action and the
-  // solution are looked for by: a resi reading …-SOLUTION-… once named the page's copy button, so the WHEN "found" it.
-  const REFUND_KEYS = ["record", "timeline", "balance", "history"] as const;
-  const RESENT_KEYS = ["record", "resent"] as const;
-  const key = (given: "A" | "B", then: string) => `${given}-${then}`;
+  // One restock (and one paying account) per role and given; `B-new` is the conflict test's own.
+  const REFUND_KEYS = ROLES.map((r) => `A-${r.key}`);
+  const RESENT_KEYS = [...ROLES.map((r) => `B-${r.key}`), "B-new"];
 
+  const username = (key: string) => `e2erv${key}${SUFFIX}`;
+  const STAFF = `e2ervwh${SUFFIX}`;
   const code = `RVP${SUFFIX}`;
   const resi = (k: string) => `E2E-RV-${k}-${SUFFIX}`.toUpperCase();
+  const resentResi = (k: string) => `E2E-RVK-${k}-${SUFFIX}`.toUpperCase();
 
   const ground = {
     team: "",
     warehouse: "",
     product: "",
     restocks: {} as Record<string, string>,
-    accounts: {} as Record<string, string>,
+    accounts: {} as Record<string, { id: string; name: string }>,
   };
 
   test.beforeAll(async ({ browser }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
     const page = await browser.newPage();
     await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
     const team = async (name: string, teamCode: string, type: string) =>
       String((await api(page, "team.v1.TeamService/TeamCreate", { name, teamCode, type, ownerUserId: ROOT_USER_ID })).team.id);
+    // The name is the username, so who recorded a row reads as the person signed in.
     const user = (teamId: string, name: string, role: string) =>
       api(page, "user.v1.UserService/CreateUser", { teamId, username: name, password: PASSWORD, name, role });
 
     ground.team = await team(`E2E Rv Seller ${SUFFIX}`, `RVS${SUFFIX}`, "TEAM_TYPE_SELLING");
     ground.warehouse = await team(`E2E Rv Warehouse ${SUFFIX}`, `RVW${SUFFIX}`, "TEAM_TYPE_WAREHOUSE");
-    await user(ground.team, OWNER, "ROLE_SELLING_OWNER");
+    for (const r of ROLES) await user(ground.team, username(r.key), r.role);
     await user(ground.warehouse, STAFF, "ROLE_WAREHOUSE_STAFF");
     const rack = String(
       (await api(page, "inventory.v1.RackService/RackCreate", { teamId: ground.warehouse, code: "e2e-rv", name: "E2E resolve shelf" }))
         .rack.id,
     );
 
+    // The reshipping's supplier is the server's pick — the one every restock line names.
     const supplier = String(
       (await api(page, "supplier.v1.SupplierService/SupplierCreate", { teamId: ground.team, name: `E2E Rv Supplier ${SUFFIX}` }))
         .supplier.id,
@@ -99,14 +113,14 @@ test.describe("selling:all wants to record the supplier's solution", () => {
       ).product.id,
     );
 
-    const keys = [...REFUND_KEYS.map((t) => key("A", t)), ...RESENT_KEYS.map((t) => key("B", t))];
-    for (const k of keys) {
+    for (const k of [...REFUND_KEYS, ...RESENT_KEYS]) {
       // Its own operational account — the balance and history reads are of this restock alone.
+      const name = `E2E Rv ${k} ${SUFFIX}`;
       const created = await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
         teamId: ground.team,
         type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
         provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
-        name: `E2E Rv ${k} ${SUFFIX}`,
+        name,
         holderName: "E2E",
         accountNumber: `E2E-RVP-${k}-${SUFFIX}`,
         openingBalance: 10_000_000,
@@ -118,9 +132,10 @@ test.describe("selling:all wants to record the supplier's solution", () => {
         accountId,
         operational: true,
       });
-      ground.accounts[k] = accountId;
+      ground.accounts[k] = { id: accountId, name };
 
-      // GIVEN — raised for 10 × Rp 10.000, and counted in by the warehouse: A short by 2, B whole with 2 broken.
+      // GIVEN — raised for 10 × Rp 10.000 from that account, and counted in by the warehouse: 33 short by 2, 34 whole
+      // with 2 broken (Terima puts Barang kurang / Barang rusak on).
       const raised = await api(page, `${SERVICE}/RestockRequestCreate`, {
         teamId: ground.team,
         warehouseId: ground.warehouse,
@@ -150,49 +165,74 @@ test.describe("selling:all wants to record the supplier's solution", () => {
     await page.close();
   });
 
-  async function signIn(page: Page, user: string, team: string) {
+  async function signIn(page: Page, user: string, team = ground.team) {
     await login(page, user, PASSWORD);
     await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), team);
   }
 
-  // The GIVEN on the rendered screen: the restock's own page, accepted, its problem shown.
-  async function openAccepted(page: Page, id: string, given: "A" | "B") {
+  // The restock's page, its Resolusi section drawn — the GIVEN: accepted, a problem restock.
+  async function openResolutions(page: Page, id: string) {
     await page.goto(`/inventories/restock/${id}`);
     await expect(page.getByTestId("restock-detail-status").getByTestId(`restock-status-${ACCEPTED}`)).toBeVisible();
-    if (given === "A") {
-      // The shortfall is flagged in the title row.
-      await expect(page.getByTestId("restock-detail-missing")).toContainText(String(MISSING));
-      return;
-    }
-    // The broken units are in the line's Penyesuaian, whose figures open in a dialog.
+    await expect(page.getByTestId("restock-detail-resolutions-section").getByTestId("resolution-section")).toBeVisible();
+  }
+
+  // Catat Resolusi → one of its types.
+  async function pick(page: Page, slug: "refund" | "return" | "reshipping") {
+    await page.getByTestId("resolution-record").click();
+    await expect(page.getByTestId("resolution-record-menu")).toBeVisible();
+    await page.getByTestId(`resolution-record-${slug}`).click();
+  }
+
+  const created = (page: Page) => page.waitForResponse((r) => r.url().endsWith(`/warehouse.${SERVICE}/RestockResolutionCreate`));
+
+  // WHEN — Catat Resolusi → Refund: the amount typed, the account left on the one it opens on (the restock's paying
+  // account), a note. Returns the resolution's id.
+  async function recordRefund(page: Page, id: string, amount: number, account: { id: string; name: string }, note: string) {
+    await openResolutions(page, id);
+    await pick(page, "refund");
+    await expect(page.getByTestId("resolution-refund-dialog")).toBeVisible();
+    await expect(page.getByTestId("resolution-refund-account")).toContainText(account.name);
+    await page.getByTestId("resolution-refund-amount").fill(String(amount));
+    await page.getByTestId("resolution-refund-note").fill(note);
+    const [res] = await Promise.all([created(page), page.getByTestId("confirm-action").click()]);
+    expect(res.status()).toBe(200);
+    const sent = res.request().postDataJSON() as { refundAmount?: number; financeAccountId?: string };
+    expect(sent.refundAmount).toBe(amount);
+    expect(String(sent.financeAccountId)).toBe(account.id);
+    await expect(page.getByTestId("confirm-action")).toHaveCount(0);
+    return String(((await res.json()) as { resolution: { id: string } }).resolution.id);
+  }
+
+  // WHEN — Catat Resolusi → Kirim Ulang: the page opens on the problem units (`opens` of the product), the courier picked
+  // (JNE), a resi and a note typed, the warehouse left on the restock's; saved, it returns to the restock. Returns the
+  // resolution's and its inbound parcel's ids.
+  async function recordReshipping(page: Page, id: string, opens: number, k: string, note: string) {
     const pid = ground.product;
-    await page.getByTestId(`restock-detail-adjustment-${pid}`).click();
-    await expect(page.getByTestId(`restock-detail-adjustment-${pid}-dialog`)).toBeVisible();
-    await expect(page.getByTestId(`restock-detail-broken-${pid}-count`)).toContainText(String(BROKEN));
-    await page.keyboard.press("Escape");
-    await expect(page.getByTestId(`restock-detail-adjustment-${pid}-dialog`)).toHaveCount(0);
-  }
-
-  // WHEN — resolve restock problem, on the restock's page: a resolve action under any name it could be built with.
-  // 🚧 none exists, so this is soft — the test goes on to read its then where it must land.
-  async function resolve(page: Page) {
-    const named = /resolve|solution|solusi|selesaikan|penyelesaian/i;
-    const action = page
-      .locator('[data-testid^="restock-action-resolve"], [data-testid^="restock-action-solution"], [data-testid^="restock-resolve"]')
-      .or(page.getByRole("button", { name: named }))
-      .or(page.getByRole("menuitem", { name: named }));
-    await expect.soft(action.first(), "a resolve action on the accepted restock's page").toBeVisible({ timeout: 5_000 });
-    if ((await action.count()) > 0) await action.first().click();
-  }
-
-  // A solution shown on the restock's page — any test id naming it, or the word.
-  async function solutionOnPage(page: Page, id: string) {
-    await page.goto(`/inventories/restock/${id}`);
-    await expect(page.getByTestId("restock-detail-page")).toBeVisible();
-    const shown = page
-      .locator('[data-testid*="solution"], [data-testid*="resol"]')
-      .or(page.getByTestId("restock-detail-page").getByText(/solution|solusi|penyelesaian/i));
-    await expect(shown.first()).toBeVisible({ timeout: 5_000 });
+    await openResolutions(page, id);
+    await pick(page, "reshipping");
+    await expect(page).toHaveURL(new RegExp(`/inventories/restock/${id}/reshipping$`));
+    await expect(page.getByTestId("reshipping-form")).toBeVisible();
+    await expect(page.getByTestId(`reshipping-line-${pid}`)).toBeVisible();
+    await expect(page.getByTestId(`reshipping-count-${pid}`)).toHaveValue(String(opens));
+    await page.getByTestId("reshipping-resi").fill(resentResi(k));
+    await page.getByTestId("reshipping-note").fill(note);
+    // The courier's list lands late and remounts the field once: picked again until the form reads ready.
+    await expect(async () => {
+      await page.getByTestId("reshipping-courier").getByRole("combobox").click();
+      await page.getByTestId("shipment-channel-option-jne").click({ timeout: 3_000 });
+      await expect(page.getByTestId("reshipping-ready-ready")).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 30_000 });
+    const [res] = await Promise.all([created(page), page.getByTestId("reshipping-save").click()]);
+    expect(res.status()).toBe(200);
+    const sent = res.request().postDataJSON() as {
+      reshipping: { warehouseId: string; resi: string; lines: { productId: string; count: string }[] };
+    };
+    expect(String(sent.reshipping.warehouseId)).toBe(ground.warehouse);
+    expect(sent.reshipping.lines.map((l) => [String(l.productId), String(l.count)])).toEqual([[pid, String(opens)]]);
+    await expect(page).toHaveURL(new RegExp(`/inventories/restock/${id}$`));
+    const body = (await res.json()) as { resolution: { id: string }; customShipment: { id: string } };
+    return { resolution: String(body.resolution.id), parcel: String(body.customShipment.id) };
   }
 
   // An account's balance as its page shows it, once the line `text` is in its history — the create's payment — so a read
@@ -209,121 +249,138 @@ test.describe("selling:all wants to record the supplier's solution", () => {
     return balance;
   }
 
-  // The account's history lines naming this restock — `Restock #12`, never `Restock #123`.
-  const restockLines = (page: Page, id: string) =>
-    page.locator("[data-testid^='account-log-row-']").filter({ hasText: new RegExp(`Restock #${id}(?!\\d)`) });
+  const resolutionRows = (page: Page) => page.locator("[data-testid^='resolution-row-'][data-type]");
 
-  const timelineRows = (page: Page) => page.locator("[data-testid^='restock-timeline-'][data-kind]");
-  const MARK = "🚧 unimplemented (docs/acceptances/inventory/restock.md § resolve) — nothing records the supplier's solution";
+  // ── 33: missing items, money refunded ──────────────────────────────────────────────────────────────────────────────
+  test.describe(`selling:all wants to record the supplier's solution (${COND_REFUND})`, () => {
+    for (const r of ROLES) {
+      test(`${r.given} resolve restock problem (${COND_REFUND})`, async ({ page }) => {
+        const k = `A-${r.key}`;
+        const id = ground.restocks[k];
+        const account = ground.accounts[k];
+        const note = `supplier transfer balik ${r.key} ${SUFFIX}`;
+        const row = (resolution: string) => page.getByTestId(`resolution-row-${resolution}`);
 
-  // ── A: missing items, money refunded ───────────────────────────────────────────────────────────────────────────────
-  test(`selling:owner resolve restock problem (${COND_REFUND}): solution recorded on restock`, async ({ page }) => {
-    test.fail(true, `${MARK}: an accepted restock's page offers no resolve action`);
-    const id = ground.restocks[key("A", "record")];
-    await signIn(page, OWNER, ground.team);
-    await openAccepted(page, id, "A");
-    await resolve(page);
-    await test.step("then: solution recorded on restock", async () => {
-      await solutionOnPage(page, id);
-    });
+        await signIn(page, username(r.key));
+        // GIVEN — the payment is on the account; the restock is accepted, 2 short, with no resolution yet.
+        const before = await balanceOnceRecorded(page, account.id, `Restock #${id}`);
+        await openResolutions(page, id);
+        await expect(page.getByTestId("restock-detail-missing")).toContainText(String(MISSING));
+        await expect(page.getByTestId("resolution-empty")).toBeVisible();
+
+        // WHEN — as this role.
+        const resolution = await recordRefund(page, id, REFUND, account, note);
+
+        await test.step("then: solution recorded on restock", async () => {
+          await page.goto(`/inventories/restock/${id}`);
+          await expect.soft(row(resolution)).toHaveAttribute("data-type", "REFUND");
+          await expect.soft(row(resolution).getByTestId("resolution-type-refund")).toBeVisible();
+          await expect.soft(page.getByTestId(`resolution-row-${resolution}-refund`)).toHaveText(`${rupiah(REFUND)} into ${account.name}`);
+          await expect.soft(page.getByTestId(`resolution-row-${resolution}-note`)).toHaveText(note);
+          await expect.soft(page.getByTestId(`resolution-row-${resolution}-when`)).toContainText(username(r.key));
+          await expect.soft(resolutionRows(page)).toHaveCount(1);
+        });
+        await test.step("then: solution shown in restock timeline", async () => {
+          const rows = page.locator("[data-testid^='restock-timeline-'][data-kind='resolution']");
+          await expect.soft(rows).toHaveCount(1);
+          const detail = rows.first().locator("[data-testid$='-detail']");
+          await expect.soft(detail.getByTestId("resolution-type-refund")).toBeVisible();
+          await expect.soft(detail).toContainText(`${rupiah(REFUND)} into ${account.name}`);
+          await expect.soft(rows.first().locator("[data-testid$='-note']")).toHaveText(note);
+          await expect.soft(rows.first().locator("[data-testid$='-by']")).toContainText(username(r.key));
+        });
+        await test.step("then: operational account balance increases by refund", async () => {
+          await expect
+            .soft(async () => {
+              await page.goto(`/financial-accounts/${account.id}`);
+              await expect(page.getByTestId("account-detail-balance")).toHaveText(rupiah(before + REFUND), { timeout: 2_000 });
+            })
+            .toPass({ timeout: 30_000 });
+        });
+        await test.step("then: refund recorded in operational account history", async () => {
+          const lines = page.locator("[data-testid^='account-log-row-']").filter({ hasText: `Restock #${id} refund` });
+          await expect
+            .soft(async () => {
+              await page.goto(`/financial-accounts/${account.id}`);
+              await expect(lines).toHaveCount(1, { timeout: 2_000 });
+            })
+            .toPass({ timeout: 30_000 });
+          await expect.soft(lines.first()).toContainText(rupiah(REFUND).replace("Rp ", ""));
+        });
+      });
+    }
   });
 
-  test(`selling:owner resolve restock problem (${COND_REFUND}): solution shown in restock timeline`, async ({ page }) => {
-    test.fail(true, `${MARK}: no solution row in the restock timeline`);
-    const id = ground.restocks[key("A", "timeline")];
-    await signIn(page, OWNER, ground.team);
-    await openAccepted(page, id, "A");
-    // The accept's own rows are drawn before they are counted.
-    await expect(timelineRows(page).first()).toBeVisible();
-    const before = await timelineRows(page).count();
-    await resolve(page);
-    await test.step("then: solution shown in restock timeline", async () => {
-      await expect(async () => {
-        await page.goto(`/inventories/restock/${id}`);
-        await expect(timelineRows(page).first()).toBeVisible({ timeout: 2_000 });
-        expect(await timelineRows(page).count()).toBeGreaterThan(before);
-      }).toPass({ timeout: 15_000 });
-    });
-  });
+  // ── 34: broken items, goods resent ─────────────────────────────────────────────────────────────────────────────────
+  test.describe(`selling:all wants to record the supplier's solution (${COND_RESENT})`, () => {
+    for (const r of ROLES) {
+      test(`${r.given} resolve restock problem (${COND_RESENT})`, async ({ page }) => {
+        const k = `B-${r.key}`;
+        const id = ground.restocks[k];
+        const note = `supplier kirim ulang ${r.key} ${SUFFIX}`;
 
-  test(`selling:owner resolve restock problem (${COND_REFUND}): operational account balance increases by refund`, async ({ page }) => {
-    test.fail(true, `${MARK}: no refund reaches the operational account`);
-    const id = ground.restocks[key("A", "balance")];
-    const account = ground.accounts[key("A", "balance")];
-    await signIn(page, OWNER, ground.team);
-    const before = await balanceOnceRecorded(page, account, `Restock #${id}`);
-    await openAccepted(page, id, "A");
-    await resolve(page);
-    await test.step(`then: operational account balance increases by refund (by ${rupiah(REFUND)}, from ${rupiah(before)})`, async () => {
-      await expect(async () => {
-        await page.goto(`/financial-accounts/${account}`);
-        await expect(page.getByTestId("account-detail-balance")).toHaveText(rupiah(before + REFUND), { timeout: 2_000 });
-      }).toPass({ timeout: 20_000 });
-    });
-  });
+        await signIn(page, username(r.key));
+        // GIVEN — accepted, 2 broken (the Kirim Ulang page opens on them), no resolution yet.
+        await openResolutions(page, id);
+        await expect(page.getByTestId("resolution-empty")).toBeVisible();
 
-  test(`selling:owner resolve restock problem (${COND_REFUND}): refund recorded in operational account history`, async ({ page }) => {
-    test.fail(true, `${MARK}: no refund line in the operational account's history`);
-    const id = ground.restocks[key("A", "history")];
-    const account = ground.accounts[key("A", "history")];
-    await signIn(page, OWNER, ground.team);
-    await balanceOnceRecorded(page, account, `Restock #${id}`);
-    const linesBefore = await restockLines(page, id).count();
-    expect(linesBefore).toBeGreaterThan(0);
-    await openAccepted(page, id, "A");
-    await resolve(page);
-    await test.step("then: refund recorded in operational account history", async () => {
-      await expect(async () => {
-        await page.goto(`/financial-accounts/${account}`);
-        await expect(page.getByTestId("account-log-table")).toBeVisible({ timeout: 2_000 });
-        expect(await restockLines(page, id).count()).toBeGreaterThan(linesBefore);
-      }).toPass({ timeout: 20_000 });
-    });
-  });
+        // WHEN — as this role.
+        const sent = await recordReshipping(page, id, BROKEN, k, note);
+        const prefix = `resolution-row-${sent.resolution}`;
 
-  // ── B: broken items, goods resent ──────────────────────────────────────────────────────────────────────────────────
-  test(`selling:owner resolve restock problem (${COND_RESENT}): solution recorded on restock`, async ({ page }) => {
-    test.fail(true, `${MARK}: an accepted restock's page offers no resolve action`);
-    const id = ground.restocks[key("B", "record")];
-    await signIn(page, OWNER, ground.team);
-    await openAccepted(page, id, "B");
-    await resolve(page);
-    await test.step("then: solution recorded on restock", async () => {
-      await solutionOnPage(page, id);
-    });
-  });
+        await test.step("then: solution recorded on restock", async () => {
+          await page.goto(`/inventories/restock/${id}`);
+          await expect.soft(page.getByTestId(prefix)).toHaveAttribute("data-type", "RESHIPPING");
+          await expect.soft(page.getByTestId(prefix).getByTestId("resolution-type-reshipping")).toBeVisible();
+          await expect.soft(page.getByTestId(`${prefix}-parcel-link`)).toHaveText(`Reshipping #${sent.parcel}`);
+          await expect.soft(page.getByTestId(`${prefix}-parcel`).getByTestId("inbound-status-on_the_way")).toBeVisible();
+          await expect.soft(page.getByTestId(`${prefix}-parcel`)).toContainText(`${BROKEN} pcs`);
+          await expect.soft(page.getByTestId(`${prefix}-note`)).toHaveText(note);
+          await expect.soft(page.getByTestId(`${prefix}-when`)).toContainText(username(r.key));
+          await expect.soft(resolutionRows(page)).toHaveCount(1);
+        });
+        // What IS built for the goods sent again (a-suppliers-reshipping-comes-in-as-a-custom-shipment): the parcel exists,
+        // the row links it, and its warehouse has it on its way.
+        await test.step("regression: resent goods arrive as an inbound parcel", async () => {
+          await page.getByTestId(`${prefix}-parcel-link`).click();
+          await expect.soft(page).toHaveURL(new RegExp(`/inventories/custom-shipments/in/${sent.parcel}$`));
+          await expect.soft(page.getByTestId("inbound-title")).toContainText(`#${sent.parcel}`);
+          await expect.soft(page.getByTestId("inbound-restock")).toContainText(`#${id}`);
+          await expect.soft(page.getByTestId(`inbound-line-${ground.product}`)).toBeVisible();
 
-  test(`selling:owner resolve restock problem (${COND_RESENT}): resent goods arrive as new restock`, async ({ page }) => {
-    test.fail(true, `${MARK}: goods sent again raise no new restock`);
-    const id = ground.restocks[key("B", "resent")];
-    const rows = page.locator('[data-testid^="restock-row-"]');
+          await signIn(page, STAFF, ground.warehouse);
+          await page.goto("/inventories/restock");
+          const inbound = page.getByTestId(`inbound-row-${sent.parcel}`);
+          await expect.soft(inbound).toBeVisible();
+          await expect.soft(inbound.getByTestId("inbound-status-on_the_way")).toBeVisible();
+          await expect.soft(page.getByTestId(`inbound-for-${sent.parcel}`)).toContainText(`restock #${id}`);
+          await expect.soft(page.getByTestId(`inbound-items-${sent.parcel}`)).toContainText(`${BROKEN} pcs`);
+        });
+      });
+    }
 
-    // GIVEN, as the warehouse: every restock to it is accepted, so nothing is on its way.
-    await signIn(page, STAFF, ground.warehouse);
-    await page.goto("/inventories/restock");
-    await expect(page.getByTestId("restock-stat-restocks-value")).toHaveText("0");
+    // ⚠ CONFLICT — its own test (test.fail flips a whole test): the row expects a new restock; the owner decided an
+    // inbound custom shipment. The then looks for the new restock on the team's list.
+    test(`selling:owner resolve restock problem (${COND_RESENT}): resent goods arrive as new restock`, async ({ page }) => {
+      test.fail(true, CONFLICT);
+      const id = ground.restocks["B-new"];
+      const rows = page.locator('[data-testid^="restock-row-"]');
 
-    // …and as the seller: the team's six restocks on its list.
-    await signIn(page, OWNER, ground.team);
-    await page.goto("/inventories/restock");
-    await expect(page.getByTestId("restock-selling-page")).toBeVisible();
-    await expect(page.getByTestId(`restock-row-${id}`)).toBeVisible();
-    const before = await rows.count();
-
-    await openAccepted(page, id, "B");
-    await resolve(page);
-    await test.step("then: resent goods arrive as new restock", async () => {
-      // The team's list gains the new restock…
-      await expect(async () => {
-        await page.goto("/inventories/restock");
-        await expect(page.getByTestId(`restock-row-${id}`)).toBeVisible({ timeout: 2_000 });
-        expect(await rows.count()).toBe(before + 1);
-      }).toPass({ timeout: 15_000 });
-      // …and its warehouse sees the 2 units on their way.
-      await signIn(page, STAFF, ground.warehouse);
+      await signIn(page, username("own"));
       await page.goto("/inventories/restock");
-      await expect(page.getByTestId("restock-stat-restocks-value")).toHaveText("1");
-      await expect(page.getByTestId("restock-stat-units-value")).toHaveText(String(BROKEN));
+      await expect(page.getByTestId(`restock-row-${id}`)).toBeVisible();
+      const before = await rows.count();
+
+      const sent = await recordReshipping(page, id, BROKEN, "B-new", `supplier kirim ulang new ${SUFFIX}`);
+      await expect(page.getByTestId(`resolution-row-${sent.resolution}`)).toHaveAttribute("data-type", "RESHIPPING");
+
+      await test.step("then: resent goods arrive as new restock", async () => {
+        await expect(async () => {
+          await page.goto("/inventories/restock");
+          await expect(page.getByTestId(`restock-row-${id}`)).toBeVisible({ timeout: 3_000 });
+          expect(await rows.count()).toBe(before + 1);
+        }).toPass({ timeout: 15_000 });
+      });
     });
   });
 });

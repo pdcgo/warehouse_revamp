@@ -95,6 +95,9 @@ func (s *Service) OwnerStockHistory(
 		ActorUserID uint64
 		CreatedAt   time.Time
 		IsOverride  bool
+		// Who received a sample row's units — #108's recipientExpr, read on the page as the override flag is; empty on
+		// every other row (a-sample-keeps-its-recipient).
+		Recipient string
 
 		PriceUnitBefore float64
 		PriceUnitAfter  float64
@@ -104,8 +107,10 @@ func (s *Service) OwnerStockHistory(
 	var rows []row
 
 	err = db.
-		// The override flag is read on the PAGE only — outside the window, one transaction probe per row returned.
-		Raw("SELECT p.*, "+overrideExpr("p.movement_id")+" AS is_override FROM ("+
+		// The override flag and a sample's recipient are read on the PAGE only — outside the window and past the OFFSET,
+		// one transaction probe per row returned (the recipient's for a sample row only).
+		Raw("SELECT p.*, "+overrideExpr("p.movement_id")+" AS is_override, "+
+			recipientExpr("p.change_type", "p.movement_id")+" AS recipient FROM ("+
 			"SELECT * FROM ("+inner+") x"+where+" ORDER BY id DESC LIMIT ? OFFSET ?) p ORDER BY p.id DESC",
 			append(append([]any{}, args...), int(page.GetLimit()), pageOffset(page))...).
 		Scan(&rows).
@@ -133,6 +138,7 @@ func (s *Service) OwnerStockHistory(
 			ActorUserId:   r.ActorUserID,
 			CreatedAtUnix: r.CreatedAt.Unix(),
 			IsOverride:    r.IsOverride,
+			Recipient:     r.Recipient,
 
 			PriceUnitBefore: r.PriceUnitBefore,
 			PriceUnitAfter:  r.PriceUnitAfter,

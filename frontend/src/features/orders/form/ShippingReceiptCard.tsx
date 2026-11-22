@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Button,
@@ -16,8 +16,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { ExternalLink, FileText, Paperclip } from "lucide-react";
 
-import { documentClient, rpcError } from "../../../api/clients";
 import { ReceiptUpload, hasReceipt, useReceiptUpload } from "../../../components/orders/ReceiptUpload";
+import { useDocumentLink } from "../../documents/queries";
 import type { ReceiptValue } from "../../../components/orders/ReceiptUpload";
 import { ShipmentChannelSelect } from "../../../components/pickers/ShipmentChannelSelect";
 import type { LabelResult } from "../../shipment/receiptCheck";
@@ -314,41 +314,12 @@ export function ShippingReceiptCard({
 // URL is minted for a receipt somebody is ACTUALLY LOOKING AT — here the one they just attached — and
 // never for every order in a list. It is re-fetched when the document changes and dropped when the
 // receipt is removed.
+//
+// A read on mount, so a query hook (#122): useDocumentLink, whose answer is reused only within the
+// link's own life. A preview that cannot load is not a failed attachment: the file is uploaded and the
+// order still carries it. The card falls back to the upload row's filename.
 function useReceiptUrl(teamId: bigint, receipt: ReceiptValue) {
-  const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const documentId = receipt.documentId;
-
-  useEffect(() => {
-    if (!documentId || teamId <= 0n) {
-      setUrl("");
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-
-    documentClient
-      .getDownloadUrl({ teamId, documentId })
-      .then((res) => {
-        if (!cancelled) setUrl(res.url);
-      })
-      .catch((err) => {
-        // A preview that cannot load is not a failed attachment: the file is uploaded and the order
-        // still carries it. The card falls back to the upload row's filename.
-        if (!cancelled) {
-          setUrl("");
-          void rpcError(err);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [teamId, documentId]);
+  const { url, loading } = useDocumentLink({ teamId, documentId: receipt.documentId ?? "" });
 
   return { url, loading };
 }

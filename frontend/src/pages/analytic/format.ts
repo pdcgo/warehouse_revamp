@@ -2,7 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 
 import { key, referenceQuery } from "../../api/queryClient";
-import { CHANGE_TYPE_FIELDS, type FieldKind, type MetricDef, type TableGroup, isTimeGroup } from "../../features/analytic/catalogue";
+import {
+  CHANGE_TYPE_FIELDS,
+  type FieldKind,
+  type MetricDef,
+  type TableGroup,
+  expenseTypeOfField,
+  isTimeGroup,
+} from "../../features/analytic/catalogue";
+import { typeLabel } from "../../features/expense/expenseTypes";
 import { sampleName } from "../../features/analytic/sample";
 import { useFinancialAccountsByIds } from "../../features/financialAccount/queries";
 import { useProductsByIds } from "../../features/products/queries";
@@ -16,9 +24,13 @@ import { formatRupiahNumber } from "../../lib/money";
 /**
  * A field's label — its own name's, unless its METRIC names it apart. Two order metrics share `mp_total` (the owner's
  * field names), so a table, a graph or a sort list holding both would read "MP total" twice;
- * `analytic.fieldOf.<metric>.<field>` tells them apart.
+ * `analytic.fieldOf.<metric>.<field>` tells them apart. An Expenses TYPE field reads Biaya's own words for the type
+ * (`expenses.types.type.*` — backlog #107), never a second wording.
  */
 export function fieldLabel(t: TFunction, def: MetricDef, name: string): string {
+  const type = def.metricId === "metrics/expenses" ? expenseTypeOfField(name) : undefined;
+  if (type) return typeLabel(t, type);
+
   return t(`analytic.fieldOf.${def.labelKey}.${name}`, { defaultValue: t(`analytic.field.${name}`) });
 }
 

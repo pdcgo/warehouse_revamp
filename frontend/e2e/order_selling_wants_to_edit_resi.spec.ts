@@ -37,7 +37,8 @@ import { API_URL } from "./env";
 //   a-note-is-a-timeline-row) hold ONE "Resi: OLD → NEW" / "Label: old → new", and the record's timeline has that note
 //   with no status (the edit moved nothing).
 // - `warehouse sees new resi` — the crew's Orders, narrowed by the order's ref, draws the order's row with the NEW
-//   tracking number; the order read as the warehouse carries it too.
+//   tracking number; the order read as the warehouse carries it too; and since #103 the crew's own order page (its
+//   Info tab, `order-detail-resi`) shows the NEW number, not the old one.
 // - `receipt scan finds order by new resi` — Orders › Scan Label: the OLD number finds nothing any more ("none"), the
 //   NEW one opens the order's own page (/warehouse-orders/<id>).
 // - `warehouse prints new label` — the crew's print page for the order, Print: ONE OrderLabels, the order included, ONE
@@ -472,6 +473,13 @@ test.describe("selling:all wants to fix an order's resi (status: pending · new 
           await expect.soft(row).toBeVisible({ timeout: 15_000 });
           await expect.soft(row.getByTestId("order-receipt")).toHaveText(now);
           expect.soft((await orderOf(wh, orderId, ground.warehouse)).receiptCode, "the order as the warehouse reads it").toBe(now);
+          // …and the warehouse's own order page: its Info tab shows the resi since #103
+          // (the-tracking-link-prototype-is-accepted) — the NEW number, the old one gone.
+          await wh.goto(`/orders/${orderId}`);
+          await expect(wh.getByTestId("order-detail-page")).toBeVisible({ timeout: 15_000 });
+          const resi = wh.getByTestId("order-detail-resi");
+          await expect.soft(resi).toContainText(now);
+          await expect.soft(resi).not.toContainText(was);
         });
 
         await test.step("then: receipt scan finds order by new resi", async () => {

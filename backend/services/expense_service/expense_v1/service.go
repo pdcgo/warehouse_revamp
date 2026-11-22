@@ -16,6 +16,7 @@ import (
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_event"
 
 	expensev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/expense/v1/expensev1connect"
@@ -33,6 +34,9 @@ type Service struct {
 	// The clock a correction is stamped with — the day it counts on in Analytic
 	// (an-expense-correction-counts-on-the-day-it-is-made). time.Now but in a test.
 	now func() time.Time
+	// The capital listener's claims (capital_from_account.go) — a redelivered FinancialAccountCapitalRecorded records
+	// nothing (one-contract-for-both-handler-types).
+	dedup san_event.EventDedup
 }
 
 // compile-time proof Service satisfies the generated handler interface.
@@ -66,7 +70,13 @@ func NewService(db *gorm.DB, events event_source.EventSender, accounts PayingAcc
 		shops = noShops{}
 	}
 
-	return &Service{db: db, events: events, accounts: accounts, sides: sides, shops: shops, now: time.Now}
+	dedup, err := san_event.NewDedup(expense_service_models.EventLogTable)
+	if err != nil {
+		// A constant table name that fails the check is a programming error, not a runtime condition.
+		panic(err)
+	}
+
+	return &Service{db: db, events: events, accounts: accounts, sides: sides, shops: shops, now: time.Now, dedup: dedup}
 }
 
 // The date layout every cost date crosses the wire in. A DATE, not a timestamp: nobody records the
@@ -93,12 +103,21 @@ var (
 	errShopIsForAdsOnly = errors.New("only an ads expense names a shop")
 	// The account is not one the team may pay an expense from — wrapped with its name (accountRefusal).
 	errNotOperational = errors.New("not one of the team's active operational accounts")
+	// Prive / Setoran modal take any ACTIVE account of the team — wrapped with its name.
+	errNotActive = errors.New("not one of the team's active accounts")
+
+	// Every expense a person types names its type (expense-types-sit-under-groups) — the interceptor says it first
+	// (`not_in: [0]`); this is the handler not trusting a caller that skips it. Only inventory's STOCK_LOSS has none.
+	errNoType = errors.New("type: an expense names its type")
+	// A kind sent beside a type must be the type's group.
+	errTypeNotInGroup = errors.New("kind: the type sits under another group")
 )
 
 func costErr(err error) error {
 	switch {
 	case errors.Is(err, errBadDate), errors.Is(err, errZeroCorrection), errors.Is(err, errZeroExpense), errors.Is(err, errNoAccount),
-		errors.Is(err, errAdsNeedsAShop), errors.Is(err, errShopIsForAdsOnly):
+		errors.Is(err, errAdsNeedsAShop), errors.Is(err, errShopIsForAdsOnly), errors.Is(err, errNoType),
+		errors.Is(err, errTypeNotInGroup):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		// NotFound, never PermissionDenied: another team's cost must be indistinguishable from one that
@@ -108,7 +127,8 @@ func costErr(err error) error {
 		// The same rule for the shop an expense names: another team's shop reads as one that never existed
 		// (settlement-and-expense-ask-the-shop-first).
 		return connect.NewError(connect.CodeNotFound, err)
-	case errors.Is(err, errAdjustsAnAdjustment), errors.Is(err, errBelowZero), errors.Is(err, errNotOperational):
+	case errors.Is(err, errAdjustsAnAdjustment), errors.Is(err, errBelowZero), errors.Is(err, errNotOperational),
+		errors.Is(err, errNotActive):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	default:
 		return connect.NewError(connect.CodeInternal, err)
@@ -169,6 +189,9 @@ func costToProto(c *expense_service_models.ExpenseRecord, net float64) *expensev
 		NetAmount:        net,
 		FinanceAccountId: c.FinanceAccountID,
 		IsOverride:       c.IsOverride,
+		Type:             expensev1.ExpenseType(c.Type),
+		// The door: ACCOUNT_PAGE for a Setor / Tarik Modal made on the account page (*Dicatat di halaman akun*).
+		Origin: expensev1.ExpenseOrigin(c.Origin),
 	}
 }
 

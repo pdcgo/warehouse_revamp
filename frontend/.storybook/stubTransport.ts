@@ -113,7 +113,9 @@ import {
   ownerStockHistory,
   ownerStockSample,
   ownerStockStat,
+  productDailyMoves,
   productService,
+  productSupplierGoods,
   shelfSample,
 } from "./productStub";
 import { restockRequestService } from "./restockStub";
@@ -143,10 +145,26 @@ import {
   stampChanged,
   stampPrinted,
 } from "./reprintLabelScenario";
+import {
+  carriesAnyTag,
+  createTag as createOrderTag,
+  deleteTag as deleteOrderTag,
+  listTags,
+  manageTags,
+  orderTagScenario,
+  refuseUnlessRole as refuseOrderTagRole,
+  renameTag as renameOrderTag,
+  resetOrderTagScenario,
+  setTag as setOrderTag,
+  tagsOnWire,
+} from "./orderTagScenario";
+import { OrderTagType } from "../src/gen/warehouse/selling/v1/order_tag_pb";
 import { orderShopUpdate, resetOrderShopFixes, shopFixNotesOf, shopOf } from "./orderShopStub";
 import { orderPickLines, stockPickLocations as stockPickLocationsOf } from "./bulkPickStub";
 import { orderPrintByIds } from "./orderPrintStub";
 import { orderByExternalRefs, orderDraftByExternalRefs } from "./duplicateRefStub";
+import { recordTrackingLinkSave, resetTrackingLinkScenario, storyLinkOf } from "./trackingLinkStub";
+import { trackingLinkProblem } from "../src/features/shipment/trackingLink";
 import { orderAnswerInterceptor, refuseOrderCreateIfScripted } from "./orderAnswerStub";
 import { warehouseFeeService } from "./warehouseFeeStub";
 import { warehouseInfoService } from "./warehouseInfoStub";
@@ -358,7 +376,15 @@ function positionsFor(teamId: bigint) {
 
 // The shipment channel table — WRITEABLE, because create, edit, delete and restore are the screen. The
 // rows carry real timestamps so the Updated column moves when a write lands. Reset per story.
-type StubChannel = (typeof shipmentChannels)[number] & { createdAt: ReturnType<typeof timestampFromDate>; updatedAt: ReturnType<typeof timestampFromDate> };
+//
+// THE TRACKING LINK (`tracking_url`): a seeded row carries none of its own (`trackingUrl` undefined) and is served the
+// link its story gave it (`trackingLinksForStory`, trackingLinkStub.ts — none by default); a Create or Update writes the
+// row's own, "" included, under the server's rule (shipment_v1 tracking_url.go — the same `trackingLinkProblem`).
+type StubChannel = (typeof shipmentChannels)[number] & {
+  createdAt: ReturnType<typeof timestampFromDate>;
+  updatedAt: ReturnType<typeof timestampFromDate>;
+  trackingUrl?: string;
+};
 const channelSeedDate = new Date("2026-09-01T09:00:00+07:00");
 const seedChannels = (): StubChannel[] =>
   shipmentChannels.map((c) => ({ ...c, createdAt: timestampFromDate(channelSeedDate), updatedAt: timestampFromDate(channelSeedDate) }));
@@ -366,6 +392,26 @@ let channelTable: StubChannel[] = seedChannels();
 
 export function resetShipmentChannels() {
   channelTable = seedChannels();
+  resetTrackingLinkScenario();
+}
+
+/** A channel as the server answers it — with its tracking link (its own once written, else its story's). */
+function servedChannel(row: StubChannel): StubChannel {
+  return { ...row, trackingUrl: row.trackingUrl ?? storyLinkOf(row.id) };
+}
+
+// The server's refusals of a link, word for word (shipment_v1 tracking_url.go) — the form refuses the same first.
+const trackingRefusal = {
+  notHttps: "the tracking link must start with https://",
+  noResi: "the tracking link must hold {resi} where the resi goes",
+  notAUrl: "the tracking link is not a web address",
+} as const;
+
+function checkedTrackingUrl(raw: string): string {
+  const link = raw.trim();
+  const problem = trackingLinkProblem(link);
+  if (problem !== null) throw new ConnectError(trackingRefusal[problem], Code.InvalidArgument);
+  return link;
 }
 
 // THE NOTES WRITTEN IN A STORY (a-note-is-a-timeline-row) — WRITEABLE, because Add Note is the screen. Kept beside
@@ -383,6 +429,18 @@ export function resetOrderNotes() {
   resetOrderShopFixes();
   // …and Cetak ulang label's prints and changes (reprintLabelScenario.ts), which a print or an Edit Resi writes.
   resetReprintLabels();
+  // …and the order tags a story made, renamed, deleted, put on or took off (orderTagScenario.ts).
+  resetOrderTagScenario();
+}
+
+// AN ORDER'S TWO SIDES — the selling team that placed it and the warehouse that ships it — are the ones that tag it
+// (the-order-tags-prototype-is-accepted); any other caller, a return warehouse that does not ship it included, is
+// NotFound, as the server's `id = ? AND (team_id = ? OR warehouse_id = ?)`.
+function onOrderSide(teamId: bigint, orderId: bigint) {
+  const order = orderDetailFor(orderId);
+  if (!order || (order.teamId !== teamId && order.warehouseId !== teamId)) {
+    throw new ConnectError("order not found", Code.NotFound);
+  }
 }
 
 function channelById(id: bigint): StubChannel {
@@ -879,6 +937,8 @@ type OrderScopeFilter =
       settlementNotOpened?: boolean;
       // Perlu cetak ulang — only the orders marked Cetak ulang label (the-reprint-label-prototype-is-accepted).
       reprintLabel?: boolean;
+      // Only orders carrying ANY of these order tags (the-order-tags-prototype-is-accepted).
+      tagIds?: bigint[];
     }
   | undefined;
 
@@ -985,6 +1045,9 @@ function visibleOrders(teamId: bigint, filter: OrderScopeFilter) {
     .filter((o) => !filter?.settlementNotOpened || o.settlementOpenedAtUnix === 0n)
     // Perlu cetak ulang, as scopedOrders reads it — printed, changed after, still in the building (reprintLabelOf).
     .filter((o) => !filter?.reprintLabel || reprintLabelOf(o.id, o.status))
+    // The Tag filter, ANY of the picked — inside the one scope, so the rows, the tab counts, the Statistik and Ekspor
+    // narrow alike (orderTagScenario.ts).
+    .filter((o) => carriesAnyTag(o.id, filter?.tagIds))
     // Newest first, which is the order the list promises.
     .sort((a, b) => (a.id < b.id ? 1 : -1));
 }
@@ -1240,11 +1303,12 @@ export const transport = createRouterTransport(({ service }) => {
         .filter((c) => req.filter?.includeDeleted || !c.isDeleted)
         .filter((c) => match(req.filter?.q, c.code, c.name));
 
-      return pagedColumnar("channel", rows, req.page as PageReq);
+      return pagedColumnar("channel", rows.map(servedChannel), req.page as PageReq);
     },
-    // Deleted channels ARE returned (a-deleted-channel-still-resolves-by-id).
-    shipmentChannelByIds: (req) => byIds("channel", channelTable, req.filter?.ids ?? []),
+    // Deleted channels ARE returned (a-deleted-channel-still-resolves-by-id) — with their link.
+    shipmentChannelByIds: (req) => byIds("channel", channelTable.map(servedChannel), req.filter?.ids ?? []),
     shipmentChannelCreate: (req) => {
+      const trackingUrl = checkedTrackingUrl(req.trackingUrl);
       const existing = channelTable.find((c) => c.code === req.code);
       if (existing) {
         // a-deleted-code-is-restored-not-recreated — the message says which way out.
@@ -1265,25 +1329,30 @@ export const transport = createRouterTransport(({ service }) => {
         isDeleted: false,
         createdAt: now,
         updatedAt: now,
+        trackingUrl,
       };
       channelTable = [...channelTable, row];
+      recordTrackingLinkSave(row.id, trackingUrl);
 
       return { channel: row };
     },
+    // Every editable field is written as sent — an empty link clears it.
     shipmentChannelUpdate: (req) => {
+      const trackingUrl = checkedTrackingUrl(req.trackingUrl);
       const row = channelById(req.channelId);
-      Object.assign(row, { name: req.name, desc: req.desc, updatedAt: timestampFromDate(new Date()) });
-      return { channel: row };
+      Object.assign(row, { name: req.name, desc: req.desc, trackingUrl, updatedAt: timestampFromDate(new Date()) });
+      recordTrackingLinkSave(row.id, trackingUrl);
+      return { channel: servedChannel(row) };
     },
     shipmentChannelDelete: (req) => {
       const row = channelById(req.channelId);
       Object.assign(row, { isDeleted: true, updatedAt: timestampFromDate(new Date()) });
-      return { channel: row };
+      return { channel: servedChannel(row) };
     },
     shipmentChannelRestore: (req) => {
       const row = channelById(req.channelId);
       Object.assign(row, { isDeleted: false, updatedAt: timestampFromDate(new Date()) });
-      return { channel: row };
+      return { channel: servedChannel(row) };
     },
   });
 
@@ -1434,6 +1503,14 @@ export const transport = createRouterTransport(({ service }) => {
     // ANY TEAM'S STOCK HISTORY of a product — the owner's ledger's units, never its money or person
     // (stock-history-is-everyones; productStub.ts `discoverStockHistory`).
     discoverStockHistory: (req) => discoverStockHistory(req),
+
+    // PEMASOK — who supplies a product, any team's, per supplier and store in the lens; the last cost to the owning team
+    // alone (the-supplier-tab-names-the-store; productStub.ts `productSupplierGoods`).
+    productSupplierGoods: (req) => productSupplierGoods(req),
+
+    // KELUAR MASUK HARIAN — a product's last fourteen days, any team's, in the lens: each change type's net, Masuk,
+    // Keluar and Sisa walked back from today's stock (the-warehouse-zone-is-tabs; productStub.ts `productDailyMoves`).
+    productDailyMoves: (req) => productDailyMoves(req),
 
     // The SELLING side's own-stock read — what this team owns at a warehouse, plus what it has on
     // order elsewhere. Two lenses over one message, so `filter.warehouseId` decides which one the
@@ -1588,6 +1665,50 @@ export const transport = createRouterTransport(({ service }) => {
     // team 15 only (productStub.ts).
     orderProductActivityByIds: (req) => orderProductActivityByIds(req),
     orderActivityStat: (req) => orderActivityStat(req),
+
+    // ── THE ORDER TAGS (#100) — orderTagScenario.ts plays the rules; an order is tagged from EITHER side (onOrderSide). ──
+    // A READ — the orders' one list, every team's.
+    orderTagList: (req) => listTags(req.q, req.page),
+    orderTagManageList: (req) => {
+      refuseOrderTagRole(true);
+      return manageTags(req.q, req.page);
+    },
+    orderTagCreate: (req) => {
+      refuseOrderTagRole(false);
+      return createOrderTag(req.name, OrderTagType.CUSTOM);
+    },
+    orderTagSystemCreate: (req) => {
+      refuseOrderTagRole(true);
+      return createOrderTag(req.name, OrderTagType.SYSTEM);
+    },
+    orderTagRename: (req) => {
+      refuseOrderTagRole(true);
+      return renameOrderTag(req.tagId, req.name);
+    },
+    orderTagDelete: (req) => {
+      refuseOrderTagRole(true);
+      return deleteOrderTag(req.tagId);
+    },
+    orderTagAdd: (req) => {
+      refuseOrderTagRole(false);
+      onOrderSide(req.teamId, req.orderId);
+      return setOrderTag(req.orderId, req.tagId, false, true);
+    },
+    orderTagRemove: (req) => {
+      refuseOrderTagRole(false);
+      onOrderSide(req.teamId, req.orderId);
+      return setOrderTag(req.orderId, req.tagId, false, false);
+    },
+    orderSystemTagAdd: (req) => {
+      refuseOrderTagRole(true);
+      onOrderSide(req.teamId, req.orderId);
+      return setOrderTag(req.orderId, req.tagId, true, true);
+    },
+    orderSystemTagRemove: (req) => {
+      refuseOrderTagRole(true);
+      onOrderSide(req.teamId, req.orderId);
+      return setOrderTag(req.orderId, req.tagId, true, false);
+    },
     // The order form's duplicate marketplace-ref warning reads it (duplicateRefStub.ts) — every status, every shop of
     // the caller's team, as the handler answers; the form keeps the live orders of its own shop.
     orderByExternalRefs: (req) => orderByExternalRefs(req),
@@ -1637,6 +1758,8 @@ export const transport = createRouterTransport(({ service }) => {
               // Cetak ulang label, as the server's row carries it (a-changed-label-asks-the-warehouse-to-reprint).
               reprintLabel: reprintLabelOf(o.id, o.status),
               labelPrintedAtUnix: labelPrintedAtOf(o.id),
+              // The order's tags, as the server's row carries them (orderTagScenario.ts).
+              tags: tagsOnWire(o.id),
               // A label a story lends the order (orderLabelScenario.labelled) rides on its row, as the server's list
               // carries the order's `receipt` — so the row's ⋯ Print Label is on for it.
               ...(orderLabelScenario.labelled.includes(o.id)
@@ -1677,6 +1800,8 @@ export const transport = createRouterTransport(({ service }) => {
           // Cetak ulang label — the pick page's line, the seller's Edit Resi line (reprintLabelScenario.ts).
           reprintLabel: reprintLabelOf(read.id, read.status),
           labelPrintedAtUnix: labelPrintedAtOf(read.id),
+          // The order's tags (orderTagScenario.ts).
+          tags: tagsOnWire(read.id),
           // …and the note a found naming this lost order wrote (a-found-lost-parcel-is-a-found-stock-in, foundRequestStub).
           timelineLogs: [
             ...order.timelineLogs,
@@ -1876,6 +2001,8 @@ export const transport = createRouterTransport(({ service }) => {
 
     orderStat: (req) => {
       orderStatScenario.calls += 1;
+      // The Tag filter it was asked with (orderTagScenario.ts) — the stat narrows by it as the list does.
+      orderTagScenario.statTagIds = [...(req.filter?.tagIds ?? [])];
       const rows = visibleOrders(req.teamId, req.filter);
 
       // Per status, as the server's census: the units over every order, and the margin's inputs over the

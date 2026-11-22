@@ -68,7 +68,7 @@ var (
 	errRefoldUnknownReport = errors.New("the supplier re-fold rebuilds " + ReportRestockDaily + " or " + ReportSaleDaily)
 	errRefoldNoSupplier    = errors.New("a supplier re-fold names one supplier: a supplier id is required")
 	errRefoldNoSource      = errors.New("no log to re-read: the re-fold needs the composition root's source")
-	// ErrRefoldLocked is the restock re-fold's answer while a replay holds the fold's lock — exported for `san`.
+	// ErrRefoldLocked is either re-fold's answer while a replay holds the fold's lock — exported for `san`.
 	ErrRefoldLocked = errors.New("a replay holds the fold's lock (process_event_lock) — run the re-fold after it")
 	// errRefoldDryRun rolls the dry run's transaction back after everything was computed.
 	errRefoldDryRun = errors.New("dry run")

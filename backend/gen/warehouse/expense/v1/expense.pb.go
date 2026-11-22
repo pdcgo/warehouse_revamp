@@ -116,6 +116,187 @@ func (ExpenseKind) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{0}
 }
 
+// THE TYPE of an expense — every type sits under ONE group, and the groups are the kinds above: Iklan (ADS), Gaji
+// (PAYROLL), Operasional (OPERATIONAL), Lainnya (OTHER) (expense-types-sit-under-groups,
+// the-expense-types-prototype-is-accepted, docs/business/financial_account/context_decision.md). STOCK_LOSS has no type:
+// inventory records it, nobody types it.
+//
+// Each type's GROUP, DIRECTION (money out or in) and CAPITAL flag are a FIXED TABLE in expense_service
+// (expense_v1/expense_types.go) — never a column a person sets. The AMOUNT stays positive; the type says which way the
+// money goes:
+//   - money IN — Piutang luar diterima, Setoran modal, Uang masuk lain: the account INCREASES and the type's, its
+//     group's and the month's total DECREASE (acceptance financial_account/expense.md givens 19, 21, 22);
+//   - CAPITAL — Prive (out) and Setoran modal (in) are the account's `capital` row, never an expense in the profit
+//     (prive-and-deposit-on-pengeluaran-are-the-accounts-capital); the other money-in types post as `money_in`
+//     (money-in-on-biaya-is-its-own-change-type).
+//
+// 0 = an expense recorded BEFORE the types: it keeps its kind (its group) and no type — no guessed backfill. APPEND ONLY.
+type ExpenseType int32
+
+const (
+	ExpenseType_EXPENSE_TYPE_UNSPECIFIED ExpenseType = 0
+	// Iklan — posted as `ads_expense` (ads-expense-joins-the-types). The marketplace's ads are the ONE type that names a
+	// shop, and must (an-expense-names-a-shop-only-for-ads, read per type).
+	ExpenseType_EXPENSE_TYPE_ADS_MARKETPLACE ExpenseType = 1
+	// Konten · endorse — names no shop (an endorser is paid for the brand).
+	ExpenseType_EXPENSE_TYPE_CONTENT_ENDORSE ExpenseType = 2
+	// Gaji.
+	ExpenseType_EXPENSE_TYPE_BASIC_SALARY ExpenseType = 3
+	ExpenseType_EXPENSE_TYPE_BONUS        ExpenseType = 4
+	// Iuran (BPJS).
+	ExpenseType_EXPENSE_TYPE_CONTRIBUTIONS ExpenseType = 5
+	// Operasional.
+	ExpenseType_EXPENSE_TYPE_ELECTRICITY ExpenseType = 6
+	// Internet · paket data.
+	ExpenseType_EXPENSE_TYPE_INTERNET ExpenseType = 7
+	// Dapur · makan tim.
+	ExpenseType_EXPENSE_TYPE_KITCHEN   ExpenseType = 8
+	ExpenseType_EXPENSE_TYPE_TOOLS     ExpenseType = 9
+	ExpenseType_EXPENSE_TYPE_EQUIPMENT ExpenseType = 10
+	ExpenseType_EXPENSE_TYPE_BANK_FEE  ExpenseType = 11
+	// Selisih · transaksi tak tercatat — the checklist's *adjustment · uncovered transaction* (given 6), an expense type
+	// posted as `expense`; the account's reconcile adjustment is unchanged (adjustment-is-for-reconciling-only).
+	ExpenseType_EXPENSE_TYPE_DISCREPANCY ExpenseType = 12
+	// Lainnya. An outside debt paid counts as spending.
+	ExpenseType_EXPENSE_TYPE_OUTSIDE_DEBT_PAID ExpenseType = 13
+	// Money IN — posted as `money_in`.
+	ExpenseType_EXPENSE_TYPE_OUTSIDE_RECEIVABLE_RECEIVED ExpenseType = 14
+	// CAPITAL OUT — the owner takes capital; posted as `capital`, minus. On ANY of the team's active accounts.
+	ExpenseType_EXPENSE_TYPE_PRIVE ExpenseType = 15
+	// CAPITAL IN — the owner adds capital; posted as `capital`, plus. On ANY of the team's active accounts.
+	ExpenseType_EXPENSE_TYPE_CAPITAL_DEPOSIT ExpenseType = 16
+	ExpenseType_EXPENSE_TYPE_OTHER_OUT       ExpenseType = 17
+	// Money IN — posted as `money_in`.
+	ExpenseType_EXPENSE_TYPE_OTHER_IN ExpenseType = 18
+)
+
+// Enum value maps for ExpenseType.
+var (
+	ExpenseType_name = map[int32]string{
+		0:  "EXPENSE_TYPE_UNSPECIFIED",
+		1:  "EXPENSE_TYPE_ADS_MARKETPLACE",
+		2:  "EXPENSE_TYPE_CONTENT_ENDORSE",
+		3:  "EXPENSE_TYPE_BASIC_SALARY",
+		4:  "EXPENSE_TYPE_BONUS",
+		5:  "EXPENSE_TYPE_CONTRIBUTIONS",
+		6:  "EXPENSE_TYPE_ELECTRICITY",
+		7:  "EXPENSE_TYPE_INTERNET",
+		8:  "EXPENSE_TYPE_KITCHEN",
+		9:  "EXPENSE_TYPE_TOOLS",
+		10: "EXPENSE_TYPE_EQUIPMENT",
+		11: "EXPENSE_TYPE_BANK_FEE",
+		12: "EXPENSE_TYPE_DISCREPANCY",
+		13: "EXPENSE_TYPE_OUTSIDE_DEBT_PAID",
+		14: "EXPENSE_TYPE_OUTSIDE_RECEIVABLE_RECEIVED",
+		15: "EXPENSE_TYPE_PRIVE",
+		16: "EXPENSE_TYPE_CAPITAL_DEPOSIT",
+		17: "EXPENSE_TYPE_OTHER_OUT",
+		18: "EXPENSE_TYPE_OTHER_IN",
+	}
+	ExpenseType_value = map[string]int32{
+		"EXPENSE_TYPE_UNSPECIFIED":                 0,
+		"EXPENSE_TYPE_ADS_MARKETPLACE":             1,
+		"EXPENSE_TYPE_CONTENT_ENDORSE":             2,
+		"EXPENSE_TYPE_BASIC_SALARY":                3,
+		"EXPENSE_TYPE_BONUS":                       4,
+		"EXPENSE_TYPE_CONTRIBUTIONS":               5,
+		"EXPENSE_TYPE_ELECTRICITY":                 6,
+		"EXPENSE_TYPE_INTERNET":                    7,
+		"EXPENSE_TYPE_KITCHEN":                     8,
+		"EXPENSE_TYPE_TOOLS":                       9,
+		"EXPENSE_TYPE_EQUIPMENT":                   10,
+		"EXPENSE_TYPE_BANK_FEE":                    11,
+		"EXPENSE_TYPE_DISCREPANCY":                 12,
+		"EXPENSE_TYPE_OUTSIDE_DEBT_PAID":           13,
+		"EXPENSE_TYPE_OUTSIDE_RECEIVABLE_RECEIVED": 14,
+		"EXPENSE_TYPE_PRIVE":                       15,
+		"EXPENSE_TYPE_CAPITAL_DEPOSIT":             16,
+		"EXPENSE_TYPE_OTHER_OUT":                   17,
+		"EXPENSE_TYPE_OTHER_IN":                    18,
+	}
+)
+
+func (x ExpenseType) Enum() *ExpenseType {
+	p := new(ExpenseType)
+	*p = x
+	return p
+}
+
+func (x ExpenseType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ExpenseType) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_expense_v1_expense_proto_enumTypes[1].Descriptor()
+}
+
+func (ExpenseType) Type() protoreflect.EnumType {
+	return &file_warehouse_expense_v1_expense_proto_enumTypes[1]
+}
+
+func (x ExpenseType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ExpenseType.Descriptor instead.
+func (ExpenseType) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{1}
+}
+
+// WHERE AN EXPENSE WAS RECORDED — its door (prive-and-deposit-on-pengeluaran-are-the-accounts-capital: one act, one
+// record, two doors). APPEND ONLY.
+type ExpenseOrigin int32
+
+const (
+	// Typed on Biaya (Pengeluaran) — every expense but the ones below, and every adjustment.
+	ExpenseOrigin_EXPENSE_ORIGIN_UNSPECIFIED ExpenseOrigin = 0
+	// A SELLING team's Setor / Tarik Modal on the account page (FinancialAccountCapital): the account's `capital` row was
+	// posted there, by hand, and expense_service recorded it here as Setoran modal / Prive from the account's
+	// `FinancialAccountCapitalRecorded` — the same one record, shown on Biaya with *Dicatat di halaman akun*. Its account
+	// row keeps *manual · who*. Also every such act made before the second door was built, brought in once by
+	// `san expense import-capital`. A WAREHOUSE team's Setor / Tarik Modal never becomes one (Biaya is the selling team's).
+	ExpenseOrigin_EXPENSE_ORIGIN_ACCOUNT_PAGE ExpenseOrigin = 1
+)
+
+// Enum value maps for ExpenseOrigin.
+var (
+	ExpenseOrigin_name = map[int32]string{
+		0: "EXPENSE_ORIGIN_UNSPECIFIED",
+		1: "EXPENSE_ORIGIN_ACCOUNT_PAGE",
+	}
+	ExpenseOrigin_value = map[string]int32{
+		"EXPENSE_ORIGIN_UNSPECIFIED":  0,
+		"EXPENSE_ORIGIN_ACCOUNT_PAGE": 1,
+	}
+)
+
+func (x ExpenseOrigin) Enum() *ExpenseOrigin {
+	p := new(ExpenseOrigin)
+	*p = x
+	return p
+}
+
+func (x ExpenseOrigin) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ExpenseOrigin) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_expense_v1_expense_proto_enumTypes[2].Descriptor()
+}
+
+func (ExpenseOrigin) Type() protoreflect.EnumType {
+	return &file_warehouse_expense_v1_expense_proto_enumTypes[2]
+}
+
+func (x ExpenseOrigin) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ExpenseOrigin.Descriptor instead.
+func (ExpenseOrigin) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{2}
+}
+
 // ExpenseListDataType selects which slices the response carries per expense.
 type ExpenseListDataType int32
 
@@ -152,11 +333,11 @@ func (x ExpenseListDataType) String() string {
 }
 
 func (ExpenseListDataType) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_expense_v1_expense_proto_enumTypes[1].Descriptor()
+	return file_warehouse_expense_v1_expense_proto_enumTypes[3].Descriptor()
 }
 
 func (ExpenseListDataType) Type() protoreflect.EnumType {
-	return &file_warehouse_expense_v1_expense_proto_enumTypes[1]
+	return &file_warehouse_expense_v1_expense_proto_enumTypes[3]
 }
 
 func (x ExpenseListDataType) Number() protoreflect.EnumNumber {
@@ -165,7 +346,7 @@ func (x ExpenseListDataType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ExpenseListDataType.Descriptor instead.
 func (ExpenseListDataType) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{1}
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{3}
 }
 
 // ExpenseRowSort is the sort selection paired with the EXPENSE (row) slice.
@@ -206,11 +387,11 @@ func (x ExpenseRowSort) String() string {
 }
 
 func (ExpenseRowSort) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_expense_v1_expense_proto_enumTypes[2].Descriptor()
+	return file_warehouse_expense_v1_expense_proto_enumTypes[4].Descriptor()
 }
 
 func (ExpenseRowSort) Type() protoreflect.EnumType {
-	return &file_warehouse_expense_v1_expense_proto_enumTypes[2]
+	return &file_warehouse_expense_v1_expense_proto_enumTypes[4]
 }
 
 func (x ExpenseRowSort) Number() protoreflect.EnumNumber {
@@ -219,7 +400,7 @@ func (x ExpenseRowSort) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ExpenseRowSort.Descriptor instead.
 func (ExpenseRowSort) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{2}
+	return file_warehouse_expense_v1_expense_proto_rawDescGZIP(), []int{4}
 }
 
 // One expense. Money is rupiah as a double, stored exact when the expense is recorded or corrected — never rounded
@@ -270,7 +451,15 @@ type ExpenseRecord struct {
 	// THE TYPIST WAS AN OVERRIDE — `created_by` is Root or the System Administrator, who recorded it inside a team they
 	// hold no role in (an-override-is-stamped-in-every-service); the Expenses screen's Recorded by shows the shared
 	// "by Root team" badge beside the person (an-override-shows-a-platform-badge). From `expense_records.is_override`.
-	IsOverride    bool `protobuf:"varint,14,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	IsOverride bool `protobuf:"varint,14,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	// THE TYPE (expense-types-sit-under-groups) — `kind` is its group, written from it. UNSPECIFIED on an expense recorded
+	// before the types (it keeps its kind only — the screen's *Tanpa jenis*) and on a STOCK_LOSS. On an ADJUSTMENT, the
+	// expense's, copied — so a type's total takes the correction where the mistake is.
+	Type ExpenseType `protobuf:"varint,15,opt,name=type,proto3,enum=warehouse.expense.v1.ExpenseType" json:"type,omitempty"`
+	// THE DOOR it came in by (ExpenseOrigin). ACCOUNT_PAGE = a Setor / Tarik Modal made on the account page — the Biaya row
+	// reads *Dicatat di halaman akun*. UNSPECIFIED on everything typed on Biaya, and on every adjustment (a correction is
+	// always made on Biaya, whichever door its expense came in by).
+	Origin        ExpenseOrigin `protobuf:"varint,16,opt,name=origin,proto3,enum=warehouse.expense.v1.ExpenseOrigin" json:"origin,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -396,32 +585,55 @@ func (x *ExpenseRecord) GetIsOverride() bool {
 	return false
 }
 
+func (x *ExpenseRecord) GetType() ExpenseType {
+	if x != nil {
+		return x.Type
+	}
+	return ExpenseType_EXPENSE_TYPE_UNSPECIFIED
+}
+
+func (x *ExpenseRecord) GetOrigin() ExpenseOrigin {
+	if x != nil {
+		return x.Origin
+	}
+	return ExpenseOrigin_EXPENSE_ORIGIN_UNSPECIFIED
+}
+
 type ExpenseCreateRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	TeamId uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	// STOCK_LOSS is never typed: inventory records it when stock is written off, by an internal call that does not pass
-	// the validation interceptor (cmd/app_development/expense_poster.go) — so this rule refuses it from every API caller
-	// and leaves inventory's path open. InvalidArgument, in the person's words.
+	// THE GROUP — derived from `type` (expense-types-sit-under-groups): 0 reads as the type's group, and any other value
+	// must BE the type's group (InvalidArgument otherwise). STOCK_LOSS is never typed: inventory records it when stock is
+	// written off, by an internal call that does not pass the validation interceptor (cmd/app_development/expense_poster.go)
+	// with this kind and no type — so this rule refuses it from every API caller and leaves inventory's path open.
+	// InvalidArgument, in the person's words.
 	Kind ExpenseKind `protobuf:"varint,2,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
 	// Exact rupiah, POSITIVE. Recording an expense of nothing is not an expense.
 	Amount float64 `protobuf:"fixed64,3,opt,name=amount,proto3" json:"amount,omitempty"`
 	// The date the expense BELONGS TO (YYYY-MM-DD), chosen by the person.
 	OccurredAt string `protobuf:"bytes,4,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
-	// REQUIRED on ADS, refused on every other kind (an-expense-names-a-shop-only-for-ads): only an ads expense names the
-	// shop it ran for. InvalidArgument either way — "an ads expense names its shop" / "only an ads expense names a shop".
-	// Checked by the handler, since the rule spans two fields.
+	// REQUIRED on the type ADS_MARKETPLACE, refused on every other type (an-expense-names-a-shop-only-for-ads, read per
+	// type — Konten · endorse names none): only the marketplace's ads name the shop they ran for. InvalidArgument either
+	// way — "an ads expense names its shop" / "only an ads expense names a shop". Checked by the handler, since the rule
+	// spans two fields.
 	ShopId uint64 `protobuf:"varint,5,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
 	Note   string `protobuf:"bytes,6,opt,name=note,proto3" json:"note,omitempty"`
-	// REQUIRED — every expense a person types names the account that paid it, one of the team's ACTIVE OPERATIONAL
-	// accounts (an-expense-must-name-the-account-that-paid); the same rule and name as a restock's `finance_account_id`.
-	// Another team's account, an archived one, or one not marked operational is FailedPrecondition, naming it. The
-	// expense is published after its commit and financial_account_service posts it out of this account — `ads_expense`
-	// for ADS, `expense` for the rest.
+	// REQUIRED — every expense a person types names the account that paid it, or that the money came into
+	// (an-expense-must-name-the-account-that-paid): one of the team's ACTIVE OPERATIONAL accounts for every type but Prive
+	// and Setoran modal, which take ANY of the team's ACTIVE accounts, as Setor / Tarik Modal on the account page does
+	// (the-expense-types-prototype-is-accepted). Another team's account, an archived one, or (where it must be) one not
+	// marked operational is FailedPrecondition, naming it. The expense is published after its commit and
+	// financial_account_service posts it on this account — `ads_expense` for the Iklan group, `capital` for Prive (out) and
+	// Setoran modal (in), `money_in` INTO it for the other money-in types (money-in-on-biaya-is-its-own-change-type),
+	// `expense` for the rest.
 	// STOCK_LOSS is outside the rule: inventory posts it by an internal call (no validation interceptor), it moves no
 	// cash, and it is stored with no account and never published. Through the API it is refused outright (`kind`).
 	FinanceAccountId uint64 `protobuf:"varint,7,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// THE TYPE — REQUIRED (expense-types-sit-under-groups): it decides the group (`kind`), the direction and the change
+	// type the account posts. `amount` stays positive whichever way the money goes.
+	Type          ExpenseType `protobuf:"varint,8,opt,name=type,proto3,enum=warehouse.expense.v1.ExpenseType" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExpenseCreateRequest) Reset() {
@@ -503,6 +715,13 @@ func (x *ExpenseCreateRequest) GetFinanceAccountId() uint64 {
 	return 0
 }
 
+func (x *ExpenseCreateRequest) GetType() ExpenseType {
+	if x != nil {
+		return x.Type
+	}
+	return ExpenseType_EXPENSE_TYPE_UNSPECIFIED
+}
+
 type ExpenseCreateResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Expense       *ExpenseRecord         `protobuf:"bytes,1,opt,name=expense,proto3" json:"expense,omitempty"`
@@ -558,7 +777,10 @@ type ExpenseListFilter struct {
 	// One kind, or UNSPECIFIED for all of them.
 	Kind ExpenseKind `protobuf:"varint,3,opt,name=kind,proto3,enum=warehouse.expense.v1.ExpenseKind" json:"kind,omitempty"`
 	// One shop, or 0 for all of them.
-	ShopId        uint64 `protobuf:"varint,4,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	ShopId uint64 `protobuf:"varint,4,opt,name=shop_id,json=shopId,proto3" json:"shop_id,omitempty"`
+	// One TYPE, or UNSPECIFIED for all of them — beside `kind` (the group): the screen's filter takes a group or one type
+	// of it (expense-types-sit-under-groups), and sends both, so the group still narrows when the type is cleared.
+	Type          ExpenseType `protobuf:"varint,5,opt,name=type,proto3,enum=warehouse.expense.v1.ExpenseType" json:"type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -619,6 +841,13 @@ func (x *ExpenseListFilter) GetShopId() uint64 {
 		return x.ShopId
 	}
 	return 0
+}
+
+func (x *ExpenseListFilter) GetType() ExpenseType {
+	if x != nil {
+		return x.Type
+	}
+	return ExpenseType_EXPENSE_TYPE_UNSPECIFIED
 }
 
 type ExpenseListFilterSort struct {
@@ -788,16 +1017,37 @@ func (x *ExpenseListRequest) GetPage() *v1.CommonPagination {
 	return nil
 }
 
-// What the filtered period cost, by kind and in total.
+// What the filtered period cost, by group, by type and in total — the month card of the-expense-types-prototype-is-accepted:
+// Biaya · Uang masuk · Modal · Total bulan ini, then each group with its types.
+//
+// Every figure is SIGNED BY THE TYPE'S DIRECTION: a money-out row counts plus, a money-in row (Piutang luar diterima,
+// Setoran modal, Uang masuk lain) minus — an adjustment by its expense's type. Rows recorded before the types are money
+// out (their kinds were all spending), so a month with no typed row reads exactly as it did.
 type ExpenseTotals struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The sum over EVERY row the filter matched, not the page — the same split RevenueTotals uses
-	// (#78). A page total is a different number wearing the same label.
+	// THE MONTH TOTAL — the checklist's (acceptance financial_account/expense.md givens 17–22): `spending − money_in +
+	// capital`, which is also every group's net summed. The sum over EVERY row the filter matched, not the page — the same
+	// split RevenueTotals uses (#78). A page total is a different number wearing the same label.
 	Total float64 `protobuf:"fixed64,1,opt,name=total,proto3" json:"total,omitempty"`
-	// Per kind, so the summary cards need no second call. A kind with no expenses in the period is simply
-	// absent rather than reported as 0 — absent and zero read the same on a card, and building the
-	// absent ones would mean this message knowing the enum's members.
-	ByKind        map[int32]float64 `protobuf:"bytes,2,rep,name=by_kind,json=byKind,proto3" json:"by_kind,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	// Per kind — each GROUP's net (its types' figures summed, a money-in type lowering it, and its rows from before the
+	// types), so the summary cards need no second call. A kind with no expenses in the period is simply absent rather than
+	// reported as 0 — absent and zero read the same on a card, and building the absent ones would mean this message
+	// knowing the enum's members.
+	ByKind map[int32]float64 `protobuf:"bytes,2,rep,name=by_kind,json=byKind,proto3" json:"by_kind,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	// Per TYPE (ExpenseType's number), signed: money in is negative. Rows with no type are not here — they are each
+	// group's `by_kind_untyped`. Absent = nothing of that type in the period.
+	ByType map[int32]float64 `protobuf:"bytes,3,rep,name=by_type,json=byType,proto3" json:"by_type,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	// BIAYA — what the period SPENT: every money-out row but Prive (an outside debt paid counts), stock loss and the rows
+	// from before the types included.
+	Spending float64 `protobuf:"fixed64,4,opt,name=spending,proto3" json:"spending,omitempty"`
+	// UANG MASUK — the money-in rows but Setoran modal, as a POSITIVE figure (the screen shows it minus).
+	MoneyIn float64 `protobuf:"fixed64,5,opt,name=money_in,json=moneyIn,proto3" json:"money_in,omitempty"`
+	// MODAL — Prive − Setoran modal: the owner's capital taken out, net. Never an expense in the profit
+	// (prive-and-deposit-on-pengeluaran-are-the-accounts-capital).
+	Capital float64 `protobuf:"fixed64,6,opt,name=capital,proto3" json:"capital,omitempty"`
+	// Per kind, the rows recorded BEFORE the types (no type) — the screen's *Tanpa jenis* line under its group. Absent =
+	// none in the period.
+	ByKindUntyped map[int32]float64 `protobuf:"bytes,7,rep,name=by_kind_untyped,json=byKindUntyped,proto3" json:"by_kind_untyped,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -846,6 +1096,41 @@ func (x *ExpenseTotals) GetByKind() map[int32]float64 {
 	return nil
 }
 
+func (x *ExpenseTotals) GetByType() map[int32]float64 {
+	if x != nil {
+		return x.ByType
+	}
+	return nil
+}
+
+func (x *ExpenseTotals) GetSpending() float64 {
+	if x != nil {
+		return x.Spending
+	}
+	return 0
+}
+
+func (x *ExpenseTotals) GetMoneyIn() float64 {
+	if x != nil {
+		return x.MoneyIn
+	}
+	return 0
+}
+
+func (x *ExpenseTotals) GetCapital() float64 {
+	if x != nil {
+		return x.Capital
+	}
+	return 0
+}
+
+func (x *ExpenseTotals) GetByKindUntyped() map[int32]float64 {
+	if x != nil {
+		return x.ByKindUntyped
+	}
+	return nil
+}
+
 // ExpenseRowItem is the EXPENSE slice — the fields the expense list renders (mirrors ExpenseRecord).
 type ExpenseRowItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -868,7 +1153,11 @@ type ExpenseRowItem struct {
 	// THE TYPIST WAS AN OVERRIDE — `created_by` is Root or the System Administrator and recorded it inside a team they hold no role in (an-override-is-stamped-in-every-service);
 	// the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
 	// From `expense_records.is_override` — the row's own typist, an adjustment's too.
-	IsOverride    bool `protobuf:"varint,14,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	IsOverride bool `protobuf:"varint,14,opt,name=is_override,json=isOverride,proto3" json:"is_override,omitempty"`
+	// As on ExpenseRecord: the type, UNSPECIFIED on a row from before the types; an adjustment carries its expense's.
+	Type ExpenseType `protobuf:"varint,15,opt,name=type,proto3,enum=warehouse.expense.v1.ExpenseType" json:"type,omitempty"`
+	// As on ExpenseRecord: the door — ACCOUNT_PAGE for a Setor / Tarik Modal made on the account page.
+	Origin        ExpenseOrigin `protobuf:"varint,16,opt,name=origin,proto3,enum=warehouse.expense.v1.ExpenseOrigin" json:"origin,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -992,6 +1281,20 @@ func (x *ExpenseRowItem) GetIsOverride() bool {
 		return x.IsOverride
 	}
 	return false
+}
+
+func (x *ExpenseRowItem) GetType() ExpenseType {
+	if x != nil {
+		return x.Type
+	}
+	return ExpenseType_EXPENSE_TYPE_UNSPECIFIED
+}
+
+func (x *ExpenseRowItem) GetOrigin() ExpenseOrigin {
+	if x != nil {
+		return x.Origin
+	}
+	return ExpenseOrigin_EXPENSE_ORIGIN_UNSPECIFIED
 }
 
 type ExpenseRowMapItem struct {
@@ -1355,7 +1658,8 @@ type ExpenseDayItem struct {
 	// How many rows the bucket's number is made of — its expenses AND the adjustments that correct them, each counting on
 	// the corrected expense's day.
 	Entries uint64 `protobuf:"varint,2,opt,name=entries,proto3" json:"entries,omitempty"`
-	// The bucket's spending, the exact sum — exactly the sum of its days' totals.
+	// The bucket's figure, the exact sum — exactly the sum of its days' totals. Signed by the type's direction, as
+	// ExpenseTotals.total: a money-in row counts minus (expense-types-sit-under-groups).
 	Total float64 `protobuf:"fixed64,3,opt,name=total,proto3" json:"total,omitempty"`
 	// Split by kind, so a bucket that jumped can be read without opening the list. A kind with nothing in
 	// the bucket is ABSENT rather than 0 — the same choice ExpenseTotals makes, and for the same reason: absent
@@ -1618,7 +1922,7 @@ var File_warehouse_expense_v1_expense_proto protoreflect.FileDescriptor
 
 const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\n" +
-	"\"warehouse/expense/v1/expense.proto\x12\x14warehouse.expense.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xc6\x03\n" +
+	"\"warehouse/expense/v1/expense.proto\x12\x14warehouse.expense.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xba\x04\n" +
 	"\rExpenseRecord\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -1637,29 +1941,34 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"net_amount\x18\f \x01(\x01R\tnetAmount\x12,\n" +
 	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountId\x12\x1f\n" +
 	"\vis_override\x18\x0e \x01(\bR\n" +
-	"isOverrideJ\x04\b\t\x10\n" +
-	"R\x06voided\"\xd5\x03\n" +
+	"isOverride\x125\n" +
+	"\x04type\x18\x0f \x01(\x0e2!.warehouse.expense.v1.ExpenseTypeR\x04type\x12;\n" +
+	"\x06origin\x18\x10 \x01(\x0e2#.warehouse.expense.v1.ExpenseOriginR\x06originJ\x04\b\t\x10\n" +
+	"R\x06voided\"\x96\x04\n" +
 	"\x14ExpenseCreateRequest\x12$\n" +
-	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\xac\x01\n" +
-	"\x04kind\x18\x02 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindBu\xbaHr\xba\x01h\n" +
-	"+expense_create.kind.stock_loss_is_not_typed\x12.stock loss is recorded by inventory, not typed\x1a\tthis != 5\x82\x01\x04\x10\x01 \x00R\x04kind\x12(\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12\xaa\x01\n" +
+	"\x04kind\x18\x02 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindBs\xbaHp\xba\x01h\n" +
+	"+expense_create.kind.stock_loss_is_not_typed\x12.stock loss is recorded by inventory, not typed\x1a\tthis != 5\x82\x01\x02\x10\x01R\x04kind\x12(\n" +
 	"\x06amount\x18\x03 \x01(\x01B\x10\xbaH\r\x12\v@\x01!\x00\x00\x00\x00\x00\x00\x00\x00R\x06amount\x12D\n" +
 	"\voccurred_at\x18\x04 \x01(\tB#\xbaH r\x1e2\x1c^[0-9]{4}-[0-9]{2}-[0-9]{2}$R\n" +
 	"occurredAt\x12\x17\n" +
 	"\ashop_id\x18\x05 \x01(\x04R\x06shopId\x12\x1c\n" +
 	"\x04note\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04note\x125\n" +
-	"\x12finance_account_id\x18\a \x01(\x04B\a\xbaH\x042\x02 \x00R\x10financeAccountId:\n" +
+	"\x12finance_account_id\x18\a \x01(\x04B\a\xbaH\x042\x02 \x00R\x10financeAccountId\x12A\n" +
+	"\x04type\x18\b \x01(\x0e2!.warehouse.expense.v1.ExpenseTypeB\n" +
+	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\x04type:\n" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x03\x04\"V\n" +
 	"\x15ExpenseCreateResponse\x12=\n" +
-	"\aexpense\x18\x01 \x01(\v2#.warehouse.expense.v1.ExpenseRecordR\aexpense\"\xa3\x01\n" +
+	"\aexpense\x18\x01 \x01(\v2#.warehouse.expense.v1.ExpenseRecordR\aexpense\"\xe4\x01\n" +
 	"\x11ExpenseListFilter\x12\x1b\n" +
 	"\x04from\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18\n" +
 	"R\x04from\x12\x17\n" +
 	"\x02to\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18\n" +
 	"R\x02to\x12?\n" +
 	"\x04kind\x18\x03 \x01(\x0e2!.warehouse.expense.v1.ExpenseKindB\b\xbaH\x05\x82\x01\x02\x10\x01R\x04kind\x12\x17\n" +
-	"\ashop_id\x18\x04 \x01(\x04R\x06shopId\"\xde\x01\n" +
+	"\ashop_id\x18\x04 \x01(\x04R\x06shopId\x12?\n" +
+	"\x04type\x18\x05 \x01(\x0e2!.warehouse.expense.v1.ExpenseTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x04type\"\xde\x01\n" +
 	"\x15ExpenseListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x12@\n" +
@@ -1672,13 +1981,24 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\fdata_request\x18\x04 \x03(\x0e2).warehouse.expense.v1.ExpenseListDataTypeR\vdataRequest\x12A\n" +
 	"\x04page\x18\x05 \x01(\v2%.warehouse.common.v1.CommonPaginationB\x06\xbaH\x03\xc8\x01\x01R\x04page:\n" +
 	"\x92\xb5\x18\x06\n" +
-	"\x04\x01\x02\x03\x04\"\xaa\x01\n" +
+	"\x04\x01\x02\x03\x04\"\xa2\x04\n" +
 	"\rExpenseTotals\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x01R\x05total\x12H\n" +
-	"\aby_kind\x18\x02 \x03(\v2/.warehouse.expense.v1.ExpenseTotals.ByKindEntryR\x06byKind\x1a9\n" +
+	"\aby_kind\x18\x02 \x03(\v2/.warehouse.expense.v1.ExpenseTotals.ByKindEntryR\x06byKind\x12H\n" +
+	"\aby_type\x18\x03 \x03(\v2/.warehouse.expense.v1.ExpenseTotals.ByTypeEntryR\x06byType\x12\x1a\n" +
+	"\bspending\x18\x04 \x01(\x01R\bspending\x12\x19\n" +
+	"\bmoney_in\x18\x05 \x01(\x01R\amoneyIn\x12\x18\n" +
+	"\acapital\x18\x06 \x01(\x01R\acapital\x12^\n" +
+	"\x0fby_kind_untyped\x18\a \x03(\v26.warehouse.expense.v1.ExpenseTotals.ByKindUntypedEntryR\rbyKindUntyped\x1a9\n" +
 	"\vByKindEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\xc7\x03\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\x1a9\n" +
+	"\vByTypeEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\x1a@\n" +
+	"\x12ByKindUntypedEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\xbb\x04\n" +
 	"\x0eExpenseRowItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x17\n" +
@@ -1697,7 +2017,9 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"net_amount\x18\f \x01(\x01R\tnetAmount\x12,\n" +
 	"\x12finance_account_id\x18\r \x01(\x04R\x10financeAccountId\x12\x1f\n" +
 	"\vis_override\x18\x0e \x01(\bR\n" +
-	"isOverrideJ\x04\b\t\x10\n" +
+	"isOverride\x125\n" +
+	"\x04type\x18\x0f \x01(\x0e2!.warehouse.expense.v1.ExpenseTypeR\x04type\x12;\n" +
+	"\x06origin\x18\x10 \x01(\x0e2#.warehouse.expense.v1.ExpenseOriginR\x06originJ\x04\b\t\x10\n" +
 	"R\x06voided\"\xc6\x01\n" +
 	"\x11ExpenseRowMapItem\x12O\n" +
 	"\bmap_data\x18\x01 \x03(\v24.warehouse.expense.v1.ExpenseRowMapItem.MapDataEntryR\amapData\x1a`\n" +
@@ -1754,7 +2076,31 @@ const file_warehouse_expense_v1_expense_proto_rawDesc = "" +
 	"\x14EXPENSE_KIND_PAYROLL\x10\x02\x12\x1c\n" +
 	"\x18EXPENSE_KIND_OPERATIONAL\x10\x03\x12\x16\n" +
 	"\x12EXPENSE_KIND_OTHER\x10\x04\x12\x1b\n" +
-	"\x17EXPENSE_KIND_STOCK_LOSS\x10\x05*\x85\x01\n" +
+	"\x17EXPENSE_KIND_STOCK_LOSS\x10\x05*\xc9\x04\n" +
+	"\vExpenseType\x12\x1c\n" +
+	"\x18EXPENSE_TYPE_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cEXPENSE_TYPE_ADS_MARKETPLACE\x10\x01\x12 \n" +
+	"\x1cEXPENSE_TYPE_CONTENT_ENDORSE\x10\x02\x12\x1d\n" +
+	"\x19EXPENSE_TYPE_BASIC_SALARY\x10\x03\x12\x16\n" +
+	"\x12EXPENSE_TYPE_BONUS\x10\x04\x12\x1e\n" +
+	"\x1aEXPENSE_TYPE_CONTRIBUTIONS\x10\x05\x12\x1c\n" +
+	"\x18EXPENSE_TYPE_ELECTRICITY\x10\x06\x12\x19\n" +
+	"\x15EXPENSE_TYPE_INTERNET\x10\a\x12\x18\n" +
+	"\x14EXPENSE_TYPE_KITCHEN\x10\b\x12\x16\n" +
+	"\x12EXPENSE_TYPE_TOOLS\x10\t\x12\x1a\n" +
+	"\x16EXPENSE_TYPE_EQUIPMENT\x10\n" +
+	"\x12\x19\n" +
+	"\x15EXPENSE_TYPE_BANK_FEE\x10\v\x12\x1c\n" +
+	"\x18EXPENSE_TYPE_DISCREPANCY\x10\f\x12\"\n" +
+	"\x1eEXPENSE_TYPE_OUTSIDE_DEBT_PAID\x10\r\x12,\n" +
+	"(EXPENSE_TYPE_OUTSIDE_RECEIVABLE_RECEIVED\x10\x0e\x12\x16\n" +
+	"\x12EXPENSE_TYPE_PRIVE\x10\x0f\x12 \n" +
+	"\x1cEXPENSE_TYPE_CAPITAL_DEPOSIT\x10\x10\x12\x1a\n" +
+	"\x16EXPENSE_TYPE_OTHER_OUT\x10\x11\x12\x19\n" +
+	"\x15EXPENSE_TYPE_OTHER_IN\x10\x12*P\n" +
+	"\rExpenseOrigin\x12\x1e\n" +
+	"\x1aEXPENSE_ORIGIN_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bEXPENSE_ORIGIN_ACCOUNT_PAGE\x10\x01*\x85\x01\n" +
 	"\x13ExpenseListDataType\x12&\n" +
 	"\"EXPENSE_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eEXPENSE_LIST_DATA_TYPE_GENERAL\x10\x01\x12\"\n" +
@@ -1782,81 +2128,93 @@ func file_warehouse_expense_v1_expense_proto_rawDescGZIP() []byte {
 	return file_warehouse_expense_v1_expense_proto_rawDescData
 }
 
-var file_warehouse_expense_v1_expense_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_warehouse_expense_v1_expense_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_warehouse_expense_v1_expense_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_warehouse_expense_v1_expense_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_warehouse_expense_v1_expense_proto_goTypes = []any{
 	(ExpenseKind)(0),                // 0: warehouse.expense.v1.ExpenseKind
-	(ExpenseListDataType)(0),        // 1: warehouse.expense.v1.ExpenseListDataType
-	(ExpenseRowSort)(0),             // 2: warehouse.expense.v1.ExpenseRowSort
-	(*ExpenseRecord)(nil),           // 3: warehouse.expense.v1.ExpenseRecord
-	(*ExpenseCreateRequest)(nil),    // 4: warehouse.expense.v1.ExpenseCreateRequest
-	(*ExpenseCreateResponse)(nil),   // 5: warehouse.expense.v1.ExpenseCreateResponse
-	(*ExpenseListFilter)(nil),       // 6: warehouse.expense.v1.ExpenseListFilter
-	(*ExpenseListFilterSort)(nil),   // 7: warehouse.expense.v1.ExpenseListFilterSort
-	(*ExpenseListRequest)(nil),      // 8: warehouse.expense.v1.ExpenseListRequest
-	(*ExpenseTotals)(nil),           // 9: warehouse.expense.v1.ExpenseTotals
-	(*ExpenseRowItem)(nil),          // 10: warehouse.expense.v1.ExpenseRowItem
-	(*ExpenseRowMapItem)(nil),       // 11: warehouse.expense.v1.ExpenseRowMapItem
-	(*ExpenseListResponseItem)(nil), // 12: warehouse.expense.v1.ExpenseListResponseItem
-	(*ExpenseListResponse)(nil),     // 13: warehouse.expense.v1.ExpenseListResponse
-	(*ExpenseDailyFilter)(nil),      // 14: warehouse.expense.v1.ExpenseDailyFilter
-	(*ExpenseDailyRequest)(nil),     // 15: warehouse.expense.v1.ExpenseDailyRequest
-	(*ExpenseDayItem)(nil),          // 16: warehouse.expense.v1.ExpenseDayItem
-	(*ExpenseDailyResponse)(nil),    // 17: warehouse.expense.v1.ExpenseDailyResponse
-	(*ExpenseAdjustRequest)(nil),    // 18: warehouse.expense.v1.ExpenseAdjustRequest
-	(*ExpenseAdjustResponse)(nil),   // 19: warehouse.expense.v1.ExpenseAdjustResponse
-	nil,                             // 20: warehouse.expense.v1.ExpenseTotals.ByKindEntry
-	nil,                             // 21: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
-	nil,                             // 22: warehouse.expense.v1.ExpenseDayItem.ByKindEntry
-	(v1.CommonSortType)(0),          // 23: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),             // 24: warehouse.common.v1.GeneralSort
-	(*v1.CommonPagination)(nil),     // 25: warehouse.common.v1.CommonPagination
-	(*v1.GeneralMapItem)(nil),       // 26: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),             // 27: warehouse.common.v1.PageInfo
-	(v11.GroupType)(0),              // 28: warehouse.analytic_base.v1.GroupType
+	(ExpenseType)(0),                // 1: warehouse.expense.v1.ExpenseType
+	(ExpenseOrigin)(0),              // 2: warehouse.expense.v1.ExpenseOrigin
+	(ExpenseListDataType)(0),        // 3: warehouse.expense.v1.ExpenseListDataType
+	(ExpenseRowSort)(0),             // 4: warehouse.expense.v1.ExpenseRowSort
+	(*ExpenseRecord)(nil),           // 5: warehouse.expense.v1.ExpenseRecord
+	(*ExpenseCreateRequest)(nil),    // 6: warehouse.expense.v1.ExpenseCreateRequest
+	(*ExpenseCreateResponse)(nil),   // 7: warehouse.expense.v1.ExpenseCreateResponse
+	(*ExpenseListFilter)(nil),       // 8: warehouse.expense.v1.ExpenseListFilter
+	(*ExpenseListFilterSort)(nil),   // 9: warehouse.expense.v1.ExpenseListFilterSort
+	(*ExpenseListRequest)(nil),      // 10: warehouse.expense.v1.ExpenseListRequest
+	(*ExpenseTotals)(nil),           // 11: warehouse.expense.v1.ExpenseTotals
+	(*ExpenseRowItem)(nil),          // 12: warehouse.expense.v1.ExpenseRowItem
+	(*ExpenseRowMapItem)(nil),       // 13: warehouse.expense.v1.ExpenseRowMapItem
+	(*ExpenseListResponseItem)(nil), // 14: warehouse.expense.v1.ExpenseListResponseItem
+	(*ExpenseListResponse)(nil),     // 15: warehouse.expense.v1.ExpenseListResponse
+	(*ExpenseDailyFilter)(nil),      // 16: warehouse.expense.v1.ExpenseDailyFilter
+	(*ExpenseDailyRequest)(nil),     // 17: warehouse.expense.v1.ExpenseDailyRequest
+	(*ExpenseDayItem)(nil),          // 18: warehouse.expense.v1.ExpenseDayItem
+	(*ExpenseDailyResponse)(nil),    // 19: warehouse.expense.v1.ExpenseDailyResponse
+	(*ExpenseAdjustRequest)(nil),    // 20: warehouse.expense.v1.ExpenseAdjustRequest
+	(*ExpenseAdjustResponse)(nil),   // 21: warehouse.expense.v1.ExpenseAdjustResponse
+	nil,                             // 22: warehouse.expense.v1.ExpenseTotals.ByKindEntry
+	nil,                             // 23: warehouse.expense.v1.ExpenseTotals.ByTypeEntry
+	nil,                             // 24: warehouse.expense.v1.ExpenseTotals.ByKindUntypedEntry
+	nil,                             // 25: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
+	nil,                             // 26: warehouse.expense.v1.ExpenseDayItem.ByKindEntry
+	(v1.CommonSortType)(0),          // 27: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),             // 28: warehouse.common.v1.GeneralSort
+	(*v1.CommonPagination)(nil),     // 29: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),       // 30: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),             // 31: warehouse.common.v1.PageInfo
+	(v11.GroupType)(0),              // 32: warehouse.analytic_base.v1.GroupType
 }
 var file_warehouse_expense_v1_expense_proto_depIdxs = []int32{
 	0,  // 0: warehouse.expense.v1.ExpenseRecord.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	0,  // 1: warehouse.expense.v1.ExpenseCreateRequest.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	3,  // 2: warehouse.expense.v1.ExpenseCreateResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
-	0,  // 3: warehouse.expense.v1.ExpenseListFilter.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	23, // 4: warehouse.expense.v1.ExpenseListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	24, // 5: warehouse.expense.v1.ExpenseListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
-	2,  // 6: warehouse.expense.v1.ExpenseListFilterSort.expense:type_name -> warehouse.expense.v1.ExpenseRowSort
-	6,  // 7: warehouse.expense.v1.ExpenseListRequest.filter:type_name -> warehouse.expense.v1.ExpenseListFilter
-	7,  // 8: warehouse.expense.v1.ExpenseListRequest.sort:type_name -> warehouse.expense.v1.ExpenseListFilterSort
-	1,  // 9: warehouse.expense.v1.ExpenseListRequest.data_request:type_name -> warehouse.expense.v1.ExpenseListDataType
-	25, // 10: warehouse.expense.v1.ExpenseListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	20, // 11: warehouse.expense.v1.ExpenseTotals.by_kind:type_name -> warehouse.expense.v1.ExpenseTotals.ByKindEntry
-	0,  // 12: warehouse.expense.v1.ExpenseRowItem.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	21, // 13: warehouse.expense.v1.ExpenseRowMapItem.map_data:type_name -> warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
-	26, // 14: warehouse.expense.v1.ExpenseListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	11, // 15: warehouse.expense.v1.ExpenseListResponseItem.expense:type_name -> warehouse.expense.v1.ExpenseRowMapItem
-	12, // 16: warehouse.expense.v1.ExpenseListResponse.items:type_name -> warehouse.expense.v1.ExpenseListResponseItem
-	27, // 17: warehouse.expense.v1.ExpenseListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	9,  // 18: warehouse.expense.v1.ExpenseListResponse.totals:type_name -> warehouse.expense.v1.ExpenseTotals
-	0,  // 19: warehouse.expense.v1.ExpenseDailyFilter.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	14, // 20: warehouse.expense.v1.ExpenseDailyRequest.filter:type_name -> warehouse.expense.v1.ExpenseDailyFilter
-	28, // 21: warehouse.expense.v1.ExpenseDailyRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
-	22, // 22: warehouse.expense.v1.ExpenseDayItem.by_kind:type_name -> warehouse.expense.v1.ExpenseDayItem.ByKindEntry
-	16, // 23: warehouse.expense.v1.ExpenseDailyResponse.days:type_name -> warehouse.expense.v1.ExpenseDayItem
-	9,  // 24: warehouse.expense.v1.ExpenseDailyResponse.totals:type_name -> warehouse.expense.v1.ExpenseTotals
-	3,  // 25: warehouse.expense.v1.ExpenseAdjustResponse.adjustment:type_name -> warehouse.expense.v1.ExpenseRecord
-	3,  // 26: warehouse.expense.v1.ExpenseAdjustResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
-	10, // 27: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry.value:type_name -> warehouse.expense.v1.ExpenseRowItem
-	4,  // 28: warehouse.expense.v1.ExpenseService.ExpenseCreate:input_type -> warehouse.expense.v1.ExpenseCreateRequest
-	8,  // 29: warehouse.expense.v1.ExpenseService.ExpenseList:input_type -> warehouse.expense.v1.ExpenseListRequest
-	15, // 30: warehouse.expense.v1.ExpenseService.ExpenseDaily:input_type -> warehouse.expense.v1.ExpenseDailyRequest
-	18, // 31: warehouse.expense.v1.ExpenseService.ExpenseAdjust:input_type -> warehouse.expense.v1.ExpenseAdjustRequest
-	5,  // 32: warehouse.expense.v1.ExpenseService.ExpenseCreate:output_type -> warehouse.expense.v1.ExpenseCreateResponse
-	13, // 33: warehouse.expense.v1.ExpenseService.ExpenseList:output_type -> warehouse.expense.v1.ExpenseListResponse
-	17, // 34: warehouse.expense.v1.ExpenseService.ExpenseDaily:output_type -> warehouse.expense.v1.ExpenseDailyResponse
-	19, // 35: warehouse.expense.v1.ExpenseService.ExpenseAdjust:output_type -> warehouse.expense.v1.ExpenseAdjustResponse
-	32, // [32:36] is the sub-list for method output_type
-	28, // [28:32] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	1,  // 1: warehouse.expense.v1.ExpenseRecord.type:type_name -> warehouse.expense.v1.ExpenseType
+	2,  // 2: warehouse.expense.v1.ExpenseRecord.origin:type_name -> warehouse.expense.v1.ExpenseOrigin
+	0,  // 3: warehouse.expense.v1.ExpenseCreateRequest.kind:type_name -> warehouse.expense.v1.ExpenseKind
+	1,  // 4: warehouse.expense.v1.ExpenseCreateRequest.type:type_name -> warehouse.expense.v1.ExpenseType
+	5,  // 5: warehouse.expense.v1.ExpenseCreateResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
+	0,  // 6: warehouse.expense.v1.ExpenseListFilter.kind:type_name -> warehouse.expense.v1.ExpenseKind
+	1,  // 7: warehouse.expense.v1.ExpenseListFilter.type:type_name -> warehouse.expense.v1.ExpenseType
+	27, // 8: warehouse.expense.v1.ExpenseListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	28, // 9: warehouse.expense.v1.ExpenseListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	4,  // 10: warehouse.expense.v1.ExpenseListFilterSort.expense:type_name -> warehouse.expense.v1.ExpenseRowSort
+	8,  // 11: warehouse.expense.v1.ExpenseListRequest.filter:type_name -> warehouse.expense.v1.ExpenseListFilter
+	9,  // 12: warehouse.expense.v1.ExpenseListRequest.sort:type_name -> warehouse.expense.v1.ExpenseListFilterSort
+	3,  // 13: warehouse.expense.v1.ExpenseListRequest.data_request:type_name -> warehouse.expense.v1.ExpenseListDataType
+	29, // 14: warehouse.expense.v1.ExpenseListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	22, // 15: warehouse.expense.v1.ExpenseTotals.by_kind:type_name -> warehouse.expense.v1.ExpenseTotals.ByKindEntry
+	23, // 16: warehouse.expense.v1.ExpenseTotals.by_type:type_name -> warehouse.expense.v1.ExpenseTotals.ByTypeEntry
+	24, // 17: warehouse.expense.v1.ExpenseTotals.by_kind_untyped:type_name -> warehouse.expense.v1.ExpenseTotals.ByKindUntypedEntry
+	0,  // 18: warehouse.expense.v1.ExpenseRowItem.kind:type_name -> warehouse.expense.v1.ExpenseKind
+	1,  // 19: warehouse.expense.v1.ExpenseRowItem.type:type_name -> warehouse.expense.v1.ExpenseType
+	2,  // 20: warehouse.expense.v1.ExpenseRowItem.origin:type_name -> warehouse.expense.v1.ExpenseOrigin
+	25, // 21: warehouse.expense.v1.ExpenseRowMapItem.map_data:type_name -> warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry
+	30, // 22: warehouse.expense.v1.ExpenseListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	13, // 23: warehouse.expense.v1.ExpenseListResponseItem.expense:type_name -> warehouse.expense.v1.ExpenseRowMapItem
+	14, // 24: warehouse.expense.v1.ExpenseListResponse.items:type_name -> warehouse.expense.v1.ExpenseListResponseItem
+	31, // 25: warehouse.expense.v1.ExpenseListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	11, // 26: warehouse.expense.v1.ExpenseListResponse.totals:type_name -> warehouse.expense.v1.ExpenseTotals
+	0,  // 27: warehouse.expense.v1.ExpenseDailyFilter.kind:type_name -> warehouse.expense.v1.ExpenseKind
+	16, // 28: warehouse.expense.v1.ExpenseDailyRequest.filter:type_name -> warehouse.expense.v1.ExpenseDailyFilter
+	32, // 29: warehouse.expense.v1.ExpenseDailyRequest.group_by:type_name -> warehouse.analytic_base.v1.GroupType
+	26, // 30: warehouse.expense.v1.ExpenseDayItem.by_kind:type_name -> warehouse.expense.v1.ExpenseDayItem.ByKindEntry
+	18, // 31: warehouse.expense.v1.ExpenseDailyResponse.days:type_name -> warehouse.expense.v1.ExpenseDayItem
+	11, // 32: warehouse.expense.v1.ExpenseDailyResponse.totals:type_name -> warehouse.expense.v1.ExpenseTotals
+	5,  // 33: warehouse.expense.v1.ExpenseAdjustResponse.adjustment:type_name -> warehouse.expense.v1.ExpenseRecord
+	5,  // 34: warehouse.expense.v1.ExpenseAdjustResponse.expense:type_name -> warehouse.expense.v1.ExpenseRecord
+	12, // 35: warehouse.expense.v1.ExpenseRowMapItem.MapDataEntry.value:type_name -> warehouse.expense.v1.ExpenseRowItem
+	6,  // 36: warehouse.expense.v1.ExpenseService.ExpenseCreate:input_type -> warehouse.expense.v1.ExpenseCreateRequest
+	10, // 37: warehouse.expense.v1.ExpenseService.ExpenseList:input_type -> warehouse.expense.v1.ExpenseListRequest
+	17, // 38: warehouse.expense.v1.ExpenseService.ExpenseDaily:input_type -> warehouse.expense.v1.ExpenseDailyRequest
+	20, // 39: warehouse.expense.v1.ExpenseService.ExpenseAdjust:input_type -> warehouse.expense.v1.ExpenseAdjustRequest
+	7,  // 40: warehouse.expense.v1.ExpenseService.ExpenseCreate:output_type -> warehouse.expense.v1.ExpenseCreateResponse
+	15, // 41: warehouse.expense.v1.ExpenseService.ExpenseList:output_type -> warehouse.expense.v1.ExpenseListResponse
+	19, // 42: warehouse.expense.v1.ExpenseService.ExpenseDaily:output_type -> warehouse.expense.v1.ExpenseDailyResponse
+	21, // 43: warehouse.expense.v1.ExpenseService.ExpenseAdjust:output_type -> warehouse.expense.v1.ExpenseAdjustResponse
+	40, // [40:44] is the sub-list for method output_type
+	36, // [36:40] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_expense_v1_expense_proto_init() }
@@ -1877,8 +2235,8 @@ func file_warehouse_expense_v1_expense_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_expense_v1_expense_proto_rawDesc), len(file_warehouse_expense_v1_expense_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   20,
+			NumEnums:      5,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

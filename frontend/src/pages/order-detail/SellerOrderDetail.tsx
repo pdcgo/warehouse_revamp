@@ -47,6 +47,9 @@ import { Fact, Section, SectionEmpty } from "../../components/chrome/DetailSecti
 import { OrderActionBar } from "./components/OrderActionBar";
 import { SectionNav } from "../../components/chrome/SectionNav";
 import { SECTION_KEYS, SECTIONS, sectionDomId, sectionIcon } from "./sections";
+import { useOrderTags } from "../../features/orders/tags/tagQueries";
+import { tagsOfOrder } from "../../features/orders/tags/orderTags";
+import { OrderTagsBox } from "../../features/orders/tags/OrderTagsBox";
 import type { SectionKey } from "./sections";
 import { useScrollSpy } from "../../lib/useScrollSpy";
 import { useIsMobile } from "../../layouts/shell";
@@ -60,6 +63,7 @@ import { Rail } from "./components/Rail";
 import { StageStepper } from "./components/StageStepper";
 import { SummaryTiles } from "./components/SummaryTiles";
 import { CopyText } from "../../components/chrome/CopyText";
+import { ItemBlocks, lineProductOf } from "./components/ItemBlocks";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { personName } from "../../lib/users";
 
@@ -152,6 +156,10 @@ export function SellerOrderDetailPage() {
   // the page looks every line's product up in ONE batched `ProductByIds` — never one read per line.
   const covers = useProductsByIds({ teamId, productIds: order?.items.map((item) => item.productId) ?? [] });
 
+  // THE ORDER'S TAGS (backlog #100, orders-have-their-own-tag-list): the orders' own list and the writes, for the Tag
+  // section — this team may tag the order when it is one of its two sides (OrderTagAdd answers NotFound otherwise).
+  const tagsApi = useOrderTags(order ?? undefined);
+
   // ── The layout's own state. All of it before the early returns: hooks may not be conditional.
   const mobile = useIsMobile();
   // The side column only where there is room for it beside the nav: Chakra's `xl`.
@@ -237,17 +245,7 @@ export function SellerOrderDetailPage() {
   // the order — and the catalogue's picture from the batched lookup above. While that read is in flight,
   // or for a product it does not answer for, there is no picture and the component draws its
   // placeholder: the line reads exactly as it did without the lookup, never blank.
-  const lineProduct = (item: OrderItem) => {
-    const product = covers.data?.get(item.productId.toString());
-
-    return {
-      id: item.productId,
-      productCode: item.productCode,
-      name: item.name,
-      defaultImageUrl: product?.defaultImageUrl,
-      defaultImageThumbnailUrl: product?.defaultImageThumbnailUrl,
-    };
-  };
+  const lineProduct = (item: OrderItem) => lineProductOf(item, covers.data);
 
   // ── The sections, built once and placed by the layout below.
   // ── 1. INFO ORDER — the facts the create form asked for, read back ────────────────────────
@@ -324,6 +322,14 @@ export function SellerOrderDetailPage() {
     </Section>
   );
 
+  // ── TAG (backlog #100): the order's own tags, an add box over the orders' one list, × on a custom tag; the admins'
+  // system tags locked for a team's user, and Kelola tag for Root / the Administrator (OrderTagsBox).
+  const tagsSection = (
+    <Section title={t("orders.tags.title")} id={sectionDomId("tags")} icon={sectionIcon("tags")} testId="section-tags">
+      <OrderTagsBox orderId={order.id} tags={tagsOfOrder(order)} api={tagsApi} />
+    </Section>
+  );
+
   // ── 2. ORDER ITEMS, with the money derived under them ─────────────────────────────────────
   const itemsSection = (
     <Section
@@ -339,30 +345,15 @@ export function SellerOrderDetailPage() {
           // ⚠ A PHONE GETS ONE BLOCK PER LINE, NOT THE TABLE (owner: *"product itemsnya kepotong-potong
           // karena terlalu sempit"*). Five columns in 360px clamped both product names to a word each, and
           // the qty and line total sat off the edge in the scroll box. Here each name gets the full width
-          // and the arithmetic reads as a sentence: harga beli × qty = line total.
-          <Stack gap="0" data-testid="order-items-list">
-            {order.items.map((item, index) => (
-              <Stack
-                key={item.id.toString()}
-                gap="2"
-                py="3"
-                borderTopWidth={index === 0 ? "0" : "1px"}
-                borderColor="border"
-                data-testid={`order-item-${item.id}`}
-              >
-                <ProductListItem product={lineProduct(item)} />
-                <Flex justify="space-between" align="baseline" gap="3" fontSize="sm">
-                  <Text color="fg.muted">
-                    {item.unitCost > 0 ? formatRupiah(lineUnitBeli(item)) : "—"} × {item.quantity}
-                    {teamName ? ` · ${teamName}` : ""}
-                  </Text>
-                  <Text fontWeight="bold" whiteSpace="nowrap">
-                    {item.unitCost > 0 ? formatRupiah(lineTotalBeli(item)) : "—"}
-                  </Text>
-                </Flex>
-              </Stack>
-            ))}
-          </Stack>
+          // and the arithmetic reads as a sentence: harga beli × qty = line total. The warehouse's Info tab draws
+          // the same blocks (`ItemBlocks`, backlog #105).
+          <ItemBlocks
+            items={order.items}
+            productOf={lineProduct}
+            teamName={teamName}
+            testId="order-items-list"
+            itemTestId={(item) => `order-item-${item.id}`}
+          />
         ) : (
           <Box overflowX="auto" maxW="full">
             {/* ⚠ ITS OWN SCROLL BOX. A table is the one thing allowed to be wider than a phone, and
@@ -694,6 +685,7 @@ export function SellerOrderDetailPage() {
                 {settlementSection}
               </Stack>
               <Stack gap="section" minW="0">
+                {tagsSection}
                 {notesSection}
                 {recipientSection}
               </Stack>
@@ -702,6 +694,7 @@ export function SellerOrderDetailPage() {
         ) : (
           <Stack gap="section" maxW="5xl" minW="0" w="full">
             {infoSection}
+            {tagsSection}
             {notesSection}
             {itemsSection}
             {timelineSection}

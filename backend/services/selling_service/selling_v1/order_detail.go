@@ -67,6 +67,12 @@ func (s *Service) OrderDetail(
 
 	res := &sellingv1.OrderDetailResponse{Order: orderToProto(&order)}
 
+	// Its tags (orders-have-their-own-tag-list) — the seller's Tag box, the warehouse's Tag card and the pick page's.
+	err = withOrderTags(s.db.WithContext(ctx), res.Order)
+	if err != nil {
+		return nil, dbError(err)
+	}
+
 	if order.Status == orderStatusReturn {
 		res.ReturnLabels = s.returnLabelsBeforeTheAccept(ctx, req.Msg.GetTeamId(), &order)
 	}

@@ -47,6 +47,22 @@ import { API_URL } from "./env";
 // - `cross team's ready stock increases` — the cross team's own Ready at the warehouse (selling:owner there): 8 → 10.
 // - `product fee reversed in liability to cross team` — the seller's ledger with the cross team: the order's
 //   "Product fee" entry and its Reversal, both Rp 24.000 (a-cancel-refunds-the-warehouse-fee-in-full: both fees).
+// (warehouse fee already paid) — the order's fee was owed, PAID and accepted before the cancel. Per role the order ships
+// from a warehouse of its OWN (W·r, 10%), so the pair read here moves with this one order alone; the selling team paid
+// the Rp 2.000 from an account of its own (Paid from), W·r accepted it, and *Liability Payment Accepted* reached the
+// accounts (pushed as the broker would — its event id is liability's own, so a second delivery posts nothing). The
+// GIVEN, read before the cancel: the pair is square, the payment Accepted, the account down by the fee.
+// - `warehouse fee reversed in liability` — the seller's ledger with W·r: "Order fee" and its Reversal, both Rp 2.000.
+// - `warehouse owes the selling team the fee` — the pair turns: the seller's page reads Rp 2.000 *They owe you*, W·r's
+//   (warehouse:admin) Rp 2.000 *You owe them*, and the server's position is +Rp 2.000 from the seller's side.
+// - `payment stays accepted, money not returned to the account` — My payments still reads Accepted (CONFIRMED on the
+//   server — an-accepted-payment-is-final), and the account it was paid from keeps its balance (read three times over
+//   4 s, after the reversal landed) and its rows: nothing is posted back to it.
+// (product fee already paid) — the same with a borrowed product: per role the cross team is one of its OWN (X·r, 20%
+// markup, its product restocked onto the rack), owed Rp 24.000, paid and accepted:
+// - `product fee reversed in liability` — the seller's ledger with X·r: "Product fee" and its Reversal, both Rp 24.000.
+// - `cross team owes the selling team the fee` — the seller's page reads Rp 24.000 *They owe you*, X·r's (selling:owner)
+//   Rp 24.000 *You owe them*, the server's position +Rp 24.000.
 // (status: processed) — the warehouse confirmed it (no-cancel-after-the-warehouse-confirms):
 // - `cannot cancel order` — the order's page offers no Cancel Order, and the same OrderCancel sent anyway with the role's
 //   token answers failed_precondition; the order stays processed.
@@ -73,6 +89,8 @@ test.describe("selling:all wants to cancel an order", () => {
     cross: { cond: "status: pending · 1 product · cross product · 1 warehouse · 1 rack · 1 supplier", key: "px" },
     processed: { cond: "status: processed · 1 product · own product · 1 warehouse", key: "pr" },
     counted: { cond: "status: pending · 1 product · own product · 1 warehouse · opname running on its rack", key: "op" },
+    paid: { cond: "status: pending · 1 product · own product · 1 warehouse · warehouse fee already paid", key: "pf" },
+    paidCross: { cond: "status: pending · 1 product · cross product · 1 warehouse · product fee already paid", key: "pc" },
   } as const;
   type Role = (typeof ROLES)[number];
   type Case = (typeof CASES)[keyof typeof CASES];
@@ -84,6 +102,11 @@ test.describe("selling:all wants to cancel an order", () => {
   const FEE_PERCENT = 10;
   const PLATFORM_TOTAL = 100_000;
   const CROSS_MARKUP_BPS = 2_000; // 20% — a borrowed unit costs the seller Rp 12.000
+  // (fee already paid) — the order's warehouse fee and a borrowed order's product fee, as the server holds them.
+  const FEE = 2_000;
+  const CROSS_FEE = 24_000;
+  const PAID_OPENING = 1_000_000; // the account the selling team paid a fee from
+  const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
   const username = (role: string) => `e2eok${role}${SUFFIX}`;
   const displayName = (given: string) => `Okc ${given} ${SUFFIX}`;
@@ -108,10 +131,13 @@ test.describe("selling:all wants to cancel an order", () => {
     products: {} as Record<string, string>,
     shops: {} as Record<string, string>,
     orders: {} as Record<string, string>,
+    // (fee already paid) — by `at(r, c)`: the fee's creditor (W·r or X·r), its person, the payment, and the account the
+    // selling team paid it from.
+    paid: {} as Record<string, { creditor: string; user: string; payment: string; account: string }>,
   };
 
   test.beforeAll(async ({ browser }) => {
-    test.setTimeout(300_000);
+    test.setTimeout(480_000);
     const page = await browser.newPage();
     await login(page, ROOT_USERNAME, ROOT_PASSWORD);
 
@@ -316,6 +342,150 @@ test.describe("selling:all wants to cancel an order", () => {
         }
       }
     }
+
+    // (warehouse fee / product fee already paid) — per role, the fee's creditor is a team of its OWN (see the head of
+    // this file): W·r, the warehouse the own-product order ships from, and X·r, the cross team the borrowed order's
+    // product belongs to. Each order is placed by root, then its fee is paid from an account of the selling team's own
+    // and accepted by the creditor — so before the cancel, the pair is square and the money is out of the account.
+    const placeOrder = async (r: Role, c: Case, productId: string, warehouse: string) => {
+      const code = sku(r, c);
+      const shop = String(
+        (
+          await api(page, "selling.v1.ShopService/ShopCreate", {
+            teamId: ground.team,
+            name: `E2E Okc Shop ${r.key} ${c.key} ${SUFFIX}`,
+            shopCode: `K${++n}${SUFFIX}`,
+            marketplace: "MARKETPLACE_SHOPEE",
+          })
+        ).shop.id,
+      );
+      ground.shops[at(r, c)] = shop;
+      await api(page, "selling.v1.ShopService/ShopUserAdd", { teamId: ground.team, shopId: shop, userId: users[r.key] });
+      const placed = await api(page, "selling.v1.OrderService/OrderCreate", {
+        idempotencyKey: `e2e-okc-${SUFFIX}-${r.key}-${c.key}`,
+        shipmentChannelId: "1",
+        teamId: ground.team,
+        shopId: shop,
+        warehouseId: warehouse,
+        customerName: `E2E Okc Buyer ${r.key} ${c.key}`,
+        platformTotal: PLATFORM_TOTAL,
+        platformCreatedAtUnix: Math.floor(Date.now() / 1000),
+        orderExternalRefId: ref(r, c),
+        items: [{ productId, productCode: code, name: `E2E ${code}`, quantity: QTY }],
+      });
+      ground.orders[at(r, c)] = String(placed.order.id);
+    };
+    const stockUp = async (r: Role, c: Case, owner: string, warehouse: string, rack: string, paidFrom: string, cross: boolean) => {
+      const code = sku(r, c);
+      const productId = String(
+        (
+          await api(page, "product.v1.ProductService/ProductCreate", {
+            teamId: owner,
+            productCodePart: code,
+            name: `E2E ${code}`,
+            categoryId: category.category.id,
+            ...(cross ? { crossMarkupBps: CROSS_MARKUP_BPS } : {}),
+          })
+        ).product.id,
+      );
+      ground.products[at(r, c)] = productId;
+      const raised = await api(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
+        teamId: owner,
+        warehouseId: warehouse,
+        financeAccountId: paidFrom,
+        items: [{ productId, productCode: code, name: `E2E ${code}`, count: STOCK, total: RESTOCK_TOTAL }],
+      });
+      await api(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
+        teamId: warehouse,
+        requestId: raised.request.id,
+        lines: [{ itemId: raised.request.items[0].id, receivedCount: STOCK, placements: [{ placementId: rack, quantity: STOCK }] }],
+      });
+
+      return productId;
+    };
+    // The fee paid: recorded by the selling team from an account of its own, accepted by the creditor into `into`, and
+    // *Liability Payment Accepted* pushed to the accounts as the broker would.
+    const payFee = async (r: Role, c: Case, creditor: string, creditorUser: string, into: string, amount: number, tail: string) => {
+      // The fee posted at placement: the selling team owes it (negative from its side).
+      await expect.poll(() => balanceWith(page, ground.team, creditor), { timeout: 30_000 }).toBe(-amount);
+      const from = String(
+        (
+          await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+            teamId: ground.team,
+            type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+            provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+            name: `E2E Okc Paid ${r.key} ${c.key} ${SUFFIX}`,
+            holderName: "E2E",
+            accountNumber: `80${SUFFIX}${tail}`,
+            openingBalance: PAID_OPENING,
+            openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+          })
+        ).account.id,
+      );
+      const proof = await uploadProof(page, ground.team, creditor);
+      const recorded = await api(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentRecord", {
+        teamId: ground.team,
+        creditorTeamId: creditor,
+        amount: String(amount),
+        note: "the fee, transferred",
+        documentIds: [proof],
+        fromAccountId: from,
+      });
+      const confirmed = await api(page, "liability.v1.LiabilityPaymentService/LiabilityPaymentConfirm", {
+        teamId: creditor,
+        paymentId: recorded.payment.id,
+        toAccountId: into,
+      });
+      expect(confirmed.payment.status).toBe("LIABILITY_PAYMENT_STATUS_CONFIRMED");
+      const pushed = await page.request.post(`${API_URL}/event/financial-account-team-payment/push`, {
+        data: pushPaymentAccepted(confirmed.payment),
+      });
+      expect(pushed.status()).toBe(200);
+      await expect.poll(() => balanceWith(page, ground.team, creditor), { timeout: 30_000 }).toBe(0);
+      await expect.poll(() => accountBalance(page, ground.team, from), { timeout: 30_000 }).toBe(PAID_OPENING - amount);
+      ground.paid[at(r, c)] = { creditor, user: creditorUser, payment: String(recorded.payment.id), account: from };
+    };
+
+    let tail = 10;
+    for (const r of ROLES) {
+      const k = r.key.slice(0, 1).toUpperCase();
+      // W·r — 10% like the others, its own rack, account and warehouse:admin (who reads its side of the pair).
+      const wr = await team(`E2E Okc Paid Warehouse ${r.key} ${SUFFIX}`, `OKP${k}${SUFFIX}`, "TEAM_TYPE_WAREHOUSE");
+      await api(page, "warehouse.v1.WarehouseFeeService/WarehouseFeeSet", { teamId: wr, feePercent: FEE_PERCENT, minFee: 0 });
+      const wrRack = await rackOf(wr, `okp-${r.key}-${SUFFIX}`);
+      const wrUser = `e2eokpw${r.key}${SUFFIX}`;
+      await api(page, "user.v1.UserService/CreateUser", {
+        teamId: wr,
+        username: wrUser,
+        password: PASSWORD,
+        name: `Okc paid warehouse:admin ${r.key} ${SUFFIX}`,
+        role: "ROLE_WAREHOUSE_ADMIN",
+      });
+      const wrAccount = await accountOf(wr, String(++tail));
+      const own = await stockUp(r, CASES.paid, ground.team, wr, wrRack, account, false);
+      await placeOrder(r, CASES.paid, own, wr);
+      await payFee(r, CASES.paid, wr, wrUser, wrAccount, FEE, String(++tail));
+
+      // X·r — the borrowed product's team, its own account and selling:owner; the product restocked onto the one rack.
+      const xr = await team(`E2E Okc Paid Cross ${r.key} ${SUFFIX}`, `OKQ${k}${SUFFIX}`, "TEAM_TYPE_SELLING");
+      const xrUser = `e2eokpx${r.key}${SUFFIX}`;
+      await api(page, "user.v1.UserService/CreateUser", {
+        teamId: xr,
+        username: xrUser,
+        password: PASSWORD,
+        name: `Okc paid cross selling:owner ${r.key} ${SUFFIX}`,
+        role: "ROLE_SELLING_OWNER",
+      });
+      const xrAccount = await accountOf(xr, String(++tail));
+      const borrowed = await stockUp(r, CASES.paidCross, xr, ground.warehouse, ground.rack, xrAccount, true);
+      await api(page, "selling.v1.TeamReturnConfigurationService/ProductReturnMapCreate", {
+        teamId: ground.team,
+        sharedProductId: borrowed,
+        ownProductId: mapTo,
+      });
+      await placeOrder(r, CASES.paidCross, borrowed, ground.warehouse);
+      await payFee(r, CASES.paidCross, xr, xrUser, xrAccount, CROSS_FEE, String(++tail));
+    }
     await page.close();
 
     // (opname running on its rack) — the counted warehouse's admin starts a count of the rack the orders took from.
@@ -419,6 +589,132 @@ test.describe("selling:all wants to cancel an order", () => {
     await expect.soft(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "cancel");
     await expect.soft(page.getByTestId("order-detail-header")).toContainText("Cancelled");
     await expect.soft(page.getByTestId("order-action-cancel")).toHaveCount(0);
+  }
+
+  // ── (fee already paid) — the pair, the payment and the account, as their pages and the server read them ──────────
+
+  // The pair page with one counterparty, loaded: its balance has rendered.
+  async function openPair(p: Page, counterparty: string) {
+    await p.goto(`/liability/${counterparty}`);
+    await expect(p.getByTestId("liability-detail-balance")).toBeVisible();
+  }
+
+  // The pair as its page reads it — the figure and which way it runs.
+  async function pairReads(p: Page, counterparty: string, amount: string, direction: "They owe you" | "You owe them" | "Square") {
+    await openPair(p, counterparty);
+    await expect(p.getByTestId("liability-detail-balance")).toHaveText(amount, { timeout: 3_000 });
+    await expect(p.getByTestId("liability-detail-direction")).toHaveText(direction, { timeout: 3_000 });
+  }
+
+  // The paying team's own payments with the counterparty: the pair page, My payments.
+  async function openMine(p: Page, counterparty: string) {
+    await openPair(p, counterparty);
+    await p.getByTestId("liability-detail-tab-mine").click();
+
+    return p.getByTestId("liability-detail-mine");
+  }
+
+  // The team's balance with ONE counterparty, by the server — positive: they owe the team; negative: the team owes.
+  // `+ 0` because a magnitude of nothing comes back as -0.
+  async function balanceWith(p: Page, teamId: string, counterpartyId: string) {
+    const res = await api(p, "liability.v1.LiabilityService/LiabilityPositionList", {
+      teamId,
+      filter: { counterpartyId },
+      page: { page: 1, limit: 50 },
+    });
+    const items = (res.items ?? []) as { position?: { mapData: Record<string, { balance?: string | number }> } }[];
+    const map = items.find((it) => it.position)?.position?.mapData;
+
+    return Number(map?.[counterpartyId]?.balance ?? 0) + 0;
+  }
+
+  // One payment's status, as the paying team lists it.
+  async function paymentStatus(p: Page, teamId: string, counterpartyId: string, id: string) {
+    const res = await api(p, "liability.v1.LiabilityPaymentService/LiabilityPaymentList", {
+      teamId,
+      filter: { counterpartyId },
+      page: { page: 1, limit: 50 },
+    });
+    const items = (res.items ?? []) as { payment?: { mapData: Record<string, { id?: string; status?: string }> } }[];
+    const map = items.find((it) => it.payment)?.payment?.mapData;
+
+    return String(Object.values(map ?? {}).find((x) => String(x.id) === id)?.status ?? "");
+  }
+
+  // The account's balance as its team reads it — proto3 JSON leaves a zero out.
+  async function accountBalance(p: Page, teamId: string, accountId: string) {
+    const res = await api(p, "financial_account.v1.FinancialAccountService/FinancialAccountOverview", {
+      teamId,
+      filter: { accountIds: [accountId] },
+      metricRequest: ["FINANCIAL_ACCOUNT_METRIC_DATA_TYPE_BALANCE"],
+    });
+
+    return Number(res.items?.[0]?.balance?.mapData?.[accountId]?.balance ?? 0);
+  }
+
+  // The account's own page: its rows, once the page has drawn.
+  async function accountRows(p: Page, accountId: string) {
+    await p.goto(`/financial-accounts/${accountId}`);
+    await expect(p.getByTestId("financial-account-page")).toBeVisible();
+
+    return p.getByTestId("account-log-table").locator('[data-testid^="account-log-row-"]');
+  }
+
+  // The payer's proof, uploaded and shared with the creditor (a-payment-must-carry-proof).
+  async function uploadProof(p: Page, ownerTeam: string, shareWith: string) {
+    const requested = await api(p, "document.v1.DocumentService/RequestUpload", {
+      teamId: ownerTeam,
+      filename: "transfer.png",
+      contentType: "image/png",
+      sizeBytes: "70",
+      resourceType: "DOCUMENT_RESOURCE_TYPE_PAYMENT_PROOF",
+    });
+    const put = await p.evaluate(
+      async ([url, method, headers, png]) => {
+        const bytes = Uint8Array.from(atob(png as string), (ch) => ch.charCodeAt(0));
+        const res = await fetch(url as string, { method: method as string, headers: headers as Record<string, string>, body: bytes });
+
+        return res.status;
+      },
+      [requested.uploadUrl, requested.method, requested.headers ?? {}, PNG] as const,
+    );
+    expect(put).toBeLessThan(300);
+    const confirmed = await api(p, "document.v1.DocumentService/ConfirmUpload", { uploadToken: requested.uploadToken });
+    await api(p, "document.v1.DocumentService/ShareDocument", {
+      teamId: ownerTeam,
+      documentId: confirmed.document.id,
+      withTeamId: shareWith,
+    });
+
+    return String(confirmed.document.id);
+  }
+
+  // *Liability Payment Accepted* as the broker pushes it to the financial accounts — the money leaving the payer's
+  // account and landing in the creditor's. Its event id is liability's own, so a second delivery posts nothing.
+  function pushPaymentAccepted(payment: Record<string, string>) {
+    const event = {
+      eventId: `liability-payment-accepted:${payment.id}`,
+      occurredAt: new Date(Number(payment.confirmedAtUnix) * 1000).toISOString(),
+      aggregateId: `liability-payment:${payment.id}`,
+      liabilityPaymentAccepted: {
+        paymentId: payment.id,
+        payerTeamId: payment.payerTeamId,
+        creditorTeamId: payment.creditorTeamId,
+        amount: payment.amount,
+        fromAccountId: payment.fromAccountId,
+        toAccountId: payment.toAccountId,
+        actorId: payment.confirmedBy,
+      },
+    };
+
+    return {
+      message: {
+        data: Buffer.from(JSON.stringify(event)).toString("base64"),
+        attributes: { event_type: "warehouse.events.v1.LiabilityPaymentAccepted" },
+        messageId: `${event.eventId}-${Date.now()}`,
+      },
+      subscription: "projects/warehouse-dev/subscriptions/financial-account-team-payment",
+    };
   }
 
   for (const r of ROLES) {
@@ -585,6 +881,105 @@ test.describe("selling:all wants to cancel an order", () => {
 
       await test.step("then: product fee reversed in liability to cross team", async () => {
         await expectReversed(ledger, ground.crossTeam, orderId, "Product fee", "Rp 24.000");
+      });
+      if (ledger !== page) await ledger.close();
+      await crossPage.close();
+    });
+  }
+
+  for (const r of ROLES) {
+    const c = CASES.paid;
+    test(`${r.given} cancel order (${c.cond})`, async ({ page, browser }) => {
+      const orderId = ground.orders[at(r, c)]!;
+      const paid = ground.paid[at(r, c)]!;
+      const paymentRow = new RegExp(`Team payment #${paid.payment}(?!\\d)`);
+
+      // The GIVEN — the fee was owed, paid and accepted: the pair with W·r is square, the payment Accepted, and the
+      // account it was paid from down by the fee. The selling team's side as the role (selling:owner's for selling:cs,
+      // which is served neither liability nor the accounts); W·r's on a page of its own.
+      await signIn(page, username(r.key), ground.team);
+      const ledger = r.key === "cs" ? await browser.newPage() : page;
+      if (r.key === "cs") await signIn(ledger, username("own"), ground.team);
+      await pairReads(ledger, paid.creditor, "Rp 0", "Square");
+      const mine = await openMine(ledger, paid.creditor);
+      await expect(mine.getByTestId(`liability-detail-payment-status-${paid.payment}`)).toHaveText("Accepted");
+      const balance = await accountBalance(ledger, ground.team, paid.account);
+      expect(balance).toBe(PAID_OPENING - FEE);
+      const rows = await accountRows(ledger, paid.account);
+      await expect(rows.filter({ hasText: paymentRow })).toHaveCount(1);
+      const rowCount = await rows.count();
+      const creditor = await browser.newPage();
+      await signIn(creditor, paid.user, paid.creditor);
+
+      // WHEN — through the seller's own order page, as this role.
+      await page.goto(`/orders/${orderId}`);
+      await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "pending");
+      await cancel(page, orderId);
+      await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "cancel", { timeout: 15_000 });
+
+      await test.step("then: warehouse fee reversed in liability", async () => {
+        await expectReversed(ledger, paid.creditor, orderId, "Order fee", "Rp 2.000");
+      });
+
+      await test.step("then: warehouse owes the selling team the fee", async () => {
+        // The selling team's side turns: W·r owes it the fee now…
+        await expect.soft(async () => pairReads(ledger, paid.creditor, "Rp 2.000", "They owe you")).toPass({ timeout: 30_000 });
+        expect.soft(await balanceWith(ledger, ground.team, paid.creditor)).toBe(FEE);
+        // …and W·r reads the same debt, its own way round.
+        await expect.soft(async () => pairReads(creditor, ground.team, "Rp 2.000", "You owe them")).toPass({ timeout: 15_000 });
+      });
+
+      await test.step("then: payment stays accepted, money not returned to the account", async () => {
+        const after = await openMine(ledger, paid.creditor);
+        await expect.soft(after.getByTestId(`liability-detail-payment-status-${paid.payment}`)).toHaveText("Accepted");
+        expect.soft(await paymentStatus(ledger, ground.team, paid.creditor, paid.payment)).toBe("LIABILITY_PAYMENT_STATUS_CONFIRMED");
+        // The account the fee was paid from keeps what it had — read three times over 4 s, after the reversal landed…
+        for (let i = 0; i < 3; i++) {
+          if (i > 0) await ledger.waitForTimeout(2_000);
+          expect.soft(await accountBalance(ledger, ground.team, paid.account)).toBe(balance);
+        }
+        // …and nothing was posted back to it: the payment's row, and no row more.
+        const rowsAfter = await accountRows(ledger, paid.account);
+        await expect.soft(rowsAfter.filter({ hasText: paymentRow })).toHaveCount(1);
+        await expect.soft(rowsAfter).toHaveCount(rowCount);
+      });
+      if (ledger !== page) await ledger.close();
+      await creditor.close();
+    });
+  }
+
+  for (const r of ROLES) {
+    const c = CASES.paidCross;
+    test(`${r.given} cancel order (${c.cond})`, async ({ page, browser }) => {
+      const orderId = ground.orders[at(r, c)]!;
+      const paid = ground.paid[at(r, c)]!;
+
+      // The GIVEN — the product fee was owed to X·r, paid and accepted: the pair with X·r is square, the order's fee entry
+      // on its ledger. The selling team's side as the role (selling:owner's for selling:cs); X·r's on a page of its own.
+      await signIn(page, username(r.key), ground.team);
+      const ledger = r.key === "cs" ? await browser.newPage() : page;
+      if (r.key === "cs") await signIn(ledger, username("own"), ground.team);
+      await pairReads(ledger, paid.creditor, "Rp 0", "Square");
+      await expect(await entriesOf(ledger, paid.creditor, orderId)).toHaveCount(1);
+      const crossPage = await browser.newPage();
+      await signIn(crossPage, paid.user, paid.creditor);
+
+      // WHEN — through the seller's own order page, as this role.
+      await page.goto(`/orders/${orderId}`);
+      await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "pending");
+      await cancel(page, orderId);
+      await expect(page.getByTestId("stage-stepper")).toHaveAttribute("data-stage", "cancel", { timeout: 15_000 });
+
+      await test.step("then: product fee reversed in liability", async () => {
+        await expectReversed(ledger, paid.creditor, orderId, "Product fee", "Rp 24.000");
+      });
+
+      await test.step("then: cross team owes the selling team the fee", async () => {
+        // The selling team's side turns: X·r owes it the fee now…
+        await expect.soft(async () => pairReads(ledger, paid.creditor, "Rp 24.000", "They owe you")).toPass({ timeout: 30_000 });
+        expect.soft(await balanceWith(ledger, ground.team, paid.creditor)).toBe(CROSS_FEE);
+        // …and X·r reads the same debt, its own way round.
+        await expect.soft(async () => pairReads(crossPage, ground.team, "Rp 24.000", "You owe them")).toPass({ timeout: 15_000 });
       });
       if (ledger !== page) await ledger.close();
       await crossPage.close();

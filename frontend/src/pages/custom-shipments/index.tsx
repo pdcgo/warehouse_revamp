@@ -38,9 +38,13 @@ import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import { idCodec, oneOfCodec, optionalCodec, textCodec, useUrlState } from "../../lib/urlState";
 import { useDebounced } from "../../lib/useDebounced";
+// Backlog #101 — the inbound reshipping parcels beside the outbound ones (custom shipments go both ways).
+import { SellingInboundRows } from "../../features/restockResolution/InboundRows";
 
 const STATUS_CODEC = oneOfCodec(STATUS_TABS.map((tab) => tab.value));
-const KIND_CODEC = optionalCodec(oneOfCodec<"sample" | "reship">(["sample", "reship"]));
+// "reshipping" (#101) — the supplier's reshipping, the inbound kind: the seller's third pick (the warehouse's queue holds
+// only what it ships, so its strip offers two).
+const KIND_CODEC = optionalCodec(oneOfCodec<"sample" | "reship" | "reshipping">(["sample", "reship", "reshipping"]));
 const KIND_OF: Record<"sample" | "reship", CustomShipmentKind> = { sample: "SAMPLE", reship: "RESTOCK_RESHIP" };
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -87,13 +91,17 @@ function CustomShipmentList({ side }: { side: "selling" | "warehouse" }) {
     // Only this side's team asks — another team type draws the one line below and reads nothing.
     teamId: mySide === side ? current?.teamId : undefined,
     status: active.status,
-    kind: kind ? KIND_OF[kind] : undefined,
+    kind: kind && kind !== "reshipping" ? KIND_OF[kind] : undefined,
+    inboundKind: side === "selling" && kind === "reshipping",
     q,
     warehouseId: side === "selling" ? warehouseFilter : 0n,
     page,
     pageSize,
   });
+  // #101: the selling team's list answers its inbound parcels too (the server's — they sit under Semua: their steps are a
+  // restock box's, not the outbound tabs'); the inbound kind picked holds only them. Drawn above the page's outbound rows.
   const rows = query.data?.shipments ?? [];
+  const inbound = side === "selling" ? (query.data?.inbound ?? []) : [];
   const totalItems = query.data?.totalItems ?? 0;
   const loading = query.isPending;
   const refreshing = query.isFetching && !query.isPending;
@@ -221,6 +229,7 @@ function CustomShipmentList({ side }: { side: "selling" | "warehouse" }) {
             options={[
               { value: "sample", label: t("customShipment.kind.sample") },
               { value: "reship", label: t("customShipment.kind.reship") },
+              ...(side === "selling" ? [{ value: "reshipping" as const, label: t("restockResolution.inbound.kind") }] : []),
             ]}
             placeholder={t("customShipment.kindAll")}
             testId="custom-shipment-kind"
@@ -263,10 +272,11 @@ function CustomShipmentList({ side }: { side: "selling" | "warehouse" }) {
 
               {loading ? (
                 <Spinner colorPalette="brand" data-testid="custom-shipments-loading" />
-              ) : rows.length === 0 ? (
+              ) : rows.length === 0 && inbound.length === 0 ? (
                 !error && emptyHint()
               ) : phone ? (
                 <Stack gap="3" data-testid="custom-shipments-table" data-layout="phone">
+                  <SellingInboundRows parcels={inbound} phone />
                   {rows.map((s) => (
                     <CustomShipmentBlock
                       key={s.id.toString()}
@@ -302,6 +312,7 @@ function CustomShipmentList({ side }: { side: "selling" | "warehouse" }) {
                       </Table.Row>
                     </Table.Header>
                     <Table.Body>
+                      <SellingInboundRows parcels={inbound} phone={false} />
                       {rows.map((s) => {
                         const by = createdBy(s.createdByUserId);
 

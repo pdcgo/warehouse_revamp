@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { personName } from "../../../lib/users";
 import { useTranslation } from "react-i18next";
 import {
@@ -16,9 +16,7 @@ import {
   StackSeparator,
 } from "@chakra-ui/react";
 import { Star, UserMinus, UserPlus, Users } from "lucide-react";
-import { rpcError, shopClient, userClient } from "../../../api/clients";
-import { publicUsersByIds, userByIdsRowData } from "../../../features/users/adapt";
-import type { PublicUser } from "../../../gen/warehouse/user/v1/user_pb";
+import { rpcError, shopClient } from "../../../api/clients";
 import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
 import { UserItem } from "../../../components/entity/UserItem";
 import { UserSelect } from "../../../components/pickers/UserSelect";
@@ -27,6 +25,7 @@ import { EmptyHint } from "../../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../../components/feedback/ListSkeleton";
 import { useIsMobile } from "../../../layouts/shell";
 import { useCanWrite } from "../../../features/team/TeamContext";
+import { useShopGrants } from "../queries";
 
 // ShopUsersSection manages who may work on a shop (#86). It lists the granted users (resolving the
 // opaque ids to names via UserByIDs), adds one via the shared UserSelect SCOPED TO THE TEAM — a shop is
@@ -58,10 +57,14 @@ export function ShopUsersSection({
   const isMobile = useIsMobile();
   // Who may work on the shop is READ while the admin team monitors the team — no add, no primary, no remove.
   const writable = useCanWrite();
-  const [userIds, setUserIds] = useState<bigint[]>([]);
-  const [users, setUsers] = useState<Record<string, PublicUser>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  // THE GRANTS AND THEIR NAMES — one query (useShopGrants, #122). A write here re-reads it and waits for the answer
+  // (the button keeps its spinner meanwhile), with the rows it had kept on screen rather than blanked; a failed read
+  // says so and lists nobody, as before.
+  const grants = useShopGrants({ teamId, shopId });
+  const userIds = grants.isError ? [] : (grants.data?.ids ?? []);
+  const users = grants.data?.users ?? {};
+  const loading = grants.isPending;
+  const error = grants.isError ? rpcError(grants.error) : "";
   const [adding, setAdding] = useState<bigint | undefined>(undefined);
   const [removing, setRemoving] = useState<{ id: bigint; label: string } | null>(null);
   // MAKE PRIMARY CONFIRMS FIRST (owner: *"utama ada confirmnya"*) — it moves whose name the shop's no-order rows carry.
@@ -74,41 +77,10 @@ export function ShopUsersSection({
     return personName(u, `#${id}`);
   };
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await shopClient.shopUserList({
-        teamId,
-        filter: { shopId },
-        page: { page: 1, limit: 100 },
-      });
-      // The user ids now live in the guideline `ids` channel.
-      setUserIds(res.ids);
-
-      if (res.ids.length > 0) {
-        const resolved = publicUsersByIds(
-          await userClient.userByIDs({
-            filter: { ids: res.ids },
-            dataRequest: userByIdsRowData(),
-          }),
-        );
-        setUsers(resolved);
-      } else {
-        setUsers({});
-      }
-    } catch (err) {
-      setError(rpcError(err));
-      setUserIds([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId, shopId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // The grants, read again after a write — awaited, so the toast and the cleared picker land on the new list.
+  const load = async () => {
+    await grants.refetch();
+  };
 
   async function add() {
     if (adding === undefined) {

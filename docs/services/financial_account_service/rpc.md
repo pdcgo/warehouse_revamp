@@ -24,6 +24,7 @@ that moves only with a log row ([context_decision.md](../../business/financial_a
 | *(push route)* | `/event/financial-account-team-payment/push` | liability's accepted team payments — out of the payer's account, into the creditor's |
 | *(push routes)* | `/event/financial-account-restock-{created,updated,cancelled}/push` | inventory's restock payments — out at create, the difference or the move on an edit, the refund on a cancel |
 | *(push routes)* | `/event/financial-account-warehouse-transfer-{created,updated,cancelled}/push` | a warehouse transfer's shipping cost as `expense` — out at create, the difference or the move on an edit, the refund on a cancel |
+| *(publishes)* | `FinancialAccountCapitalRecorded` | after `FinancialAccountCapital` commits — a selling team's Setor / Tarik Modal shows on Biaya ([below](#financialaccountcapital--the-second-door-to-biaya)) |
 
 Every member of the team **sees**; admin and up **moves** the money
 ([seeing-is-team-wide-moving-is-admin-and-up](../../business/financial_account/context_decision.md#seeing-is-team-wide-moving-is-admin-and-up)) —
@@ -274,6 +275,9 @@ has no caller to ask the team's service with.
 ([restock-is-never-typed-by-hand](../../business/financial_account/context_decision.md#restock-is-never-typed-by-hand)).
 [restock_payment_listener.go](../../../backend/services/financial_account_service/financial_account_v1/restock_payment_listener.go),
 three subscriptions to one handler: `financial-account-restock-created|updated|cancelled`. Built 2026-11-04.
+🔄 *(2026-11-20, backlog #101)* a fourth, `financial-account-restock-refunded` — a restock REFUND resolution
+([a-restock-problem-is-settled-by-resolution-rows](../../business/inventory/restock_decision.md#a-restock-problem-is-settled-by-resolution-rows),
+🔄 A: the refund names its account) comes back INTO the account it names on the cancel's path (`postRestockRefunded`).
 
 ```mermaid
 sequenceDiagram
@@ -295,6 +299,7 @@ sequenceDiagram
 | `RestockUpdated`, another account | `+old_amount` back on the old account, `−new_amount` on the new — one group |
 | `RestockCancelled`, money returned | `+amount` on the account that paid · *"Restock #N cancelled — money returned"* |
 | `RestockCancelled`, not returned | nothing |
+| `RestockRefunded` (backlog #101) | `+amount` on the account the REFUND row names, dated `refunded_at_unix` · *"Restock #N refund"* · one row per refund (`restock-refunded:<resolution id>`), a redelivery posts once; 0 claims only; no account → an error (dead letter) |
 
 | case | what happens |
 | --- | --- |
@@ -306,6 +311,45 @@ sequenceDiagram
 | ⚠ my spec — old account 0 (a restock raised before *Paid from*) | an edit posts only the difference into the new account — the old payment predates the ledger; a refunded cancel with no account posts nothing (acked, logged) |
 | an archived account | posts — refusing would dead-letter money that moved |
 | a move X → Y beside a hand transfer Y → X | no deadlock — both lock the pair in id order ([lock order](../../../audits/services/financial_account_service/concurrency/lock-order.md)) |
+
+## FinancialAccountCapital — the second door to Biaya
+
+[capital-joins-the-types](../../business/financial_account/context_decision.md#capital-joins-the-types),
+[prive-and-deposit-on-pengeluaran-are-the-accounts-capital](../../business/financial_account/context_decision.md#prive-and-deposit-on-pengeluaran-are-the-accounts-capital)
+— one act, one record, two doors. Setor / Tarik Modal on the account page posts its ONE by-hand `capital` row at once,
+exactly as before (the roles, the refusals, the balance, *manual · who* in the history), and AFTER the commit tells the
+broker: `FinancialAccountCapitalRecorded` (event 700, topic `financial-account-capital-recorded`,
+[capital_recorded.go](../../../backend/services/financial_account_service/financial_account_v1/capital_recorded.go)).
+This service knows no team types, so every team's act is told; expense_service records a SELLING team's as Biaya's
+Setoran modal / Prive and drops a warehouse team's ([expense_service's capital listener](../expense_service/rpc.md#the-capital-listener--the-account-pages-setor--tarik-modal-on-biaya)).
+Nothing comes back: the Biaya row posts no second capital row. Built 2026-11-20 (#99 P2).
+
+```mermaid
+sequenceDiagram
+    participant P as the owner, on the account page
+    participant FA as FinancialAccountCapital
+    participant DB as one transaction
+    participant B as Pub/Sub
+    participant E as expense_service
+    P->>FA: Setor Modal 1.000.000 on BCA Operasional
+    FA->>DB: lock the account, post ONE capital row (by hand, expense_id 0)
+    DB-->>FA: committed — the balance moved
+    FA-->>P: the row, at once
+    FA->>B: FinancialAccountCapitalRecorded (log id, team, account, signed change, day, note, who)
+    B->>E: push, expense-financial-account-capital-recorded
+    E->>E: a selling team's becomes one Setoran modal on Biaya — a warehouse team's is dropped
+```
+
+| case | what happens |
+| --- | --- |
+| the message | built from the posted row (`capitalRecordedEvent`): `log_id`, team, account, the signed `change`, the Jakarta day, the note read back out of *Capital in — note* (`capitalNote`), who and the override mark, its time. `event_id` = `financial-account-capital:<log_id>` |
+| a refused act (archived, unknown account, no direction) | nothing posts, nothing is told |
+| a failed publish | logged, never returned — the money moved; Biaya is short the act until `san expense import-capital` runs (it brings in every by-hand capital row not yet there) |
+| the old rows | `HandCapitalEvents(db, afterID, limit)` — every by-hand capital row (`change_type = capital AND expense_id = 0`, never one the expense listener posted), oldest first, as the same message; read by `san expense import-capital` ([docs/tools/san.md](../../tools/san.md#expense-import-capital)) |
+| `NewService` | gains its 4th dep, the `event_source.EventSender` (nil = `EmptySender`) |
+| performance | one publish after the commit; the transaction is unchanged |
+
+---
 
 ## The expense-payment listener
 
@@ -327,7 +371,7 @@ sequenceDiagram
     L->>L: account 0, a STOCK_LOSS or an amount of 0 means claim only
     L->>DB: CLAIM the event id — a redelivery stops here
     L->>DB: lock the account FOR UPDATE — the expense team's
-    L->>DB: post one row, ads_expense for ADS, expense for the rest, on the expense's day
+    L->>DB: post one row by the expense's TYPE, on the expense's day, naming the expense (expense_id)
     L-->>B: 200 acks, and any error NACKs and Pub/Sub redelivers
 ```
 
@@ -345,7 +389,9 @@ sequenceDiagram
 | an account missing, or not the expense team's | an error, never filed elsewhere — a dead letter, and the claim rolls back with it |
 | an archived account | posts — an expense recorded while it was active may be corrected after |
 | the override | `actor_is_override` is stamped on the row, beside the actor |
-| the daily report | `foldDay` writes the `expense` / `ads_expense` column in the same transaction, so the overview, the report and the analytics pick it up with no other change |
+| the daily report | `foldDay` writes the `expense` / `ads_expense` / `capital` / `money_in` column in the same transaction, so the overview, the report and the analytics pick it up with no other change |
+| the type (#99 P1, 2026-11-20) | `expenseChangeOf(kind, type)`: the Iklan group → `ads_expense`; Prive → `capital` −amount, Setoran modal → `capital` +amount ([prive-and-deposit-on-pengeluaran-are-the-accounts-capital](../../business/financial_account/context_decision.md#prive-and-deposit-on-pengeluaran-are-the-accounts-capital)); Piutang luar diterima, Uang masuk lain → `money_in` +amount INTO the account ([money-in-on-biaya-is-its-own-change-type](../../business/financial_account/context_decision.md#money-in-on-biaya-is-its-own-change-type)); every other type, and a row from before the types (`type` 0, by its kind) → `expense` / `ads_expense` as before. A correction posts the same change type, signed the other way for a money-in or Setoran modal row |
+| `expense_id` | every row this listener posts carries the expense's id (`financial_account_logs.expense_id`, 00004) — the account history's *dari Biaya #N* on a capital row; 0 on every other row |
 
 A warehouse transfer's shipping is ALSO `expense`, from inventory's events — see the next section.
 

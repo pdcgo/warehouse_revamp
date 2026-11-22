@@ -14,7 +14,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// The table holds every type (owner: *"full data untuk tabelnya saja"*): Periode held on the left, Saldo akhir on the
+// The table holds every type (owner: *"full data untuk tabelnya saja"*) — ten since *Uang masuk*
+// (money-in-on-biaya-is-its-own-change-type): Periode held on the left, Saldo akhir on the
 // right, and a row lights up under the pointer, its held cells with it (owner: *"tabel report kasih hover per row"*).
 //
 // ⚠ HOVER IS DRIVEN BY `data-hover`, which Chakra's `_hover` honours — a synthetic pointer event sets no CSS `:hover`,
@@ -26,16 +27,16 @@ export const TheTableHoldsEveryType: Story = {
 
     const table = canvas.getByTestId("account-report-series");
     const headers = within(table).getAllByRole("columnheader");
-    await expect(headers).toHaveLength(12);
+    await expect(headers).toHaveLength(13);
     await expect(getComputedStyle(headers[0]!).position).toBe("sticky");
-    await expect(getComputedStyle(headers[11]!).position).toBe("sticky");
+    await expect(getComputedStyle(headers[12]!).position).toBe("sticky");
 
     const row = within(table).getAllByRole("row")[1]!;
     const cells = within(row).getAllByRole("cell");
-    const resting = getComputedStyle(cells[11]!).backgroundColor;
+    const resting = getComputedStyle(cells[12]!).backgroundColor;
     row.setAttribute("data-hover", "");
-    await waitFor(() => expect(getComputedStyle(cells[11]!).backgroundColor).not.toBe(resting));
-    await expect(getComputedStyle(cells[11]!).backgroundColor).toBe(getComputedStyle(cells[5]!).backgroundColor);
+    await waitFor(() => expect(getComputedStyle(cells[12]!).backgroundColor).not.toBe(resting));
+    await expect(getComputedStyle(cells[12]!).backgroundColor).toBe(getComputedStyle(cells[5]!).backgroundColor);
     await expect(getComputedStyle(cells[0]!).backgroundColor).toBe(getComputedStyle(cells[5]!).backgroundColor);
   },
 };

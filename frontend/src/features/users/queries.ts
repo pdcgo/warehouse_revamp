@@ -76,6 +76,26 @@ export async function peopleFor(ids: bigint[]): Promise<PublicUser[]> {
 /** How many people a who filter asks for: the contract's largest page. The set grows only with staff turnover. */
 export const WHO_FILTER_SIZE = 200;
 
+// PEOPLE BY ID, AS A NAME LOOKUP — read to LABEL a row (who changed a limit), never worked from, so it buys out of
+// always-fresh by name (`referenceQuery`) and is keyed by the id SET: unique, above 0, ascending — the same entry the
+// rack page's history names its people through (features/racks/queries.ts). UserByIDs takes no team, so the key has
+// none. A failure is the query's error, never cached as "nobody": the caller falls back to its own label and the next
+// read asks again. ⚠ Never with an empty set — UserByIDs requires one id; gate the query with `enabled`.
+export function usersByIdsQuery(ids: bigint[]) {
+  const wanted = [...new Set(ids.filter((id) => id > 0n))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+
+  return {
+    queryKey: key.users(undefined, { names: wanted.join(",") }),
+    ...referenceQuery,
+    queryFn: async (): Promise<Map<string, PublicUser>> =>
+      new Map(
+        Object.entries(
+          publicUsersByIds(await userClient.userByIDs({ filter: { ids: wanted }, dataRequest: userByIdsRowData() })),
+        ),
+      ),
+  };
+}
+
 // The hook form: one history's people, resolved once.
 //
 // Keyed on the IDS, so the same people are resolved once no matter which record asks — an order and a

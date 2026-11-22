@@ -23,7 +23,7 @@ import (
 // ONCE.
 func TestRace_CustomShipmentShipping_OneEventFourDeliveries(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "R000501", 500_000))
 
 	res := h.Race(t, 4, func(int) error {
@@ -41,7 +41,7 @@ func TestRace_CustomShipmentShipping_OneEventFourDeliveries(t *testing.T) {
 // order — and the money is exactly the sum.
 func TestRace_CustomShipmentShipping_BesideTransferShippingAndHandTransfers(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "R000511", 1_000_000))
 	y := mustCreate(t, svc, cash(teamA, "Ops Cash", 1_000_000))
 
@@ -90,7 +90,7 @@ func TestRace_CustomShipmentShipping_BesideTransferShippingAndHandTransfers(t *t
 // balance — the listener takes the same row lock every other write takes.
 func TestInterleave_CustomShipmentShipping_WaitsForAPostOnItsAccount(t *testing.T) {
 	h := raceHarness(t)
-	svc := financial_account_v1.NewService(h.DB(), testShops, nil)
+	svc := financial_account_v1.NewService(h.DB(), testShops, nil, nil)
 	x := mustCreate(t, svc, bca(teamA, "Ops BCA", "R000521", 500_000))
 
 	sched := h.Interleave(t,

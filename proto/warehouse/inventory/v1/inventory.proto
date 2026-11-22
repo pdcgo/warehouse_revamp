@@ -233,6 +233,33 @@ service InventoryService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // PEMASOK — WHO SUPPLIES A PRODUCT, the Per Gudang tab of the product's own page and of its discover detail
+  // (the-suppliers-are-a-tab-of-their-own, the-supplier-tab-names-the-store, the-discover-detail-has-the-warehouse-zone):
+  // per supplier and the store it was bought at, how many deliveries, how many units, when last, and — to the OWNING team
+  // only — the last unit cost. Read from the owner's batches a RESTOCK minted (a-batch-keeps-its-supplier); a transfer-in
+  // or a return mints batches with the supplier too and is not a delivery. Any selling team may read it, as Riwayat Stok
+  // (stock-history-is-everyones, another-team-sees-everything-of-a-supplier) — the cost is the owner's alone.
+  rpc ProductSupplierGoods(ProductSupplierGoodsRequest) returns (ProductSupplierGoodsResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // KELUAR MASUK HARIAN — A PRODUCT'S LAST FOURTEEN DAYS, the Per Gudang tab of its own page and of its discover detail
+  // (the-warehouse-zone-is-tabs: *"the last fourteen days: date, in, out, on hand"*, the-discover-detail-has-the-
+  // warehouse-zone): per Jakarta day, each change type's NET units, what came in (Masuk), what went out (Keluar) and
+  // what was on hand at the end of the day (Sisa). Read from the daily fold every stock change writes in its own
+  // transaction (`inventory_stock_daily_changes`, ready-stock-is-folded-in-the-stock-changes-own-step) — never the
+  // ledger — with Sisa read BACKWARDS from today's batches, as Ready stock reads its position. Units only, for every
+  // caller: no value, no price, nothing of the owner's money (stock-history-is-everyones, DiscoverStockHistory's
+  // policy). ⚠ HELD — which movements are Masuk and which Keluar is the owner's open question; drawn as every movement
+  // by its direction until he answers (`in_units`, `out_units`).
+  rpc ProductDailyMoves(ProductDailyMovesRequest) returns (ProductDailyMovesResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // MovementKind — why a stock quantity changed. Every ledger row has one.
@@ -323,6 +350,10 @@ message StockMovement {
   // KOREKSI JUMLAH TERIMA — set on an ADJUST row a received-count correction wrote: *Jumlah terima dikoreksi · from →
   // to* and why (a-wrong-stock-in-is-a-received-count-correction). Unset on every other row.
   MovementCountCorrection received_count_correction = 17;
+
+  // WHO RECEIVED IT — set on a SAMPLE row only: the person the units were handed to, from its inventory transaction's
+  // `recipient` (a-sample-keeps-its-recipient). The staff's note stays apart, in `reason`. Empty on every other row.
+  string recipient = 18;
 }
 
 // MovementCountCorrection — the restock or transfer line a history row's correction fixed, its count before and after,
@@ -1862,6 +1893,11 @@ message OwnerMovement {
 
   // KOREKSI JUMLAH TERIMA — as StockMovement.received_count_correction.
   MovementCountCorrection received_count_correction = 17;
+
+  // WHO RECEIVED IT — as StockMovement.recipient: set on a SAMPLE row only, the person the owner's units were handed to,
+  // from its inventory transaction's `recipient` (a-sample-keeps-its-recipient — the owning team checks its samples by
+  // who got them). The staff's note stays apart, in `reason`. Empty on every other row.
+  string recipient = 18;
 }
 
 message OwnerStockHistoryFilter {
@@ -2177,4 +2213,190 @@ message DiscoverStockHistoryResponse {
   repeated DiscoverStockHistoryResponseItem items = 1;
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// Read: whoever may browse Discover (DiscoverStockHistory's policy) — a warehouse role is refused; a warehouse has no
+// product page. The rows are the product's OWNER's whoever asks (another-team-sees-everything-of-a-supplier), so team_id
+// only authorizes — except the last cost, sent only when team_id IS the owner (the-supplier-tab-names-the-store: *Modal
+// terakhir* on the owner's page only).
+message ProductSupplierGoodsRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  ProductSupplierGoodsFilter filter = 2 [(buf.validate.field).required = true];
+  repeated ProductSupplierGoodsDataType data_request = 3;
+  // A product's (supplier, store) pairs grow with every store it is bought at — so it pages (HARD RULE 9); the page
+  // hides its pager while page 1 holds them all (no-list-on-the-product-page-pages-when-it-fits).
+  warehouse.common.v1.CommonPagination page = 4 [(buf.validate.field).required = true];
+}
+
+message ProductSupplierGoodsFilter {
+  // Any team's product. One nobody owns (unknown) reads no rows.
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // The page's warehouse picker (the-warehouse-picker-splits-the-page): only the deliveries received there. 0 = every
+  // warehouse.
+  uint64 warehouse_id = 2;
+}
+
+enum ProductSupplierGoodsDataType {
+  PRODUCT_SUPPLIER_GOODS_DATA_TYPE_UNSPECIFIED = 0;
+  PRODUCT_SUPPLIER_GOODS_DATA_TYPE_GENERAL = 1;
+  PRODUCT_SUPPLIER_GOODS_DATA_TYPE_GOODS = 2;
+}
+
+// ProductSupplierGoods is one supplier at one of its stores, for one product, over all time in the lens.
+message ProductSupplierGoods {
+  // The row's 1-based position in the whole ordered list (newest delivery first) — a pair has no id of its own.
+  uint64 id = 1;
+  uint64 supplier_id = 2;
+  // The supplier's store the deliveries were bought at; 0 = lines that named the supplier and no store
+  // (a-line-with-no-store-links-under-the-supplier) — the Toko pemasok cell reads —.
+  uint64 store_id = 3;
+  // Kiriman — the accepted restocks that brought it (a cancelled restock never minted a batch; a transfer-in is not one).
+  int64 deliveries = 4;
+  // Unit — the good units those restocks accepted (each-figure-is-read-at-the-accept), a received-count correction
+  // counted in (a-received-count-correction-counts-on-its-own-day).
+  int64 units = 5;
+  // Kiriman terakhir — when the newest of them was accepted.
+  int64 last_delivery_unix = 6;
+  // Modal terakhir — the newest delivery's batch unit cost, as the batch holds it now (the page's Harga Modal). ONLY to
+  // the owning team: absent for anybody else (the discover detail never shows another team's cost).
+  optional double last_unit_cost = 7;
+}
+
+message ProductSupplierGoodsMapItem {
+  map<uint64, ProductSupplierGoods> map_data = 1;
+}
+
+message ProductSupplierGoodsResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ProductSupplierGoodsMapItem goods = 2;
+  }
+}
+
+message ProductSupplierGoodsResponse {
+  repeated ProductSupplierGoodsResponseItem items = 1;
+  // The page's positions, newest delivery first.
+  repeated uint64 ids = 2;
+  warehouse.common.v1.PageInfo page_info = 3;
+}
+
+// Read: whoever may browse Discover (ProductSupplierGoods' policy) — a warehouse role is refused; a warehouse has no
+// product page. The days are the product's OWNER's whoever asks (stock-history-is-everyones), so team_id only
+// authorizes. Not paged: always the last fourteen Jakarta days, today first — a fixed, bounded answer (HARD RULE 9
+// pages what grows).
+message ProductDailyMovesRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  ProductDailyMovesFilter filter = 2 [(buf.validate.field).required = true];
+  repeated ProductDailyMovesDataType data_request = 3;
+}
+
+message ProductDailyMovesFilter {
+  // Any team's product. One nobody owns (unknown) reads fourteen empty days.
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // The page's warehouse picker (the-warehouse-picker-splits-the-page): only what moved, and what is on hand, there.
+  // 0 = every warehouse.
+  uint64 warehouse_id = 2;
+}
+
+enum ProductDailyMovesDataType {
+  PRODUCT_DAILY_MOVES_DATA_TYPE_UNSPECIFIED = 0;
+  PRODUCT_DAILY_MOVES_DATA_TYPE_GENERAL = 1;
+  PRODUCT_DAILY_MOVES_DATA_TYPE_DAY = 2;
+}
+
+// StockChangeType — the daily fold's change types (inventory 00042 / 00043, `batch_logs.change_type`'s list): why a
+// day's units moved. A price correction (revaluation) moves no unit and is never one of a day's kinds.
+enum StockChangeType {
+  STOCK_CHANGE_TYPE_UNSPECIFIED = 0;
+  // Taken for an order — and, netted on its own day, put back when the take was undone (a cancel).
+  STOCK_CHANGE_TYPE_ORDER = 1;
+  // Accepted from a restock.
+  STOCK_CHANGE_TYPE_RESTOCK = 2;
+  // A returned order's units back on the shelf.
+  STOCK_CHANGE_TYPE_RETURN = 3;
+  // Received from another warehouse.
+  STOCK_CHANGE_TYPE_TRANSFER_IN = 4;
+  // Sent to another warehouse — and, netted on its own day, back when the transfer was cancelled.
+  STOCK_CHANGE_TYPE_TRANSFER_OUT = 5;
+  // Handed over as a sample.
+  STOCK_CHANGE_TYPE_SAMPLE = 6;
+  // Found broken at the shelf or the count.
+  STOCK_CHANGE_TYPE_BROKEN = 7;
+  // Found missing at the shelf or the count.
+  STOCK_CHANGE_TYPE_LOST = 8;
+  // Found again.
+  STOCK_CHANGE_TYPE_FOUND = 9;
+  // A provisional adjustment (a recount).
+  STOCK_CHANGE_TYPE_ADJUSTMENT = 10;
+  // A restock's received count corrected (a-wrong-stock-in-is-a-received-count-correction).
+  STOCK_CHANGE_TYPE_RESTOCK_CORRECTION = 11;
+  // A transfer's received count corrected.
+  STOCK_CHANGE_TYPE_TRANSFER_CORRECTION = 12;
+}
+
+// ProductDailyMoveKind is one change type's NET units on one day — signed: + in, - out.
+message ProductDailyMoveKind {
+  StockChangeType change_type = 1;
+  int64 units = 2;
+}
+
+// ProductDailyMove is one Jakarta day of a product, in the lens.
+message ProductDailyMove {
+  // The day's 1-based position, today first — a day has no id of its own.
+  uint64 id = 1;
+  // The Jakarta day, YYYY-MM-DD (a-day-is-a-jakarta-date-string).
+  string day = 2;
+  // MASUK — the units that came in. ⚠ HELD (the owner's Q2): every change type whose net units that day are positive.
+  int64 in_units = 3;
+  // KELUAR — the units that went out, as a positive count. ⚠ HELD (the owner's Q2): every change type whose net units
+  // that day are negative. So in_units − out_units is the day's change of on_hand, every day.
+  int64 out_units = 4;
+  // SISA — on hand at the end of the day: today's batches less every change after it (read backwards, exact by
+  // construction).
+  int64 on_hand = 5;
+  // Each change type that moved units that day, its net (none at 0), in StockChangeType order.
+  repeated ProductDailyMoveKind kinds = 6;
+}
+
+message ProductDailyMoveMapItem {
+  map<uint64, ProductDailyMove> map_data = 1;
+}
+
+message ProductDailyMovesResponseItem {
+  oneof d {
+    warehouse.common.v1.GeneralMapItem general = 1;
+    ProductDailyMoveMapItem day = 2;
+  }
+}
+
+message ProductDailyMovesResponse {
+  repeated ProductDailyMovesResponseItem items = 1;
+  // The fourteen days' positions, today first.
+  repeated uint64 ids = 2;
 }

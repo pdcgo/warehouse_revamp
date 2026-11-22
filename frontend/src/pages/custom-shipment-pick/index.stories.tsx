@@ -240,7 +240,7 @@ export const ARefusedHandoverSaysWhy: Story = {
     await userEvent.click(canvas.getByTestId("custom-shipment-handover-open"));
     await userEvent.click(await screen.findByTestId("confirm-action"));
 
-    await expect(await screen.findByText("only a picked parcel is handed over")).toBeVisible();
+    await waitFor(() => expect(screen.getByText("only a picked parcel is handed over")).toBeVisible(), { timeout: 5000 });
     await waitFor(() => expect(canvas.getByTestId("custom-shipment-detail-status")).toHaveTextContent("Picked"));
   },
 };

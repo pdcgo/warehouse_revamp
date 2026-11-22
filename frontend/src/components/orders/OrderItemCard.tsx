@@ -28,8 +28,9 @@ export interface OrderItemCardProps {
   busy?: boolean;
 
   /** The WHOLE ticked set from the picker, not an addition. The caller reconciles it against the
-   * lines it already has (see `OrderCreatePage.pickProducts`) — rebuilding the list here would reset
-   * every quantity the next time somebody opened the dialog to add one more product. */
+   * lines it already has (the order form's `pickProducts` action, pages/order-create/formState.ts) —
+   * rebuilding the list here would reset every quantity the next time somebody opened the dialog to
+   * add one more product. */
   onPick: (products: PickedProduct[]) => void;
   onPatch: (productId: bigint, patch: Partial<LineDraft>) => void;
   onRemove: (productId: bigint) => void;

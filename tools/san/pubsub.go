@@ -346,6 +346,13 @@ func declaredSubscriptions() []event_source.Subscription {
 			Topic:  "restock-cancelled",
 			Filter: `attributes.event_type = "warehouse.events.v1.RestockCancelled"`,
 		},
+		// A REFUND resolution's money back into its account (backlog #101) — mirrors
+		// financial_account_service.RestockRefundedSubscription, the restock listener's fourth.
+		{
+			ID:     "financial-account-restock-refunded",
+			Topic:  "restock-refunded",
+			Filter: `attributes.event_type = "warehouse.events.v1.RestockRefunded"`,
+		},
 		// financial_account_service's expense-payment listener — mirrors financial_account_service.Expense*Subscription
 		// (an-expense-must-name-the-account-that-paid, a-correction-follows-the-expenses-account): the expense out of the
 		// account that paid, `ads_expense` or `expense`, and each correction's signed difference on that same account.
@@ -358,6 +365,14 @@ func declaredSubscriptions() []event_source.Subscription {
 			ID:     "financial-account-expense-adjusted",
 			Topic:  "expense-adjusted",
 			Filter: `attributes.event_type = "warehouse.events.v1.ExpenseAdjusted"`,
+		},
+		// expense_service's capital listener — mirrors expense_service.CapitalRecordedSubscription
+		// (prive-and-deposit-on-pengeluaran-are-the-accounts-capital): a selling team's Setor / Tarik Modal made on the
+		// account page recorded on Biaya as the same one record, Setoran modal / Prive; a warehouse team's dropped.
+		{
+			ID:     "expense-financial-account-capital-recorded",
+			Topic:  "financial-account-capital-recorded",
+			Filter: `attributes.event_type = "warehouse.events.v1.FinancialAccountCapitalRecorded"`,
 		},
 		// liability_service's courier charge at a TRANSFER's door — mirrors
 		// liability_service.WarehouseTransferAcceptedSubscription (balance-posts-the-transfers-on-site-debt-from-the-event,
@@ -412,6 +427,13 @@ func declaredSubscriptions() []event_source.Subscription {
 			ID:     "liability-custom-shipment-handed-over",
 			Topic:  "custom-shipment-handed-over",
 			Filter: `attributes.event_type = "warehouse.events.v1.CustomShipmentHandedOver"`,
+		},
+		// liability_service.CustomShipmentReceivedSubscription (backlog #101): an inbound parcel's courier charge at the door,
+		// final at its Terima — the selling team owes the warehouse it came to, a `custom_shipment_fee`.
+		{
+			ID:     "liability-custom-shipment-received",
+			Topic:  "custom-shipment-received",
+			Filter: `attributes.event_type = "warehouse.events.v1.CustomShipmentReceived"`,
 		},
 		// inventory_service's compensation listener — mirrors inventory_service.InventoryTxCancelSubscription
 		// (the-compensation-event-is-inventory-tx-cancel, inventory-tx-cancel-is-an-order-event): the take of an order

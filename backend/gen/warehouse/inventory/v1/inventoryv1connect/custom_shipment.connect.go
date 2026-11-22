@@ -60,6 +60,21 @@ const (
 	// CustomShipmentServiceCustomShipmentMissingReportProcedure is the fully-qualified name of the
 	// CustomShipmentService's CustomShipmentMissingReport RPC.
 	CustomShipmentServiceCustomShipmentMissingReportProcedure = "/warehouse.inventory.v1.CustomShipmentService/CustomShipmentMissingReport"
+	// CustomShipmentServiceCustomShipmentResiSetProcedure is the fully-qualified name of the
+	// CustomShipmentService's CustomShipmentResiSet RPC.
+	CustomShipmentServiceCustomShipmentResiSetProcedure = "/warehouse.inventory.v1.CustomShipmentService/CustomShipmentResiSet"
+	// CustomShipmentServiceCustomShipmentPricesSetProcedure is the fully-qualified name of the
+	// CustomShipmentService's CustomShipmentPricesSet RPC.
+	CustomShipmentServiceCustomShipmentPricesSetProcedure = "/warehouse.inventory.v1.CustomShipmentService/CustomShipmentPricesSet"
+	// CustomShipmentServiceCustomShipmentMarkLostProcedure is the fully-qualified name of the
+	// CustomShipmentService's CustomShipmentMarkLost RPC.
+	CustomShipmentServiceCustomShipmentMarkLostProcedure = "/warehouse.inventory.v1.CustomShipmentService/CustomShipmentMarkLost"
+	// CustomShipmentServiceCustomShipmentArriveProcedure is the fully-qualified name of the
+	// CustomShipmentService's CustomShipmentArrive RPC.
+	CustomShipmentServiceCustomShipmentArriveProcedure = "/warehouse.inventory.v1.CustomShipmentService/CustomShipmentArrive"
+	// CustomShipmentServiceCustomShipmentReceiveProcedure is the fully-qualified name of the
+	// CustomShipmentService's CustomShipmentReceive RPC.
+	CustomShipmentServiceCustomShipmentReceiveProcedure = "/warehouse.inventory.v1.CustomShipmentService/CustomShipmentReceive"
 )
 
 // CustomShipmentServiceClient is a client for the warehouse.inventory.v1.CustomShipmentService
@@ -90,6 +105,25 @@ type CustomShipmentServiceClient interface {
 	// parcel STAYS requested — no status move, no stock write, nothing posts; the owning team decides (cancel, or wait).
 	// May be recorded again while requested; each note is its own row, the latest is the open one.
 	CustomShipmentMissingReport(context.Context, *connect.Request[v1.CustomShipmentMissingReportRequest]) (*connect.Response[v1.CustomShipmentMissingReportResponse], error)
+	// THE INBOUND PARCEL (backlog #101 — a-suppliers-reshipping-comes-in-as-a-custom-shipment): a SUPPLIER_RESHIPPING is
+	// created by RestockResolutionCreate (RESHIPPING) and arrives as a restock box does — ON_THE_WAY → ARRIVED (Tiba) →
+	// RECEIVED (Terima), or LOST (lost-is-set-only-before-the-box-arrives; a late lost box is signed for,
+	// a-late-lost-box-is-signed-for-as-arrived). None of these act on an outbound parcel.
+	//
+	// The owning selling team edits the resi until Tiba.
+	CustomShipmentResiSet(context.Context, *connect.Request[v1.CustomShipmentResiSetRequest]) (*connect.Response[v1.CustomShipmentResiSetResponse], error)
+	// The owning selling team edits the lines' prices until Terima — they value the stock and move NO money.
+	CustomShipmentPricesSet(context.Context, *connect.Request[v1.CustomShipmentPricesSetRequest]) (*connect.Response[v1.CustomShipmentPricesSetResponse], error)
+	// The owning selling team gives it up while ON_THE_WAY — nothing moves.
+	CustomShipmentMarkLost(context.Context, *connect.Request[v1.CustomShipmentMarkLostRequest]) (*connect.Response[v1.CustomShipmentMarkLostResponse], error)
+	// Tiba — the warehouse it comes to signs for it (from ON_THE_WAY or LOST); the courier's charge at the door may be
+	// noted, kept and shown, final at Terima (the-courier-charge-is-noted-at-tiba-and-final-at-terima). No money here.
+	CustomShipmentArrive(context.Context, *connect.Request[v1.CustomShipmentArriveRequest]) (*connect.Response[v1.CustomShipmentArriveResponse], error)
+	// Terima — the warehouse counts it in (from ON_THE_WAY or ARRIVED): good units on a rack become stock at the seller's
+	// price, linked as the resolution's stock-in; broken and short are written down, and either REOPENS the restock (its
+	// matching tag back on, the settled mark lifted). The door charge is final here and owed through Team Balance, posted
+	// from CustomShipmentReceived.
+	CustomShipmentReceive(context.Context, *connect.Request[v1.CustomShipmentReceiveRequest]) (*connect.Response[v1.CustomShipmentReceiveResponse], error)
 }
 
 // NewCustomShipmentServiceClient constructs a client for the
@@ -161,6 +195,36 @@ func NewCustomShipmentServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentMissingReport")),
 			connect.WithClientOptions(opts...),
 		),
+		customShipmentResiSet: connect.NewClient[v1.CustomShipmentResiSetRequest, v1.CustomShipmentResiSetResponse](
+			httpClient,
+			baseURL+CustomShipmentServiceCustomShipmentResiSetProcedure,
+			connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentResiSet")),
+			connect.WithClientOptions(opts...),
+		),
+		customShipmentPricesSet: connect.NewClient[v1.CustomShipmentPricesSetRequest, v1.CustomShipmentPricesSetResponse](
+			httpClient,
+			baseURL+CustomShipmentServiceCustomShipmentPricesSetProcedure,
+			connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentPricesSet")),
+			connect.WithClientOptions(opts...),
+		),
+		customShipmentMarkLost: connect.NewClient[v1.CustomShipmentMarkLostRequest, v1.CustomShipmentMarkLostResponse](
+			httpClient,
+			baseURL+CustomShipmentServiceCustomShipmentMarkLostProcedure,
+			connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentMarkLost")),
+			connect.WithClientOptions(opts...),
+		),
+		customShipmentArrive: connect.NewClient[v1.CustomShipmentArriveRequest, v1.CustomShipmentArriveResponse](
+			httpClient,
+			baseURL+CustomShipmentServiceCustomShipmentArriveProcedure,
+			connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentArrive")),
+			connect.WithClientOptions(opts...),
+		),
+		customShipmentReceive: connect.NewClient[v1.CustomShipmentReceiveRequest, v1.CustomShipmentReceiveResponse](
+			httpClient,
+			baseURL+CustomShipmentServiceCustomShipmentReceiveProcedure,
+			connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentReceive")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -175,6 +239,11 @@ type customShipmentServiceClient struct {
 	customShipmentHandover      *connect.Client[v1.CustomShipmentHandoverRequest, v1.CustomShipmentHandoverResponse]
 	customShipmentReshipOptions *connect.Client[v1.CustomShipmentReshipOptionsRequest, v1.CustomShipmentReshipOptionsResponse]
 	customShipmentMissingReport *connect.Client[v1.CustomShipmentMissingReportRequest, v1.CustomShipmentMissingReportResponse]
+	customShipmentResiSet       *connect.Client[v1.CustomShipmentResiSetRequest, v1.CustomShipmentResiSetResponse]
+	customShipmentPricesSet     *connect.Client[v1.CustomShipmentPricesSetRequest, v1.CustomShipmentPricesSetResponse]
+	customShipmentMarkLost      *connect.Client[v1.CustomShipmentMarkLostRequest, v1.CustomShipmentMarkLostResponse]
+	customShipmentArrive        *connect.Client[v1.CustomShipmentArriveRequest, v1.CustomShipmentArriveResponse]
+	customShipmentReceive       *connect.Client[v1.CustomShipmentReceiveRequest, v1.CustomShipmentReceiveResponse]
 }
 
 // CustomShipmentCreate calls warehouse.inventory.v1.CustomShipmentService.CustomShipmentCreate.
@@ -224,6 +293,32 @@ func (c *customShipmentServiceClient) CustomShipmentMissingReport(ctx context.Co
 	return c.customShipmentMissingReport.CallUnary(ctx, req)
 }
 
+// CustomShipmentResiSet calls warehouse.inventory.v1.CustomShipmentService.CustomShipmentResiSet.
+func (c *customShipmentServiceClient) CustomShipmentResiSet(ctx context.Context, req *connect.Request[v1.CustomShipmentResiSetRequest]) (*connect.Response[v1.CustomShipmentResiSetResponse], error) {
+	return c.customShipmentResiSet.CallUnary(ctx, req)
+}
+
+// CustomShipmentPricesSet calls
+// warehouse.inventory.v1.CustomShipmentService.CustomShipmentPricesSet.
+func (c *customShipmentServiceClient) CustomShipmentPricesSet(ctx context.Context, req *connect.Request[v1.CustomShipmentPricesSetRequest]) (*connect.Response[v1.CustomShipmentPricesSetResponse], error) {
+	return c.customShipmentPricesSet.CallUnary(ctx, req)
+}
+
+// CustomShipmentMarkLost calls warehouse.inventory.v1.CustomShipmentService.CustomShipmentMarkLost.
+func (c *customShipmentServiceClient) CustomShipmentMarkLost(ctx context.Context, req *connect.Request[v1.CustomShipmentMarkLostRequest]) (*connect.Response[v1.CustomShipmentMarkLostResponse], error) {
+	return c.customShipmentMarkLost.CallUnary(ctx, req)
+}
+
+// CustomShipmentArrive calls warehouse.inventory.v1.CustomShipmentService.CustomShipmentArrive.
+func (c *customShipmentServiceClient) CustomShipmentArrive(ctx context.Context, req *connect.Request[v1.CustomShipmentArriveRequest]) (*connect.Response[v1.CustomShipmentArriveResponse], error) {
+	return c.customShipmentArrive.CallUnary(ctx, req)
+}
+
+// CustomShipmentReceive calls warehouse.inventory.v1.CustomShipmentService.CustomShipmentReceive.
+func (c *customShipmentServiceClient) CustomShipmentReceive(ctx context.Context, req *connect.Request[v1.CustomShipmentReceiveRequest]) (*connect.Response[v1.CustomShipmentReceiveResponse], error) {
+	return c.customShipmentReceive.CallUnary(ctx, req)
+}
+
 // CustomShipmentServiceHandler is an implementation of the
 // warehouse.inventory.v1.CustomShipmentService service.
 type CustomShipmentServiceHandler interface {
@@ -252,6 +347,25 @@ type CustomShipmentServiceHandler interface {
 	// parcel STAYS requested — no status move, no stock write, nothing posts; the owning team decides (cancel, or wait).
 	// May be recorded again while requested; each note is its own row, the latest is the open one.
 	CustomShipmentMissingReport(context.Context, *connect.Request[v1.CustomShipmentMissingReportRequest]) (*connect.Response[v1.CustomShipmentMissingReportResponse], error)
+	// THE INBOUND PARCEL (backlog #101 — a-suppliers-reshipping-comes-in-as-a-custom-shipment): a SUPPLIER_RESHIPPING is
+	// created by RestockResolutionCreate (RESHIPPING) and arrives as a restock box does — ON_THE_WAY → ARRIVED (Tiba) →
+	// RECEIVED (Terima), or LOST (lost-is-set-only-before-the-box-arrives; a late lost box is signed for,
+	// a-late-lost-box-is-signed-for-as-arrived). None of these act on an outbound parcel.
+	//
+	// The owning selling team edits the resi until Tiba.
+	CustomShipmentResiSet(context.Context, *connect.Request[v1.CustomShipmentResiSetRequest]) (*connect.Response[v1.CustomShipmentResiSetResponse], error)
+	// The owning selling team edits the lines' prices until Terima — they value the stock and move NO money.
+	CustomShipmentPricesSet(context.Context, *connect.Request[v1.CustomShipmentPricesSetRequest]) (*connect.Response[v1.CustomShipmentPricesSetResponse], error)
+	// The owning selling team gives it up while ON_THE_WAY — nothing moves.
+	CustomShipmentMarkLost(context.Context, *connect.Request[v1.CustomShipmentMarkLostRequest]) (*connect.Response[v1.CustomShipmentMarkLostResponse], error)
+	// Tiba — the warehouse it comes to signs for it (from ON_THE_WAY or LOST); the courier's charge at the door may be
+	// noted, kept and shown, final at Terima (the-courier-charge-is-noted-at-tiba-and-final-at-terima). No money here.
+	CustomShipmentArrive(context.Context, *connect.Request[v1.CustomShipmentArriveRequest]) (*connect.Response[v1.CustomShipmentArriveResponse], error)
+	// Terima — the warehouse counts it in (from ON_THE_WAY or ARRIVED): good units on a rack become stock at the seller's
+	// price, linked as the resolution's stock-in; broken and short are written down, and either REOPENS the restock (its
+	// matching tag back on, the settled mark lifted). The door charge is final here and owed through Team Balance, posted
+	// from CustomShipmentReceived.
+	CustomShipmentReceive(context.Context, *connect.Request[v1.CustomShipmentReceiveRequest]) (*connect.Response[v1.CustomShipmentReceiveResponse], error)
 }
 
 // NewCustomShipmentServiceHandler builds an HTTP handler from the service implementation. It
@@ -318,6 +432,36 @@ func NewCustomShipmentServiceHandler(svc CustomShipmentServiceHandler, opts ...c
 		connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentMissingReport")),
 		connect.WithHandlerOptions(opts...),
 	)
+	customShipmentServiceCustomShipmentResiSetHandler := connect.NewUnaryHandler(
+		CustomShipmentServiceCustomShipmentResiSetProcedure,
+		svc.CustomShipmentResiSet,
+		connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentResiSet")),
+		connect.WithHandlerOptions(opts...),
+	)
+	customShipmentServiceCustomShipmentPricesSetHandler := connect.NewUnaryHandler(
+		CustomShipmentServiceCustomShipmentPricesSetProcedure,
+		svc.CustomShipmentPricesSet,
+		connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentPricesSet")),
+		connect.WithHandlerOptions(opts...),
+	)
+	customShipmentServiceCustomShipmentMarkLostHandler := connect.NewUnaryHandler(
+		CustomShipmentServiceCustomShipmentMarkLostProcedure,
+		svc.CustomShipmentMarkLost,
+		connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentMarkLost")),
+		connect.WithHandlerOptions(opts...),
+	)
+	customShipmentServiceCustomShipmentArriveHandler := connect.NewUnaryHandler(
+		CustomShipmentServiceCustomShipmentArriveProcedure,
+		svc.CustomShipmentArrive,
+		connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentArrive")),
+		connect.WithHandlerOptions(opts...),
+	)
+	customShipmentServiceCustomShipmentReceiveHandler := connect.NewUnaryHandler(
+		CustomShipmentServiceCustomShipmentReceiveProcedure,
+		svc.CustomShipmentReceive,
+		connect.WithSchema(customShipmentServiceMethods.ByName("CustomShipmentReceive")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.inventory.v1.CustomShipmentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CustomShipmentServiceCustomShipmentCreateProcedure:
@@ -338,6 +482,16 @@ func NewCustomShipmentServiceHandler(svc CustomShipmentServiceHandler, opts ...c
 			customShipmentServiceCustomShipmentReshipOptionsHandler.ServeHTTP(w, r)
 		case CustomShipmentServiceCustomShipmentMissingReportProcedure:
 			customShipmentServiceCustomShipmentMissingReportHandler.ServeHTTP(w, r)
+		case CustomShipmentServiceCustomShipmentResiSetProcedure:
+			customShipmentServiceCustomShipmentResiSetHandler.ServeHTTP(w, r)
+		case CustomShipmentServiceCustomShipmentPricesSetProcedure:
+			customShipmentServiceCustomShipmentPricesSetHandler.ServeHTTP(w, r)
+		case CustomShipmentServiceCustomShipmentMarkLostProcedure:
+			customShipmentServiceCustomShipmentMarkLostHandler.ServeHTTP(w, r)
+		case CustomShipmentServiceCustomShipmentArriveProcedure:
+			customShipmentServiceCustomShipmentArriveHandler.ServeHTTP(w, r)
+		case CustomShipmentServiceCustomShipmentReceiveProcedure:
+			customShipmentServiceCustomShipmentReceiveHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -381,4 +535,24 @@ func (UnimplementedCustomShipmentServiceHandler) CustomShipmentReshipOptions(con
 
 func (UnimplementedCustomShipmentServiceHandler) CustomShipmentMissingReport(context.Context, *connect.Request[v1.CustomShipmentMissingReportRequest]) (*connect.Response[v1.CustomShipmentMissingReportResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.CustomShipmentService.CustomShipmentMissingReport is not implemented"))
+}
+
+func (UnimplementedCustomShipmentServiceHandler) CustomShipmentResiSet(context.Context, *connect.Request[v1.CustomShipmentResiSetRequest]) (*connect.Response[v1.CustomShipmentResiSetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.CustomShipmentService.CustomShipmentResiSet is not implemented"))
+}
+
+func (UnimplementedCustomShipmentServiceHandler) CustomShipmentPricesSet(context.Context, *connect.Request[v1.CustomShipmentPricesSetRequest]) (*connect.Response[v1.CustomShipmentPricesSetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.CustomShipmentService.CustomShipmentPricesSet is not implemented"))
+}
+
+func (UnimplementedCustomShipmentServiceHandler) CustomShipmentMarkLost(context.Context, *connect.Request[v1.CustomShipmentMarkLostRequest]) (*connect.Response[v1.CustomShipmentMarkLostResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.CustomShipmentService.CustomShipmentMarkLost is not implemented"))
+}
+
+func (UnimplementedCustomShipmentServiceHandler) CustomShipmentArrive(context.Context, *connect.Request[v1.CustomShipmentArriveRequest]) (*connect.Response[v1.CustomShipmentArriveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.CustomShipmentService.CustomShipmentArrive is not implemented"))
+}
+
+func (UnimplementedCustomShipmentServiceHandler) CustomShipmentReceive(context.Context, *connect.Request[v1.CustomShipmentReceiveRequest]) (*connect.Response[v1.CustomShipmentReceiveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.CustomShipmentService.CustomShipmentReceive is not implemented"))
 }

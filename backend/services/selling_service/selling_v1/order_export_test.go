@@ -143,18 +143,19 @@ func TestOrderExport_TheSellersFile(t *testing.T) {
 		t.Fatalf("%d rows (header included), want 3 — the header and Melati's two orders: %v", len(run.rows), run.rows)
 	}
 
-	if run.rows[0][0] != "Order ID" || run.rows[0][8] != "Buyer username" || run.rows[0][9] != "Phone" {
+	// Tags sits right after Status (backlog #100, the-order-tags-prototype-is-accepted), so every later column is one on.
+	if run.rows[0][0] != "Order ID" || run.rows[0][5] != "Tags" || run.rows[0][9] != "Buyer username" || run.rows[0][10] != "Phone" {
 		t.Fatalf("header = %v", run.rows[0])
 	}
 
 	// The phone keeps its 0, and the long marketplace id is not turned into 5.78E+17: both are TEXT cells.
-	if run.rows[1][9] != "0812000222" {
-		t.Fatalf("phone = %q, want 0812000222 (newest first)", run.rows[1][9])
+	if run.rows[1][10] != "0812000222" {
+		t.Fatalf("phone = %q, want 0812000222 (newest first)", run.rows[1][10])
 	}
 
 	// Beside the customer, trimmed as it was stored (the-buyers-username-is-optional).
-	if run.rows[1][8] != "budi.melati" {
-		t.Fatalf("buyer username = %q, want budi.melati", run.rows[1][8])
+	if run.rows[1][9] != "budi.melati" {
+		t.Fatalf("buyer username = %q, want budi.melati", run.rows[1][9])
 	}
 
 	for _, cell := range []string{"J2", "B2"} {
@@ -172,18 +173,18 @@ func TestOrderExport_TheSellersFile(t *testing.T) {
 		t.Fatalf("marketplace ref = %q", run.rows[1][1])
 	}
 
-	if run.rows[1][11] != "JP0012345678" {
-		t.Fatalf("tracking number = %q, want the one typed at create", run.rows[1][11])
+	if run.rows[1][12] != "JP0012345678" {
+		t.Fatalf("tracking number = %q, want the one typed at create", run.rows[1][12])
 	}
 
-	if run.rows[1][12] != "3" {
-		t.Fatalf("qty = %q, want 3", run.rows[1][12])
+	if run.rows[1][13] != "3" {
+		t.Fatalf("qty = %q, want 3", run.rows[1][13])
 	}
 
 	// Never priced (this service has no pricer), so the fee cell is EMPTY — not a 0, which would read as a warehouse
 	// that charged nothing.
-	if len(run.rows[1]) > 14 && run.rows[1][14] != "" {
-		t.Fatalf("warehouse fee = %q, want empty for an order never priced", run.rows[1][14])
+	if len(run.rows[1]) > 15 && run.rows[1][15] != "" {
+		t.Fatalf("warehouse fee = %q, want empty for an order never priced", run.rows[1][15])
 	}
 
 	last := run.messages[len(run.messages)-1]

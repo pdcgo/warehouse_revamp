@@ -3,13 +3,15 @@ package document_v1_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	documentv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
-	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/document_service/docstore"
+	document_v1 "github.com/pdcgo/warehouse_revamp/backend/services/document_service/document_v1"
 )
 
 // The payer's team, and the creditor who has to look at the proof.
@@ -219,5 +221,73 @@ func TestShareDocument_AShareStopsTheDocumentBeingDeleted(t *testing.T) {
 	// It must still be readable by both sides afterwards.
 	if readErr := download(svc, docID, creditorTeam); readErr != nil {
 		t.Fatalf("the proof is gone after a refused delete: %v", readErr)
+	}
+}
+
+// A SHARE THAT LOSES THE RACE TO THE GENERATED-FILE SWEEP answers NotFound — what a document already gone answers —
+// never Internal (generated-files-are-kept-seven-days). The schedule is written down: the share reads the document,
+// the sweep takes it (row and file) before the share writes, and the share's insert then finds the row gone (its
+// foreign key). Both orderings under real concurrency: TestRace_SweepGeneratedFiles_AShareRacingTheSweep (raceaudit).
+func TestShareDocument_LosingTheRaceToTheSweepAnswersNotFound(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc, cfg := newService(t, db)
+	now := time.Now()
+
+	doc := storedFile(t, db, cfg, "share-loses-to-the-sweep", "table_export", now, 8*day, false)
+
+	// The sweep runs the moment the share's read of the document returns: between its read and its write.
+	fired, goneBeforeWrite := false, false
+
+	var sweepErr error
+
+	name := "test:sweep-between-the-shares-read-and-write"
+
+	err := db.Callback().Query().After("gorm:query").Register(name, func(d *gorm.DB) {
+		if fired || d.Statement.Table != "documents" {
+			return
+		}
+
+		fired = true
+
+		_, sweepErr = svc.SweepGeneratedFiles(context.Background(), document_v1.GeneratedSweepInput{Now: now})
+		goneBeforeWrite = !rowExists(db, doc.ID) && !fileExists(cfg, doc.ObjectKey)
+	})
+	if err != nil {
+		t.Fatalf("register the sweep hook: %v", err)
+	}
+
+	t.Cleanup(func() {
+		_ = db.Callback().Query().Remove(name)
+	})
+
+	// The foreign-key violation aborts the test's one transaction; a savepoint keeps it usable for the checks after.
+	err = db.SavePoint("before_the_lost_share").Error
+	if err != nil {
+		t.Fatalf("savepoint: %v", err)
+	}
+
+	lost := share(svc, doc.ID, doc.TeamID, creditorTeam)
+
+	err = db.RollbackTo("before_the_lost_share").Error
+	if err != nil {
+		t.Fatalf("rollback to savepoint: %v", err)
+	}
+
+	if !fired || sweepErr != nil || !goneBeforeWrite {
+		t.Fatalf("the sweep did not take the document between the read and the write (ran %v, err %v, gone %v)",
+			fired, sweepErr, goneBeforeWrite)
+	}
+
+	if connect.CodeOf(lost) != connect.CodeNotFound {
+		t.Fatalf("a share that lost to the sweep: %v (%s), want NotFound", lost, connect.CodeOf(lost))
+	}
+
+	// THE SAME ANSWER as a document already gone: the savepoint brought the row back, so the sweep takes it for good
+	// now, and the next share reads nothing.
+	sweep(t, svc, document_v1.GeneratedSweepInput{Now: now})
+
+	gone := share(svc, doc.ID, doc.TeamID, creditorTeam)
+	if connect.CodeOf(gone) != connect.CodeNotFound || gone.Error() != lost.Error() {
+		t.Fatalf("a share of a document already gone: %v — the lost race answered %v, want the same", gone, lost)
 	}
 }

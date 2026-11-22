@@ -90,6 +90,14 @@ type Restock struct {
 	ArrivedAt   *time.Time
 	LostAt      *time.Time
 
+	// THE SETTLED MARK (backlog #101, 00060) — the selling team's *Tandai Selesai* on a problem or lost restock
+	// (a-restock-problem-is-settled-by-resolution-rows): when, by whom, and whether as an override. NULL / 0 / false = not
+	// settled; an inbound parcel's Terima that finds short or broken units lifts it again (🔄 A: a late shortfall reopens
+	// it).
+	SettledAt           *time.Time
+	SettledByUserID     uint64
+	SettledByIsOverride bool
+
 	// The lines. GORM loads them via RestockID.
 	Items []RestockItem `gorm:"foreignKey:RestockID"`
 

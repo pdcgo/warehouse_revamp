@@ -157,8 +157,8 @@ func TestRace_SweepGeneratedFiles_ADownloadRacingTheSweep(t *testing.T) {
 }
 
 // A share racing the sweep (never a document a person shared): the share either lands first — the file, its row and
-// the share all stay — or it fails because the sweep took the file. Never a share pointing at a deleted file, and the
-// sweep never fails on the share's foreign key.
+// the share all stay — or it fails NotFound because the sweep took the file. Never a share pointing at a deleted file,
+// never Internal, and the sweep never fails on the share's foreign key.
 func TestRace_SweepGeneratedFiles_AShareRacingTheSweep(t *testing.T) {
 	h := san_race.New(t)
 	db := h.DB()
@@ -216,6 +216,12 @@ func TestRace_SweepGeneratedFiles_AShareRacingTheSweep(t *testing.T) {
 		default:
 			if row || file || shares != 0 {
 				t.Fatalf("round %d: the share failed (%v) but row=%v file=%v shares=%d", round, shareErr, row, file, shares)
+			}
+
+			// A share the sweep beat answers what a document already gone answers — whether it read the row before
+			// the sweep took it (its insert's foreign key finds it gone) or after.
+			if connect.CodeOf(shareErr) != connect.CodeNotFound {
+				t.Fatalf("round %d: a share that lost to the sweep: %v, want NotFound", round, shareErr)
 			}
 
 			codes[connect.CodeOf(shareErr)]++

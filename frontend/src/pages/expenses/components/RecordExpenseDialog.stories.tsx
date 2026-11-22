@@ -7,7 +7,7 @@ import { expenseScenario } from "../../../../.storybook/expenseStub";
 import { BCA_OPERASIONAL, CURRENT_MONTH, EXPENSE_TEAM, SHOPEEPAY_MELATI } from "../../../../.storybook/expenseFixtures";
 import { noOperationalAccountForStory, unmarkOperationalForStory } from "../../../../.storybook/financialAccountStub";
 import { shops } from "../../../../.storybook/fixtures";
-import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
+import { ExpenseKind, ExpenseType } from "../../../gen/warehouse/expense/v1/expense_pb";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { todayWibDateInput } from "../../../lib/datetime";
 import { formatRupiah } from "../../../lib/money";
@@ -36,7 +36,7 @@ import { RecordExpenseDialog } from "./RecordExpenseDialog";
 // invalidates it (queries.ts declares that, not the page).
 
 function MonthProbe() {
-  const query = useExpenses({ teamId: EXPENSE_TEAM, month: CURRENT_MONTH, kind: ExpenseKind.UNSPECIFIED, page: 1, pageSize: 50 });
+  const query = useExpenses({ teamId: EXPENSE_TEAM, month: CURRENT_MONTH, kind: ExpenseKind.UNSPECIFIED, type: ExpenseType.UNSPECIFIED, page: 1, pageSize: 50 });
 
   return (
     <Stack gap="0" fontSize="sm" color="fg.muted">
@@ -114,9 +114,18 @@ async function pickShop(shopId: bigint) {
   await userEvent.click(option);
 }
 
+// A kind is picked as one type of its group (expense-types-sit-under-groups) — the group's first spending type, the
+// Iklan marketplace one for Ads (the one that names a shop).
+const TYPE_OF_KIND: Partial<Record<ExpenseKind, string>> = {
+  [ExpenseKind.ADS]: "adsMarketplace",
+  [ExpenseKind.PAYROLL]: "basicSalary",
+  [ExpenseKind.OPERATIONAL]: "electricity",
+  [ExpenseKind.OTHER]: "otherOut",
+};
+
 async function pickKind(kind: ExpenseKind) {
-  await userEvent.click(screen.getByTestId("expense-kind-select"));
-  const option = await screen.findByTestId(`expense-kind-select-${kind}`);
+  await userEvent.click(screen.getByTestId("expense-type-select"));
+  const option = await screen.findByTestId(`expense-type-select-${TYPE_OF_KIND[kind]}`);
   await waitFor(() => expect(option).toBeVisible());
   await userEvent.click(option);
 }
@@ -128,7 +137,7 @@ export const Default: Story = {
     await open(canvasElement);
 
     await expect(screen.getByText("Record Expense", { selector: "h2" })).toBeInTheDocument();
-    await expect(screen.getByTestId("expense-kind-select")).toHaveTextContent("Choose a kind");
+    await expect(screen.getByTestId("expense-type-select")).toHaveTextContent("Choose a type");
     await expect(screen.getByTestId("expense-amount")).toHaveValue("");
     await expect(screen.getByText(/payroll paid on the 5th is last month's expense/)).toBeInTheDocument();
     await expect(screen.getByTestId("submit-cost")).toBeDisabled();
@@ -183,6 +192,7 @@ export const RecordingUpdatesTheList: Story = {
     await expect(expenseScenario.lastCreate).toEqual({
       teamId: EXPENSE_TEAM,
       kind: ExpenseKind.ADS,
+      type: ExpenseType.ADS_MARKETPLACE,
       amount: 750_000,
       occurredAt: today(),
       shopId: melatiStore.id,
@@ -317,7 +327,7 @@ export const ShopIsOnlyForAds: Story = {
     await expect(save).toBeEnabled();
 
     await pickKind(ExpenseKind.ADS);
-    await expect(await screen.findByTestId("expense-shop-field")).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId("expense-shop-field")).toBeVisible(), { timeout: 5000 });
     await expect(screen.getByTestId("expense-form-missing-shop")).toHaveTextContent("the shop the ads ran for");
     await expect(save).toBeDisabled();
     await pickShop(shops[0]!.id);

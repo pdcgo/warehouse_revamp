@@ -8,7 +8,7 @@ import { API_URL } from "./env";
 //
 // confirm payment's regression spec. An acceptance has no test file of its own (docs/acceptances/guide.md): the checks
 // for its thens live here, one test.describe per given + when, one test.step("then: …") per then, run as EVERY role the
-// given names (status-is-per-then). The rows' statuses are the owner's, set by hand — never by this file.
+// given names (status-is-per-then). The rows' statuses are set from the tester's green results, or by the owner.
 //
 // Business rules (docs/business/balance/context_decision.md):
 // - the-debtor-claims-the-creditor-decides — the team that is OWED accepts; accepting posts both mirrored entries, so
@@ -53,6 +53,9 @@ import { API_URL } from "./env";
 //   amount, the balance after it Rp 0.
 // - `payment recorded in both accounts' history` — each account's own page: one `Team payment #<id>` row, to the
 //   creditor on the payer's account and from the payer on the warehouse's.
+// - `recorded in finance analytic metric` — Analytic › Finance › Account changes by account, this week, each team its
+//   own (every-team-reads-its-own-finance): the warehouse role reads W's account's Team payment up by the payment (W's
+//   account takes every given's payments, so read before and after), the payer reads its own account's −the payment.
 // - `selling team still owes the rest` — the payer's page: the rest, You owe them, Make Payment still offered.
 // - `liability balance flips` / `warehouse owes selling team` — the direction turns on both pages; W now owes the
 //   overpayment and is the one offered Make Payment.
@@ -418,6 +421,26 @@ async function accountRow(page: Page, accountId: string, text: string): Promise<
   return page.getByTestId("account-log-table").locator('[data-testid^="account-log-row-"]', { hasText: new RegExp(`${text}(?!\\d)`) });
 }
 
+// Analytic › Finance › Account changes, by account, filtered to the one account, this week — the signed-in team's own
+// (every-team-reads-its-own-finance). Its Team payment cell is signed: money in positive, money OUT NEGATIVE (−Rp …).
+const FINANCE = "metrics/financial_accounts";
+const signed = (text: string) => (/^\s*[−-]/.test(text) ? -1 : 1) * Number(text.replace(/[^0-9]/g, "") || 0) + 0;
+
+async function financeTeamPayment(page: Page, accountId: string): Promise<number> {
+  await page.goto(`/analytic?g=account&m=${FINANCE}&r=7d&acc=${accountId}`);
+  const cell = page.getByTestId(`analytic-cell-${accountId}-team_payment`);
+  await expect(cell).toBeVisible();
+
+  return signed(await cell.innerText());
+}
+
+// …re-read until the accept's posting lands on the figure.
+async function financeTeamPaymentReads(page: Page, accountId: string, expected: number) {
+  await expect(async () => {
+    expect(await financeTeamPayment(page, accountId)).toBe(expected);
+  }).toPass({ timeout: 30_000 });
+}
+
 test.describe.configure({ timeout: 180_000 });
 
 test.beforeAll(async ({ browser, request }) => {
@@ -707,6 +730,10 @@ test.describe("warehouse:owner · warehouse:admin wants to accept a payment (pen
       await expect(page.getByTestId("liability-detail-direction")).toHaveText("They owe you");
       const whBefore = await accountBalance(page, ground.wh, ground.whAccount);
       const sellerBefore = await accountBalance(seller, t.team, t.account);
+      // W's Team payment this week before the accept — W's account takes every given's payments, so the then reads
+      // the difference; the payer's own account has moved by no payment yet.
+      const whFinanceBefore = await financeTeamPayment(page, ground.whAccount);
+      expect(await financeTeamPayment(seller, t.account)).toBe(0);
 
       const paid = await accept(page, ground.wh, t.team, paymentId, ground.whAccountName);
 
@@ -756,6 +783,16 @@ test.describe("warehouse:owner · warehouse:admin wants to accept a payment (pen
         await expect.soft(into).toHaveCount(1);
         await expect.soft(into).toContainText("Team payment");
         await expect.soft(into).toContainText(rp(DEBT));
+      });
+
+      await test.step("then: recorded in finance analytic metric", async () => {
+        // The warehouse role on Analytic › Finance › Account changes: W's operational account's Team payment up by it…
+        await financeTeamPaymentReads(page, ground.whAccount, whFinanceBefore + DEBT);
+        await expect.soft(page.getByTestId(`analytic-cell-${ground.whAccount}-team_payment`)).toHaveText(rp(whFinanceBefore + DEBT));
+
+        // …and the paying team's own Finance: its account's Team payment out by it, money out negative.
+        await financeTeamPaymentReads(seller, t.account, -DEBT);
+        await expect.soft(seller.getByTestId(`analytic-cell-${t.account}-team_payment`)).toHaveText(new RegExp(`^[−-]${rp(DEBT).replace(/\./g, "\\.")}$`));
       });
 
       await seller.close();

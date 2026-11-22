@@ -8,13 +8,11 @@ import { rpcError } from "../../../api/clients";
 import type { ExpenseRecord } from "../../../gen/warehouse/expense/v1/expense_pb";
 import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
 import { toaster } from "../../../components/feedback/Toaster";
-import { expenseKindLabel } from "../../../components/pickers/ExpenseKindSelect";
 import { formatDayShort } from "../../../lib/datetime";
 import { formatRupiah } from "../../../lib/money";
 import { useAdjustExpense } from "../queries";
 import { useExpenseAccountName } from "./accountName";
-// ⚠ #99 PROTOTYPE (expense types) — inert live.
-import { fullTypeLabel, useExpenseTypes } from "../../../features/expense/expenseTypesPrototype";
+import { fullTypeLabel, typeDef } from "../../../features/expense/expenseTypes";
 
 type Direction = "reduce" | "add";
 
@@ -46,8 +44,6 @@ export function AdjustExpenseDialog({ teamId, expense, onClose }: AdjustExpenseD
 
   const adjust = useAdjustExpense();
   const busy = adjust.isPending;
-  // #99 PROTOTYPE: null live; in a story the in-memory server takes the correction, and the line names the type.
-  const types = useExpenseTypes();
   const account = useExpenseAccountName(teamId, expense.financeAccountId);
 
   const typed = amount === "" ? 0 : Number(amount);
@@ -67,17 +63,6 @@ export function AdjustExpenseDialog({ teamId, expense, onClose }: AdjustExpenseD
     if (!ready) return;
 
     setError("");
-
-    if (types) {
-      types.adjust({ teamId, expenseId: expense.id, amount: correction, note }).then(
-        () => {
-          toaster.create({ type: "success", title: t("expenses.toast.adjusted") });
-          close();
-        },
-        (err) => setError(rpcError(err)),
-      );
-      return;
-    }
 
     adjust.mutate(
       { teamId, expenseId: expense.id, amount: correction, note },
@@ -107,7 +92,8 @@ export function AdjustExpenseDialog({ teamId, expense, onClose }: AdjustExpenseD
                   {/* Which expense, and what it counts for now — the figure the correction moves. */}
                   <Text fontSize="sm" color="fg.muted" data-testid="adjust-expense-now">
                     {t("expenses.adjustFor", {
-                      kind: types ? fullTypeLabel(t, expense.kind, types.typeOf(expense)) : expenseKindLabel(t, expense.kind),
+                      // Group › Type (expense-types-sit-under-groups); a row from before the types, its group alone.
+                      kind: fullTypeLabel(t, expense.kind, typeDef(expense.type)),
                       date: formatDayShort(expense.occurredAt),
                       now: formatRupiah(expense.netAmount),
                     })}

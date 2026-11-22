@@ -178,6 +178,8 @@ func restockLogToProto(l *inventory_service_models.RestockLog) *inventoryv1.Rest
 		AtUnix:      l.CreatedAt.Unix(),
 		// The "by Root team" badge beside the actor (an-override-shows-a-platform-badge).
 		IsOverride: l.IsOverride,
+		// A resolution, a settle or a reopen (restock_settlement_log.go) — UNSPECIFIED on every other row.
+		Kind: restockLogKindFromText(l),
 	}
 
 	for i := range l.Changes {
@@ -335,6 +337,11 @@ func restockRequestToProto(r *inventory_service_models.Restock) *inventoryv1.Res
 		WarehouseAdditionalCost:     r.WarehouseAdditionalCost,
 		WarehouseAdditionalCostNote: r.WarehouseAdditionalCostNote,
 		WarehouseAdditionalCostFile: r.WarehouseAdditionalCostFile,
+
+		// THE SETTLED MARK (backlog #101) — 0 = not settled.
+		SettledAtUnix:       unixOrZero(r.SettledAt),
+		SettledByUserId:     r.SettledByUserID,
+		SettledByIsOverride: r.SettledByIsOverride,
 	}
 
 	// THE TRAIL, oldest first — empty unless the caller preloaded it, which only Detail does.

@@ -149,9 +149,12 @@ type Event struct {
 	//	*Event_CustomShipmentCostUpdated
 	//	*Event_CustomShipmentCancelled
 	//	*Event_CustomShipmentHandedOver
+	//	*Event_RestockRefunded
+	//	*Event_CustomShipmentReceived
 	//	*Event_LiabilityPaymentAccepted
 	//	*Event_ExpenseCreated
 	//	*Event_ExpenseAdjusted
+	//	*Event_FinancialAccountCapitalRecorded
 	Message       isEvent_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -418,6 +421,24 @@ func (x *Event) GetCustomShipmentHandedOver() *CustomShipmentHandedOver {
 	return nil
 }
 
+func (x *Event) GetRestockRefunded() *RestockRefunded {
+	if x != nil {
+		if x, ok := x.Message.(*Event_RestockRefunded); ok {
+			return x.RestockRefunded
+		}
+	}
+	return nil
+}
+
+func (x *Event) GetCustomShipmentReceived() *CustomShipmentReceived {
+	if x != nil {
+		if x, ok := x.Message.(*Event_CustomShipmentReceived); ok {
+			return x.CustomShipmentReceived
+		}
+	}
+	return nil
+}
+
 func (x *Event) GetLiabilityPaymentAccepted() *LiabilityPaymentAccepted {
 	if x != nil {
 		if x, ok := x.Message.(*Event_LiabilityPaymentAccepted); ok {
@@ -445,13 +466,22 @@ func (x *Event) GetExpenseAdjusted() *ExpenseAdjusted {
 	return nil
 }
 
+func (x *Event) GetFinancialAccountCapitalRecorded() *FinancialAccountCapitalRecorded {
+	if x != nil {
+		if x, ok := x.Message.(*Event_FinancialAccountCapitalRecorded); ok {
+			return x.FinancialAccountCapitalRecorded
+		}
+	}
+	return nil
+}
+
 type isEvent_Message interface {
 	isEvent_Message()
 }
 
 type Event_MemberRemoved struct {
 	// Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399,
-	// inventory 400–499, liability 500–599, expense 600–699.
+	// inventory 400–499, liability 500–599, expense 600–699, financial account 700–799.
 	MemberRemoved *MemberRemoved `protobuf:"bytes,100,opt,name=member_removed,json=memberRemoved,proto3,oneof"`
 }
 
@@ -535,6 +565,14 @@ type Event_CustomShipmentHandedOver struct {
 	CustomShipmentHandedOver *CustomShipmentHandedOver `protobuf:"bytes,412,opt,name=custom_shipment_handed_over,json=customShipmentHandedOver,proto3,oneof"`
 }
 
+type Event_RestockRefunded struct {
+	RestockRefunded *RestockRefunded `protobuf:"bytes,413,opt,name=restock_refunded,json=restockRefunded,proto3,oneof"`
+}
+
+type Event_CustomShipmentReceived struct {
+	CustomShipmentReceived *CustomShipmentReceived `protobuf:"bytes,414,opt,name=custom_shipment_received,json=customShipmentReceived,proto3,oneof"`
+}
+
 type Event_LiabilityPaymentAccepted struct {
 	LiabilityPaymentAccepted *LiabilityPaymentAccepted `protobuf:"bytes,500,opt,name=liability_payment_accepted,json=liabilityPaymentAccepted,proto3,oneof"`
 }
@@ -545,6 +583,10 @@ type Event_ExpenseCreated struct {
 
 type Event_ExpenseAdjusted struct {
 	ExpenseAdjusted *ExpenseAdjusted `protobuf:"bytes,601,opt,name=expense_adjusted,json=expenseAdjusted,proto3,oneof"`
+}
+
+type Event_FinancialAccountCapitalRecorded struct {
+	FinancialAccountCapitalRecorded *FinancialAccountCapitalRecorded `protobuf:"bytes,700,opt,name=financial_account_capital_recorded,json=financialAccountCapitalRecorded,proto3,oneof"`
 }
 
 func (*Event_MemberRemoved) isEvent_Message() {}
@@ -589,11 +631,17 @@ func (*Event_CustomShipmentCancelled) isEvent_Message() {}
 
 func (*Event_CustomShipmentHandedOver) isEvent_Message() {}
 
+func (*Event_RestockRefunded) isEvent_Message() {}
+
+func (*Event_CustomShipmentReceived) isEvent_Message() {}
+
 func (*Event_LiabilityPaymentAccepted) isEvent_Message() {}
 
 func (*Event_ExpenseCreated) isEvent_Message() {}
 
 func (*Event_ExpenseAdjusted) isEvent_Message() {}
+
+func (*Event_FinancialAccountCapitalRecorded) isEvent_Message() {}
 
 // MemberRemoved announces that a person left ONE team (removing-a-member-drops-their-shop-access).
 //
@@ -3326,6 +3374,246 @@ func (x *CustomShipmentHandedOver) GetHandedOverAtUnix() int64 {
 	return 0
 }
 
+// RestockRefunded announces a REFUND resolution recorded on a problem or lost restock (backlog #101,
+// a-restock-problem-is-settled-by-resolution-rows): money came back from the supplier into the account the row names.
+// financial_account_service posts it as a `restock` row INTO that account — the way a cancelled restock's money comes
+// back (restock-is-never-typed-by-hand, RestockCancelled): its balance up, its history naming the restock.
+//
+// Published by inventory_service after RestockResolutionCreate commits. `event_id` is
+// `restock-refunded:<resolution_id>` — one per refund row, so a redelivery or a republish posts once.
+type RestockRefunded struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	RestockId uint64                 `protobuf:"varint,1,opt,name=restock_id,json=restockId,proto3" json:"restock_id,omitempty"`
+	// The resolution row.
+	ResolutionId uint64 `protobuf:"varint,2,opt,name=resolution_id,json=resolutionId,proto3" json:"resolution_id,omitempty"`
+	// The selling team whose account it is.
+	TeamId uint64 `protobuf:"varint,3,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// The account the money went into — one of the team's active accounts, checked by inventory before the write.
+	FinanceAccountId uint64 `protobuf:"varint,4,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
+	// Above 0, rupiah, exact (money-is-double-in-the-api-too).
+	Amount float64 `protobuf:"fixed64,5,opt,name=amount,proto3" json:"amount,omitempty"`
+	// Who recorded it — read from the stored row, never from the envelope's identity.
+	ActorId         uint64 `protobuf:"varint,6,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	ActorIsOverride bool   `protobuf:"varint,7,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
+	RefundedAtUnix  int64  `protobuf:"varint,8,opt,name=refunded_at_unix,json=refundedAtUnix,proto3" json:"refunded_at_unix,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RestockRefunded) Reset() {
+	*x = RestockRefunded{}
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestockRefunded) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestockRefunded) ProtoMessage() {}
+
+func (x *RestockRefunded) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestockRefunded.ProtoReflect.Descriptor instead.
+func (*RestockRefunded) Descriptor() ([]byte, []int) {
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *RestockRefunded) GetRestockId() uint64 {
+	if x != nil {
+		return x.RestockId
+	}
+	return 0
+}
+
+func (x *RestockRefunded) GetResolutionId() uint64 {
+	if x != nil {
+		return x.ResolutionId
+	}
+	return 0
+}
+
+func (x *RestockRefunded) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *RestockRefunded) GetFinanceAccountId() uint64 {
+	if x != nil {
+		return x.FinanceAccountId
+	}
+	return 0
+}
+
+func (x *RestockRefunded) GetAmount() float64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *RestockRefunded) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
+	}
+	return 0
+}
+
+func (x *RestockRefunded) GetActorIsOverride() bool {
+	if x != nil {
+		return x.ActorIsOverride
+	}
+	return false
+}
+
+func (x *RestockRefunded) GetRefundedAtUnix() int64 {
+	if x != nil {
+		return x.RefundedAtUnix
+	}
+	return 0
+}
+
+// CustomShipmentReceived announces an INBOUND parcel (a supplier's reshipping, backlog #101) counted in at Terima — final.
+// It carries the courier's charge at the door as Terima finalised it: the warehouse paid it, so the selling team owes it
+// back through Team Balance, nothing for 0 — the restock's door charge path
+// (the-courier-charge-is-noted-at-tiba-and-final-at-terima: posted only from the count-in, never at Tiba), under the
+// parcels' own source type `custom_shipment_fee` keyed by the parcel (an inbound parcel is never handed over, so its id
+// never carries a handover's charge too). `event_id` is `custom-shipment-received:<custom_shipment_id>` — counted in once.
+type CustomShipmentReceived struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	CustomShipmentId uint64                 `protobuf:"varint,1,opt,name=custom_shipment_id,json=customShipmentId,proto3" json:"custom_shipment_id,omitempty"`
+	// The selling team — the debtor of the charge.
+	TeamId uint64 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// The warehouse it came to — the creditor.
+	WarehouseId uint64 `protobuf:"varint,3,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
+	// The restock it settles, and its resolution row.
+	RestockId    uint64 `protobuf:"varint,4,opt,name=restock_id,json=restockId,proto3" json:"restock_id,omitempty"`
+	ResolutionId uint64 `protobuf:"varint,5,opt,name=resolution_id,json=resolutionId,proto3" json:"resolution_id,omitempty"`
+	// The courier's charge at the door, rupiah; 0 = none.
+	DoorCharge float64 `protobuf:"fixed64,6,opt,name=door_charge,json=doorCharge,proto3" json:"door_charge,omitempty"`
+	// Who counted it in — read from the stored parcel.
+	ActorId         uint64 `protobuf:"varint,7,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	ActorIsOverride bool   `protobuf:"varint,8,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
+	ReceivedAtUnix  int64  `protobuf:"varint,9,opt,name=received_at_unix,json=receivedAtUnix,proto3" json:"received_at_unix,omitempty"`
+	// The stock-in the count made — 0 when no unit was good.
+	TransactionId uint64 `protobuf:"varint,10,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CustomShipmentReceived) Reset() {
+	*x = CustomShipmentReceived{}
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CustomShipmentReceived) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CustomShipmentReceived) ProtoMessage() {}
+
+func (x *CustomShipmentReceived) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CustomShipmentReceived.ProtoReflect.Descriptor instead.
+func (*CustomShipmentReceived) Descriptor() ([]byte, []int) {
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *CustomShipmentReceived) GetCustomShipmentId() uint64 {
+	if x != nil {
+		return x.CustomShipmentId
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceived) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceived) GetWarehouseId() uint64 {
+	if x != nil {
+		return x.WarehouseId
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceived) GetRestockId() uint64 {
+	if x != nil {
+		return x.RestockId
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceived) GetResolutionId() uint64 {
+	if x != nil {
+		return x.ResolutionId
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceived) GetDoorCharge() float64 {
+	if x != nil {
+		return x.DoorCharge
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceived) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceived) GetActorIsOverride() bool {
+	if x != nil {
+		return x.ActorIsOverride
+	}
+	return false
+}
+
+func (x *CustomShipmentReceived) GetReceivedAtUnix() int64 {
+	if x != nil {
+		return x.ReceivedAtUnix
+	}
+	return 0
+}
+
+func (x *CustomShipmentReceived) GetTransactionId() uint64 {
+	if x != nil {
+		return x.TransactionId
+	}
+	return 0
+}
+
 // LiabilityPaymentAccepted announces that a CREDITOR accepted a team payment — they looked at their bank and the
 // money was there (a-team-payment-posts-on-accept). Published by liability_service after LiabilityPaymentConfirm
 // commits; the financial accounts post one `team_payment` row out of `from_account_id` and one into
@@ -3356,7 +3644,7 @@ type LiabilityPaymentAccepted struct {
 
 func (x *LiabilityPaymentAccepted) Reset() {
 	*x = LiabilityPaymentAccepted{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[25]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3368,7 +3656,7 @@ func (x *LiabilityPaymentAccepted) String() string {
 func (*LiabilityPaymentAccepted) ProtoMessage() {}
 
 func (x *LiabilityPaymentAccepted) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[25]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3381,7 +3669,7 @@ func (x *LiabilityPaymentAccepted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LiabilityPaymentAccepted.ProtoReflect.Descriptor instead.
 func (*LiabilityPaymentAccepted) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{25}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *LiabilityPaymentAccepted) GetPaymentId() uint64 {
@@ -3463,13 +3751,18 @@ type ExpenseCreated struct {
 	ActorId         uint64 `protobuf:"varint,8,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
 	ActorIsOverride bool   `protobuf:"varint,9,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
 	CreatedAtUnix   int64  `protobuf:"varint,10,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The expense's TYPE (expense-types-sit-under-groups) — UNSPECIFIED on none published today but an old expense's
+	// correction. The account posts by it: the Iklan group as `ads_expense`, Prive / Setoran modal as `capital` (out −,
+	// in +), Piutang luar diterima and Uang masuk lain as `money_in` INTO the account
+	// (money-in-on-biaya-is-its-own-change-type), every other type as `expense`. `amount` stays positive either way.
+	Type          v13.ExpenseType `protobuf:"varint,11,opt,name=type,proto3,enum=warehouse.expense.v1.ExpenseType" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExpenseCreated) Reset() {
 	*x = ExpenseCreated{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[26]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3481,7 +3774,7 @@ func (x *ExpenseCreated) String() string {
 func (*ExpenseCreated) ProtoMessage() {}
 
 func (x *ExpenseCreated) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[26]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3494,7 +3787,7 @@ func (x *ExpenseCreated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExpenseCreated.ProtoReflect.Descriptor instead.
 func (*ExpenseCreated) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{26}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ExpenseCreated) GetExpenseId() uint64 {
@@ -3567,6 +3860,13 @@ func (x *ExpenseCreated) GetCreatedAtUnix() int64 {
 	return 0
 }
 
+func (x *ExpenseCreated) GetType() v13.ExpenseType {
+	if x != nil {
+		return x.Type
+	}
+	return v13.ExpenseType(0)
+}
+
 // ExpenseAdjusted announces a correction of an expense — an adjustment, or the screen's Batalkan, which is an adjustment
 // of minus what the expense still counts for (every-correction-is-a-signed-adjustment).
 //
@@ -3593,13 +3893,16 @@ type ExpenseAdjusted struct {
 	ActorId         uint64 `protobuf:"varint,9,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
 	ActorIsOverride bool   `protobuf:"varint,10,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
 	CreatedAtUnix   int64  `protobuf:"varint,11,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The expense's TYPE, copied — the correction posts as the same change type, on the same account, signed the same way
+	// (a correction down of a money-in takes money back out). UNSPECIFIED for an expense from before the types.
+	Type          v13.ExpenseType `protobuf:"varint,12,opt,name=type,proto3,enum=warehouse.expense.v1.ExpenseType" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExpenseAdjusted) Reset() {
 	*x = ExpenseAdjusted{}
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[27]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3611,7 +3914,7 @@ func (x *ExpenseAdjusted) String() string {
 func (*ExpenseAdjusted) ProtoMessage() {}
 
 func (x *ExpenseAdjusted) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_events_v1_event_proto_msgTypes[27]
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3624,7 +3927,7 @@ func (x *ExpenseAdjusted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExpenseAdjusted.ProtoReflect.Descriptor instead.
 func (*ExpenseAdjusted) Descriptor() ([]byte, []int) {
-	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{27}
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ExpenseAdjusted) GetAdjustmentId() uint64 {
@@ -3704,6 +4007,142 @@ func (x *ExpenseAdjusted) GetCreatedAtUnix() int64 {
 	return 0
 }
 
+func (x *ExpenseAdjusted) GetType() v13.ExpenseType {
+	if x != nil {
+		return x.Type
+	}
+	return v13.ExpenseType(0)
+}
+
+// FinancialAccountCapitalRecorded announces a Setor / Tarik Modal made on the ACCOUNT PAGE — one by-hand `capital` row of
+// `financial_account_logs` (capital-joins-the-types), already posted: the account's balance has moved.
+//
+// Published by financial_account_service after FinancialAccountCapital commits, for EVERY team — the account service
+// knows no team types. expense_service records a SELLING team's as the same one record on Biaya — Setoran modal (in) or
+// Prive (out), origin ACCOUNT_PAGE, linked to this row (`log_id`) — and posts nothing back: the account row is the act's
+// own (prive-and-deposit-on-pengeluaran-are-the-accounts-capital — one act, one record, two doors). A WAREHOUSE team's is
+// acked and dropped: its Setor / Tarik Modal stays on the account page alone.
+//
+// `event_id` is `financial-account-capital:<log_id>` — one per row, so a republish collides in the listener's claim, and
+// `log_id` is the listener's second key (one expense per row, whoever brings it — the live door or the one-time import
+// `san expense import-capital`, which builds this same message from the row).
+type FinancialAccountCapitalRecorded struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// financial_account_logs.id — the by-hand capital row.
+	LogId     uint64 `protobuf:"varint,1,opt,name=log_id,json=logId,proto3" json:"log_id,omitempty"`
+	TeamId    uint64 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	AccountId uint64 `protobuf:"varint,3,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	// Exact rupiah (the-backend-never-rounds-money), SIGNED as the row's `change`: plus = money put in (setoran modal),
+	// minus = money taken out (prive). Never 0.
+	Change float64 `protobuf:"fixed64,4,opt,name=change,proto3" json:"change,omitempty"`
+	// The day the money moved (YYYY-MM-DD, Jakarta), as the person chose it — the row's `occurred_at`.
+	OccurredOn string `protobuf:"bytes,5,opt,name=occurred_on,json=occurredOn,proto3" json:"occurred_on,omitempty"`
+	// What the person typed in the dialog's note — the row's description without its *Capital in — * / *Capital out — *
+	// lead. Empty when none was typed.
+	Note string `protobuf:"bytes,6,opt,name=note,proto3" json:"note,omitempty"`
+	// Who made it, and whether as Root or the Administrator from outside the team (an-override-is-stamped-in-every-service)
+	// — the row's `actor_id` / `is_override`.
+	ActorId         uint64 `protobuf:"varint,7,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	ActorIsOverride bool   `protobuf:"varint,8,opt,name=actor_is_override,json=actorIsOverride,proto3" json:"actor_is_override,omitempty"`
+	// When the row was written — the expense's *recorded on*.
+	CreatedAtUnix int64 `protobuf:"varint,9,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FinancialAccountCapitalRecorded) Reset() {
+	*x = FinancialAccountCapitalRecorded{}
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FinancialAccountCapitalRecorded) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FinancialAccountCapitalRecorded) ProtoMessage() {}
+
+func (x *FinancialAccountCapitalRecorded) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_events_v1_event_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FinancialAccountCapitalRecorded.ProtoReflect.Descriptor instead.
+func (*FinancialAccountCapitalRecorded) Descriptor() ([]byte, []int) {
+	return file_warehouse_events_v1_event_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *FinancialAccountCapitalRecorded) GetLogId() uint64 {
+	if x != nil {
+		return x.LogId
+	}
+	return 0
+}
+
+func (x *FinancialAccountCapitalRecorded) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *FinancialAccountCapitalRecorded) GetAccountId() uint64 {
+	if x != nil {
+		return x.AccountId
+	}
+	return 0
+}
+
+func (x *FinancialAccountCapitalRecorded) GetChange() float64 {
+	if x != nil {
+		return x.Change
+	}
+	return 0
+}
+
+func (x *FinancialAccountCapitalRecorded) GetOccurredOn() string {
+	if x != nil {
+		return x.OccurredOn
+	}
+	return ""
+}
+
+func (x *FinancialAccountCapitalRecorded) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+func (x *FinancialAccountCapitalRecorded) GetActorId() uint64 {
+	if x != nil {
+		return x.ActorId
+	}
+	return 0
+}
+
+func (x *FinancialAccountCapitalRecorded) GetActorIsOverride() bool {
+	if x != nil {
+		return x.ActorIsOverride
+	}
+	return false
+}
+
+func (x *FinancialAccountCapitalRecorded) GetCreatedAtUnix() int64 {
+	if x != nil {
+		return x.CreatedAtUnix
+	}
+	return 0
+}
+
 var file_warehouse_events_v1_event_proto_extTypes = []protoimpl.ExtensionInfo{
 	{
 		ExtendedType:  (*descriptorpb.MessageOptions)(nil),
@@ -3731,7 +4170,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\n" +
 	"\x1fwarehouse/events/v1/event.proto\x12\x13warehouse.events.v1\x1a\x1bbuf/validate/validate.proto\x1a google/protobuf/descriptor.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"warehouse/expense/v1/expense.proto\x1a,warehouse/inventory/v1/custom_shipment.proto\x1a!warehouse/role_base/v1/role.proto\x1a(warehouse/settlement/v1/settlement.proto\"#\n" +
 	"\vEventConfig\x12\x14\n" +
-	"\x05topic\x18\x01 \x01(\tR\x05topic\"\xa4\x15\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\"\xe9\x17\n" +
 	"\x05Event\x12\"\n" +
 	"\bevent_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aeventId\x12C\n" +
 	"\voccurred_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampB\x06\xbaH\x03\xc8\x01\x01R\n" +
@@ -3759,10 +4198,13 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\x17custom_shipment_created\x18\x99\x03 \x01(\v2*.warehouse.events.v1.CustomShipmentCreatedH\x00R\x15customShipmentCreated\x12r\n" +
 	"\x1ccustom_shipment_cost_updated\x18\x9a\x03 \x01(\v2..warehouse.events.v1.CustomShipmentCostUpdatedH\x00R\x19customShipmentCostUpdated\x12k\n" +
 	"\x19custom_shipment_cancelled\x18\x9b\x03 \x01(\v2,.warehouse.events.v1.CustomShipmentCancelledH\x00R\x17customShipmentCancelled\x12o\n" +
-	"\x1bcustom_shipment_handed_over\x18\x9c\x03 \x01(\v2-.warehouse.events.v1.CustomShipmentHandedOverH\x00R\x18customShipmentHandedOver\x12n\n" +
+	"\x1bcustom_shipment_handed_over\x18\x9c\x03 \x01(\v2-.warehouse.events.v1.CustomShipmentHandedOverH\x00R\x18customShipmentHandedOver\x12R\n" +
+	"\x10restock_refunded\x18\x9d\x03 \x01(\v2$.warehouse.events.v1.RestockRefundedH\x00R\x0frestockRefunded\x12h\n" +
+	"\x18custom_shipment_received\x18\x9e\x03 \x01(\v2+.warehouse.events.v1.CustomShipmentReceivedH\x00R\x16customShipmentReceived\x12n\n" +
 	"\x1aliability_payment_accepted\x18\xf4\x03 \x01(\v2-.warehouse.events.v1.LiabilityPaymentAcceptedH\x00R\x18liabilityPaymentAccepted\x12O\n" +
 	"\x0fexpense_created\x18\xd8\x04 \x01(\v2#.warehouse.events.v1.ExpenseCreatedH\x00R\x0eexpenseCreated\x12R\n" +
-	"\x10expense_adjusted\x18\xd9\x04 \x01(\v2$.warehouse.events.v1.ExpenseAdjustedH\x00R\x0fexpenseAdjusted\x1a;\n" +
+	"\x10expense_adjusted\x18\xd9\x04 \x01(\v2$.warehouse.events.v1.ExpenseAdjustedH\x00R\x0fexpenseAdjusted\x12\x84\x01\n" +
+	"\"financial_account_capital_recorded\x18\xbc\x05 \x01(\v24.warehouse.events.v1.FinancialAccountCapitalRecordedH\x00R\x1ffinancialAccountCapitalRecorded\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
@@ -4040,7 +4482,33 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\bactor_id\x18\a \x01(\x04R\aactorId\x12*\n" +
 	"\x11actor_is_override\x18\b \x01(\bR\x0factorIsOverride\x12-\n" +
 	"\x13handed_over_at_unix\x18\t \x01(\x03R\x10handedOverAtUnix:!\x8a\xb5\x18\x1d\n" +
-	"\x1bcustom-shipment-handed-over\"\xd4\x02\n" +
+	"\x1bcustom-shipment-handed-over\"\xbd\x02\n" +
+	"\x0fRestockRefunded\x12\x1d\n" +
+	"\n" +
+	"restock_id\x18\x01 \x01(\x04R\trestockId\x12#\n" +
+	"\rresolution_id\x18\x02 \x01(\x04R\fresolutionId\x12\x17\n" +
+	"\ateam_id\x18\x03 \x01(\x04R\x06teamId\x12,\n" +
+	"\x12finance_account_id\x18\x04 \x01(\x04R\x10financeAccountId\x12\x16\n" +
+	"\x06amount\x18\x05 \x01(\x01R\x06amount\x12\x19\n" +
+	"\bactor_id\x18\x06 \x01(\x04R\aactorId\x12*\n" +
+	"\x11actor_is_override\x18\a \x01(\bR\x0factorIsOverride\x12(\n" +
+	"\x10refunded_at_unix\x18\b \x01(\x03R\x0erefundedAtUnix:\x16\x8a\xb5\x18\x12\n" +
+	"\x10restock-refunded\"\x9f\x03\n" +
+	"\x16CustomShipmentReceived\x12,\n" +
+	"\x12custom_shipment_id\x18\x01 \x01(\x04R\x10customShipmentId\x12\x17\n" +
+	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12!\n" +
+	"\fwarehouse_id\x18\x03 \x01(\x04R\vwarehouseId\x12\x1d\n" +
+	"\n" +
+	"restock_id\x18\x04 \x01(\x04R\trestockId\x12#\n" +
+	"\rresolution_id\x18\x05 \x01(\x04R\fresolutionId\x12\x1f\n" +
+	"\vdoor_charge\x18\x06 \x01(\x01R\n" +
+	"doorCharge\x12\x19\n" +
+	"\bactor_id\x18\a \x01(\x04R\aactorId\x12*\n" +
+	"\x11actor_is_override\x18\b \x01(\bR\x0factorIsOverride\x12(\n" +
+	"\x10received_at_unix\x18\t \x01(\x03R\x0ereceivedAtUnix\x12%\n" +
+	"\x0etransaction_id\x18\n" +
+	" \x01(\x04R\rtransactionId:\x1e\x8a\xb5\x18\x1a\n" +
+	"\x18custom-shipment-received\"\xd4\x02\n" +
 	"\x18LiabilityPaymentAccepted\x12\x1d\n" +
 	"\n" +
 	"payment_id\x18\x01 \x01(\x04R\tpaymentId\x12\"\n" +
@@ -4051,7 +4519,7 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\rto_account_id\x18\x06 \x01(\x04R\vtoAccountId\x12\x19\n" +
 	"\bactor_id\x18\a \x01(\x04R\aactorId\x12*\n" +
 	"\x11actor_is_override\x18\b \x01(\bR\x0factorIsOverride: \x8a\xb5\x18\x1c\n" +
-	"\x1aliability-payment-accepted\"\x85\x03\n" +
+	"\x1aliability-payment-accepted\"\xbc\x03\n" +
 	"\x0eExpenseCreated\x12\x1d\n" +
 	"\n" +
 	"expense_id\x18\x01 \x01(\x04R\texpenseId\x12\x17\n" +
@@ -4065,8 +4533,9 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\bactor_id\x18\b \x01(\x04R\aactorId\x12*\n" +
 	"\x11actor_is_override\x18\t \x01(\bR\x0factorIsOverride\x12&\n" +
 	"\x0fcreated_at_unix\x18\n" +
-	" \x01(\x03R\rcreatedAtUnix:\x15\x8a\xb5\x18\x11\n" +
-	"\x0fexpense-created\"\xac\x03\n" +
+	" \x01(\x03R\rcreatedAtUnix\x125\n" +
+	"\x04type\x18\v \x01(\x0e2!.warehouse.expense.v1.ExpenseTypeR\x04type:\x15\x8a\xb5\x18\x11\n" +
+	"\x0fexpense-created\"\xe3\x03\n" +
 	"\x0fExpenseAdjusted\x12#\n" +
 	"\radjustment_id\x18\x01 \x01(\x04R\fadjustmentId\x12\x1d\n" +
 	"\n" +
@@ -4081,8 +4550,22 @@ const file_warehouse_events_v1_event_proto_rawDesc = "" +
 	"\bactor_id\x18\t \x01(\x04R\aactorId\x12*\n" +
 	"\x11actor_is_override\x18\n" +
 	" \x01(\bR\x0factorIsOverride\x12&\n" +
-	"\x0fcreated_at_unix\x18\v \x01(\x03R\rcreatedAtUnix:\x16\x8a\xb5\x18\x12\n" +
-	"\x10expense-adjusted:f\n" +
+	"\x0fcreated_at_unix\x18\v \x01(\x03R\rcreatedAtUnix\x125\n" +
+	"\x04type\x18\f \x01(\x0e2!.warehouse.expense.v1.ExpenseTypeR\x04type:\x16\x8a\xb5\x18\x12\n" +
+	"\x10expense-adjusted\"\xd6\x02\n" +
+	"\x1fFinancialAccountCapitalRecorded\x12\x15\n" +
+	"\x06log_id\x18\x01 \x01(\x04R\x05logId\x12\x17\n" +
+	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x03 \x01(\x04R\taccountId\x12\x16\n" +
+	"\x06change\x18\x04 \x01(\x01R\x06change\x12\x1f\n" +
+	"\voccurred_on\x18\x05 \x01(\tR\n" +
+	"occurredOn\x12\x12\n" +
+	"\x04note\x18\x06 \x01(\tR\x04note\x12\x19\n" +
+	"\bactor_id\x18\a \x01(\x04R\aactorId\x12*\n" +
+	"\x11actor_is_override\x18\b \x01(\bR\x0factorIsOverride\x12&\n" +
+	"\x0fcreated_at_unix\x18\t \x01(\x03R\rcreatedAtUnix:(\x8a\xb5\x18$\n" +
+	"\"financial-account-capital-recorded:f\n" +
 	"\fevent_config\x12\x1f.google.protobuf.MessageOptions\x18ц\x03 \x01(\v2 .warehouse.events.v1.EventConfigR\veventConfigBLZJgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1;eventsv1b\x06proto3"
 
 var (
@@ -4097,50 +4580,54 @@ func file_warehouse_events_v1_event_proto_rawDescGZIP() []byte {
 	return file_warehouse_events_v1_event_proto_rawDescData
 }
 
-var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_warehouse_events_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_warehouse_events_v1_event_proto_goTypes = []any{
-	(*EventConfig)(nil),                   // 0: warehouse.events.v1.EventConfig
-	(*Event)(nil),                         // 1: warehouse.events.v1.Event
-	(*MemberRemoved)(nil),                 // 2: warehouse.events.v1.MemberRemoved
-	(*SettlementLogPosted)(nil),           // 3: warehouse.events.v1.SettlementLogPosted
-	(*OrderPlaced)(nil),                   // 4: warehouse.events.v1.OrderPlaced
-	(*OrderPlacedLine)(nil),               // 5: warehouse.events.v1.OrderPlacedLine
-	(*OrderCancelled)(nil),                // 6: warehouse.events.v1.OrderCancelled
-	(*InventoryTxCancel)(nil),             // 7: warehouse.events.v1.InventoryTxCancel
-	(*OrderStatusChanged)(nil),            // 8: warehouse.events.v1.OrderStatusChanged
-	(*OrderReturnAccepted)(nil),           // 9: warehouse.events.v1.OrderReturnAccepted
-	(*OrderShopChanged)(nil),              // 10: warehouse.events.v1.OrderShopChanged
-	(*RestockAccepted)(nil),               // 11: warehouse.events.v1.RestockAccepted
-	(*RestockAcceptedLine)(nil),           // 12: warehouse.events.v1.RestockAcceptedLine
-	(*RestockReceivedCountCorrected)(nil), // 13: warehouse.events.v1.RestockReceivedCountCorrected
-	(*RestockCreated)(nil),                // 14: warehouse.events.v1.RestockCreated
-	(*RestockCancelled)(nil),              // 15: warehouse.events.v1.RestockCancelled
-	(*RestockUpdated)(nil),                // 16: warehouse.events.v1.RestockUpdated
-	(*WarehouseTransferCreated)(nil),      // 17: warehouse.events.v1.WarehouseTransferCreated
-	(*WarehouseTransferUpdated)(nil),      // 18: warehouse.events.v1.WarehouseTransferUpdated
-	(*WarehouseTransferCancelled)(nil),    // 19: warehouse.events.v1.WarehouseTransferCancelled
-	(*WarehouseTransferAccepted)(nil),     // 20: warehouse.events.v1.WarehouseTransferAccepted
-	(*CustomShipmentCreated)(nil),         // 21: warehouse.events.v1.CustomShipmentCreated
-	(*CustomShipmentCostUpdated)(nil),     // 22: warehouse.events.v1.CustomShipmentCostUpdated
-	(*CustomShipmentCancelled)(nil),       // 23: warehouse.events.v1.CustomShipmentCancelled
-	(*CustomShipmentHandedOver)(nil),      // 24: warehouse.events.v1.CustomShipmentHandedOver
-	(*LiabilityPaymentAccepted)(nil),      // 25: warehouse.events.v1.LiabilityPaymentAccepted
-	(*ExpenseCreated)(nil),                // 26: warehouse.events.v1.ExpenseCreated
-	(*ExpenseAdjusted)(nil),               // 27: warehouse.events.v1.ExpenseAdjusted
-	nil,                                   // 28: warehouse.events.v1.Event.MetadataEntry
-	(*timestamppb.Timestamp)(nil),         // 29: google.protobuf.Timestamp
-	(*v1.Identity)(nil),                   // 30: warehouse.role_base.v1.Identity
-	(v11.SettlementType)(0),               // 31: warehouse.settlement.v1.SettlementType
-	(v11.SourceType)(0),                   // 32: warehouse.settlement.v1.SourceType
-	(v12.CustomShipmentKind)(0),           // 33: warehouse.inventory.v1.CustomShipmentKind
-	(v12.CustomShipmentPayer)(0),          // 34: warehouse.inventory.v1.CustomShipmentPayer
-	(v13.ExpenseKind)(0),                  // 35: warehouse.expense.v1.ExpenseKind
-	(*descriptorpb.MessageOptions)(nil),   // 36: google.protobuf.MessageOptions
+	(*EventConfig)(nil),                     // 0: warehouse.events.v1.EventConfig
+	(*Event)(nil),                           // 1: warehouse.events.v1.Event
+	(*MemberRemoved)(nil),                   // 2: warehouse.events.v1.MemberRemoved
+	(*SettlementLogPosted)(nil),             // 3: warehouse.events.v1.SettlementLogPosted
+	(*OrderPlaced)(nil),                     // 4: warehouse.events.v1.OrderPlaced
+	(*OrderPlacedLine)(nil),                 // 5: warehouse.events.v1.OrderPlacedLine
+	(*OrderCancelled)(nil),                  // 6: warehouse.events.v1.OrderCancelled
+	(*InventoryTxCancel)(nil),               // 7: warehouse.events.v1.InventoryTxCancel
+	(*OrderStatusChanged)(nil),              // 8: warehouse.events.v1.OrderStatusChanged
+	(*OrderReturnAccepted)(nil),             // 9: warehouse.events.v1.OrderReturnAccepted
+	(*OrderShopChanged)(nil),                // 10: warehouse.events.v1.OrderShopChanged
+	(*RestockAccepted)(nil),                 // 11: warehouse.events.v1.RestockAccepted
+	(*RestockAcceptedLine)(nil),             // 12: warehouse.events.v1.RestockAcceptedLine
+	(*RestockReceivedCountCorrected)(nil),   // 13: warehouse.events.v1.RestockReceivedCountCorrected
+	(*RestockCreated)(nil),                  // 14: warehouse.events.v1.RestockCreated
+	(*RestockCancelled)(nil),                // 15: warehouse.events.v1.RestockCancelled
+	(*RestockUpdated)(nil),                  // 16: warehouse.events.v1.RestockUpdated
+	(*WarehouseTransferCreated)(nil),        // 17: warehouse.events.v1.WarehouseTransferCreated
+	(*WarehouseTransferUpdated)(nil),        // 18: warehouse.events.v1.WarehouseTransferUpdated
+	(*WarehouseTransferCancelled)(nil),      // 19: warehouse.events.v1.WarehouseTransferCancelled
+	(*WarehouseTransferAccepted)(nil),       // 20: warehouse.events.v1.WarehouseTransferAccepted
+	(*CustomShipmentCreated)(nil),           // 21: warehouse.events.v1.CustomShipmentCreated
+	(*CustomShipmentCostUpdated)(nil),       // 22: warehouse.events.v1.CustomShipmentCostUpdated
+	(*CustomShipmentCancelled)(nil),         // 23: warehouse.events.v1.CustomShipmentCancelled
+	(*CustomShipmentHandedOver)(nil),        // 24: warehouse.events.v1.CustomShipmentHandedOver
+	(*RestockRefunded)(nil),                 // 25: warehouse.events.v1.RestockRefunded
+	(*CustomShipmentReceived)(nil),          // 26: warehouse.events.v1.CustomShipmentReceived
+	(*LiabilityPaymentAccepted)(nil),        // 27: warehouse.events.v1.LiabilityPaymentAccepted
+	(*ExpenseCreated)(nil),                  // 28: warehouse.events.v1.ExpenseCreated
+	(*ExpenseAdjusted)(nil),                 // 29: warehouse.events.v1.ExpenseAdjusted
+	(*FinancialAccountCapitalRecorded)(nil), // 30: warehouse.events.v1.FinancialAccountCapitalRecorded
+	nil,                                     // 31: warehouse.events.v1.Event.MetadataEntry
+	(*timestamppb.Timestamp)(nil),           // 32: google.protobuf.Timestamp
+	(*v1.Identity)(nil),                     // 33: warehouse.role_base.v1.Identity
+	(v11.SettlementType)(0),                 // 34: warehouse.settlement.v1.SettlementType
+	(v11.SourceType)(0),                     // 35: warehouse.settlement.v1.SourceType
+	(v12.CustomShipmentKind)(0),             // 36: warehouse.inventory.v1.CustomShipmentKind
+	(v12.CustomShipmentPayer)(0),            // 37: warehouse.inventory.v1.CustomShipmentPayer
+	(v13.ExpenseKind)(0),                    // 38: warehouse.expense.v1.ExpenseKind
+	(v13.ExpenseType)(0),                    // 39: warehouse.expense.v1.ExpenseType
+	(*descriptorpb.MessageOptions)(nil),     // 40: google.protobuf.MessageOptions
 }
 var file_warehouse_events_v1_event_proto_depIdxs = []int32{
-	29, // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
-	28, // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
-	30, // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
+	32, // 0: warehouse.events.v1.Event.occurred_at:type_name -> google.protobuf.Timestamp
+	31, // 1: warehouse.events.v1.Event.metadata:type_name -> warehouse.events.v1.Event.MetadataEntry
+	33, // 2: warehouse.events.v1.Event.identity:type_name -> warehouse.role_base.v1.Identity
 	2,  // 3: warehouse.events.v1.Event.member_removed:type_name -> warehouse.events.v1.MemberRemoved
 	4,  // 4: warehouse.events.v1.Event.order_placed:type_name -> warehouse.events.v1.OrderPlaced
 	6,  // 5: warehouse.events.v1.Event.order_cancelled:type_name -> warehouse.events.v1.OrderCancelled
@@ -4162,29 +4649,34 @@ var file_warehouse_events_v1_event_proto_depIdxs = []int32{
 	22, // 21: warehouse.events.v1.Event.custom_shipment_cost_updated:type_name -> warehouse.events.v1.CustomShipmentCostUpdated
 	23, // 22: warehouse.events.v1.Event.custom_shipment_cancelled:type_name -> warehouse.events.v1.CustomShipmentCancelled
 	24, // 23: warehouse.events.v1.Event.custom_shipment_handed_over:type_name -> warehouse.events.v1.CustomShipmentHandedOver
-	25, // 24: warehouse.events.v1.Event.liability_payment_accepted:type_name -> warehouse.events.v1.LiabilityPaymentAccepted
-	26, // 25: warehouse.events.v1.Event.expense_created:type_name -> warehouse.events.v1.ExpenseCreated
-	27, // 26: warehouse.events.v1.Event.expense_adjusted:type_name -> warehouse.events.v1.ExpenseAdjusted
-	31, // 27: warehouse.events.v1.SettlementLogPosted.settlement_type:type_name -> warehouse.settlement.v1.SettlementType
-	32, // 28: warehouse.events.v1.SettlementLogPosted.source_type:type_name -> warehouse.settlement.v1.SourceType
-	5,  // 29: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
-	12, // 30: warehouse.events.v1.RestockAccepted.lines:type_name -> warehouse.events.v1.RestockAcceptedLine
-	12, // 31: warehouse.events.v1.RestockReceivedCountCorrected.lines:type_name -> warehouse.events.v1.RestockAcceptedLine
-	33, // 32: warehouse.events.v1.CustomShipmentCreated.kind:type_name -> warehouse.inventory.v1.CustomShipmentKind
-	34, // 33: warehouse.events.v1.CustomShipmentCreated.payer:type_name -> warehouse.inventory.v1.CustomShipmentPayer
-	33, // 34: warehouse.events.v1.CustomShipmentCancelled.kind:type_name -> warehouse.inventory.v1.CustomShipmentKind
-	34, // 35: warehouse.events.v1.CustomShipmentCancelled.payer:type_name -> warehouse.inventory.v1.CustomShipmentPayer
-	33, // 36: warehouse.events.v1.CustomShipmentHandedOver.kind:type_name -> warehouse.inventory.v1.CustomShipmentKind
-	34, // 37: warehouse.events.v1.CustomShipmentHandedOver.payer:type_name -> warehouse.inventory.v1.CustomShipmentPayer
-	35, // 38: warehouse.events.v1.ExpenseCreated.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	35, // 39: warehouse.events.v1.ExpenseAdjusted.kind:type_name -> warehouse.expense.v1.ExpenseKind
-	36, // 40: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
-	0,  // 41: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
-	42, // [42:42] is the sub-list for method output_type
-	42, // [42:42] is the sub-list for method input_type
-	41, // [41:42] is the sub-list for extension type_name
-	40, // [40:41] is the sub-list for extension extendee
-	0,  // [0:40] is the sub-list for field type_name
+	25, // 24: warehouse.events.v1.Event.restock_refunded:type_name -> warehouse.events.v1.RestockRefunded
+	26, // 25: warehouse.events.v1.Event.custom_shipment_received:type_name -> warehouse.events.v1.CustomShipmentReceived
+	27, // 26: warehouse.events.v1.Event.liability_payment_accepted:type_name -> warehouse.events.v1.LiabilityPaymentAccepted
+	28, // 27: warehouse.events.v1.Event.expense_created:type_name -> warehouse.events.v1.ExpenseCreated
+	29, // 28: warehouse.events.v1.Event.expense_adjusted:type_name -> warehouse.events.v1.ExpenseAdjusted
+	30, // 29: warehouse.events.v1.Event.financial_account_capital_recorded:type_name -> warehouse.events.v1.FinancialAccountCapitalRecorded
+	34, // 30: warehouse.events.v1.SettlementLogPosted.settlement_type:type_name -> warehouse.settlement.v1.SettlementType
+	35, // 31: warehouse.events.v1.SettlementLogPosted.source_type:type_name -> warehouse.settlement.v1.SourceType
+	5,  // 32: warehouse.events.v1.OrderPlaced.lines:type_name -> warehouse.events.v1.OrderPlacedLine
+	12, // 33: warehouse.events.v1.RestockAccepted.lines:type_name -> warehouse.events.v1.RestockAcceptedLine
+	12, // 34: warehouse.events.v1.RestockReceivedCountCorrected.lines:type_name -> warehouse.events.v1.RestockAcceptedLine
+	36, // 35: warehouse.events.v1.CustomShipmentCreated.kind:type_name -> warehouse.inventory.v1.CustomShipmentKind
+	37, // 36: warehouse.events.v1.CustomShipmentCreated.payer:type_name -> warehouse.inventory.v1.CustomShipmentPayer
+	36, // 37: warehouse.events.v1.CustomShipmentCancelled.kind:type_name -> warehouse.inventory.v1.CustomShipmentKind
+	37, // 38: warehouse.events.v1.CustomShipmentCancelled.payer:type_name -> warehouse.inventory.v1.CustomShipmentPayer
+	36, // 39: warehouse.events.v1.CustomShipmentHandedOver.kind:type_name -> warehouse.inventory.v1.CustomShipmentKind
+	37, // 40: warehouse.events.v1.CustomShipmentHandedOver.payer:type_name -> warehouse.inventory.v1.CustomShipmentPayer
+	38, // 41: warehouse.events.v1.ExpenseCreated.kind:type_name -> warehouse.expense.v1.ExpenseKind
+	39, // 42: warehouse.events.v1.ExpenseCreated.type:type_name -> warehouse.expense.v1.ExpenseType
+	38, // 43: warehouse.events.v1.ExpenseAdjusted.kind:type_name -> warehouse.expense.v1.ExpenseKind
+	39, // 44: warehouse.events.v1.ExpenseAdjusted.type:type_name -> warehouse.expense.v1.ExpenseType
+	40, // 45: warehouse.events.v1.event_config:extendee -> google.protobuf.MessageOptions
+	0,  // 46: warehouse.events.v1.event_config:type_name -> warehouse.events.v1.EventConfig
+	47, // [47:47] is the sub-list for method output_type
+	47, // [47:47] is the sub-list for method input_type
+	46, // [46:47] is the sub-list for extension type_name
+	45, // [45:46] is the sub-list for extension extendee
+	0,  // [0:45] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_events_v1_event_proto_init() }
@@ -4214,9 +4706,12 @@ func file_warehouse_events_v1_event_proto_init() {
 		(*Event_CustomShipmentCostUpdated)(nil),
 		(*Event_CustomShipmentCancelled)(nil),
 		(*Event_CustomShipmentHandedOver)(nil),
+		(*Event_RestockRefunded)(nil),
+		(*Event_CustomShipmentReceived)(nil),
 		(*Event_LiabilityPaymentAccepted)(nil),
 		(*Event_ExpenseCreated)(nil),
 		(*Event_ExpenseAdjusted)(nil),
+		(*Event_FinancialAccountCapitalRecorded)(nil),
 	}
 	file_warehouse_events_v1_event_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
@@ -4225,7 +4720,7 @@ func file_warehouse_events_v1_event_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_events_v1_event_proto_rawDesc), len(file_warehouse_events_v1_event_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   29,
+			NumMessages:   32,
 			NumExtensions: 1,
 			NumServices:   0,
 		},

@@ -1,0 +1,173 @@
+syntax = "proto3";
+
+package warehouse.inventory.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/inventory/v1/custom_shipment.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
+
+// RESTOCK RESOLUTIONS (backlog #101 P1 — the RPCs sit on RestockRequestService, restock_request.proto).
+//
+//   - a-restock-problem-is-settled-by-resolution-rows (docs/business/inventory/restock_decision.md, + every 🔄): a problem
+//     restock (Diterima carrying *Barang kurang* / *Barang rusak*) or a lost one (Hilang) is settled by RESOLUTION ROWS —
+//     REFUND (its amount and the account it goes into), RETURN (the goods back to the supplier, the outbound reship
+//     parcel), RESHIPPING (the supplier sends them again, an inbound parcel) — as many as it needs, no units on a row; a
+//     Hilang restock takes no RETURN; the selling team MARKS IT SETTLED and the problem tags come off; a settled restock
+//     still takes rows and stays settled; an inbound parcel's Terima with short or broken units REOPENS it.
+//   - a-suppliers-reshipping-comes-in-as-a-custom-shipment (docs/business/custom_shipments/context_decision.md, + every
+//     🔄): a RESHIPPING creates its INBOUND custom shipment in the same step; `restock_custom_shipments` joins the restock,
+//     the resolution, the parcel and the stock-in its Terima makes.
+//   - the-restock-resolutions-prototype-is-accepted (docs/technical/frontend/restock_decision.md): the screens.
+//
+// Money is `double`, rupiah as stored (money-is-double-in-the-api-too). The receiving WAREHOUSE never reads a refund:
+// those fields are `optional` / 0 and left UNSET for it (a-warehouse-sees-no-seller-money).
+
+// What a resolution row is. APPEND ONLY.
+enum RestockResolutionType {
+  RESTOCK_RESOLUTION_TYPE_UNSPECIFIED = 0;
+  // Money back from the supplier (or the courier's claim) — raises the account it names (restock-is-never-typed-by-hand:
+  // posted from inventory's RestockRefunded, as a cancelled restock's money comes back).
+  RESTOCK_RESOLUTION_TYPE_REFUND = 1;
+  // The broken goods sent back to the supplier — an OUTBOUND custom shipment of the RESTOCK_RESHIP kind. Never on a
+  // Hilang restock (nothing arrived to send back).
+  RESTOCK_RESOLUTION_TYPE_RETURN = 2;
+  // The supplier sends the goods again — an INBOUND custom shipment (SUPPLIER_RESHIPPING) created with the row.
+  RESTOCK_RESOLUTION_TYPE_RESHIPPING = 3;
+}
+
+// One resolution row (`restock_resolutions`).
+message RestockResolution {
+  uint64 id = 1;
+  uint64 restock_id = 2;
+  RestockResolutionType type = 3;
+  // The selling team's words; "" when none.
+  string note = 4;
+  // REFUND: the money back, exact. UNSET on another type and for a warehouse reader (a-warehouse-sees-no-seller-money).
+  optional double refund_amount = 5;
+  // REFUND: the selling team's account it went into. 0 on another type and for a warehouse reader.
+  uint64 finance_account_id = 6;
+  // RETURN / RESHIPPING: the custom shipment it rides (`restock_custom_shipments`); 0 on a refund.
+  uint64 custom_shipment_id = 7;
+  // RESHIPPING: the stock-in its parcel's Terima made — 0 until then, and always 0 on a return (its broken units are on
+  // no rack). `restock_custom_shipments.inventory_transaction_id`.
+  uint64 inventory_transaction_id = 8;
+  // Who recorded it — a user_service id — and whether as Root / the Administrator from outside the team
+  // (an-override-is-stamped-in-every-service).
+  uint64 created_by_user_id = 9;
+  bool created_by_is_override = 10;
+  int64 created_at_unix = 11;
+}
+
+// One line of the inbound parcel a RESHIPPING creates: what the supplier says it sends — product, count and the seller's
+// price per unit (it values the stock and moves NO money; editable until Terima). May differ from the restock's lines.
+message RestockReshippingLine {
+  // A product of the restock's own selling team (a-restock-carries-only-the-teams-own-products).
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  uint64 count = 2 [(buf.validate.field).uint64 = {
+    gt: 0
+    lte: 1000000
+  }];
+  double price_unit = 3 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+}
+
+// The inbound parcel a RESHIPPING creates, as the seller types it (a-suppliers-reshipping-comes-in-as-a-custom-shipment,
+// 🔄 A: who creates it, and when).
+message RestockReshippingParcel {
+  // The warehouse it comes to — the form opens on the restock's; any warehouse may be chosen. 0 = the restock's.
+  uint64 warehouse_id = 1;
+  // The courier — a shipment_service channel id, required.
+  uint64 shipment_channel_id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The courier's receipt number, optional now and editable until Tiba (CustomShipmentResiSet).
+  string resi = 3 [(buf.validate.field).string.max_len = 100];
+  // The supplier sending it: 0 = the one supplier every restock line names (0 when they name none or several); else a
+  // supplier one of the restock's lines names.
+  uint64 supplier_id = 4;
+  // At least one; a product once.
+  repeated RestockReshippingLine lines = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+}
+
+message RestockResolutionCreateRequest {
+  // The restock's SELLING team — the checklist's `selling:all` (a-restock-problem-is-settled-by-resolution-rows: who
+  // records them). A monitor reads only.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  // The restock's own selling team — another team's restock reads NotFound.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 restock_id = 2 [(buf.validate.field).uint64.gt = 0];
+  RestockResolutionType type = 3 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  string note = 4 [(buf.validate.field).string.max_len = 1000];
+  // REFUND only — above 0, the account one of the team's ACTIVE accounts (the picker opens on the restock's paying
+  // account; any of the team's may be chosen — the build's default). 0 and 0 on another type.
+  double refund_amount = 5 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  uint64 finance_account_id = 6;
+  // RETURN only — an EXISTING outbound reship (RESTOCK_RESHIP) of this restock, not cancelled and not yet a return row.
+  // A new one is created WITH its return row through CustomShipmentCreate's `resolution`.
+  uint64 custom_shipment_id = 7;
+  // RESHIPPING only — the inbound parcel to create in the same step.
+  RestockReshippingParcel reshipping = 8;
+  // The form's key for this one record — a double tap would otherwise record a refund twice. UNIQUE per restock: a key
+  // already used is refused as AlreadyExists, never answered with that row. A RESHIPPING's parcel carries it too.
+  string idempotency_key = 9 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+}
+
+message RestockResolutionCreateResponse {
+  RestockResolution resolution = 1;
+  // The parcel the row rides — the inbound one a RESHIPPING created, the outbound one a RETURN linked; unset on a refund.
+  CustomShipment custom_shipment = 2;
+}
+
+message RestockRequestSettleRequest {
+  // The restock's SELLING team, as RestockResolutionCreate.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 request_id = 2 [(buf.validate.field).uint64.gt = 0];
+}
+
+// Which restocks the list reads by their settled mark (the Hilang tab lists the lost restocks NOT yet settled —
+// the-restock-resolutions-prototype-is-accepted). APPEND ONLY.
+enum RestockSettledFilter {
+  // Settled or not — as before.
+  RESTOCK_SETTLED_FILTER_UNSPECIFIED = 0;
+  RESTOCK_SETTLED_FILTER_SETTLED = 1;
+  RESTOCK_SETTLED_FILTER_UNSETTLED = 2;
+}

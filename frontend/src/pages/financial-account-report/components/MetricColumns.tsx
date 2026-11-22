@@ -6,11 +6,12 @@ import { CHANGE_TYPES, CHANGE_TYPE_KEY } from "../../../features/financialAccoun
 import { FinancialAccountChangeType as T } from "../../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { formatRupiahBare, formatRupiahNumber } from "../../../lib/money";
 
-// The nine change-type columns of `financial_account_daily_reports`, in the vocabulary's order — shared by
+// The ten change-type columns of `financial_account_daily_reports`, in the vocabulary's order — shared by
 // the series and the ranking so the two tables read identically.
 export const FIELD_OF: Record<number, keyof Metric> = {
   [T.WITHDRAWAL]: "withdrawal",
   [T.CAPITAL]: "capital",
+  [T.MONEY_IN]: "moneyIn",
   [T.RESTOCK]: "restock",
   [T.EXPENSE]: "expense",
   [T.ADS_EXPENSE]: "adsExpense",

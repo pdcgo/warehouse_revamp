@@ -259,7 +259,20 @@ First for restock:
     - `broken`
     - `missing`
 
+4. Table `restock_resolutions`
 
+    Field that must have:
+    - `id` as primary key
+    - `restock_id`
+    - `resolution_type`
+    - `refund_amount`
+    - `note`
+    - `created_at`
+
+    Field `resolution_type` is contain:
+    - `refund`
+    - `return`
+    - `reshipping`
 
 
 

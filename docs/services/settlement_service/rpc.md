@@ -381,6 +381,35 @@ page.
 - `order_id` breaks ties, so equal rows keep one order across pages. `OrderSettlementDetail` returns the log **oldest first and unpaginated** — it grows with one order's
 activity — and an order with no account is **`NotFound`**, never a zeroed row.
 
+### An order's ledger names its actors — `OrderSettlementDetail` (2026-11-21)
+
+A manual row's badge reads *Manual · \<who typed it\>* ([the-source-is-a-badge](../../technical/frontend/order_settlement_decision.md#the-source-is-a-badge)),
+so the detail fills every entry's `actor_name`, as `ShopSettlementEntryList` does — through the same `UserNames` seam
+(`UserByIDs`, in-process), never settlement reading the users table.
+
+```mermaid
+sequenceDiagram
+  participant P as Order page — the ledger
+  participant D as OrderSettlementDetail
+  participant DB as settlement_logs
+  participant U as user read (in-process)
+  P->>D: team, order
+  D->>DB: the account (order_settlements)
+  D->>DB: the whole log, id ASC
+  D->>U: names of the log's distinct actors (0 left out) — ONE call
+  D-->>P: settlement, entries (actor_name filled)
+```
+
+| | |
+| --- | --- |
+| lookup | ONE `UserNames` call per answer over the log's distinct non-zero `actor_id`s — never one per row; none when every row is the system's (actor 0) |
+| an unknown id | a user the read no longer knows (removed) comes back absent: the row keeps its `actor_id` and an empty `actor_name`, and the screen falls back to the id (`Manual · 64`) — the behaviour before names were filled |
+| the read is down | `Unavailable`, as `ShopSettlementEntryList` answers |
+| other rows | an Order or Import row carries its OWN actor's name; its badge draws no name (`SettlementSourceBadge`, `OnlyManualCarriesAName`) |
+
+`SettlementPost`'s answer still leaves `entry.actor_name` empty: no screen draws it (the ledger re-reads the detail after
+a post), and the importer posts one call per statement line, so naming it there would add a user read per imported line.
+
 ### A shop's own rows — `ShopSettlementEntryList` (2026-11-07)
 
 Shop Entries ([the-shop-entries-page-is-accepted](../../technical/frontend/settlement_report_decision.md#the-shop-entries-page-is-accepted)):

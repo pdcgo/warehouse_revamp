@@ -31,7 +31,7 @@ import (
 // the quiet ones included, each row what the report's own MetricData reads for it; Rincian is one sheet per breakdown.
 
 var periodHeader = []string{
-	"Periode", "Penarikan", "Modal", "Restok", "Biaya", "Iklan", "Pembayaran tim", "Transfer", "Penyesuaian", "Saldo awal",
+	"Periode", "Penarikan", "Modal", "Uang masuk", "Restok", "Biaya", "Iklan", "Pembayaran tim", "Transfer", "Penyesuaian", "Saldo awal",
 	"Perubahan bersih", "Saldo akhir",
 }
 
@@ -150,12 +150,12 @@ func money(v float64) string {
 	return strconv.FormatFloat(v, 'f', -1, 64)
 }
 
-// periodRow is a Periode row as the report reads one period: its label, the nine types in the screen's order, the net
+// periodRow is a Periode row as the report reads one period: its label, the ten types in the screen's order, the net
 // and the closing balance.
 func periodRow(label string, c *financial_accountv1.AccountChangeMetric) []string {
 	return []string{
 		label,
-		money(c.GetWithdrawal()), money(c.GetCapital()), money(c.GetRestock()), money(c.GetExpense()), money(c.GetAdsExpense()),
+		money(c.GetWithdrawal()), money(c.GetCapital()), money(c.GetMoneyIn()), money(c.GetRestock()), money(c.GetExpense()), money(c.GetAdsExpense()),
 		money(c.GetTeamPayment()), money(c.GetTransfer()), money(c.GetAdjustment()), money(c.GetAccountOpening()),
 		money(c.GetChange()), money(c.GetClosingBalance()),
 	}
@@ -166,7 +166,7 @@ func periodRow(label string, c *financial_accountv1.AccountChangeMetric) []strin
 func TestFinancialAccountReportExport_PeriodeIsEveryPeriodAsTheReportReadsIt(t *testing.T) {
 	b := book(t)
 	store := &fakeReportExports{}
-	svc := financial_account_v1.NewService(b.db, testShops, store)
+	svc := financial_account_v1.NewService(b.db, testShops, store, nil)
 
 	file, err := runReportExport(t, svc, store, periodExport(teamA, analytic_basev1.GroupType_GROUP_TYPE_DAILY,
 		analytic_basev1.SortType_SORT_TYPE_UNSPECIFIED, window(45, 0)))
@@ -209,12 +209,12 @@ func TestFinancialAccountReportExport_PeriodeIsEveryPeriodAsTheReportReadsIt(t *
 
 	// A quiet day is a row: nothing moved, the balance carried — day 15 sits between Tabungan's opening and the rest.
 	quiet := rows[slices.Index(spine, day(15))+1]
-	if quiet[10] != "0" || quiet[11] != "30000" {
+	if quiet[11] != "0" || quiet[12] != "30000" {
 		t.Fatalf("a quiet day = %v — want no change and Tabungan's 30000 carried", quiet)
 	}
 
 	// The newest day closes on the team's balance.
-	if rows[1][0] != day(0) || rows[1][11] != "1580000" {
+	if rows[1][0] != day(0) || rows[1][12] != "1580000" {
 		t.Fatalf("today = %v, want the team's 1580000", rows[1])
 	}
 
@@ -248,7 +248,7 @@ func TestFinancialAccountReportExport_PeriodeIsEveryPeriodAsTheReportReadsIt(t *
 func TestFinancialAccountReportExport_AMonthAndAYearReadAsTheTable(t *testing.T) {
 	b := book(t)
 	store := &fakeReportExports{}
-	svc := financial_account_v1.NewService(b.db, testShops, store)
+	svc := financial_account_v1.NewService(b.db, testShops, store, nil)
 
 	for group, layout := range map[analytic_basev1.GroupType]string{
 		analytic_basev1.GroupType_GROUP_TYPE_MONTHLY: "2006-01",
@@ -285,7 +285,7 @@ func TestFinancialAccountReportExport_AMonthAndAYearReadAsTheTable(t *testing.T)
 		}
 
 		// The newest closes on the team's balance; the oldest is quiet — before any account opened — at 0.
-		if rows[1][11] != "1580000" || rows[len(rows)-1][11] != "0" && len(rows) > 2 {
+		if rows[1][12] != "1580000" || rows[len(rows)-1][12] != "0" && len(rows) > 2 {
 			t.Fatalf("%s: newest %v, oldest %v", group, rows[1], rows[len(rows)-1])
 		}
 	}
@@ -296,7 +296,7 @@ func TestFinancialAccountReportExport_AMonthAndAYearReadAsTheTable(t *testing.T)
 func TestFinancialAccountReportExport_RincianIsOneSheetPerBreakdown(t *testing.T) {
 	b := book(t)
 	store := &fakeReportExports{}
-	svc := financial_account_v1.NewService(b.db, testShops, store)
+	svc := financial_account_v1.NewService(b.db, testShops, store, nil)
 
 	file, err := runReportExport(t, svc, store, breakdownExport(teamA, window(30, 0)))
 	if err != nil {
@@ -373,7 +373,7 @@ func TestFinancialAccountReportExport_RincianIsOneSheetPerBreakdown(t *testing.T
 func TestFinancialAccountReportExport_AnotherTeamGetsNothing(t *testing.T) {
 	b := book(t)
 	store := &fakeReportExports{}
-	svc := financial_account_v1.NewService(b.db, testShops, store)
+	svc := financial_account_v1.NewService(b.db, testShops, store, nil)
 
 	file, err := runReportExport(t, svc, store, breakdownExport(teamB, window(30, 0)))
 	if err != nil {
@@ -393,7 +393,7 @@ func TestFinancialAccountReportExport_AnotherTeamGetsNothing(t *testing.T) {
 	}
 
 	for _, row := range periods.rows["Periode"][1:] {
-		if row[11] != "7777" && row[11] != "0" {
+		if row[12] != "7777" && row[12] != "0" {
 			t.Fatalf("team B's period %v carries another team's money", row)
 		}
 	}
@@ -421,7 +421,7 @@ func TestFinancialAccountReportExport_AnotherTeamGetsNothing(t *testing.T) {
 func TestFinancialAccountReportExport_AnAccountPickedNarrowsEverySheet(t *testing.T) {
 	b := book(t)
 	store := &fakeReportExports{}
-	svc := financial_account_v1.NewService(b.db, testShops, store)
+	svc := financial_account_v1.NewService(b.db, testShops, store, nil)
 
 	file, err := runReportExport(t, svc, store, breakdownExport(teamA, window(30, 0), accountsFilter(b.kas)))
 	if err != nil {
@@ -456,7 +456,7 @@ func TestFinancialAccountReportExport_AnAccountPickedNarrowsEverySheet(t *testin
 		t.Fatalf("export: %v", err)
 	}
 
-	if got := periods.rows["Periode"][1]; got[11] != "250000" {
+	if got := periods.rows["Periode"][1]; got[12] != "250000" {
 		t.Fatalf("today under Kas = %v, want Kas's 250000", got)
 	}
 }
@@ -466,7 +466,7 @@ func TestFinancialAccountReportExport_AnAccountPickedNarrowsEverySheet(t *testin
 func TestFinancialAccountReportExport_MoneyIsExact(t *testing.T) {
 	db := san_testdb.DB(t)
 	store := &fakeReportExports{}
-	svc := financial_account_v1.NewService(db, testShops, store)
+	svc := financial_account_v1.NewService(db, testShops, store, nil)
 
 	kas := mustCreate(t, svc, cash(teamA, "Kas", 1_000.25))
 	capital(t, svc, teamA, kas.GetId(), financial_accountv1.CapitalDirection_CAPITAL_DIRECTION_IN, 12_345.505, day(2))
@@ -478,11 +478,11 @@ func TestFinancialAccountReportExport_MoneyIsExact(t *testing.T) {
 	}
 
 	rows := periods.rows["Periode"]
-	if got := rows[3]; got[0] != day(2) || got[2] != "12345.505" || got[10] != "12345.505" || got[11] != "13345.755" {
+	if got := rows[3]; got[0] != day(2) || got[2] != "12345.505" || got[11] != "12345.505" || got[12] != "13345.755" {
 		t.Fatalf("day 2 = %v — want the capital 12345.505 and the balance 13345.755, exact", got)
 	}
 
-	if got := rows[11]; got[0] != day(10) || got[9] != "1000.25" {
+	if got := rows[11]; got[0] != day(10) || got[10] != "1000.25" {
 		t.Fatalf("day 10 = %v — want the opening 1000.25 exact", got)
 	}
 
@@ -509,7 +509,7 @@ func TestFinancialAccountReportExport_MoneyIsExact(t *testing.T) {
 func TestFinancialAccountReportExport_AccountsReadAsTheReportNamesThem(t *testing.T) {
 	db := san_testdb.DB(t)
 	store := &fakeReportExports{shops: map[uint64]string{502: "Melati TikTok"}}
-	svc := financial_account_v1.NewService(db, testShops, store)
+	svc := financial_account_v1.NewService(db, testShops, store, nil)
 
 	// Shop 502 names no account: its withdrawal opens "Unknown — shop #502".
 	withdraw(t, svc, "evt-export-1", teamA, 502, -75_000, day(4))
@@ -552,7 +552,7 @@ func TestFinancialAccountReportExport_AccountsReadAsTheReportNamesThem(t *testin
 func TestFinancialAccountReportExport_Refusals(t *testing.T) {
 	db := san_testdb.DB(t)
 	store := &fakeReportExports{}
-	svc := financial_account_v1.NewService(db, testShops, store)
+	svc := financial_account_v1.NewService(db, testShops, store, nil)
 
 	for name, req := range map[string]*financial_accountv1.FinancialAccountReportExportRequest{
 		"no view":           {TeamId: teamA, Filters: []*analytic_basev1.FilterItem{window(30, 0)}},
@@ -595,7 +595,7 @@ func TestFinancialAccountReportExport_Refusals(t *testing.T) {
 		t.Fatal("the export stores a file — it must not be marked a read")
 	}
 
-	_, err = runReportExport(t, financial_account_v1.NewService(db, testShops, nil), store, breakdownExport(teamA, window(30, 0)))
+	_, err = runReportExport(t, financial_account_v1.NewService(db, testShops, nil, nil), store, breakdownExport(teamA, window(30, 0)))
 	if connect.CodeOf(err) != connect.CodeUnimplemented {
 		t.Fatalf("no store: err = %v, want Unimplemented", err)
 	}

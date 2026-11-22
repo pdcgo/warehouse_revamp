@@ -22,6 +22,36 @@ function sortOf(next: SortState<string>): ReportSort {
   return { by: "field", metricId, field, dir: next.dir };
 }
 
+const NBSP = "\u00a0";
+
+/**
+ * A HEADING IN AT MOST TWO LINES (one-context-per-column-and-never-three-lines: *"1 line lebih dari 2 baris"*). A wide
+ * table's column is only as wide as its figures, so a heading of several words wrapped one word a line — *Konten /
+ * · / endorse*, *Units / back / on the / shelf*. Two rules, written into the heading's spaces:
+ *   - the middle dot of an expense type's words (Biaya's, shared — expenses.types.type.*) stays with the word before
+ *     it: a no-break space before it, so *Konten ·* / *endorse*, never a dot alone or opening a line;
+ *   - a heading of three words or more may break at ONE space only — the one leaving the longer line shortest — and the
+ *     others hold. Its longer half is then one unbreakable run, which the column cannot get narrower than: the
+ *     column widens to it instead of the words going to a third line, and nothing is cut.
+ * Only the table's headings — the headline cards, graphs and sort lists read the same label as it is.
+ */
+function inTwoLines(label: string): string {
+  const words = label.replace(/ ·/g, `${NBSP}·`).split(" ");
+  if (words.length < 3) return words.join(" ");
+
+  let at = 1;
+  let longest = Infinity;
+  for (let i = 1; i < words.length; i++) {
+    const longer = Math.max(words.slice(0, i).join(" ").length, words.slice(i).join(" ").length);
+    if (longer < longest) {
+      longest = longer;
+      at = i;
+    }
+  }
+
+  return `${words.slice(0, at).join(NBSP)} ${words.slice(at).join(NBSP)}`;
+}
+
 // THE TABLE — one row per key step 1 sent, a column per figure of every selected metric, whichever service it comes
 // from. Sorted from its headings, largest first, then flipped (a-table-sorts-from-its-headings), one column at a time
 // (one-sort-field-per-table). Every row lights up under the pointer (a-table-row-lights-up); on a phone each row is a
@@ -81,10 +111,14 @@ export function ReportTable({
 
   const current = columnOf(sort);
   const change = (next: SortState<string>) => onSortChange(sortOf(next));
-  // A WIDE TABLE FITS THE SCREEN: a heading and a row's name may take two lines (cells-are-two-lines-at-most), so a
+  // A WIDE TABLE FITS THE SCREEN: a heading and a row's name may take two lines, never three (inTwoLines), so a
   // table of many columns — Account changes by account, thirteen of them — is as wide as its figures, not its longest
   // words (the-finance-prototype-is-accepted: it ran ~40 px past a 1440 screen). The figures never wrap.
   const wraps = { whiteSpace: "normal", verticalAlign: "bottom" } as const;
+  // PAST TWELVE FIGURES the cells' side padding tightens (8 px → 6 px a side), so the table still fits: Account changes
+  // gained its tenth change type, *Money in* (money-in-on-biaya-is-its-own-change-type) — fourteen columns, ~25 px past a
+  // 1440 screen at the default padding. A table of twelve or fewer figures is unchanged.
+  const pad = columns.length > 12 ? ({ px: "1.5" } as const) : {};
 
   return (
     <Table.ScrollArea>
@@ -94,29 +128,31 @@ export function ReportTable({
             {isTimeGroup(groupBy) ? (
               <SortableHeader
                 column="key"
-                label={t("analytic.period")}
+                label={inTwoLines(t("analytic.period"))}
                 sort={current}
                 onSortChange={change}
                 testId="analytic-sort-key"
               />
             ) : (
-              <Table.ColumnHeader {...wraps}>{t(`analytic.group.${groupBy}`)}</Table.ColumnHeader>
+              <Table.ColumnHeader {...wraps} {...pad}>
+                {inTwoLines(t(`analytic.group.${groupBy}`))}
+              </Table.ColumnHeader>
             )}
             {columns.map(({ def, field, id }) =>
               field.canSort ? (
                 <SortableHeader
                   key={id}
                   column={id}
-                  label={fieldLabel(t, def, field.name)}
+                  label={inTwoLines(fieldLabel(t, def, field.name))}
                   sort={current}
                   onSortChange={change}
                   end
                   testId={`analytic-sort-${field.name}`}
-                  headerProps={wraps}
+                  headerProps={{ ...wraps, ...pad }}
                 />
               ) : (
-                <Table.ColumnHeader key={id} textAlign="end" {...wraps}>
-                  {fieldLabel(t, def, field.name)}
+                <Table.ColumnHeader key={id} textAlign="end" {...wraps} {...pad}>
+                  {inTwoLines(fieldLabel(t, def, field.name))}
                 </Table.ColumnHeader>
               ),
             )}
@@ -125,11 +161,17 @@ export function ReportTable({
         <Table.Body>
           {keys.map((key) => (
             <Table.Row key={key} css={{ _hover: { "& > td": { bg: "bg.muted" } } }} data-testid={`analytic-row-${key}`}>
-              <Table.Cell whiteSpace={isTimeGroup(groupBy) ? "nowrap" : "normal"} minW="7rem">
+              <Table.Cell whiteSpace={isTimeGroup(groupBy) ? "nowrap" : "normal"} minW="7rem" {...pad}>
                 <Text lineClamp={2}>{labelOf(key)}</Text>
               </Table.Cell>
               {columns.map(({ def, field, id }) => (
-                <Table.Cell key={id} textAlign="end" whiteSpace="nowrap" data-testid={`analytic-cell-${key}-${field.name}`}>
+                <Table.Cell
+                  key={id}
+                  textAlign="end"
+                  whiteSpace="nowrap"
+                  {...pad}
+                  data-testid={`analytic-cell-${key}-${field.name}`}
+                >
                   {formatFigure(field.kind, value(key, def.metricId, field.name))}
                 </Table.Cell>
               ))}

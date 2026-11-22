@@ -1,6 +1,6 @@
 # Penjualan — performance audit (the sales fold, and the figures' reads with it)
 
-**Verdict:** ✅ the fold — **≈ 2 ms, 6 statements whatever the parts**. 🟡 the reads grow with Penjualan's rows: on the
+**Verdict:** ✅ the fold — **≈ 2 ms, 7 statements whatever the parts** (6 until its replay-lock read, 2026-11-21). 🟡 the reads grow with Penjualan's rows: on the
 worst-case seed (a sale row for EVERY restock row — twice the rows) the 366-day reads double, the 30-day ones stay
 under 30 ms.
 **Measured:** 2026-11-07 · `supplier_v1/sales_fold.go`, `metric_data.go`, `metric_search.go`, `analytic_shared.go` ·
@@ -25,6 +25,11 @@ here (its own read is `OrderTakeSuppliers`, one indexed statement on `batch_logs
 The six: BEGIN-side claim `INSERT … ON CONFLICT DO NOTHING`, the row `FOR UPDATE`, its `UPDATE`, the parts' one
 multi-row `INSERT` (the cancel: their one `SELECT`), one `INSERT … SELECT … ORDER BY key ON CONFLICT DO UPDATE` for every
 day row, COMMIT. Flat in the parts.
+
+**2026-11-21 — 7 statements** (backlog #113, Penjualan replayed): the fold now reads `process_event_lock` FOR SHARE first,
+as the restock fold. Re-measured on the same book (one process, warm-up + 5 runs): placed 2.4 / 2.1 / 2.6 ms and
+cancelled 2.0 / 2.1 / 2.4 ms at 1 / 5 / 20 parts — 7 statements, still flat in the parts; within the noise of the table
+above (+≈ 0.1–0.3 ms). Still ✅.
 
 ## The reads — before (HEAD, no sales) · after, sales table empty · after, sales seeded
 

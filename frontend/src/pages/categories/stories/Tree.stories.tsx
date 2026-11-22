@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { clearCategoriesForStory } from "../../../../.storybook/categoryStub";
+import { fileProductsForStory } from "../../../../.storybook/productStub";
 import { CATEGORIES_META, TOP, loaded, openAll, openDialog, visibleNames } from "./kit";
 
 // CATEGORIES — the tree itself — empty, shut on arrival, one button for all, read as a table, the product count. The page's stories are grouped by the part of the screen they are about
@@ -95,18 +96,22 @@ export const TheTreeReadsLikeATable: Story = {
   },
 };
 
-/** HOW MANY PRODUCTS each holds (owner: "tambah jumlah produk dan kasih warning") — invented, so its column carries the
- * ⚠ mark and the strip at the top names it: nothing counts the products filed under a category yet. */
-export const TheProductCountIsASampleAndSaysSo: Story = {
-  name: "Product count, marked",
+/** HOW MANY PRODUCTS each holds (owner: "tambah jumlah produk dan kasih warning") — COUNTED since #115: every team's live
+ * products filed on the node (ProductCategoryCounts), a branch reading its whole subtree (the owner's Q3, held as A —
+ * ./ProductCount.stories.tsx draws the options). The fixtures' Elektronik holds 2 of its own; one more filed under
+ * Headphone makes Audio 1 and Elektronik 3; Rumah Tangga's 48 leave its 2 archived out. No ⚠ mark, no strip. */
+export const TheProductCountIsCounted: Story = {
+  name: "Product count",
+  beforeEach: () => fileProductsForStory(53n, 1),
   play: async ({ canvasElement }) => {
-    const canvas = await loaded(canvasElement);
+    const canvas = await openAll(canvasElement);
 
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeVisible();
-    await expect(
-      within(canvas.getByTestId("categories-heading")).getByTestId("not-implemented-productCount"),
-    ).toHaveTextContent("1");
-    await expect(canvas.getByTestId("category-products-51")).toHaveTextContent(/^102$/);
-    await expect(canvas.getByTestId("category-products-54")).toHaveTextContent(/^9$/);
+    await waitFor(() => expect(canvas.getByTestId("category-products-51")).toHaveTextContent(/^3$/));
+    await expect(canvas.getByTestId("category-products-52")).toHaveTextContent(/^1$/);
+    await expect(canvas.getByTestId("category-products-53")).toHaveTextContent(/^1$/);
+    await expect(canvas.getByTestId("category-products-54")).toHaveTextContent(/^48$/);
+    await expect(canvas.getByTestId("category-products-55")).toHaveTextContent(/^0$/);
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
+    await expect(within(canvas.getByTestId("categories-heading")).queryByTestId(/^not-implemented-/)).toBeNull();
   },
 };

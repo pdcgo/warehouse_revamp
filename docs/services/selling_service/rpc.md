@@ -1651,6 +1651,52 @@ sequenceDiagram
 Tests: `order_reprint_label_test.go` (11), `order_reprint_label_race_test.go` (`-tags raceaudit`),
 `order_reprint_label_perf_test.go` (`-tags perfaudit`).
 
+## Order tags (built 2026-11-20, backlog #100)
+
+An order carries **tags**; both order lists show and filter by them, and both sides of an order tag it
+([orders-have-their-own-tag-list](../../business/order/context_decision.md#orders-have-their-own-tag-list) with its 🔄
+lines, [the-order-tags-prototype-is-accepted](../../technical/frontend/order_list_decision.md#the-order-tags-prototype-is-accepted)).
+**The orders' own list** (`order_tags`, database-schema.md), apart from the restocks' (inventory's `tags`, *Restock tags*
+in inventory rpc.md): one list for every team, a name one tag whatever its case, and the same name free in both lists.
+The restock tags' rules on it, without an app task — the app owns no order tag for now. The messages are in
+`proto/warehouse/selling/v1/order_tag.proto`, the RPCs on `OrderService`; the handlers are `selling_v1/order_tag_*.go`
+and `order_system_tag_*.go` on `order_tags.go`.
+
+| RPC | who (proto policy) | what |
+| --- | --- | --- |
+| `OrderTagList` | every team role (a read) | the orders' list, the system's first then by name, `q` narrowing, paged (a picker asks one large page) |
+| `OrderTagManageList` | Root, Administrator | the same, each tag's `order_count` (every team's) — *Kelola tag pesanan* |
+| `OrderTagCreate` | Root, Administrator, every selling / warehouse role | a **custom** tag; a name that exists, any case, answers THAT tag with `created` false — never a twin |
+| `OrderTagSystemCreate` | Root, Administrator | a **system** tag, same answer for a name that exists |
+| `OrderTagRename` | Root, Administrator | a name another order tag carries → AlreadyExists |
+| `OrderTagDelete` | Root, Administrator | takes it off every order and says how many (`order_count`) |
+| `OrderTagAdd` / `Remove` | Root, Administrator, every selling / warehouse role (not a monitor) | a **custom** tag on / off an order the caller's team is a side of — the selling team that placed it or the warehouse shipping it, in every status; any other order (a return warehouse that does not ship it, the root team's every-team read) is NotFound; a system tag → PermissionDenied |
+| `OrderSystemTagAdd` / `Remove` | Root, Administrator | an admin's **system** tag on / off, same sides; a custom tag → InvalidArgument |
+
+- **Why the admin acts are their own messages**: inside a team scope `GetCallerRole` answers the scope's role, so a
+  handler cannot tell Root from a team's owner; the platform roles are the proto's `request_policy` on separate requests
+  (as the restock tags do).
+- **Every status**: a tag goes on and comes off a pending, picked, shipped, cancelled, returned … order alike
+  (`TestOrderTagAdd_BothSidesInEveryStatus`). A put-on already on, or a take-off not on, is no change; both answer the
+  order's tags after. Who put a tag on is kept on its row (`added_by_user_id`, `added_by_is_override`); no timeline row.
+- **Concurrency** (`order_tags_race_test.go`): two creates of one new name → one tag (`ON CONFLICT ((lower(name))) DO
+  NOTHING`, then the holder is read); a put-on holds the tag `FOR KEY SHARE` and a delete locks it `FOR UPDATE` first, so
+  a put-on racing a delete either lands before it (and is cascaded off) or answers NotFound — never a link to a gone tag;
+  two renames onto one name → one wins, the other AlreadyExists.
+
+**The list filter.** `OrderListFilter.tag_ids` (17) and `OrderStatFilter.tag_ids` (15): none = any tag; several = an
+order carrying **ANY** of them, as `EXISTS (SELECT 1 FROM order_tag_links otl WHERE otl.order_id = orders.id AND
+otl.tag_id IN ?)` inside `scopedOrders` — so `OrderList`, the warehouse's tab counts and the seller's Statistik
+(`OrderStat`) and `OrderExport` narrow alike, and an order with two picked tags is one row
+(`TestOrderTagFilter_TheRowsTheTabCountsTheStatAndTheExportAgree`; the search matrix's `statFilterOf` mirrors it).
+**Reads carry tags**: `Order.tags` (42) on the list's rows and the detail (`orderTagsOf`, one statement per page); the
+export's file has a *Tags* column after Status in both views (names joined, the system's first).
+
+**Volume** (`order_tags_perf_test.go`, perfaudit: 50 000 orders, tags on 1/7, 1/53 and 1/503 of them): every list and
+stat case 1.5–25 ms median, generic plans ≤ 31 ms. The pure index `order_tag_links_tag_idx (tag_id, order_id)` (in
+`00055`) takes a rare tag's seller list from 7.8 to 4.7 ms and its stat from 2.3 to 1.6 ms (the warehouse's 3.0 → 1.5 ms);
+a list with no tag picked pays one more statement for the page's tags.
+
 ## The order list's money sorts and its *settlement not opened* filter — `OrderList` (2026-11-05)
 
 | | |
@@ -1717,7 +1763,7 @@ sequenceDiagram
 | | |
 | --- | --- |
 | the rows | `scopedOrders` with the list's filter and status — the same set as `OrderList` and `OrderStat`. With `order_ids` (the warehouse bar's ticked rows, [the-bulk-actions-are-always-on-screen](../../technical/frontend/warehouse_order_list_decision.md#the-bulk-actions-are-always-on-screen)), only those, still inside the scope |
-| the columns | **seller**: order id, marketplace ref, shop, marketplace, status, created, created by, customer, phone, courier, qty, goods cost, marketplace total. **Warehouse**: order id, created, created by, seller, shop, marketplace, marketplace ref, courier, qty, status |
+| the columns | **seller**: order id, marketplace ref, shop, marketplace, status, tags (backlog #100), created, created by, customer, phone, courier, qty, goods cost, marketplace total. **Warehouse**: order id, created, created by, seller, shop, marketplace, marketplace ref, courier, qty, status, tags |
 | only real data | the tracking number, the marketplace date and the deadline are invented on screen behind a ⚠. A spreadsheet cannot carry the mark, so they are left out until their fields exist |
 | text cells | ids, refs and phone numbers are strings, so `0812…` keeps its 0 and a long marketplace id never becomes `5.78E+17`. A money figure of 0 means "not recorded" and is left empty |
 | the clock | WIB (UTC+7), the people reading it keep that time |

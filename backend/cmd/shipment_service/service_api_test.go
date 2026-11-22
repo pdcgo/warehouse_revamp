@@ -93,6 +93,28 @@ func TestAChannelWriteNeedsALogin(t *testing.T) {
 	}
 }
 
+// The tracking link's cap is the contract's (max_len 500, the-tracking-link-prototype-is-accepted): a longer one is
+// refused by the validator, before the access check and before any handler — on create and on update alike.
+func TestATrackingLinkOverTheCapIsRefusedByTheContract(t *testing.T) {
+	server := newTestServer(t)
+
+	long := "https://courier.example/" + strings.Repeat("a", 470) + "?awb={resi}"
+	if len(long) <= 500 {
+		t.Fatalf("the probe link is %d characters, want over 500", len(long))
+	}
+
+	for _, call := range []struct{ rpc, body string }{
+		{"ShipmentChannelCreate", `{"code":"x","name":"X","trackingUrl":"` + long + `"}`},
+		{"ShipmentChannelUpdate", `{"channelId":"1","name":"X","trackingUrl":"` + long + `"}`},
+	} {
+		res := post(t, server.URL+"/warehouse.shipment.v1.ShipmentChannelService/"+call.rpc, call.body)
+
+		if res.StatusCode != http.StatusBadRequest {
+			t.Errorf("%s with a %d-character link = %d, want 400 from the validator", call.rpc, len(long), res.StatusCode)
+		}
+	}
+}
+
 // Only shipment is served: another service's route is not here at all.
 func TestNoOtherServiceIsMounted(t *testing.T) {
 	server := newTestServer(t)

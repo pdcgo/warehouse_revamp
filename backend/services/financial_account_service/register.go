@@ -34,6 +34,9 @@ const (
 	RestockCreatedSubscription   = "financial-account-restock-created"
 	RestockUpdatedSubscription   = "financial-account-restock-updated"
 	RestockCancelledSubscription = "financial-account-restock-cancelled"
+	// A REFUND resolution's money back into the account it names (backlog #101,
+	// a-restock-problem-is-settled-by-resolution-rows) — the same listener, the cancel's path.
+	RestockRefundedSubscription = "financial-account-restock-refunded"
 )
 
 // The push subscriptions that bring expense_service's EXPENSES to the account that paid
@@ -88,6 +91,7 @@ func NewRegister(
 		mux.Handle("/event/"+RestockCreatedSubscription+"/push", restock)
 		mux.Handle("/event/"+RestockUpdatedSubscription+"/push", restock)
 		mux.Handle("/event/"+RestockCancelledSubscription+"/push", restock)
+		mux.Handle("/event/"+RestockRefundedSubscription+"/push", restock)
 
 		// An expense paid from an account, and its corrections — one listener, its two subscriptions.
 		expense := event_source.NewMuxPushHandler(accounts.ExpensePaymentHandler())

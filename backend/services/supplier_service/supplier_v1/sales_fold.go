@@ -29,6 +29,10 @@ import (
 // two events may arrive in either order: a cancel first leaves the cancel's day on the row, and the late placement then
 // adds on its day and takes back on the cancel's in one transaction.
 //
+// It honours THE REPLAY'S LOCK as the restock fold does: `process_event_lock` read FOR SHARE first, so a replay's flip
+// waits for a fold in flight, and a fold arriving while a replay clears Penjualan's range is refused (errFoldLocked →
+// 500 → Pub/Sub redelivers it after the release).
+//
 // Any other variant is ACKED — redelivering a message nothing here will ever handle is a loop, not a retry.
 func (s *Service) SalesFoldHandler() event_source.PushHandler {
 	return func(ctx context.Context, event *eventsv1.Event) error {
@@ -88,6 +92,11 @@ func (s *Service) foldSalePlaced(ctx context.Context, event *eventsv1.Event, pla
 	parts := saleParts(placed, take)
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := refuseWhileReplaying(tx)
+		if err != nil {
+			return err
+		}
+
 		order, err := claimSaleOrder(tx, placed.GetOrderId())
 		if err != nil {
 			return err
@@ -148,6 +157,11 @@ func (s *Service) foldSaleCancelled(ctx context.Context, event *eventsv1.Event, 
 	}
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := refuseWhileReplaying(tx)
+		if err != nil {
+			return err
+		}
+
 		order, err := claimSaleOrder(tx, cancelled.GetOrderId())
 		if err != nil {
 			return err
@@ -192,6 +206,22 @@ func (s *Service) foldSaleCancelled(ctx context.Context, event *eventsv1.Event, 
 
 		return addSales(tx, day, parts, -1)
 	})
+}
+
+// refuseWhileReplaying is the sales fold's first statement: THE MAINTENANCE LOCK, read FOR SHARE, as the restock fold
+// reads it (analytic_fold.go). A replay takes the row FOR UPDATE to set it, so a fold already running finishes before
+// the replay's delete begins, and a fold arriving after sees the lock and is refused.
+func refuseWhileReplaying(tx *gorm.DB) error {
+	locked, err := readEventLock(tx.Clauses(clause.Locking{Strength: "SHARE"}))
+	if err != nil {
+		return err
+	}
+
+	if locked {
+		return errFoldLocked
+	}
+
+	return nil
 }
 
 // claimSaleOrder makes sure the order's row exists and LOCKS it — the one lock a placement and a cancel of the same

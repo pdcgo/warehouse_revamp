@@ -43,6 +43,11 @@ message ShipmentChannel {
   google.protobuf.Timestamp created_at = 6;
   // Set on every edit, delete and restore (a-channel-records-updated-at).
   google.protobuf.Timestamp updated_at = 7;
+  // The courier's own tracking page, `{resi}` where the number goes — "" = none, and the order's resi stays copy-only
+  // (an-orders-resi-links-to-the-couriers-tracking-page, the-tracking-link-prototype-is-accepted). Kept by root, one per
+  // courier (a-channel-is-a-courier); a deleted channel's link still opens for its old orders
+  // (a-deleted-channel-still-resolves-by-id). Every `{resi}` is replaced by the order's resi, URL-encoded, by the screen.
+  string tracking_url = 8;
 }
 
 // ---------------------------------------------------------------------------- list
@@ -167,13 +172,17 @@ message ShipmentChannelCreateRequest {
     max_len: 120
   }];
   string desc = 3 [(buf.validate.field).string.max_len = 500];
+  // Optional — "" = none. Otherwise refused with INVALID_ARGUMENT, each for its own reason, when it is not an `https://`
+  // address, holds no `{resi}` (a-tracking-link-must-carry-the-resi), or is no address at all.
+  string tracking_url = 4 [(buf.validate.field).string.max_len = 500];
 }
 
 message ShipmentChannelCreateResponse {
   ShipmentChannel channel = 1;
 }
 
-// Edits name and desc. There is no `code` field — it cannot be changed (a-code-never-changes).
+// Edits name, desc and the tracking link. There is no `code` field — it cannot be changed (a-code-never-changes).
+// Every editable field is written as sent: an empty `desc` or `tracking_url` clears it.
 message ShipmentChannelUpdateRequest {
   option (warehouse.role_base.v1.request_policy) = {
     roles: [ROLE_ROOT]
@@ -185,6 +194,8 @@ message ShipmentChannelUpdateRequest {
     max_len: 120
   }];
   string desc = 3 [(buf.validate.field).string.max_len = 500];
+  // As on create: "" clears the link; otherwise `https://`, holding `{resi}`, an address — each refusal its own reason.
+  string tracking_url = 4 [(buf.validate.field).string.max_len = 500];
 }
 
 message ShipmentChannelUpdateResponse {

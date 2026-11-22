@@ -64,14 +64,12 @@ export function MoveGoodsDialog({
   teamNames,
   open,
   onOpenChange,
-  onMoved,
 }: {
   warehouseId: bigint;
   rack: Rack;
   teamNames: Map<string, string>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onMoved: () => void;
 }) {
   const { t } = useTranslation();
   // FULL SCREEN ONLY ON A PHONE — by the JS breakpoint, never a responsive `size`: Chakra merges a responsive variant, so
@@ -99,6 +97,8 @@ export function MoveGoodsDialog({
     setError("");
   }, [open]);
 
+  // The move refreshes the page itself: useRackMove invalidates `racks`, so the header, the shelf and the history read
+  // again before the dialog closes (#120 — the page has no reload of its own to bump).
   const move = useRackMove();
 
   const legsOf = (productId: bigint) => legs[productId.toString()] ?? [firstLeg()];
@@ -191,7 +191,6 @@ export function MoveGoodsDialog({
       {
         onSuccess: () => {
           toaster.create({ type: "success", title: t("racks.move.done", { count: moved, code: rack.code }) });
-          onMoved();
           onOpenChange(false);
         },
         // ALL OR NOTHING: a refusal means nothing moved, and the message names the product to fix.

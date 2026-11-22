@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, waitFor, within } from "storybook/test";
 
 import { pickTeam } from "../../../../.storybook/pageStory";
+import { ownerSampleForStory } from "../../../../.storybook/productStub";
 import { AtTepung, PRODUCT_DETAIL_META, loaded, openTab } from "./kit";
 
 // PRODUCT DETAIL — the warehouse zone (the-warehouse-picker-splits-the-page): the picker, and the card's tabs under it —
@@ -101,6 +102,53 @@ export const StockHistoryListsEveryMovement: Story = {
     await expect(rows[0]!.dataset.testid).toBe("pd-history-row-70005");
     // Five movements fit page 1, so there is no pager (no-list-on-the-product-page-pages-when-it-fits).
     await expect(canvas.queryByTestId("pd-history-pager")).toBeNull();
+  },
+};
+
+/** WHO RECEIVED A SAMPLE, IN THE OWNER'S OWN HISTORY (a-sample-keeps-its-recipient — *Melati's history: 2 Kaos Hitam to
+ * Budi*; backlog #111): the owning team checks its samples by who got them, so its Riwayat Stok says *given to Pak Budi* on
+ * the sample's row, on a line of its own under what happened — the newest row, 2 out. No other row names anybody, and the
+ * staff's note is not that line. */
+export const ASampleNamesWhoReceivedIt: Story = {
+  name: "A sample names who received it",
+  beforeEach: () => ownerSampleForStory(700n, 2n, "Pak Budi", "for a review video"),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await openTab(canvas, "history");
+
+    const table = await canvas.findByTestId("pd-history-table", {}, { timeout: 4000 });
+    await waitFor(() => expect(within(table).getAllByTestId(/^pd-history-row-\d+$/)).toHaveLength(6));
+    const lines = table.querySelectorAll<HTMLElement>('[data-testid^="pd-history-row-"][data-testid$="-recipient"]');
+    await expect(lines).toHaveLength(1);
+    await expect(lines[0]!.dataset.testid).toBe("pd-history-row-70006-recipient");
+    await expect(lines[0]).toHaveTextContent(/^given to Pak Budi$/);
+    // On the sample's own row — the newest, the one that took 2 out.
+    const row = lines[0]!.closest<HTMLElement>('tr[data-testid^="pd-history-row-"]');
+    await expect(row).not.toBeNull();
+    await expect(row!.dataset.testid).toBe("pd-history-row-70006");
+    await expect(row!).toHaveTextContent(/Sample/);
+    await expect(row!).toHaveTextContent("-2");
+    await expect(table).not.toHaveTextContent("for a review video");
+  },
+};
+
+/** …and on a phone: the block's own line under *Sample · …*, nothing past the screen's edge. */
+export const ASampleNamesWhoReceivedItOnAPhone: Story = {
+  name: "Phone · a sample names who received it",
+  globals: { viewport: { value: "mobile2" } },
+  beforeEach: () => ownerSampleForStory(700n, 2n, "Pak Budi", "for a review video"),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const history = await openTab(canvas, "history");
+
+    await waitFor(() => expect(history.getByTestId("pd-history-row-70006")).toBeInTheDocument());
+    await expect(history.queryByRole("table")).toBeNull();
+    const line = history.getByTestId("pd-history-row-70006-recipient");
+    await expect(line).toHaveTextContent(/^given to Pak Budi$/);
+    await expect(line).toBeVisible();
+    await expect(history.getByTestId("pd-history-row-70006")).toHaveTextContent(/-2/);
+    await expect(history.queryAllByTestId(/-recipient$/)).toHaveLength(1);
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
   },
 };
 

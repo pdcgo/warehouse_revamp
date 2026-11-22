@@ -37,7 +37,7 @@ const (
 // bayar* parcel's cost leaves the account, an edit takes the difference, the cancel gives it all back.
 func TestRegister_TheCustomShipmentCourierReachesTheAccount(t *testing.T) {
 	db := san_testdb.DB(t)
-	svc := financial_account_v1.NewService(db, nil, nil)
+	svc := financial_account_v1.NewService(db, nil, nil, nil)
 	mux := http.NewServeMux()
 	financial_account_service.NewRegister(mux, svc, connect.WithInterceptors())()
 

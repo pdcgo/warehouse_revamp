@@ -1,9 +1,8 @@
-import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ProductPickerShell } from "./ProductPickerShell";
-import { CATALOGUE_ID_LIMIT, noMatches, ownCatalogueIds, searchCatalogueIds, stockedPage } from "./stockedSource";
-import type { ResolvedIds } from "./stockedSource";
+import { CATALOGUE_ID_LIMIT, catalogueSearchQuery, noMatches, ownCatalogueIdsQuery, stockedPage } from "./stockedSource";
 import type { PickedProduct } from "./ProductSelect";
 
 export interface OwnStockedProductPickerProps {
@@ -38,30 +37,26 @@ export function OwnStockedProductPicker({
   trigger,
 }: OwnStockedProductPickerProps) {
   const { t } = useTranslation();
+  const client = useQueryClient();
 
-  // The team's catalogue ids, resolved ONCE and reused for every page turn. A fact about a team, not
-  // about a page — re-resolving per page would triple the cost of the pager for no new information.
-  //
-  // A ref rather than state: nothing renders from it, and a setState here would re-run the load it is
-  // being read by. Cleared when the team changes, or it would narrow the new team by the old one's
-  // catalogue — which would silently show an empty warehouse.
-  const catalogueRef = useRef<Promise<ResolvedIds> | null>(null);
-
-  useEffect(() => {
-    catalogueRef.current = null;
-  }, [teamId]);
-
+  // The team's catalogue ids, resolved ONCE and reused for every page turn and every reopen — a fact about a team, not
+  // about a page; re-resolving per page would triple the cost of the pager for no new information. Through the query
+  // cache (`ownCatalogueIdsQuery`, #121), keyed by the team: a team change can never narrow the new team by the old
+  // one's catalogue (which would silently show an empty warehouse) — the component ref this replaces had to be
+  // cleared by hand for that.
   return (
     <ProductPickerShell
       scopeTeamId={teamId}
       noTeamMessage={t("productPicker.noTeam")}
       loadKey={`own-stocked:${teamId}:${warehouseId}`}
+      // The rows are what the building holds — read always fresh (HARD RULE 10).
+      stocked
       load={async ({ page, q }) => {
         // A SEARCH is already a narrowing to my catalogue — ProductList only ever returns my products
         // — so it replaces the whole-catalogue resolve rather than intersecting with it.
         const resolved = await (q === ""
-          ? (catalogueRef.current ??= ownCatalogueIds(teamId))
-          : searchCatalogueIds({ scopeTeamId: teamId, q, own: true }));
+          ? client.fetchQuery(ownCatalogueIdsQuery(teamId))
+          : client.fetchQuery(catalogueSearchQuery({ scopeTeamId: teamId, q, own: true })));
 
         // My catalogue is empty, or the search matched nothing in it. Either way there is nothing for
         // the warehouse to hold — and an empty `product_ids` would mean "the whole building".

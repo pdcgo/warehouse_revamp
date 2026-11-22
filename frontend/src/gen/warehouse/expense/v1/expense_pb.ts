@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/expense/v1/expense.proto.
  */
 export const file_warehouse_expense_v1_expense: GenFile = /*@__PURE__*/
-  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSK9AgoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoARITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSFwoPY3JlYXRlZF9hdF91bml4GAogASgDEhoKEmFkanVzdHNfZXhwZW5zZV9pZBgLIAEoBBISCgpuZXRfYW1vdW50GAwgASgBEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgNIAEoBBITCgtpc19vdmVycmlkZRgOIAEoCEoECAkQClIGdm9pZGVkIpMDChRFeHBlbnNlQ3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARKmAQoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQnW6SHK6AWgKK2V4cGVuc2VfY3JlYXRlLmtpbmQuc3RvY2tfbG9zc19pc19ub3RfdHlwZWQSLnN0b2NrIGxvc3MgaXMgcmVjb3JkZWQgYnkgaW52ZW50b3J5LCBub3QgdHlwZWQaCXRoaXMgIT0gNYIBBBABIAASIAoGYW1vdW50GAMgASgBQhC6SA0SC0ABIQAAAAAAAAAAEjgKC29jY3VycmVkX2F0GAQgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIPCgdzaG9wX2lkGAUgASgEEhYKBG5vdGUYBiABKAlCCLpIBXIDGPQDEiMKEmZpbmFuY2VfYWNjb3VudF9pZBgHIAEoBEIHukgEMgIgADoKkrUYBgoEAQIDBCJNChVFeHBlbnNlQ3JlYXRlUmVzcG9uc2USNAoHZXhwZW5zZRgBIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSZWNvcmQiiwEKEUV4cGVuc2VMaXN0RmlsdGVyEhUKBGZyb20YASABKAlCB7pIBHICGAoSEwoCdG8YAiABKAlCB7pIBHICGAoSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIsIBChVFeHBlbnNlTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEjcKB2V4cGVuc2UYAyABKA4yJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93U29ydEgAQgMKAXMisAIKEkV4cGVuc2VMaXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARI3CgZmaWx0ZXIYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdEZpbHRlchI5CgRzb3J0GAMgASgLMisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RGaWx0ZXJTb3J0Ej8KDGRhdGFfcmVxdWVzdBgEIAMoDjIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0RGF0YVR5cGUSOwoEcGFnZRgFIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgqStRgGCgQBAgMEIo8BCg1FeHBlbnNlVG90YWxzEg0KBXRvdGFsGAEgASgBEkAKB2J5X2tpbmQYAiADKAsyLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzLkJ5S2luZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAToCOAEivgIKDkV4cGVuc2VSb3dJdGVtEgoKAmlkGAEgASgEEg8KB3RlYW1faWQYAiABKAQSDwoHc2hvcF9pZBgDIAEoBBIvCgRraW5kGAQgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmQSDgoGYW1vdW50GAUgASgBEhMKC29jY3VycmVkX2F0GAYgASgJEgwKBG5vdGUYByABKAkSEgoKY3JlYXRlZF9ieRgIIAEoBBIXCg9jcmVhdGVkX2F0X3VuaXgYCiABKAMSGgoSYWRqdXN0c19leHBlbnNlX2lkGAsgASgEEhIKCm5ldF9hbW91bnQYDCABKAESGgoSZmluYW5jZV9hY2NvdW50X2lkGA0gASgEEhMKC2lzX292ZXJyaWRlGA4gASgISgQICRAKUgZ2b2lkZWQisQEKEUV4cGVuc2VSb3dNYXBJdGVtEkYKCG1hcF9kYXRhGAEgAygLMjQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd01hcEl0ZW0uTWFwRGF0YUVudHJ5GlQKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSMwoFdmFsdWUYAiABKAsyJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93SXRlbToCOAEikgEKF0V4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASOgoHZXhwZW5zZRgCIAEoCzInLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSb3dNYXBJdGVtSABCAwoBZCLHAQoTRXhwZW5zZUxpc3RSZXNwb25zZRI8CgVpdGVtcxgBIAMoCzItLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0UmVzcG9uc2VJdGVtEgsKA2lkcxgCIAMoBBIwCglwYWdlX2luZm8YAyABKAsyHS53YXJlaG91c2UuY29tbW9uLnYxLlBhZ2VJbmZvEjMKBnRvdGFscxgEIAEoCzIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUb3RhbHMixAEKEkV4cGVuc2VEYWlseUZpbHRlchIxCgRmcm9tGAEgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBIvCgJ0bxgCIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSOQoEa2luZBgDIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQgi6SAWCAQIQARIPCgdzaG9wX2lkGAQgASgEIs4BChNFeHBlbnNlRGFpbHlSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEkAKBmZpbHRlchgCIAEoCzIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseUZpbHRlckIGukgDyAEBEkkKCGdyb3VwX2J5GAMgASgOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlQhC6SA2CAQoQARgAGAIYBBgFOgyStRgICgYBAgMEBgkisAEKDkV4cGVuc2VEYXlJdGVtEgwKBGRhdGUYASABKAkSDwoHZW50cmllcxgCIAEoBBINCgV0b3RhbBgDIAEoARJBCgdieV9raW5kGAQgAygLMjAud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0uQnlLaW5kRW50cnkaLQoLQnlLaW5kRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgBOgI4ASJ/ChRFeHBlbnNlRGFpbHlSZXNwb25zZRIyCgRkYXlzGAEgAygLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURheUl0ZW0SMwoGdG90YWxzGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVRvdGFscyKXAQoURXhwZW5zZUFkanVzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESGwoKZXhwZW5zZV9pZBgCIAEoBEIHukgEMgIgABIgCgZhbW91bnQYAyABKAFCELpIDRILOQAAAAAAAAAAQAESFgoEbm90ZRgEIAEoCUIIukgFcgMY9AM6CpK1GAYKBAECAwQihgEKFUV4cGVuc2VBZGp1c3RSZXNwb25zZRI3CgphZGp1c3RtZW50GAEgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZBI0CgdleHBlbnNlGAIgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZCquAQoLRXhwZW5zZUtpbmQSHAoYRVhQRU5TRV9LSU5EX1VOU1BFQ0lGSUVEEAASFAoQRVhQRU5TRV9LSU5EX0FEUxABEhgKFEVYUEVOU0VfS0lORF9QQVlST0xMEAISHAoYRVhQRU5TRV9LSU5EX09QRVJBVElPTkFMEAMSFgoSRVhQRU5TRV9LSU5EX09USEVSEAQSGwoXRVhQRU5TRV9LSU5EX1NUT0NLX0xPU1MQBSqFAQoTRXhwZW5zZUxpc3REYXRhVHlwZRImCiJFWFBFTlNFX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9FWFBFTlNFEAIqkgEKDkV4cGVuc2VSb3dTb3J0EiAKHEVYUEVOU0VfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIgChxFWFBFTlNFX1JPV19TT1JUX09DQ1VSUkVEX0FUEAESGwoXRVhQRU5TRV9ST1dfU09SVF9BTU9VTlQQAhIfChtFWFBFTlNFX1JPV19TT1JUX0NSRUFURURfQVQQAzK5AwoORXhwZW5zZVNlcnZpY2USaAoNRXhwZW5zZUNyZWF0ZRIqLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VDcmVhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlc3BvbnNlEmcKC0V4cGVuc2VMaXN0Eigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXNwb25zZSIDkAIBEmoKDEV4cGVuc2VEYWlseRIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseVJlcXVlc3QaKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGFpbHlSZXNwb25zZSIDkAIBEmgKDUV4cGVuc2VBZGp1c3QSKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlQWRqdXN0UmVxdWVzdBorLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VBZGp1c3RSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V4cGVuc2UvdjE7ZXhwZW5zZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("CiJ3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSKjAwoNRXhwZW5zZVJlY29yZBIKCgJpZBgBIAEoBBIPCgd0ZWFtX2lkGAIgASgEEg8KB3Nob3BfaWQYAyABKAQSLwoEa2luZBgEIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kEg4KBmFtb3VudBgFIAEoARITCgtvY2N1cnJlZF9hdBgGIAEoCRIMCgRub3RlGAcgASgJEhIKCmNyZWF0ZWRfYnkYCCABKAQSFwoPY3JlYXRlZF9hdF91bml4GAogASgDEhoKEmFkanVzdHNfZXhwZW5zZV9pZBgLIAEoBBISCgpuZXRfYW1vdW50GAwgASgBEhoKEmZpbmFuY2VfYWNjb3VudF9pZBgNIAEoBBITCgtpc19vdmVycmlkZRgOIAEoCBIvCgR0eXBlGA8gASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVR5cGUSMwoGb3JpZ2luGBAgASgOMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZU9yaWdpbkoECAkQClIGdm9pZGVkIs4DChRFeHBlbnNlQ3JlYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARKkAQoEa2luZBgCIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VLaW5kQnO6SHC6AWgKK2V4cGVuc2VfY3JlYXRlLmtpbmQuc3RvY2tfbG9zc19pc19ub3RfdHlwZWQSLnN0b2NrIGxvc3MgaXMgcmVjb3JkZWQgYnkgaW52ZW50b3J5LCBub3QgdHlwZWQaCXRoaXMgIT0gNYIBAhABEiAKBmFtb3VudBgDIAEoAUIQukgNEgtAASEAAAAAAAAAABI4CgtvY2N1cnJlZF9hdBgEIAEoCUIjukggch4yHF5bMC05XXs0fS1bMC05XXsyfS1bMC05XXsyfSQSDwoHc2hvcF9pZBgFIAEoBBIWCgRub3RlGAYgASgJQgi6SAVyAxj0AxIjChJmaW5hbmNlX2FjY291bnRfaWQYByABKARCB7pIBDICIAASOwoEdHlwZRgIIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUeXBlQgq6SAeCAQQQASAAOgqStRgGCgQBAgMEIk0KFUV4cGVuc2VDcmVhdGVSZXNwb25zZRI0CgdleHBlbnNlGAEgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJlY29yZCLGAQoRRXhwZW5zZUxpc3RGaWx0ZXISFQoEZnJvbRgBIAEoCUIHukgEcgIYChITCgJ0bxgCIAEoCUIHukgEcgIYChI5CgRraW5kGAMgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmRCCLpIBYIBAhABEg8KB3Nob3BfaWQYBCABKAQSOQoEdHlwZRgFIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUeXBlQgi6SAWCAQIQASLCAQoVRXhwZW5zZUxpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSMwoHZ2VuZXJhbBgCIAEoDjIgLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbFNvcnRIABI3CgdleHBlbnNlGAMgASgOMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd1NvcnRIAEIDCgFzIrACChJFeHBlbnNlTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESNwoGZmlsdGVyGAIgASgLMicud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RGaWx0ZXISOQoEc29ydBgDIAEoCzIrLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VMaXN0RmlsdGVyU29ydBI/CgxkYXRhX3JlcXVlc3QYBCADKA4yKS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlTGlzdERhdGFUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToKkrUYBgoEAQIDBCK8AwoNRXhwZW5zZVRvdGFscxINCgV0b3RhbBgBIAEoARJACgdieV9raW5kGAIgAygLMi8ud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVRvdGFscy5CeUtpbmRFbnRyeRJACgdieV90eXBlGAMgAygLMi8ud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVRvdGFscy5CeVR5cGVFbnRyeRIQCghzcGVuZGluZxgEIAEoARIQCghtb25leV9pbhgFIAEoARIPCgdjYXBpdGFsGAYgASgBEk8KD2J5X2tpbmRfdW50eXBlZBgHIAMoCzI2LndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUb3RhbHMuQnlLaW5kVW50eXBlZEVudHJ5Gi0KC0J5S2luZEVudHJ5EgsKA2tleRgBIAEoBRINCgV2YWx1ZRgCIAEoAToCOAEaLQoLQnlUeXBlRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgBOgI4ARo0ChJCeUtpbmRVbnR5cGVkRW50cnkSCwoDa2V5GAEgASgFEg0KBXZhbHVlGAIgASgBOgI4ASKkAwoORXhwZW5zZVJvd0l0ZW0SCgoCaWQYASABKAQSDwoHdGVhbV9pZBgCIAEoBBIPCgdzaG9wX2lkGAMgASgEEi8KBGtpbmQYBCABKA4yIS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlS2luZBIOCgZhbW91bnQYBSABKAESEwoLb2NjdXJyZWRfYXQYBiABKAkSDAoEbm90ZRgHIAEoCRISCgpjcmVhdGVkX2J5GAggASgEEhcKD2NyZWF0ZWRfYXRfdW5peBgKIAEoAxIaChJhZGp1c3RzX2V4cGVuc2VfaWQYCyABKAQSEgoKbmV0X2Ftb3VudBgMIAEoARIaChJmaW5hbmNlX2FjY291bnRfaWQYDSABKAQSEwoLaXNfb3ZlcnJpZGUYDiABKAgSLwoEdHlwZRgPIAEoDjIhLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VUeXBlEjMKBm9yaWdpbhgQIAEoDjIjLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VPcmlnaW5KBAgJEApSBnZvaWRlZCKxAQoRRXhwZW5zZVJvd01hcEl0ZW0SRgoIbWFwX2RhdGEYASADKAsyNC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUm93TWFwSXRlbS5NYXBEYXRhRW50cnkaVAoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBIzCgV2YWx1ZRgCIAEoCzIkLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VSb3dJdGVtOgI4ASKSAQoXRXhwZW5zZUxpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABI6CgdleHBlbnNlGAIgASgLMicud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVJvd01hcEl0ZW1IAEIDCgFkIscBChNFeHBlbnNlTGlzdFJlc3BvbnNlEjwKBWl0ZW1zGAEgAygLMi0ud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8SMwoGdG90YWxzGAQgASgLMiMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVRvdGFscyLEAQoSRXhwZW5zZURhaWx5RmlsdGVyEjEKBGZyb20YASABKAlCI7pIIHIeMhxeWzAtOV17NH0tWzAtOV17Mn0tWzAtOV17Mn0kEi8KAnRvGAIgASgJQiO6SCByHjIcXlswLTldezR9LVswLTldezJ9LVswLTldezJ9JBI5CgRraW5kGAMgASgOMiEud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUtpbmRCCLpIBYIBAhABEg8KB3Nob3BfaWQYBCABKAQizgEKE0V4cGVuc2VEYWlseVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESQAoGZmlsdGVyGAIgASgLMigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZURhaWx5RmlsdGVyQga6SAPIAQESSQoIZ3JvdXBfYnkYAyABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCELpIDYIBChABGAAYAhgEGAU6DJK1GAgKBgECAwQGCSKwAQoORXhwZW5zZURheUl0ZW0SDAoEZGF0ZRgBIAEoCRIPCgdlbnRyaWVzGAIgASgEEg0KBXRvdGFsGAMgASgBEkEKB2J5X2tpbmQYBCADKAsyMC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGF5SXRlbS5CeUtpbmRFbnRyeRotCgtCeUtpbmRFbnRyeRILCgNrZXkYASABKAUSDQoFdmFsdWUYAiABKAE6AjgBIn8KFEV4cGVuc2VEYWlseVJlc3BvbnNlEjIKBGRheXMYASADKAsyJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGF5SXRlbRIzCgZ0b3RhbHMYAiABKAsyIy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlVG90YWxzIpcBChRFeHBlbnNlQWRqdXN0UmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIbCgpleHBlbnNlX2lkGAIgASgEQge6SAQyAiAAEiAKBmFtb3VudBgDIAEoAUIQukgNEgs5AAAAAAAAAABAARIWCgRub3RlGAQgASgJQgi6SAVyAxj0AzoKkrUYBgoEAQIDBCKGAQoVRXhwZW5zZUFkanVzdFJlc3BvbnNlEjcKCmFkanVzdG1lbnQYASABKAsyIy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUmVjb3JkEjQKB2V4cGVuc2UYAiABKAsyIy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUmVjb3JkKq4BCgtFeHBlbnNlS2luZBIcChhFWFBFTlNFX0tJTkRfVU5TUEVDSUZJRUQQABIUChBFWFBFTlNFX0tJTkRfQURTEAESGAoURVhQRU5TRV9LSU5EX1BBWVJPTEwQAhIcChhFWFBFTlNFX0tJTkRfT1BFUkFUSU9OQUwQAxIWChJFWFBFTlNFX0tJTkRfT1RIRVIQBBIbChdFWFBFTlNFX0tJTkRfU1RPQ0tfTE9TUxAFKskECgtFeHBlbnNlVHlwZRIcChhFWFBFTlNFX1RZUEVfVU5TUEVDSUZJRUQQABIgChxFWFBFTlNFX1RZUEVfQURTX01BUktFVFBMQUNFEAESIAocRVhQRU5TRV9UWVBFX0NPTlRFTlRfRU5ET1JTRRACEh0KGUVYUEVOU0VfVFlQRV9CQVNJQ19TQUxBUlkQAxIWChJFWFBFTlNFX1RZUEVfQk9OVVMQBBIeChpFWFBFTlNFX1RZUEVfQ09OVFJJQlVUSU9OUxAFEhwKGEVYUEVOU0VfVFlQRV9FTEVDVFJJQ0lUWRAGEhkKFUVYUEVOU0VfVFlQRV9JTlRFUk5FVBAHEhgKFEVYUEVOU0VfVFlQRV9LSVRDSEVOEAgSFgoSRVhQRU5TRV9UWVBFX1RPT0xTEAkSGgoWRVhQRU5TRV9UWVBFX0VRVUlQTUVOVBAKEhkKFUVYUEVOU0VfVFlQRV9CQU5LX0ZFRRALEhwKGEVYUEVOU0VfVFlQRV9ESVNDUkVQQU5DWRAMEiIKHkVYUEVOU0VfVFlQRV9PVVRTSURFX0RFQlRfUEFJRBANEiwKKEVYUEVOU0VfVFlQRV9PVVRTSURFX1JFQ0VJVkFCTEVfUkVDRUlWRUQQDhIWChJFWFBFTlNFX1RZUEVfUFJJVkUQDxIgChxFWFBFTlNFX1RZUEVfQ0FQSVRBTF9ERVBPU0lUEBASGgoWRVhQRU5TRV9UWVBFX09USEVSX09VVBAREhkKFUVYUEVOU0VfVFlQRV9PVEhFUl9JThASKlAKDUV4cGVuc2VPcmlnaW4SHgoaRVhQRU5TRV9PUklHSU5fVU5TUEVDSUZJRUQQABIfChtFWFBFTlNFX09SSUdJTl9BQ0NPVU5UX1BBR0UQASqFAQoTRXhwZW5zZUxpc3REYXRhVHlwZRImCiJFWFBFTlNFX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESIgoeRVhQRU5TRV9MSVNUX0RBVEFfVFlQRV9FWFBFTlNFEAIqkgEKDkV4cGVuc2VSb3dTb3J0EiAKHEVYUEVOU0VfUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIgChxFWFBFTlNFX1JPV19TT1JUX09DQ1VSUkVEX0FUEAESGwoXRVhQRU5TRV9ST1dfU09SVF9BTU9VTlQQAhIfChtFWFBFTlNFX1JPV19TT1JUX0NSRUFURURfQVQQAzK5AwoORXhwZW5zZVNlcnZpY2USaAoNRXhwZW5zZUNyZWF0ZRIqLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VDcmVhdGVSZXF1ZXN0Gisud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUNyZWF0ZVJlc3BvbnNlEmcKC0V4cGVuc2VMaXN0Eigud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXF1ZXN0Gikud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZUxpc3RSZXNwb25zZSIDkAIBEmoKDEV4cGVuc2VEYWlseRIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VEYWlseVJlcXVlc3QaKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlRGFpbHlSZXNwb25zZSIDkAIBEmgKDUV4cGVuc2VBZGp1c3QSKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlQWRqdXN0UmVxdWVzdBorLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VBZGp1c3RSZXNwb25zZUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V4cGVuc2UvdjE7ZXhwZW5zZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * One expense. Money is rupiah as a double, stored exact when the expense is recorded or corrected — never rounded
@@ -134,6 +134,24 @@ export type ExpenseRecord = Message<"warehouse.expense.v1.ExpenseRecord"> & {
    * @generated from field: bool is_override = 14;
    */
   isOverride: boolean;
+
+  /**
+   * THE TYPE (expense-types-sit-under-groups) — `kind` is its group, written from it. UNSPECIFIED on an expense recorded
+   * before the types (it keeps its kind only — the screen's *Tanpa jenis*) and on a STOCK_LOSS. On an ADJUSTMENT, the
+   * expense's, copied — so a type's total takes the correction where the mistake is.
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseType type = 15;
+   */
+  type: ExpenseType;
+
+  /**
+   * THE DOOR it came in by (ExpenseOrigin). ACCOUNT_PAGE = a Setor / Tarik Modal made on the account page — the Biaya row
+   * reads *Dicatat di halaman akun*. UNSPECIFIED on everything typed on Biaya, and on every adjustment (a correction is
+   * always made on Biaya, whichever door its expense came in by).
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseOrigin origin = 16;
+   */
+  origin: ExpenseOrigin;
 };
 
 /**
@@ -153,9 +171,11 @@ export type ExpenseCreateRequest = Message<"warehouse.expense.v1.ExpenseCreateRe
   teamId: bigint;
 
   /**
-   * STOCK_LOSS is never typed: inventory records it when stock is written off, by an internal call that does not pass
-   * the validation interceptor (cmd/app_development/expense_poster.go) — so this rule refuses it from every API caller
-   * and leaves inventory's path open. InvalidArgument, in the person's words.
+   * THE GROUP — derived from `type` (expense-types-sit-under-groups): 0 reads as the type's group, and any other value
+   * must BE the type's group (InvalidArgument otherwise). STOCK_LOSS is never typed: inventory records it when stock is
+   * written off, by an internal call that does not pass the validation interceptor (cmd/app_development/expense_poster.go)
+   * with this kind and no type — so this rule refuses it from every API caller and leaves inventory's path open.
+   * InvalidArgument, in the person's words.
    *
    * @generated from field: warehouse.expense.v1.ExpenseKind kind = 2;
    */
@@ -176,9 +196,10 @@ export type ExpenseCreateRequest = Message<"warehouse.expense.v1.ExpenseCreateRe
   occurredAt: string;
 
   /**
-   * REQUIRED on ADS, refused on every other kind (an-expense-names-a-shop-only-for-ads): only an ads expense names the
-   * shop it ran for. InvalidArgument either way — "an ads expense names its shop" / "only an ads expense names a shop".
-   * Checked by the handler, since the rule spans two fields.
+   * REQUIRED on the type ADS_MARKETPLACE, refused on every other type (an-expense-names-a-shop-only-for-ads, read per
+   * type — Konten · endorse names none): only the marketplace's ads name the shop they ran for. InvalidArgument either
+   * way — "an ads expense names its shop" / "only an ads expense names a shop". Checked by the handler, since the rule
+   * spans two fields.
    *
    * @generated from field: uint64 shop_id = 5;
    */
@@ -190,17 +211,28 @@ export type ExpenseCreateRequest = Message<"warehouse.expense.v1.ExpenseCreateRe
   note: string;
 
   /**
-   * REQUIRED — every expense a person types names the account that paid it, one of the team's ACTIVE OPERATIONAL
-   * accounts (an-expense-must-name-the-account-that-paid); the same rule and name as a restock's `finance_account_id`.
-   * Another team's account, an archived one, or one not marked operational is FailedPrecondition, naming it. The
-   * expense is published after its commit and financial_account_service posts it out of this account — `ads_expense`
-   * for ADS, `expense` for the rest.
+   * REQUIRED — every expense a person types names the account that paid it, or that the money came into
+   * (an-expense-must-name-the-account-that-paid): one of the team's ACTIVE OPERATIONAL accounts for every type but Prive
+   * and Setoran modal, which take ANY of the team's ACTIVE accounts, as Setor / Tarik Modal on the account page does
+   * (the-expense-types-prototype-is-accepted). Another team's account, an archived one, or (where it must be) one not
+   * marked operational is FailedPrecondition, naming it. The expense is published after its commit and
+   * financial_account_service posts it on this account — `ads_expense` for the Iklan group, `capital` for Prive (out) and
+   * Setoran modal (in), `money_in` INTO it for the other money-in types (money-in-on-biaya-is-its-own-change-type),
+   * `expense` for the rest.
    * STOCK_LOSS is outside the rule: inventory posts it by an internal call (no validation interceptor), it moves no
    * cash, and it is stored with no account and never published. Through the API it is refused outright (`kind`).
    *
    * @generated from field: uint64 finance_account_id = 7;
    */
   financeAccountId: bigint;
+
+  /**
+   * THE TYPE — REQUIRED (expense-types-sit-under-groups): it decides the group (`kind`), the direction and the change
+   * type the account posts. `amount` stays positive whichever way the money goes.
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseType type = 8;
+   */
+  type: ExpenseType;
 };
 
 /**
@@ -260,6 +292,14 @@ export type ExpenseListFilter = Message<"warehouse.expense.v1.ExpenseListFilter"
    * @generated from field: uint64 shop_id = 4;
    */
   shopId: bigint;
+
+  /**
+   * One TYPE, or UNSPECIFIED for all of them — beside `kind` (the group): the screen's filter takes a group or one type
+   * of it (expense-types-sit-under-groups), and sends both, so the group still narrows when the type is cleared.
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseType type = 5;
+   */
+  type: ExpenseType;
 };
 
 /**
@@ -343,27 +383,73 @@ export const ExpenseListRequestSchema: GenMessage<ExpenseListRequest> = /*@__PUR
   messageDesc(file_warehouse_expense_v1_expense, 5);
 
 /**
- * What the filtered period cost, by kind and in total.
+ * What the filtered period cost, by group, by type and in total — the month card of the-expense-types-prototype-is-accepted:
+ * Biaya · Uang masuk · Modal · Total bulan ini, then each group with its types.
+ *
+ * Every figure is SIGNED BY THE TYPE'S DIRECTION: a money-out row counts plus, a money-in row (Piutang luar diterima,
+ * Setoran modal, Uang masuk lain) minus — an adjustment by its expense's type. Rows recorded before the types are money
+ * out (their kinds were all spending), so a month with no typed row reads exactly as it did.
  *
  * @generated from message warehouse.expense.v1.ExpenseTotals
  */
 export type ExpenseTotals = Message<"warehouse.expense.v1.ExpenseTotals"> & {
   /**
-   * The sum over EVERY row the filter matched, not the page — the same split RevenueTotals uses
-   * (#78). A page total is a different number wearing the same label.
+   * THE MONTH TOTAL — the checklist's (acceptance financial_account/expense.md givens 17–22): `spending − money_in +
+   * capital`, which is also every group's net summed. The sum over EVERY row the filter matched, not the page — the same
+   * split RevenueTotals uses (#78). A page total is a different number wearing the same label.
    *
    * @generated from field: double total = 1;
    */
   total: number;
 
   /**
-   * Per kind, so the summary cards need no second call. A kind with no expenses in the period is simply
-   * absent rather than reported as 0 — absent and zero read the same on a card, and building the
-   * absent ones would mean this message knowing the enum's members.
+   * Per kind — each GROUP's net (its types' figures summed, a money-in type lowering it, and its rows from before the
+   * types), so the summary cards need no second call. A kind with no expenses in the period is simply absent rather than
+   * reported as 0 — absent and zero read the same on a card, and building the absent ones would mean this message
+   * knowing the enum's members.
    *
    * @generated from field: map<int32, double> by_kind = 2;
    */
   byKind: { [key: number]: number };
+
+  /**
+   * Per TYPE (ExpenseType's number), signed: money in is negative. Rows with no type are not here — they are each
+   * group's `by_kind_untyped`. Absent = nothing of that type in the period.
+   *
+   * @generated from field: map<int32, double> by_type = 3;
+   */
+  byType: { [key: number]: number };
+
+  /**
+   * BIAYA — what the period SPENT: every money-out row but Prive (an outside debt paid counts), stock loss and the rows
+   * from before the types included.
+   *
+   * @generated from field: double spending = 4;
+   */
+  spending: number;
+
+  /**
+   * UANG MASUK — the money-in rows but Setoran modal, as a POSITIVE figure (the screen shows it minus).
+   *
+   * @generated from field: double money_in = 5;
+   */
+  moneyIn: number;
+
+  /**
+   * MODAL — Prive − Setoran modal: the owner's capital taken out, net. Never an expense in the profit
+   * (prive-and-deposit-on-pengeluaran-are-the-accounts-capital).
+   *
+   * @generated from field: double capital = 6;
+   */
+  capital: number;
+
+  /**
+   * Per kind, the rows recorded BEFORE the types (no type) — the screen's *Tanpa jenis* line under its group. Absent =
+   * none in the period.
+   *
+   * @generated from field: map<int32, double> by_kind_untyped = 7;
+   */
+  byKindUntyped: { [key: number]: number };
 };
 
 /**
@@ -454,6 +540,20 @@ export type ExpenseRowItem = Message<"warehouse.expense.v1.ExpenseRowItem"> & {
    * @generated from field: bool is_override = 14;
    */
   isOverride: boolean;
+
+  /**
+   * As on ExpenseRecord: the type, UNSPECIFIED on a row from before the types; an adjustment carries its expense's.
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseType type = 15;
+   */
+  type: ExpenseType;
+
+  /**
+   * As on ExpenseRecord: the door — ACCOUNT_PAGE for a Setor / Tarik Modal made on the account page.
+   *
+   * @generated from field: warehouse.expense.v1.ExpenseOrigin origin = 16;
+   */
+  origin: ExpenseOrigin;
 };
 
 /**
@@ -660,7 +760,8 @@ export type ExpenseDayItem = Message<"warehouse.expense.v1.ExpenseDayItem"> & {
   entries: bigint;
 
   /**
-   * The bucket's spending, the exact sum — exactly the sum of its days' totals.
+   * The bucket's figure, the exact sum — exactly the sum of its days' totals. Signed by the type's direction, as
+   * ExpenseTotals.total: a money-in row counts minus (expense-types-sit-under-groups).
    *
    * @generated from field: double total = 3;
    */
@@ -867,6 +968,188 @@ export const ExpenseKindSchema: GenEnum<ExpenseKind> = /*@__PURE__*/
   enumDesc(file_warehouse_expense_v1_expense, 0);
 
 /**
+ * THE TYPE of an expense — every type sits under ONE group, and the groups are the kinds above: Iklan (ADS), Gaji
+ * (PAYROLL), Operasional (OPERATIONAL), Lainnya (OTHER) (expense-types-sit-under-groups,
+ * the-expense-types-prototype-is-accepted, docs/business/financial_account/context_decision.md). STOCK_LOSS has no type:
+ * inventory records it, nobody types it.
+ *
+ * Each type's GROUP, DIRECTION (money out or in) and CAPITAL flag are a FIXED TABLE in expense_service
+ * (expense_v1/expense_types.go) — never a column a person sets. The AMOUNT stays positive; the type says which way the
+ * money goes:
+ *   - money IN — Piutang luar diterima, Setoran modal, Uang masuk lain: the account INCREASES and the type's, its
+ *     group's and the month's total DECREASE (acceptance financial_account/expense.md givens 19, 21, 22);
+ *   - CAPITAL — Prive (out) and Setoran modal (in) are the account's `capital` row, never an expense in the profit
+ *     (prive-and-deposit-on-pengeluaran-are-the-accounts-capital); the other money-in types post as `money_in`
+ *     (money-in-on-biaya-is-its-own-change-type).
+ *
+ * 0 = an expense recorded BEFORE the types: it keeps its kind (its group) and no type — no guessed backfill. APPEND ONLY.
+ *
+ * @generated from enum warehouse.expense.v1.ExpenseType
+ */
+export enum ExpenseType {
+  /**
+   * @generated from enum value: EXPENSE_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Iklan — posted as `ads_expense` (ads-expense-joins-the-types). The marketplace's ads are the ONE type that names a
+   * shop, and must (an-expense-names-a-shop-only-for-ads, read per type).
+   *
+   * @generated from enum value: EXPENSE_TYPE_ADS_MARKETPLACE = 1;
+   */
+  ADS_MARKETPLACE = 1,
+
+  /**
+   * Konten · endorse — names no shop (an endorser is paid for the brand).
+   *
+   * @generated from enum value: EXPENSE_TYPE_CONTENT_ENDORSE = 2;
+   */
+  CONTENT_ENDORSE = 2,
+
+  /**
+   * Gaji.
+   *
+   * @generated from enum value: EXPENSE_TYPE_BASIC_SALARY = 3;
+   */
+  BASIC_SALARY = 3,
+
+  /**
+   * @generated from enum value: EXPENSE_TYPE_BONUS = 4;
+   */
+  BONUS = 4,
+
+  /**
+   * Iuran (BPJS).
+   *
+   * @generated from enum value: EXPENSE_TYPE_CONTRIBUTIONS = 5;
+   */
+  CONTRIBUTIONS = 5,
+
+  /**
+   * Operasional.
+   *
+   * @generated from enum value: EXPENSE_TYPE_ELECTRICITY = 6;
+   */
+  ELECTRICITY = 6,
+
+  /**
+   * Internet · paket data.
+   *
+   * @generated from enum value: EXPENSE_TYPE_INTERNET = 7;
+   */
+  INTERNET = 7,
+
+  /**
+   * Dapur · makan tim.
+   *
+   * @generated from enum value: EXPENSE_TYPE_KITCHEN = 8;
+   */
+  KITCHEN = 8,
+
+  /**
+   * @generated from enum value: EXPENSE_TYPE_TOOLS = 9;
+   */
+  TOOLS = 9,
+
+  /**
+   * @generated from enum value: EXPENSE_TYPE_EQUIPMENT = 10;
+   */
+  EQUIPMENT = 10,
+
+  /**
+   * @generated from enum value: EXPENSE_TYPE_BANK_FEE = 11;
+   */
+  BANK_FEE = 11,
+
+  /**
+   * Selisih · transaksi tak tercatat — the checklist's *adjustment · uncovered transaction* (given 6), an expense type
+   * posted as `expense`; the account's reconcile adjustment is unchanged (adjustment-is-for-reconciling-only).
+   *
+   * @generated from enum value: EXPENSE_TYPE_DISCREPANCY = 12;
+   */
+  DISCREPANCY = 12,
+
+  /**
+   * Lainnya. An outside debt paid counts as spending.
+   *
+   * @generated from enum value: EXPENSE_TYPE_OUTSIDE_DEBT_PAID = 13;
+   */
+  OUTSIDE_DEBT_PAID = 13,
+
+  /**
+   * Money IN — posted as `money_in`.
+   *
+   * @generated from enum value: EXPENSE_TYPE_OUTSIDE_RECEIVABLE_RECEIVED = 14;
+   */
+  OUTSIDE_RECEIVABLE_RECEIVED = 14,
+
+  /**
+   * CAPITAL OUT — the owner takes capital; posted as `capital`, minus. On ANY of the team's active accounts.
+   *
+   * @generated from enum value: EXPENSE_TYPE_PRIVE = 15;
+   */
+  PRIVE = 15,
+
+  /**
+   * CAPITAL IN — the owner adds capital; posted as `capital`, plus. On ANY of the team's active accounts.
+   *
+   * @generated from enum value: EXPENSE_TYPE_CAPITAL_DEPOSIT = 16;
+   */
+  CAPITAL_DEPOSIT = 16,
+
+  /**
+   * @generated from enum value: EXPENSE_TYPE_OTHER_OUT = 17;
+   */
+  OTHER_OUT = 17,
+
+  /**
+   * Money IN — posted as `money_in`.
+   *
+   * @generated from enum value: EXPENSE_TYPE_OTHER_IN = 18;
+   */
+  OTHER_IN = 18,
+}
+
+/**
+ * Describes the enum warehouse.expense.v1.ExpenseType.
+ */
+export const ExpenseTypeSchema: GenEnum<ExpenseType> = /*@__PURE__*/
+  enumDesc(file_warehouse_expense_v1_expense, 1);
+
+/**
+ * WHERE AN EXPENSE WAS RECORDED — its door (prive-and-deposit-on-pengeluaran-are-the-accounts-capital: one act, one
+ * record, two doors). APPEND ONLY.
+ *
+ * @generated from enum warehouse.expense.v1.ExpenseOrigin
+ */
+export enum ExpenseOrigin {
+  /**
+   * Typed on Biaya (Pengeluaran) — every expense but the ones below, and every adjustment.
+   *
+   * @generated from enum value: EXPENSE_ORIGIN_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * A SELLING team's Setor / Tarik Modal on the account page (FinancialAccountCapital): the account's `capital` row was
+   * posted there, by hand, and expense_service recorded it here as Setoran modal / Prive from the account's
+   * `FinancialAccountCapitalRecorded` — the same one record, shown on Biaya with *Dicatat di halaman akun*. Its account
+   * row keeps *manual · who*. Also every such act made before the second door was built, brought in once by
+   * `san expense import-capital`. A WAREHOUSE team's Setor / Tarik Modal never becomes one (Biaya is the selling team's).
+   *
+   * @generated from enum value: EXPENSE_ORIGIN_ACCOUNT_PAGE = 1;
+   */
+  ACCOUNT_PAGE = 1,
+}
+
+/**
+ * Describes the enum warehouse.expense.v1.ExpenseOrigin.
+ */
+export const ExpenseOriginSchema: GenEnum<ExpenseOrigin> = /*@__PURE__*/
+  enumDesc(file_warehouse_expense_v1_expense, 2);
+
+/**
  * ExpenseListDataType selects which slices the response carries per expense.
  *
  * @generated from enum warehouse.expense.v1.ExpenseListDataType
@@ -896,7 +1179,7 @@ export enum ExpenseListDataType {
  * Describes the enum warehouse.expense.v1.ExpenseListDataType.
  */
 export const ExpenseListDataTypeSchema: GenEnum<ExpenseListDataType> = /*@__PURE__*/
-  enumDesc(file_warehouse_expense_v1_expense, 1);
+  enumDesc(file_warehouse_expense_v1_expense, 3);
 
 /**
  * ExpenseRowSort is the sort selection paired with the EXPENSE (row) slice.
@@ -931,7 +1214,7 @@ export enum ExpenseRowSort {
  * Describes the enum warehouse.expense.v1.ExpenseRowSort.
  */
 export const ExpenseRowSortSchema: GenEnum<ExpenseRowSort> = /*@__PURE__*/
-  enumDesc(file_warehouse_expense_v1_expense, 2);
+  enumDesc(file_warehouse_expense_v1_expense, 4);
 
 /**
  * ExpenseService owns `expense_records` (#161) — the money the business spent that NO ORDER caused.

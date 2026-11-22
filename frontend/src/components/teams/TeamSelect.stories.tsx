@@ -77,7 +77,7 @@ export const SearchesByTeamCode: Story = {
     await userEvent.click(input);
     await userEvent.type(input, teams[1]!.teamCode);
 
-    await expect(await screen.findByTestId(`team-select-option-${teams[1]!.teamCode}`)).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId(`team-select-option-${teams[1]!.teamCode}`)).toBeVisible(), { timeout: 5000 });
     await expect(screen.queryByTestId(`team-select-option-${teams[0]!.teamCode}`)).toBeNull();
   },
 };

@@ -39,6 +39,10 @@ const (
 	// from *Custom Shipment Handed Over* (the-courier-is-paid-by-the-team-or-by-the-warehouse) as a
 	// `custom_shipment_fee`.
 	CustomShipmentHandedOverSubscription = "liability-custom-shipment-handed-over"
+	// CustomShipmentReceivedSubscription brings an INBOUND parcel's courier charge at the door (backlog #101 — a
+	// supplier's reshipping, a-suppliers-reshipping-comes-in-as-a-custom-shipment, 🔄 A: the restock's door charge) from
+	// *Custom Shipment Received*, its Terima: the selling team owes the warehouse it came to, a `custom_shipment_fee`.
+	CustomShipmentReceivedSubscription = "liability-custom-shipment-received"
 )
 
 // NewLiabilityPushHandler charges an order's fees on placement and reverses them on cancellation
@@ -171,6 +175,23 @@ func NewLiabilityPushHandler(svc *liability_v1.Service) event_source.PushHandler
 				Amount:           handed.GetWarehouseCost(),
 				ActorID:          handed.GetActorId(),
 				ActorIsOverride:  handed.GetActorIsOverride(),
+			})
+
+		case *eventsv1.Event_CustomShipmentReceived:
+			received := variant.CustomShipmentReceived
+
+			// AN INBOUND PARCEL'S DOOR CHARGE (backlog #101) — the restock's path exactly
+			// (the-courier-charge-is-noted-at-tiba-and-final-at-terima): the warehouse paid the courier at the door, Terima
+			// finalised the figure, and only now does the selling team owe it — once, keyed by the parcel under the parcels'
+			// own `custom_shipment_fee` (an inbound parcel is never handed over, so its id never carries a handover's charge
+			// too). Nothing for 0. ActorID is the VARIANT's — who counted it in — never the envelope's.
+			return svc.ChargeCustomShipmentCourier(ctx, liability_v1.CustomShipmentCourierCharge{
+				CustomShipmentID: received.GetCustomShipmentId(),
+				SellingTeamID:    received.GetTeamId(),
+				WarehouseID:      received.GetWarehouseId(),
+				Amount:           received.GetDoorCharge(),
+				ActorID:          received.GetActorId(),
+				ActorIsOverride:  received.GetActorIsOverride(),
 			})
 
 		default:

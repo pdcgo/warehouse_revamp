@@ -224,7 +224,12 @@ pair through `batches_supplier_idx` (a LATERAL per pair) and read once (MATERIAL
 sold meet in ONE aggregate over a UNION ALL — a join of the two aggregates planned a nested loop re-reading the sold side
 per row, 200 pairs 78 ms → 48 ms. A `(product_id, supplier_id, supplier_channel_id)` index on batches was probed and
 **not added**: no case moved (page 1 × 20 12.5 → 11.7 ms), and a cached generic plan scores it a tie with
-`batches_supplier_idx`. No problem, so no audit file.
+`batches_supplier_idx`. No problem, so no audit file. Since **`00063`** (2026-11-21, `batches_supplier_product_idx ON
+batches (supplier_id, supplier_channel_id, product_id, warehouse_id)`, a pure index) each pair is found through it, custom
+and generic plan alike: on this volume (≈ 1 000 batches a store) page 1 × 20 17–23 → 16–21 ms; on a store of 10 000
+batches (the #116 probe's volume) 200 rows 0.7–1.3 s → 41–77 ms and 20 rows 66–130 → 5–8 ms. Under a Gudang terkait chip
+the cached generic plan still ties it with `batches_supplier_idx` and keeps that one — inventory's
+[SupplierGoods.md](../../../audits/services/inventory_service/performances/SupplierGoods.md) Finding 3.
 
 Tests: `supplier_product_list_test.go` (a row says whose, where and when; newest restock first and paged; the team, one
 store and no store; the search through the catalogue among the supplier's own products, or by store; ONE catalogue and
@@ -252,12 +257,14 @@ sequenceDiagram
   PS->>W: push to /event/supplier-order-placed/push
   W->>INV: OrderTakeSuppliers(transaction_id) - units per product, supplier, owning team, warehouse
   Note over W: before the transaction - an error NACKs, nothing written
+  W->>DB: process_event_lock FOR SHARE - a replay holds it? 500, Pub/Sub redelivers
   W->>DB: claim supplier_sale_orders(order_id) FOR UPDATE - placed already? 200, nothing more
   W->>DB: placed_day = the event's Jakarta day, the parts kept in supplier_sale_order_parts
   W->>DB: upsert the day rows ADDING units and value, in key order
   W->>DB: cancelled already - the cancel came first - take them back on its day too
   SEL->>PS: OrderCancelled
   PS->>W: push to /event/supplier-order-cancelled/push
+  W->>DB: process_event_lock FOR SHARE - the same
   W->>DB: claim the same row FOR UPDATE - cancelled already? 200
   W->>DB: cancelled_day = the cancel's Jakarta day - no placement yet? stop, the placement takes it back
   W->>DB: the kept parts SUBTRACTED on the cancel's day
@@ -272,8 +279,8 @@ sequenceDiagram
 | the days | the events' `occurred_at` in Asia/Jakarta (`saleDay`) — an order at 00:30 WIB is that day, on any host clock |
 | order of events | either: a cancel first leaves `cancelled_day` on the row and the late placement folds both days in one transaction |
 | idempotent | the order's row is the claim — a redelivery of either event writes nothing |
-| replay | NOT replayed by `AnalyticReplayCompute`, which deletes and re-seeks the restock subscription only — Penjualan is its own table for that reason |
-| tests | `sales_fold_test.go` (00:30 WIB on a UTC clock, the split by line total and by quantity, a cancel on its own day + redeliveries, a cancel first, another team's sale for every reader + the sort, an unread take NACKed, a warehouse role refused) · `sales_fold_race_test.go` (`-tags raceaudit`) · `register_test.go` (both routes mounted) |
+| replay | replayed WITH the restock figures by `AnalyticReplayCompute` since 2026-11-21 ([§ AnalyticReplayCompute](#analyticreplaycompute--never-into-the-backfilled-past)): its one delete transaction clears Penjualan from the day the way the seek rebuilds it, and the broker seeks `supplier-order-placed` and `supplier-order-cancelled` too. The fold reads `process_event_lock` FOR SHARE first, as the restock fold does — while a replay holds it, both events are refused (500, redelivered after the release) |
+| tests | `sales_fold_test.go` (00:30 WIB on a UTC clock, the split by line total and by quantity, a cancel on its own day + redeliveries, a cancel first, another team's sale for every reader + the sort, an unread take NACKed, refused while a replay holds the lock, a warehouse role refused) · `sales_fold_race_test.go` (`-tags raceaudit`) · `register_test.go` (both routes mounted) · the replay: `analytic_replay_compute_test.go`, `analytic_replay_compute_sales_race_test.go` (`-tags raceaudit`) |
 
 ## The range pills — SupplierList's `sold` and `ready`
 
@@ -653,10 +660,33 @@ flowchart TD
   L -->|"no, or no live fold yet"| X2["FailedPrecondition — the backfilled past cannot be redelivered"]
   L -->|"yes"| K{"process_event_lock FOR UPDATE — off, or on past its one-minute lease?"}
   K -->|"held under a minute"| X3["FailedPrecondition"]
-  K -->|"taken"| D["delete figure rows and dedup rows from the day — one transaction"]
-  D --> S["seek the supplier-fold subscription to that Jakarta midnight"]
+  K -->|"taken"| D["delete the restock rows and claims, and Penjualan's rows and claims, from the day — one transaction"]
+  D --> S["seek all four subscriptions to that Jakarta midnight"]
   S --> U["release the lock it took, by updated_at — started, never done"]
 ```
+
+**Both reports** (the-report-is-processed-like-settlement — *"the same, on the supplier's tables"*; Penjualan since
+2026-11-21). The seek redelivers every event published from the Jakarta midnight on, so the delete clears exactly what
+comes back:
+
+| | deleted from the day | the seek brings back |
+| --- | --- | --- |
+| the restock figures | `supplier_product_daily_reports` and the dedup rows `supplier_event_logs`, `day >= start` | the accepts (`supplier-fold`) and the received-count corrections (`supplier-count-corrected`) |
+| Penjualan's rows | `supplier_sale_daily_reports`, `day >= start` | the placements (`supplier-order-placed`) and the cancels (`supplier-order-cancelled`) |
+| an order placed from the day | its claim `supplier_sale_orders` and its `supplier_sale_order_parts` | its placement, and its cancel (never before it) |
+| an order placed BEFORE the day, cancelled from it | only the claim's `cancelled_day` (set back to NULL) — the placement and its parts stay | its cancel only, which takes the parts back again |
+| a cancel that came first, its placement not folded, from the day | the claim | the cancel; the placement folds both days when it lands |
+| anything older | nothing — an event from before the day that the seek also brings (published after midnight) finds its claim and folds nothing | |
+
+The window is the SHORTEST of the four subscriptions' retention (`replay_broker.go`). Response counts are the restock
+report's (`deleted_report_rows`, `deleted_event_logs`); Penjualan's are logged (`sale_rows`, `sale_orders`,
+`sale_cancels_reopened`). While the lock is held the sales fold and the Penjualan day re-fold are refused as the restock
+fold and its re-fold are. Tests: `analytic_replay_compute_test.go` (Penjualan cleared and rebuilt to the never-replayed
+figures — placed and cancelled inside, placed before and cancelled inside, cancels first, events from before the day
+brought again; a cancel first whose placement lands after the replay), `analytic_replay_compute_sales_race_test.go`
+(`-tags raceaudit`: the replay waits for a sales fold in flight; a sales fold while it is held is refused at four points;
+a replay beside live sales counts every order once), `cmd/app_development/replay_broker_test.go` (the four
+subscriptions).
 
 `AnalyticMaintenanceRun` prunes `supplier_event_logs` received more than 45 days ago — longer than the broker's 31-day
 retention, so a redeliverable message always finds its claim. It takes no lock.

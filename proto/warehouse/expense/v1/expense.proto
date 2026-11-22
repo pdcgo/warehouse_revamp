@@ -91,6 +91,75 @@ enum ExpenseKind {
   EXPENSE_KIND_STOCK_LOSS = 5;
 }
 
+// THE TYPE of an expense — every type sits under ONE group, and the groups are the kinds above: Iklan (ADS), Gaji
+// (PAYROLL), Operasional (OPERATIONAL), Lainnya (OTHER) (expense-types-sit-under-groups,
+// the-expense-types-prototype-is-accepted, docs/business/financial_account/context_decision.md). STOCK_LOSS has no type:
+// inventory records it, nobody types it.
+//
+// Each type's GROUP, DIRECTION (money out or in) and CAPITAL flag are a FIXED TABLE in expense_service
+// (expense_v1/expense_types.go) — never a column a person sets. The AMOUNT stays positive; the type says which way the
+// money goes:
+//   - money IN — Piutang luar diterima, Setoran modal, Uang masuk lain: the account INCREASES and the type's, its
+//     group's and the month's total DECREASE (acceptance financial_account/expense.md givens 19, 21, 22);
+//   - CAPITAL — Prive (out) and Setoran modal (in) are the account's `capital` row, never an expense in the profit
+//     (prive-and-deposit-on-pengeluaran-are-the-accounts-capital); the other money-in types post as `money_in`
+//     (money-in-on-biaya-is-its-own-change-type).
+//
+// 0 = an expense recorded BEFORE the types: it keeps its kind (its group) and no type — no guessed backfill. APPEND ONLY.
+enum ExpenseType {
+  EXPENSE_TYPE_UNSPECIFIED = 0;
+
+  // Iklan — posted as `ads_expense` (ads-expense-joins-the-types). The marketplace's ads are the ONE type that names a
+  // shop, and must (an-expense-names-a-shop-only-for-ads, read per type).
+  EXPENSE_TYPE_ADS_MARKETPLACE = 1;
+  // Konten · endorse — names no shop (an endorser is paid for the brand).
+  EXPENSE_TYPE_CONTENT_ENDORSE = 2;
+
+  // Gaji.
+  EXPENSE_TYPE_BASIC_SALARY = 3;
+  EXPENSE_TYPE_BONUS = 4;
+  // Iuran (BPJS).
+  EXPENSE_TYPE_CONTRIBUTIONS = 5;
+
+  // Operasional.
+  EXPENSE_TYPE_ELECTRICITY = 6;
+  // Internet · paket data.
+  EXPENSE_TYPE_INTERNET = 7;
+  // Dapur · makan tim.
+  EXPENSE_TYPE_KITCHEN = 8;
+  EXPENSE_TYPE_TOOLS = 9;
+  EXPENSE_TYPE_EQUIPMENT = 10;
+  EXPENSE_TYPE_BANK_FEE = 11;
+  // Selisih · transaksi tak tercatat — the checklist's *adjustment · uncovered transaction* (given 6), an expense type
+  // posted as `expense`; the account's reconcile adjustment is unchanged (adjustment-is-for-reconciling-only).
+  EXPENSE_TYPE_DISCREPANCY = 12;
+
+  // Lainnya. An outside debt paid counts as spending.
+  EXPENSE_TYPE_OUTSIDE_DEBT_PAID = 13;
+  // Money IN — posted as `money_in`.
+  EXPENSE_TYPE_OUTSIDE_RECEIVABLE_RECEIVED = 14;
+  // CAPITAL OUT — the owner takes capital; posted as `capital`, minus. On ANY of the team's active accounts.
+  EXPENSE_TYPE_PRIVE = 15;
+  // CAPITAL IN — the owner adds capital; posted as `capital`, plus. On ANY of the team's active accounts.
+  EXPENSE_TYPE_CAPITAL_DEPOSIT = 16;
+  EXPENSE_TYPE_OTHER_OUT = 17;
+  // Money IN — posted as `money_in`.
+  EXPENSE_TYPE_OTHER_IN = 18;
+}
+
+// WHERE AN EXPENSE WAS RECORDED — its door (prive-and-deposit-on-pengeluaran-are-the-accounts-capital: one act, one
+// record, two doors). APPEND ONLY.
+enum ExpenseOrigin {
+  // Typed on Biaya (Pengeluaran) — every expense but the ones below, and every adjustment.
+  EXPENSE_ORIGIN_UNSPECIFIED = 0;
+  // A SELLING team's Setor / Tarik Modal on the account page (FinancialAccountCapital): the account's `capital` row was
+  // posted there, by hand, and expense_service recorded it here as Setoran modal / Prive from the account's
+  // `FinancialAccountCapitalRecorded` — the same one record, shown on Biaya with *Dicatat di halaman akun*. Its account
+  // row keeps *manual · who*. Also every such act made before the second door was built, brought in once by
+  // `san expense import-capital`. A WAREHOUSE team's Setor / Tarik Modal never becomes one (Biaya is the selling team's).
+  EXPENSE_ORIGIN_ACCOUNT_PAGE = 1;
+}
+
 // One expense. Money is rupiah as a double, stored exact when the expense is recorded or corrected — never rounded
 // (rupiah-is-floating-point, the-backend-never-rounds-money).
 message ExpenseRecord {
@@ -155,6 +224,16 @@ message ExpenseRecord {
   // hold no role in (an-override-is-stamped-in-every-service); the Expenses screen's Recorded by shows the shared
   // "by Root team" badge beside the person (an-override-shows-a-platform-badge). From `expense_records.is_override`.
   bool is_override = 14;
+
+  // THE TYPE (expense-types-sit-under-groups) — `kind` is its group, written from it. UNSPECIFIED on an expense recorded
+  // before the types (it keeps its kind only — the screen's *Tanpa jenis*) and on a STOCK_LOSS. On an ADJUSTMENT, the
+  // expense's, copied — so a type's total takes the correction where the mistake is.
+  ExpenseType type = 15;
+
+  // THE DOOR it came in by (ExpenseOrigin). ACCOUNT_PAGE = a Setor / Tarik Modal made on the account page — the Biaya row
+  // reads *Dicatat di halaman akun*. UNSPECIFIED on everything typed on Biaya, and on every adjustment (a correction is
+  // always made on Biaya, whichever door its expense came in by).
+  ExpenseOrigin origin = 16;
 }
 
 message ExpenseCreateRequest {
@@ -178,14 +257,13 @@ message ExpenseCreateRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
 
-  // STOCK_LOSS is never typed: inventory records it when stock is written off, by an internal call that does not pass
-  // the validation interceptor (cmd/app_development/expense_poster.go) — so this rule refuses it from every API caller
-  // and leaves inventory's path open. InvalidArgument, in the person's words.
+  // THE GROUP — derived from `type` (expense-types-sit-under-groups): 0 reads as the type's group, and any other value
+  // must BE the type's group (InvalidArgument otherwise). STOCK_LOSS is never typed: inventory records it when stock is
+  // written off, by an internal call that does not pass the validation interceptor (cmd/app_development/expense_poster.go)
+  // with this kind and no type — so this rule refuses it from every API caller and leaves inventory's path open.
+  // InvalidArgument, in the person's words.
   ExpenseKind kind = 2 [
-    (buf.validate.field).enum = {
-      defined_only: true
-      not_in: [0]
-    },
+    (buf.validate.field).enum = {defined_only: true},
     (buf.validate.field).cel = {
       id: "expense_create.kind.stock_loss_is_not_typed"
       message: "stock loss is recorded by inventory, not typed"
@@ -202,21 +280,32 @@ message ExpenseCreateRequest {
   // The date the expense BELONGS TO (YYYY-MM-DD), chosen by the person.
   string occurred_at = 4 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"];
 
-  // REQUIRED on ADS, refused on every other kind (an-expense-names-a-shop-only-for-ads): only an ads expense names the
-  // shop it ran for. InvalidArgument either way — "an ads expense names its shop" / "only an ads expense names a shop".
-  // Checked by the handler, since the rule spans two fields.
+  // REQUIRED on the type ADS_MARKETPLACE, refused on every other type (an-expense-names-a-shop-only-for-ads, read per
+  // type — Konten · endorse names none): only the marketplace's ads name the shop they ran for. InvalidArgument either
+  // way — "an ads expense names its shop" / "only an ads expense names a shop". Checked by the handler, since the rule
+  // spans two fields.
   uint64 shop_id = 5;
 
   string note = 6 [(buf.validate.field).string.max_len = 500];
 
-  // REQUIRED — every expense a person types names the account that paid it, one of the team's ACTIVE OPERATIONAL
-  // accounts (an-expense-must-name-the-account-that-paid); the same rule and name as a restock's `finance_account_id`.
-  // Another team's account, an archived one, or one not marked operational is FailedPrecondition, naming it. The
-  // expense is published after its commit and financial_account_service posts it out of this account — `ads_expense`
-  // for ADS, `expense` for the rest.
+  // REQUIRED — every expense a person types names the account that paid it, or that the money came into
+  // (an-expense-must-name-the-account-that-paid): one of the team's ACTIVE OPERATIONAL accounts for every type but Prive
+  // and Setoran modal, which take ANY of the team's ACTIVE accounts, as Setor / Tarik Modal on the account page does
+  // (the-expense-types-prototype-is-accepted). Another team's account, an archived one, or (where it must be) one not
+  // marked operational is FailedPrecondition, naming it. The expense is published after its commit and
+  // financial_account_service posts it on this account — `ads_expense` for the Iklan group, `capital` for Prive (out) and
+  // Setoran modal (in), `money_in` INTO it for the other money-in types (money-in-on-biaya-is-its-own-change-type),
+  // `expense` for the rest.
   // STOCK_LOSS is outside the rule: inventory posts it by an internal call (no validation interceptor), it moves no
   // cash, and it is stored with no account and never published. Through the API it is refused outright (`kind`).
   uint64 finance_account_id = 7 [(buf.validate.field).uint64.gt = 0];
+
+  // THE TYPE — REQUIRED (expense-types-sit-under-groups): it decides the group (`kind`), the direction and the change
+  // type the account posts. `amount` stays positive whichever way the money goes.
+  ExpenseType type = 8 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
 }
 
 message ExpenseCreateResponse {
@@ -254,6 +343,9 @@ message ExpenseListFilter {
   ExpenseKind kind = 3 [(buf.validate.field).enum.defined_only = true];
   // One shop, or 0 for all of them.
   uint64 shop_id = 4;
+  // One TYPE, or UNSPECIFIED for all of them — beside `kind` (the group): the screen's filter takes a group or one type
+  // of it (expense-types-sit-under-groups), and sends both, so the group still narrows when the type is cleared.
+  ExpenseType type = 5 [(buf.validate.field).enum.defined_only = true];
 }
 
 message ExpenseListFilterSort {
@@ -288,16 +380,42 @@ message ExpenseListRequest {
   warehouse.common.v1.CommonPagination page = 5 [(buf.validate.field).required = true];
 }
 
-// What the filtered period cost, by kind and in total.
+// What the filtered period cost, by group, by type and in total — the month card of the-expense-types-prototype-is-accepted:
+// Biaya · Uang masuk · Modal · Total bulan ini, then each group with its types.
+//
+// Every figure is SIGNED BY THE TYPE'S DIRECTION: a money-out row counts plus, a money-in row (Piutang luar diterima,
+// Setoran modal, Uang masuk lain) minus — an adjustment by its expense's type. Rows recorded before the types are money
+// out (their kinds were all spending), so a month with no typed row reads exactly as it did.
 message ExpenseTotals {
-  // The sum over EVERY row the filter matched, not the page — the same split RevenueTotals uses
-  // (#78). A page total is a different number wearing the same label.
+  // THE MONTH TOTAL — the checklist's (acceptance financial_account/expense.md givens 17–22): `spending − money_in +
+  // capital`, which is also every group's net summed. The sum over EVERY row the filter matched, not the page — the same
+  // split RevenueTotals uses (#78). A page total is a different number wearing the same label.
   double total = 1;
 
-  // Per kind, so the summary cards need no second call. A kind with no expenses in the period is simply
-  // absent rather than reported as 0 — absent and zero read the same on a card, and building the
-  // absent ones would mean this message knowing the enum's members.
+  // Per kind — each GROUP's net (its types' figures summed, a money-in type lowering it, and its rows from before the
+  // types), so the summary cards need no second call. A kind with no expenses in the period is simply absent rather than
+  // reported as 0 — absent and zero read the same on a card, and building the absent ones would mean this message
+  // knowing the enum's members.
   map<int32, double> by_kind = 2;
+
+  // Per TYPE (ExpenseType's number), signed: money in is negative. Rows with no type are not here — they are each
+  // group's `by_kind_untyped`. Absent = nothing of that type in the period.
+  map<int32, double> by_type = 3;
+
+  // BIAYA — what the period SPENT: every money-out row but Prive (an outside debt paid counts), stock loss and the rows
+  // from before the types included.
+  double spending = 4;
+
+  // UANG MASUK — the money-in rows but Setoran modal, as a POSITIVE figure (the screen shows it minus).
+  double money_in = 5;
+
+  // MODAL — Prive − Setoran modal: the owner's capital taken out, net. Never an expense in the profit
+  // (prive-and-deposit-on-pengeluaran-are-the-accounts-capital).
+  double capital = 6;
+
+  // Per kind, the rows recorded BEFORE the types (no type) — the screen's *Tanpa jenis* line under its group. Absent =
+  // none in the period.
+  map<int32, double> by_kind_untyped = 7;
 }
 
 // ExpenseRowItem is the EXPENSE slice — the fields the expense list renders (mirrors ExpenseRecord).
@@ -324,6 +442,10 @@ message ExpenseRowItem {
   // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
   // From `expense_records.is_override` — the row's own typist, an adjustment's too.
   bool is_override = 14;
+  // As on ExpenseRecord: the type, UNSPECIFIED on a row from before the types; an adjustment carries its expense's.
+  ExpenseType type = 15;
+  // As on ExpenseRecord: the door — ACCOUNT_PAGE for a Setor / Tarik Modal made on the account page.
+  ExpenseOrigin origin = 16;
 }
 
 message ExpenseRowMapItem {
@@ -428,7 +550,8 @@ message ExpenseDayItem {
   // the corrected expense's day.
   uint64 entries = 2;
 
-  // The bucket's spending, the exact sum — exactly the sum of its days' totals.
+  // The bucket's figure, the exact sum — exactly the sum of its days' totals. Signed by the type's direction, as
+  // ExpenseTotals.total: a money-in row counts minus (expense-types-sit-under-groups).
   double total = 3;
 
   // Split by kind, so a bucket that jumped can be read without opening the list. A kind with nothing in

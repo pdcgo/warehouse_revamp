@@ -41,23 +41,24 @@ export const EverySectionIsOnThePage: Story = {
   },
 };
 
-/** WHAT THE PAGE CANNOT SHOW YET is marked where it would be — the Pemasok tab, Derived products, the Daily tab —
- * and listed in the strip at the top. */
+/** WHAT THE PAGE CANNOT SHOW YET is marked where it would be — Derived products — and listed in the strip at the top.
+ * The Pemasok and Keluar Masuk Harian tabs carry no mark: their rows are real (ProductSupplierGoods,
+ * ./Suppliers.stories.tsx; ProductDailyMoves, ./Daily.stories.tsx). */
 export const EveryGapIsMarked: Story = {
   name: "Gaps marked",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
     await expect(canvas.getByTestId("not-implemented-summary")).toBeInTheDocument();
-    await expect(within(canvas.getByTestId("pd-tab-suppliers")).getByTestId("not-implemented-suppliers")).toBeInTheDocument();
+    await expect(within(canvas.getByTestId("pd-tab-suppliers")).queryByTestId("not-implemented-suppliers")).toBeNull();
     await expect(within(canvas.getByTestId("pd-section-derived")).getByTestId("not-implemented-derived")).toBeInTheDocument();
-    await expect(within(canvas.getByTestId("pd-tab-daily")).getByTestId("not-implemented-daily")).toBeInTheDocument();
+    await expect(within(canvas.getByTestId("pd-tab-daily")).queryByTestId("not-implemented-daily")).toBeNull();
   },
 };
 
-/** SAMPLE ROWS, each part with its ⚠: the suppliers and the daily in and out under their tabs, and the derived
- * products — MANY, so the card holds the count and the first three as one line each, and "See all" opens the whole
- * list (owner: *"dia bisa banyak … kalau kepanjangan membingungkan"*). */
+/** SAMPLE ROWS, with their ⚠: the derived products — MANY, so the card holds the count and the first three as one line
+ * each, and "See all" opens the whole list (owner: *"dia bisa banyak … kalau kepanjangan membingungkan"*). The
+ * suppliers and the daily in and out, real now, still wait for their own tabs. */
 export const SamplesFillTheGaps: Story = {
   name: "Samples",
   play: async ({ canvasElement }) => {
@@ -87,7 +88,7 @@ export const SamplesFillTheGaps: Story = {
     await userEvent.keyboard("{Escape}");
 
     const daily = await openTab(canvas, "daily");
-    await expect(daily.getAllByTestId(/^pd-daily-row-/)).toHaveLength(14);
+    await waitFor(() => expect(daily.getAllByTestId(/^pd-daily-row-/)).toHaveLength(14));
   },
 };
 

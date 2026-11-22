@@ -715,6 +715,8 @@ flowchart TD
 one transaction, the seek's clock — which are answered once, in
 [settlement's clarify](../settlement/analytic_context_clarify.md), and followed here.
 
+✅ Built 2026-11-21 — **Penjualan is replayed too**: *"the same, on the supplier's tables"* read as covering the sales tables added after this decision ([penjualan-is-the-selling-value-on-the-order-day](../../technical/frontend/suppliers_decision.md#penjualan-is-the-selling-value-on-the-order-day)). `AnalyticReplayCompute`'s one delete transaction also clears `supplier_sale_daily_reports` from the day, the claims (`supplier_sale_orders` with their `supplier_sale_order_parts`) of the orders placed from it, and the cancel's day of an order placed before it — the seek redelivers that cancel, which takes it back again; the broker seeks `supplier-order-placed` and `supplier-order-cancelled` beside `supplier-fold` and `supplier-count-corrected`, the window the shortest of the four; the sales fold and the Penjualan day re-fold read `process_event_lock` FOR SHARE first, as the restock fold — refused (500, redelivered) while it is held. Tests `analytic_replay_compute_test.go` (the replayed days equal the never-replayed figures: placed and cancelled inside, placed before and cancelled inside, cancels first), `analytic_replay_compute_sales_race_test.go` (`-tags raceaudit`); [rpc.md](../../services/supplier_service/rpc.md#analyticreplaycompute--never-into-the-backfilled-past).
+
 ## a-deleted-supplier-is-kept-for-its-figures
 
 > Owner, in chat *(2026-10-07)*: *"when supplier deleted, it still show, because we soft delete it and still need that

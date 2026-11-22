@@ -42,11 +42,11 @@ import { expectMoveCounted, expectMovesOffered } from "./order_moves_metric";
 //   every line scans exact, Set Picked presses and the order is picked (the file's when "validate package order", which
 //   was "pick order" when this check was first written as `order can be picked`).
 // - `confirm recorded in analytic metric` — Analytic › Order › Order status moves (`metrics/orders/moves`, #84) counts a
-//   confirm as a Confirmed, pending → processed (the-order-metric-ids-name-what-moved). Its own test, last in the file,
-//   on a shop of its own with TWO pending orders of which the test confirms ONE, read as warehouse:owner (a warehouse
-//   reads every count of the orders it ships): Add Metric › Order offers Order status moves, and Analytic by shop over
-//   the last 7 days, filtered to that shop, reads `created_count` 2 (the fold landed) and `confirmed_count` exactly 1 —
-//   the untouched order, still pending, adds nothing (order_moves_metric.ts).
+//   confirm as a Confirmed, pending → processed (the-order-metric-ids-name-what-moved). Its own test per role, last in
+//   the file — EVERY warehouse role on a shop of its own with TWO pending orders of which the role confirms ONE, read as
+//   that role (a warehouse reads every count of the orders it ships): Add Metric › Order offers Order status moves, and
+//   Analytic by shop over the last 7 days, filtered to that shop, reads `created_count` 2 (the fold landed) and
+//   `confirmed_count` exactly 1 — the untouched order, still pending, adds nothing (order_moves_metric.ts).
 // - multi orders: the same three, for EACH of the two orders; the bulk move's one answer moved both.
 test.describe("warehouse:all wants to confirm an order", () => {
   test.describe.configure({ timeout: 180_000 });
@@ -64,9 +64,9 @@ test.describe("warehouse:all wants to confirm an order", () => {
 
   const QTY = 2;
   const ORDERS_PER_ROLE = 3;
-  // The metric check's own shop: two pending orders, ONE of them confirmed by the test.
+  // The metric check's own shop per role: two pending orders, ONE of them confirmed by that role.
   const METRIC_ORDERS = 2;
-  const STOCK = (ROLES.length * ORDERS_PER_ROLE + METRIC_ORDERS) * QTY + 4;
+  const STOCK = ROLES.length * (ORDERS_PER_ROLE + METRIC_ORDERS) * QTY + 4;
   const UNIT_COST = 10_000;
   const PLATFORM_TOTAL = 100_000;
 
@@ -84,9 +84,9 @@ test.describe("warehouse:all wants to confirm an order", () => {
     shop: "",
     // Per role: [the 1-order given's order, the multi-orders given's two].
     orders: {} as Record<string, string[]>,
-    // The metric check's shop and its two orders: [the one confirmed, the one left pending].
-    metricShop: "",
-    metricOrders: [] as string[],
+    // Per role, the metric check's shop and its two orders: [the one confirmed, the one left pending].
+    metricShops: {} as Record<string, string>,
+    metricOrders: {} as Record<string, string[]>,
   };
 
   // The order's own record, read with the page's signed-in token — its status, as the server keeps it.
@@ -227,31 +227,35 @@ test.describe("warehouse:all wants to confirm an order", () => {
       }
     }
 
-    // GIVEN — the metric check's own shop (so no other test's confirm counts on it) and its two pending orders.
-    ground.metricShop = String(
-      (
-        await api(page, "selling.v1.ShopService/ShopCreate", {
+    // GIVEN — per role, the metric check's own shop (so no other test's confirm counts on it) and its two pending orders.
+    for (const r of ROLES) {
+      const metricShop = String(
+        (
+          await api(page, "selling.v1.ShopService/ShopCreate", {
+            teamId: ground.seller,
+            name: `E2E Ocf Metric Shop ${r.key} ${SUFFIX}`,
+            shopCode: `CFM${r.key.toUpperCase()}${SUFFIX}`,
+            marketplace: "MARKETPLACE_SHOPEE",
+          })
+        ).shop.id,
+      );
+      ground.metricShops[r.key] = metricShop;
+      ground.metricOrders[r.key] = [];
+      for (let n = 1; n <= METRIC_ORDERS; n += 1) {
+        const made = await api(page, "selling.v1.OrderService/OrderCreate", {
+          idempotencyKey: `e2e-ocf-${SUFFIX}-met-${r.key}-${n}`,
+          shipmentChannelId: "1",
           teamId: ground.seller,
-          name: `E2E Ocf Metric Shop ${SUFFIX}`,
-          shopCode: `CFM${SUFFIX}`,
-          marketplace: "MARKETPLACE_SHOPEE",
-        })
-      ).shop.id,
-    );
-    for (let n = 1; n <= METRIC_ORDERS; n += 1) {
-      const made = await api(page, "selling.v1.OrderService/OrderCreate", {
-        idempotencyKey: `e2e-ocf-${SUFFIX}-met-${n}`,
-        shipmentChannelId: "1",
-        teamId: ground.seller,
-        shopId: ground.metricShop,
-        warehouseId: ground.warehouse,
-        customerName: `E2E Ocf Buyer met ${n}`,
-        platformTotal: PLATFORM_TOTAL,
-        platformCreatedAtUnix: Math.floor(Date.now() / 1000),
-        orderExternalRefId: `OCF${SUFFIX}MET${n}`,
-        items: [{ productId: ground.product, productCode: SKU, name: `E2E ${SKU}`, quantity: QTY }],
-      });
-      ground.metricOrders.push(String(made.order.id));
+          shopId: metricShop,
+          warehouseId: ground.warehouse,
+          customerName: `E2E Ocf Buyer met ${r.key} ${n}`,
+          platformTotal: PLATFORM_TOTAL,
+          platformCreatedAtUnix: Math.floor(Date.now() / 1000),
+          orderExternalRefId: `OCF${SUFFIX}MET${r.key.toUpperCase()}${n}`,
+          items: [{ productId: ground.product, productCode: SKU, name: `E2E ${SKU}`, quantity: QTY }],
+        });
+        ground.metricOrders[r.key]!.push(String(made.order.id));
+      }
     }
 
     await page.close();
@@ -397,29 +401,31 @@ test.describe("warehouse:all wants to confirm an order", () => {
     });
   }
 
-  // Its own test, LAST in the file: it moves one order of a shop of its own (see the head of this file).
-  test(`warehouse:owner confirm order (${ONE_COND}): confirm recorded in analytic metric`, async ({ page }) => {
-    await signIn(page, username("own"), ground.warehouse);
-    const [orderId, left] = ground.metricOrders;
-    const shop = ground.metricShop;
-    expect(await statusOf(page, ground.warehouse, orderId!)).toBe("ORDER_STATUS_PENDING");
+  // Its own test per role, LAST in the file: each moves one order of the role's own shop (see the head of this file).
+  for (const r of ROLES) {
+    test(`${r.given} confirm order (${ONE_COND}): confirm recorded in analytic metric`, async ({ page }) => {
+      await signIn(page, username(r.key), ground.warehouse);
+      const [orderId, left] = ground.metricOrders[r.key]!;
+      const shop = ground.metricShops[r.key]!;
+      expect(await statusOf(page, ground.warehouse, orderId!)).toBe("ORDER_STATUS_PENDING");
 
-    // WHEN — Confirm Order pressed on the order's page; the shop's other order stays pending.
-    await page.goto(`/warehouse-orders/${orderId}`);
-    const advance = page.getByTestId("pick-order-advance");
-    await expect(advance).toContainText("Confirm Order");
-    const [answer] = await Promise.all([
-      page.waitForResponse((res) => res.url().endsWith("/warehouse.selling.v1.OrderService/OrderStatusChange")),
-      advance.click(),
-    ]);
-    expect(answer.status()).toBe(200);
-    expect(await statusOf(page, ground.warehouse, orderId!)).toBe("ORDER_STATUS_PROCESSED");
-    expect(await statusOf(page, ground.warehouse, left!)).toBe("ORDER_STATUS_PENDING");
+      // WHEN — Confirm Order pressed on the order's page; the shop's other order stays pending.
+      await page.goto(`/warehouse-orders/${orderId}`);
+      const advance = page.getByTestId("pick-order-advance");
+      await expect(advance).toContainText("Confirm Order");
+      const [answer] = await Promise.all([
+        page.waitForResponse((res) => res.url().endsWith("/warehouse.selling.v1.OrderService/OrderStatusChange")),
+        advance.click(),
+      ]);
+      expect(answer.status()).toBe(200);
+      expect(await statusOf(page, ground.warehouse, orderId!)).toBe("ORDER_STATUS_PROCESSED");
+      expect(await statusOf(page, ground.warehouse, left!)).toBe("ORDER_STATUS_PENDING");
 
-    await test.step("then: confirm recorded in analytic metric", async () => {
-      // Order status moves is offered under Order, and the shop's Confirmed reads the ONE confirm.
-      await expectMovesOffered(page);
-      await expectMoveCounted(page, shop, "confirmed_count");
+      await test.step("then: confirm recorded in analytic metric", async () => {
+        // Order status moves is offered under Order, and the shop's Confirmed reads the ONE confirm.
+        await expectMovesOffered(page);
+        await expectMoveCounted(page, shop, "confirmed_count");
+      });
     });
-  });
+  }
 });

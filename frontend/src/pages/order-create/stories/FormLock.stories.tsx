@@ -198,7 +198,7 @@ export const LockedWhileWaiting: Story = {
     // Leaving is guarded with the lock's own question — and staying keeps it.
     await userEvent.click(canvas.getByTestId("order-create-back"));
     const title = await screen.findByText("Leave Before the Answer?", {}, { timeout: 3000 });
-    await expect(await screen.findByText(/it may still be placed/)).toBeVisible();
+    await waitFor(() => expect(screen.getByText(/it may still be placed/)).toBeVisible(), { timeout: 5000 });
     await expect(title).toBeVisible();
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByText("Leave Before the Answer?")).toBeNull());

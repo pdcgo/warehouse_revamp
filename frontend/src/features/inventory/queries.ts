@@ -894,6 +894,12 @@ export function usePlacementList(args: { warehouseId: bigint | undefined; produc
 // receive completes a restock, and a move changes what a rack holds. Cross-domain invalidation is
 // rare in this codebase and deliberate here — the alternative is a rack page that shows what was on
 // the shelf before somebody moved it.
+//
+// EVERY `racks` READ BUT THE RACK LOOKUP (features/racks rackListOptions, `{ lookup: true }` — the pickers' racks and
+// the code map): a stock write changes what is ON a shelf, never a shelf's code or name, which is all the lookup
+// carries. Re-reading it was the RackList in the rack page's after-save storm (backlog #120) — the Move dialog's
+// pickers are still on screen while a move's invalidation runs. A rack's own writes (create, rename, delete —
+// pages/racks/queries.ts) still refresh it.
 export function useInvalidateStock() {
   const client = useQueryClient();
 
@@ -901,7 +907,10 @@ export function useInvalidateStock() {
     await Promise.all([
       client.invalidateQueries({ queryKey: ["inventory"] }),
       client.invalidateQueries({ queryKey: ["restock"] }),
-      client.invalidateQueries({ queryKey: ["racks"] }),
+      client.invalidateQueries({
+        queryKey: ["racks"],
+        predicate: (query) => (query.queryKey[2] as { lookup?: unknown } | undefined)?.lookup !== true,
+      }),
     ]);
   };
 }

@@ -86,6 +86,11 @@ export interface MovementRow {
   actorUserId: bigint;
   /** The movement's transaction was an override — Root or the System Administrator, outside the team. */
   isOverride?: boolean;
+  /**
+   * WHO RECEIVED A SAMPLE (a-sample-keeps-its-recipient) — the server sets it on a sample row only, empty on every other
+   * (StockMovement.recipient). The row says it on a line of its own under what happened: *diberikan kepada Pak Budi*.
+   */
+  recipient?: string;
   batchId: bigint;
   productId: bigint;
   /** Absent on a ledger that has no shelves in it — see the `warehouse` column. */
@@ -237,6 +242,22 @@ export function MovementTable({
   // them scannable. Zero gets neither — a movement that moved nothing is not an increase.
   const deltaColor = (m: MovementRow) => (m.delta > 0n ? "success.fg" : m.delta < 0n ? "error.fg" : undefined);
   const deltaText = (m: MovementRow) => (m.delta > 0n ? `+${m.delta}` : m.delta.toString());
+  // A SAMPLE'S RECIPIENT, its own line (a-sample-keeps-its-recipient): who the units were handed to — cut to the room
+  // there is, whole on hover.
+  const recipientLine = (m: MovementRow) =>
+    m.recipient ? (
+      <Text
+        fontSize="xs"
+        color="fg.muted"
+        truncate
+        minW="0"
+        maxW={isMobile ? undefined : "16rem"}
+        title={m.recipient}
+        data-testid={`${testId}-row-${m.id}-recipient`}
+      >
+        {t("inventory.movement.givenTo", { name: m.recipient })}
+      </Text>
+    ) : null;
   // A received-count correction's own line: the count it went from and to.
   const countLine = (c: CountCorrection, testId: string) => (
     <Text as="span" fontSize="xs" color="fg.muted" fontVariantNumeric="tabular-nums" data-testid={`${testId}-count`}>
@@ -301,6 +322,7 @@ export function MovementTable({
                 {whyLine(m.countCorrection, `${testId}-row-${m.id}`)}
               </Stack>
             )}
+            {recipientLine(m)}
             <HStack justify="space-between" gap="2" fontSize="xs" color="fg.muted">
               <Text truncate minW="0">
                 {formatRfc3339DateTimeShort(m.createdAt)}
@@ -358,6 +380,11 @@ export function MovementTable({
                       {kindOf(m)} · {countLine(m.countCorrection, `${testId}-row-${m.id}`)}
                     </Text>
                     {whyLine(m.countCorrection, `${testId}-row-${m.id}`)}
+                  </Stack>
+                ) : m.recipient ? (
+                  <Stack gap="0">
+                    <Text as="span">{kindOf(m)}</Text>
+                    {recipientLine(m)}
                   </Stack>
                 ) : (
                   kindOf(m)

@@ -1,40 +1,21 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Flex, Heading, Icon, Spacer, Stack, Table, Text } from "@chakra-ui/react";
 import { Store } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { shopClient } from "../../../api/clients";
-import type { Shop } from "../../../gen/warehouse/selling/v1/selling_pb";
-import { shopListRowData, shopsFromList } from "../../../features/shops/adapt";
+import { useTeamShops } from "../../../features/shops/queries";
 import { useTeam } from "../../../features/team/TeamContext";
 import { MarketplaceBadge } from "../../../components/badges/MarketplaceBadge";
 
 // ShopsSection is the SELLING-only part of a team detail page (#79): the team's marketplace shops
 // (name / code / marketplace), read-only, with a shortcut to the Shops management screen when you
-// are viewing your own team. Shops come from ShopList (#66).
+// are viewing your own team. Shops come from ShopList (#66), through a query hook (#122) — a shop added or renamed
+// elsewhere shows here without a reload. A failed read shows the empty line, as it always has.
 export function ShopsSection({ teamId }: { teamId: bigint }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { current } = useTeam();
 
-  const [shops, setShops] = useState<Shop[]>([]);
-
-  useEffect(() => {
-    let alive = true;
-
-    shopClient
-      .shopList({ teamId, dataRequest: shopListRowData(), page: { page: 1, limit: 50 } })
-      .then((res) => {
-        if (alive) setShops(shopsFromList(res.items, res.ids));
-      })
-      .catch(() => {
-        if (alive) setShops([]);
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [teamId]);
+  const shops = useTeamShops({ teamId }).data ?? [];
 
   // "Manage shops" goes to the Shops screen, which is scoped to the CURRENT team — only offer it when
   // this detail IS the current team, or it would manage a different team's shops.

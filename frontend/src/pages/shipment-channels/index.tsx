@@ -42,6 +42,9 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 //  - deleted channels are HIDDEN by default and shown on request, because root restores from here;
 //  - a live row offers Edit and Delete (confirmed); a deleted row offers Restore only;
 //  - the code is never editable (a-code-never-changes).
+//
+// THE TRACKING LINK column (the-tracking-link-prototype-is-accepted): after Description, each courier's link with its
+// `{resi}`, or a dash — so root sees which couriers' orders open no tracking page (`ShipmentChannel.tracking_url`).
 export function ShipmentChannelsPage() {
   const { t } = useTranslation();
 
@@ -133,6 +136,7 @@ export function ShipmentChannelsPage() {
                   <Table.ColumnHeader>{t("shipmentChannels.code")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("shipmentChannels.name")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("shipmentChannels.desc")}</Table.ColumnHeader>
+                  <Table.ColumnHeader>{t("shipmentChannels.trackingUrl")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("shipmentChannels.status")}</Table.ColumnHeader>
                   <Table.ColumnHeader>{t("shipmentChannels.updated")}</Table.ColumnHeader>
                   <Table.ColumnHeader textAlign="end">{t("shipmentChannels.actions")}</Table.ColumnHeader>
@@ -146,6 +150,17 @@ export function ShipmentChannelsPage() {
                     <Table.Cell color={channel.isDeleted ? "fg.muted" : undefined}>{channel.name}</Table.Cell>
                     <Table.Cell color="fg.muted" maxW="xs" truncate>
                       {channel.desc || "—"}
+                    </Table.Cell>
+                    <Table.Cell
+                      fontFamily="mono"
+                      fontSize="xs"
+                      color={channel.trackingUrl ? undefined : "fg.muted"}
+                      maxW="xs"
+                      truncate
+                      title={channel.trackingUrl || undefined}
+                      data-testid={`shipment-channel-tracking-${channel.code}`}
+                    >
+                      {channel.trackingUrl || "—"}
                     </Table.Cell>
                     <Table.Cell>
                       <Badge

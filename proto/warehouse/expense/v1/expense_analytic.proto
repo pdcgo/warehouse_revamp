@@ -96,10 +96,12 @@ message AdsExpenseMetricByDay {
   map<string, AdsExpenseMetric> items = 1;
 }
 
-// EXPENSES — every expense a person TYPES, one field per kind and their total: Ads, Payroll, Operational, Other. The
-// STOCK_LOSS expense is not in it (stock-loss-stays-out-of-analytic-expenses) — a loss is read as Lost stock and as Team
-// Balance. A transfer's shipping is not in it either: it is a paying-account row, never an Expenses-screen record
-// (a-transfers-shipping-posts-as-an-expense). No shop: only an ads expense names one.
+// EXPENSES — every expense a person TYPES: one field per kind (Ads, Payroll, Operational, Other — each group's spending),
+// the month's total, money in and capital, and one field per expense TYPE (expense-types-sit-under-groups; acceptance
+// analytic/expense_metric.md givens 6–22: *<type> shown*). The STOCK_LOSS expense is not in it
+// (stock-loss-stays-out-of-analytic-expenses) — a loss is read as Lost stock and as Team Balance. A transfer's shipping is
+// not in it either: it is a paying-account row, never an Expenses-screen record (a-transfers-shipping-posts-as-an-expense).
+// No shop: only an ads expense names one.
 //
 // Who reads: as Ads expense.
 message ExpensesMetric {
@@ -143,8 +145,123 @@ message ExpensesMetric {
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];
-  // The four kinds' sum — every typed expense, never a stock loss.
+  // THE MONTH TOTAL as Biaya's *Total bulan ini* moves (the-expense-types-prototype-is-accepted; acceptance
+  // analytic/expense_metric.md givens 6–22, financial_account/expense.md givens 17–22): spending − money_in +
+  // capital_out − capital_in — Prive raises it, Setoran modal and money in lower it. Equal to every type field below
+  // summed plus the rows from before the types (each in its group's spending only). Never a stock loss. ⚠ Until backlog
+  // #107 it was the four kinds' sum, spending only; each of the four above stays its group's SPENDING — every money-out
+  // type but Prive — and money in and capital stay their own fields below.
   double total = 5 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Uang masuk — Piutang luar diterima and Uang masuk lain, positive (a correction signed), on the same days and people
+  // as the rest.
+  double money_in = 6 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Modal keluar — Prive, the owner's capital taken out, positive.
+  double capital_out = 7 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // Modal masuk — Setoran modal, the owner's capital put in, positive.
+  double capital_in = 8 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_ADS_MARKETPLACE — Iklan › Iklan marketplace (spending). Each type field is its rows' signed net, as Biaya's
+  // month card shows the type (ExpenseTotals.by_type): money out plus, money in (Piutang luar diterima, Setoran modal,
+  // Uang masuk lain) minus — so the type fields and the rows from before the types add up to `total`. A row from before
+  // the types (type 0) is in no type field, only in its group's. Appended in ExpenseType's order: field 8 + the type's
+  // number.
+  double ads_marketplace = 9 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_CONTENT_ENDORSE — Iklan › Konten · endorse.
+  double content_endorse = 10 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_BASIC_SALARY — Gaji › Gaji pokok.
+  double basic_salary = 11 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_BONUS — Gaji › Bonus.
+  double bonus = 12 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_CONTRIBUTIONS — Gaji › Iuran (BPJS).
+  double contributions = 13 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_ELECTRICITY — Operasional › Listrik.
+  double electricity = 14 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_INTERNET — Operasional › Internet · paket data.
+  double internet = 15 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_KITCHEN — Operasional › Dapur · makan tim.
+  double kitchen = 16 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_TOOLS — Operasional › Alat.
+  double tools = 17 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_EQUIPMENT — Operasional › Perlengkapan.
+  double equipment = 18 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_BANK_FEE — Operasional › Biaya bank.
+  double bank_fee = 19 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_DISCREPANCY — Operasional › Selisih · transaksi tak tercatat (the checklist's *adjustment*).
+  double discrepancy = 20 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_OUTSIDE_DEBT_PAID — Lainnya › Utang luar dibayar (spending).
+  double outside_debt_paid = 21 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_OUTSIDE_RECEIVABLE_RECEIVED — Lainnya › Piutang luar diterima: money in, minus.
+  double outside_receivable_received = 22 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_PRIVE — Lainnya › Prive: capital out, plus (never in a group's spending).
+  double prive = 23 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_CAPITAL_DEPOSIT — Lainnya › Setoran modal: capital in, minus.
+  double capital_deposit = 24 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_OTHER_OUT — Lainnya › Uang keluar lain (spending).
+  double other_out = 25 [
+    (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
+    (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
+  ];
+  // EXPENSE_TYPE_OTHER_IN — Lainnya › Uang masuk lain: money in, minus.
+  double other_in = 26 [
     (warehouse.analytic_base.v1.metric_sort) = {can_sort: true},
     (warehouse.analytic_base.v1.field_stat_type) = FIELD_STAT_TYPE_CURRENCY
   ];

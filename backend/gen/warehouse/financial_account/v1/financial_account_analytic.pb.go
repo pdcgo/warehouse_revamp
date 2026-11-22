@@ -96,7 +96,10 @@ type AccountChangeMetric struct {
 	Transfer    float64 `protobuf:"fixed64,8,opt,name=transfer,proto3" json:"transfer,omitempty"`
 	TeamPayment float64 `protobuf:"fixed64,9,opt,name=team_payment,json=teamPayment,proto3" json:"team_payment,omitempty"`
 	Capital     float64 `protobuf:"fixed64,10,opt,name=capital,proto3" json:"capital,omitempty"`
-	// The net — the nine above summed: `closing_balance − opening_balance`.
+	// The change type MONEY_IN (money-in-on-biaya-is-its-own-change-type) — the tenth. Numbered after the positions (13,
+	// appended), declared beside `capital` so the screens read it with the other change types, before the net.
+	MoneyIn float64 `protobuf:"fixed64,13,opt,name=money_in,json=moneyIn,proto3" json:"money_in,omitempty"`
+	// The net — the ten above summed: `closing_balance − opening_balance`.
 	Change float64 `protobuf:"fixed64,11,opt,name=change,proto3" json:"change,omitempty"`
 	// The balance at the key's LAST day in the window — a POSITION. The headline's is the window's last day.
 	ClosingBalance float64 `protobuf:"fixed64,12,opt,name=closing_balance,json=closingBalance,proto3" json:"closing_balance,omitempty"`
@@ -200,6 +203,13 @@ func (x *AccountChangeMetric) GetTeamPayment() float64 {
 func (x *AccountChangeMetric) GetCapital() float64 {
 	if x != nil {
 		return x.Capital
+	}
+	return 0
+}
+
+func (x *AccountChangeMetric) GetMoneyIn() float64 {
+	if x != nil {
+		return x.MoneyIn
 	}
 	return 0
 }
@@ -1026,7 +1036,7 @@ var File_warehouse_financial_account_v1_financial_account_analytic_proto protore
 
 const file_warehouse_financial_account_v1_financial_account_analytic_proto_rawDesc = "" +
 	"\n" +
-	"?warehouse/financial_account/v1/financial_account_analytic.proto\x12\x1ewarehouse.financial_account.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xd8\x04\n" +
+	"?warehouse/financial_account/v1/financial_account_analytic.proto\x12\x1ewarehouse.financial_account.v1\x1a\x1bbuf/validate/validate.proto\x1a)warehouse/analytic_base/v1/analytic.proto\x1a!warehouse/role_base/v1/role.proto\"\xff\x04\n" +
 	"\x13AccountChangeMetric\x123\n" +
 	"\x0fopening_balance\x18\x01 \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x04R\x0eopeningBalance\x12$\n" +
@@ -1053,7 +1063,9 @@ const file_warehouse_financial_account_v1_financial_account_analytic_proto_rawDe
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\vteamPayment\x12$\n" +
 	"\acapital\x18\n" +
 	" \x01(\x01B\n" +
-	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\acapital\x12\"\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\acapital\x12%\n" +
+	"\bmoney_in\x18\r \x01(\x01B\n" +
+	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\amoneyIn\x12\"\n" +
 	"\x06change\x18\v \x01(\x01B\n" +
 	"\x9a\xb5\x18\x02\b\x01\xa0\xb5\x18\x03R\x06change\x123\n" +
 	"\x0fclosing_balance\x18\f \x01(\x01B\n" +

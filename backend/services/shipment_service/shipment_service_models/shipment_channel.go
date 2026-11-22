@@ -12,6 +12,9 @@ type ShipmentChannel struct {
 	IsDeleted bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	// The courier's tracking page with `{resi}` where the number goes; empty = none (shipment 00003).
+	TrackingURL string `gorm:"column:tracking_url"`
 }
 
 func (ShipmentChannel) TableName() string {

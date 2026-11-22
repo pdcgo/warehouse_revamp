@@ -1,10 +1,11 @@
 import { useState } from "react";
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Box } from "@chakra-ui/react";
-import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
+import { Box, Button, Stack } from "@chakra-ui/react";
+import { expect, fn, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { regionTree, regions } from "../../../.storybook/fixtures";
+import { regionClient } from "../../api/clients";
 import { AddressPicker, type AddressValue, description, emptyAddress } from "./AddressPicker";
 
 const filled: AddressValue = {
@@ -292,5 +293,67 @@ export const KecamatanWithSeveralPostcodesLeavesItEmpty: Story = {
         ),
       { timeout: 3000 },
     );
+  },
+};
+
+// A second address field, mounted after the first — the customer's address on one form, then the next order's.
+function ASecondFieldLater() {
+  const [first, setFirst] = useState<AddressValue>(emptyAddress);
+  const [second, setSecond] = useState<AddressValue>(emptyAddress);
+  const [shown, setShown] = useState(false);
+
+  return (
+    <Stack gap="4">
+      <Box data-testid="story-first-field">
+        <AddressPicker value={first} onChange={setFirst} />
+      </Box>
+      <Button size="xs" data-testid="story-mount-second" onClick={() => setShown(true)}>
+        A second address
+      </Button>
+      {shown && (
+        <Box data-testid="story-second-field">
+          <AddressPicker value={second} onChange={setSecond} />
+        </Box>
+      )}
+    </Stack>
+  );
+}
+
+/** The provinsi reads (RegionList with no parent) made so far. */
+function topLevelReads(spy: { mock: { calls: unknown[][] } }): number {
+  return spy.mock.calls.filter(([req]) => (req as { parentCode?: string }).parentCode === "").length;
+}
+
+let regionListSpy: { mock: { calls: unknown[][] } } | null = null;
+
+// A LEVEL IS READ ONCE (#122). Each rung reads through a query hook on `referenceQuery` — regions are the same for
+// everyone — so a second address field mounted later draws the 38 provinsi from the cache: no second RegionList. Each
+// field used to read its own.
+export const ASecondFieldReadsTheCachedLevel: Story = {
+  name: "A second address field draws the provinsi from the cache — no second RegionList",
+  beforeEach: () => {
+    const spy = spyOn(regionClient, "regionList");
+    regionListSpy = spy as unknown as { mock: { calls: unknown[][] } };
+
+    return () => spy.mockRestore();
+  },
+  render: () => <ASecondFieldLater />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(topLevelReads(regionListSpy!)).toBe(1));
+
+    await userEvent.click(canvas.getByTestId("story-mount-second"));
+    const second = within(await canvas.findByTestId("story-second-field"));
+    const input = within(second.getByTestId("address-provinsi")).getByRole("combobox");
+    await userEvent.click(input);
+
+    // Two pickers portal two listboxes with the same option ids: reach the second's through its input.
+    await waitFor(() => {
+      const listbox = document.getElementById(input.getAttribute("aria-controls") ?? "");
+      expect(listbox).not.toBeNull();
+      expect(within(listbox!).getByTestId("address-provinsi-option-32")).toBeVisible();
+    }, { timeout: 5000 });
+
+    await expect(topLevelReads(regionListSpy!)).toBe(1);
   },
 };

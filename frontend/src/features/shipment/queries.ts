@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { shipmentChannelClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
-import { invalidateShippingCatalogue } from "../shipping/catalogue";
+import type { ShipmentChannel } from "../../gen/warehouse/shipment/v1/shipment_pb";
 import { channelByIdsRowData, channelListRowData, channelsFromByIds, channelsFromList } from "./adapt";
 
 // The courier catalogue — docs/business/shipment/context_decision.md.
@@ -50,6 +50,34 @@ export function useShipmentChannelOptions() {
   });
 }
 
+// THE COURIER CATALOGUE — every channel, DELETED ones included (features/shipping/catalogue.ts, the code bridge: a
+// badge must still name the courier an old order or restock used, and ShippingSelect filters the deleted ones out for
+// new work). One large first page, as the picker feed asks: a curated handful of couriers, capped by the contract's
+// limit. Exported for the one caller that needs the answer outside a component (catalogue.ts's `loadShippingCatalogue`).
+export async function fetchChannelCatalogue(): Promise<ShipmentChannel[]> {
+  const res = await shipmentChannelClient.shipmentChannelList({
+    filter: { includeDeleted: true },
+    dataRequest: channelListRowData(),
+    page: { page: 1, limit: 200 },
+  });
+
+  return channelsFromList(res.items, res.ids);
+}
+
+// The catalogue as a query (#121) — it used to be a module-level session cache (`cache` / `inflight` / `generation`)
+// that only its own invalidate function could drop. Through TanStack the dedupe it existed for is the cache's own: a
+// courier is drawn per table ROW (ShippingBadge), and every row's hook shares this ONE entry, so a page of twenty rows
+// still asks once. A picker feed and a name lookup, so `referenceQuery` (HARD RULE 10's one buy-out): a courier's name
+// labels a row, nobody works from it. Under the `shipmentChannels` prefix, so every write below refreshes it with the
+// management list — a renamed courier is renamed in every badge already on screen, not only after a reload.
+export function useShipmentChannelCatalogue() {
+  return useQuery({
+    ...referenceQuery,
+    queryKey: key.shipmentChannels({ catalogue: true }),
+    queryFn: fetchChannelCatalogue,
+  });
+}
+
 // Name lookup for ids a screen already holds — an order's shipment_channel_id. Deleted channels come
 // back flagged, so an old order still names its courier.
 export function useShipmentChannelsByIds(channelIds: bigint[]) {
@@ -72,38 +100,34 @@ export function useShipmentChannelsByIds(channelIds: bigint[]) {
 
 // ── Writes ──────────────────────────────────────────────────────────────────────────────────────
 //
-// Each drops the whole `shipmentChannels` prefix — the management list, the picker feed AND the by-id
-// lookups — because a rename, a delete and a restore each change what all three show. The hook owns
-// the cache; the component owns the toast and the dialog.
+// Each drops the whole `shipmentChannels` prefix — the management list, the picker feed, the courier
+// catalogue (ShippingSelect and every ShippingBadge, the code bridge) AND the by-id lookups — because a
+// rename, a delete and a restore each change what all four show. The hook owns the cache; the component
+// owns the toast and the dialog.
 
 export function useInvalidateShipmentChannels() {
   const client = useQueryClient();
 
-  return () => {
-    // The session cache ShippingSelect and every ShippingBadge read (the code bridge) — dropped with the
-    // query, or a rename lingers in every badge until reload.
-    invalidateShippingCatalogue();
-
-    return client.invalidateQueries({ queryKey: ["shipmentChannels"] });
-  };
+  return () => client.invalidateQueries({ queryKey: ["shipmentChannels"] });
 }
 
 export function useCreateShipmentChannel() {
   const invalidate = useInvalidateShipmentChannels();
 
   return useMutation({
-    mutationFn: (vars: { code: string; name: string; desc: string }) =>
+    mutationFn: (vars: { code: string; name: string; desc: string; trackingUrl: string }) =>
       shipmentChannelClient.shipmentChannelCreate(vars),
     onSuccess: () => invalidate(),
   });
 }
 
-// Name and desc only — there is no code to send (a-code-never-changes).
+// Name, desc and the tracking link — there is no code to send (a-code-never-changes). Each is written as sent, so an
+// empty link clears it. The invalidation drops the courier catalogue too, so every order's ↗ follows the new link.
 export function useUpdateShipmentChannel() {
   const invalidate = useInvalidateShipmentChannels();
 
   return useMutation({
-    mutationFn: (vars: { channelId: bigint; name: string; desc: string }) =>
+    mutationFn: (vars: { channelId: bigint; name: string; desc: string; trackingUrl: string }) =>
       shipmentChannelClient.shipmentChannelUpdate(vars),
     onSuccess: () => invalidate(),
   });

@@ -88,6 +88,8 @@ export const CHANGE_TYPE_KEY: Record<number, string> = {
   [T.TRANSFER]: "financialAccounts.changeType.transfer",
   [T.TEAM_PAYMENT]: "financialAccounts.changeType.teamPayment",
   [T.CAPITAL]: "financialAccounts.changeType.capital",
+  // Money IN typed on Biaya (money-in-on-biaya-is-its-own-change-type) — never a plus-sign expense.
+  [T.MONEY_IN]: "financialAccounts.changeType.moneyIn",
 };
 
 // The order the log filter and the report's columns list the types: money in first, then out, then the
@@ -95,6 +97,7 @@ export const CHANGE_TYPE_KEY: Record<number, string> = {
 export const CHANGE_TYPES: T[] = [
   T.WITHDRAWAL,
   T.CAPITAL,
+  T.MONEY_IN,
   T.RESTOCK,
   T.EXPENSE,
   T.ADS_EXPENSE,
@@ -108,6 +111,7 @@ export const CHANGE_TYPES: T[] = [
 export const CHANGE_TYPE_PALETTE: Record<number, string> = {
   [T.WITHDRAWAL]: "green",
   [T.CAPITAL]: "teal",
+  [T.MONEY_IN]: "cyan",
   [T.RESTOCK]: "orange",
   [T.EXPENSE]: "red",
   [T.ADS_EXPENSE]: "pink",

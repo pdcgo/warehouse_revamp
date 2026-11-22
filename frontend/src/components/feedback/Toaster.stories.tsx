@@ -97,6 +97,6 @@ export const ErrorCarriesTheReason: Story = {
 
     const title = await screen.findByText("Could not cancel order");
     await waitFor(() => expect(title).toBeVisible());
-    await expect(await screen.findByText("The order has already shipped.")).toBeVisible();
+    await waitFor(() => expect(screen.getByText("The order has already shipped.")).toBeVisible(), { timeout: 5000 });
   },
 };

@@ -53,6 +53,8 @@ func NewRegister(
 		// `custom_shipment_fee` keyed by the parcel (the-courier-is-paid-by-the-team-or-by-the-warehouse). The same
 		// ingress restriction applies.
 		mux.Handle("/event/"+CustomShipmentHandedOverSubscription+"/push", push)
+		// An inbound parcel's door charge at its Terima (backlog #101).
+		mux.Handle("/event/"+CustomShipmentReceivedSubscription+"/push", push)
 
 		return san_grpc.ServiceReflectNames{
 			liabilityv1connect.LiabilityServiceName,

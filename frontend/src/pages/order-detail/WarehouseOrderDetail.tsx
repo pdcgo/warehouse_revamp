@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { Button, Flex, Heading, Icon, Spacer, Stack, Tabs, Text } from "@chakra-ui/react";
+import { Button, Flex, Heading, Icon, IconButton, Spacer, Stack, Tabs, Text } from "@chakra-ui/react";
 import { ArrowLeft, Ban, PackageCheck, PackageSearch, Undo2 } from "lucide-react";
 import { rpcError } from "../../api/clients";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
@@ -11,6 +11,7 @@ import { SettlementTab } from "./components/SettlementTab";
 import { useActors } from "../../features/users/queries";
 import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { CompactActions } from "../../components/chrome/CompactActions";
 import { toaster } from "../../components/feedback/Toaster";
 import { InfoPanel } from "./components/InfoPanel";
 import { NotesSection, noteWriter } from "./components/NotesSection";
@@ -18,8 +19,12 @@ import { TimelinePanel } from "./components/TimelinePanel";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { useOpenReturnAccept } from "../../features/orders/returnAccept";
 import { canForceReturn, useForceReturn } from "../../features/orders/useForceReturn";
+import { useOrderTags } from "../../features/orders/tags/tagQueries";
+import { tagsOfOrder } from "../../features/orders/tags/orderTags";
+import { OrderTagsBox } from "../../features/orders/tags/OrderTagsBox";
 import { ReportFoundFromOrderDialog } from "../../features/inventory/ReportFoundFromOrderDialog";
 import { canReportFound } from "../../lib/roles";
+import { useIsMobile } from "../../layouts/shell";
 
 function parseOrderId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -38,6 +43,8 @@ export function WarehouseOrderDetailPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { current } = useTeam();
+  // A PHONE READS THE TABS ACROSS THE TOP (backlog #104). Before the early returns: a hook may not be conditional.
+  const mobile = useIsMobile();
 
   const id = parseOrderId(orderId);
   const teamId = current?.teamId;
@@ -52,8 +59,12 @@ export function WarehouseOrderDetailPage() {
   // A LOST ORDER'S PARCEL, FOUND (a-found-lost-parcel-is-a-found-stock-in): Report Found, prefilled with the order — as on
   // the pick page.
   const [reportingFound, setReportingFound] = useState(false);
-
+  // On a phone Cancel is an icon (CompactActions), so its confirm is opened from here rather than from its own trigger.
+  const [cancelling, setCancelling] = useState(false);
   const order = query.data ?? null;
+  // THE ORDER'S TAGS (backlog #100): the Info tab's Tag card — the warehouse sees and tags the same set the selling team
+  // does, when it is the warehouse shipping the order (useOrderTags).
+  const tagsApi = useOrderTags(order ?? undefined);
   const loading = query.isPending && id !== 0n;
 
   // THE PEOPLE ON THE TIMELINE AND IN THE NOTES. The ids come from the timeline rows — a note is one too
@@ -131,83 +142,168 @@ export function WarehouseOrderDetailPage() {
     );
   }
 
+  const cancellable = order.status === OrderStatus.PENDING && canWrite(current);
+  const forceable = canForceReturn(order.status) && canWrite(current);
+  const acceptable = order.status === OrderStatus.RETURN && canWrite(current);
+  const reportable =
+    order.status === OrderStatus.LOST && order.warehouseId === current.teamId && canWrite(current) &&
+    canReportFound(current.role);
+
   return (
     // The page arrives — a fade and a short rise (`motion-is-small-quick-and-shared`).
     <Stack gap="section" animationStyle="enter" data-testid="order-detail-page">
-      <Button
-        size="xs"
-        variant="ghost"
-        alignSelf="flex-start"
-        data-testid="order-detail-back"
-        onClick={() => navigate("/orders")}
-      >
-        <Icon as={ArrowLeft} boxSize="4" />
-        {t("orders.backToOrders")}
-      </Button>
-
-      {/* The header sits ABOVE the tabs, and stays put whichever one is open. The number, the status
-          and the two actions are properties of the ORDER, not of a section of it — an action that
-          moves the order would be strange to find filed under "Info". */}
-      <Flex align="center" gap="card">
-        <Heading size="md" data-testid="order-detail-title">
-          {t("orders.orderTitle", { id: order.id.toString() })}
-        </Heading>
-        <OrderStatusBadge status={order.status} />
-        <Spacer />
-
-        {/* NO CONFIRM BUTTON HERE ANY MORE (owner). Confirming is the WAREHOUSE accepting the job, and
-            it happens on that team's order screen — this seat can no longer do it, and the RPC would
-            refuse it anyway: OrderStatusChange lets only the order's warehouse move pending → processed.
-
-            The status still reads PENDING here until the building acts, which is the honest thing for
-            this screen to show: it is waiting on somebody else. Cancel stays — calling an order off is
-            still this team's decision, from PENDING only: a processed or picked order is handed back to
-            pending by the warehouse first (who-may-cancel-a-pending-order). */}
-
-        {order.status === OrderStatus.PENDING && canWrite(current) && (
-          <ConfirmDialog
-            title={t("orders.cancelOrder")}
-            message={t("orders.cancelMessage", { id: order.id.toString() })}
-            confirmLabel={t("orders.cancelOrder")}
-            onConfirm={cancelOrder}
-            trigger={
-              <Button variant="outline" colorPalette="error" data-testid="order-cancel">
-                <Icon as={Ban} boxSize="4" />
-                {t("orders.cancel")}
-              </Button>
-            }
-          />
-        )}
-
-        {canForceReturn(order.status) && canWrite(current) && (
-          <Button
-            variant="outline"
-            colorPalette="error"
-            loading={forceReturn.busy}
-            onClick={() => forceReturn.ask({ id: order.id, status: order.status })}
-            data-testid="order-force-return"
+      {/* ON A PHONE THE HEADER IS ONE ROW (backlog #105, the-phone-header-is-one-row): back as its icon, the number, the
+          status, the actions — as the seller's order page and the rack, batch and restock pages draw theirs. A labelled
+          back button over the title and a labelled action beside it took two rows. The actions are their ICONS
+          (a-phone-header-action-is-an-icon, CompactActions): each keeps its desktop test id and is named by its label;
+          the four never meet (pending, on its way, return, lost), so the row holds one at most. The desktop below is
+          unchanged. A JS breakpoint, never CSS hiding. */}
+      {mobile ? (
+        <Flex align="center" gap="2" minW="0">
+          <IconButton
+            size="sm"
+            variant="ghost"
+            flexShrink={0}
+            aria-label={t("orders.backToOrders")}
+            title={t("orders.backToOrders")}
+            data-testid="order-detail-back"
+            onClick={() => navigate("/orders")}
           >
-            <Icon as={Undo2} boxSize="4" />
-            {t("picking.action.forceReturn")}
-          </Button>
-        )}
-
-        {order.status === OrderStatus.RETURN && canWrite(current) && (
-          <Button colorPalette="brand" onClick={() => openReturnAccept(order.id)} data-testid="order-accept-return">
-            <Icon as={PackageCheck} boxSize="4" />
-            {t("picking.action.acceptReturn")}
-          </Button>
-        )}
-
-        {/* A LOST ORDER'S PARCEL TURNED UP HERE — back in stock as a found naming the order; the order stays lost. */}
-        {order.status === OrderStatus.LOST && order.warehouseId === current.teamId && canWrite(current) &&
-          canReportFound(current.role) && (
-            <Button variant="outline" onClick={() => setReportingFound(true)} data-testid="order-report-found">
-              <Icon as={PackageSearch} boxSize="4" />
-              {t("picking.action.reportFound")}
-            </Button>
+            <Icon as={ArrowLeft} boxSize="4" />
+          </IconButton>
+          {/* The number and its status take what the back arrow and the actions leave; at 320px a long number is cut
+              before anything runs past the edge (nothing-runs-past-a-phones-edge). */}
+          <Flex align="center" gap="2" flex="1" minW="0">
+            <Heading size="md" truncate minW="0" data-testid="order-detail-title">
+              {t("orders.orderTitle", { id: order.id.toString() })}
+            </Heading>
+            <OrderStatusBadge status={order.status} />
+          </Flex>
+          <CompactActions
+            menuLabel={t("orders.actions")}
+            actions={[
+              cancellable && {
+                id: "cancel",
+                label: t("orders.cancelOrder"),
+                icon: Ban,
+                danger: true,
+                testId: "order-cancel",
+                onClick: () => setCancelling(true),
+              },
+              forceable && {
+                id: "forceReturn",
+                label: t("picking.action.forceReturn"),
+                icon: Undo2,
+                danger: true,
+                disabled: forceReturn.busy,
+                testId: "order-force-return",
+                onClick: () => forceReturn.ask({ id: order.id, status: order.status }),
+              },
+              acceptable && {
+                id: "acceptReturn",
+                label: t("picking.action.acceptReturn"),
+                icon: PackageCheck,
+                primary: true,
+                testId: "order-accept-return",
+                onClick: () => openReturnAccept(order.id),
+              },
+              reportable && {
+                id: "reportFound",
+                label: t("picking.action.reportFound"),
+                icon: PackageSearch,
+                testId: "order-report-found",
+                onClick: () => setReportingFound(true),
+              },
+            ]}
+          />
+          {cancellable && (
+            <ConfirmDialog
+              open={cancelling}
+              onOpenChange={setCancelling}
+              title={t("orders.cancelOrder")}
+              message={t("orders.cancelMessage", { id: order.id.toString() })}
+              confirmLabel={t("orders.cancelOrder")}
+              onConfirm={cancelOrder}
+            />
           )}
-      </Flex>
+        </Flex>
+      ) : (
+        <>
+          <Button
+            size="xs"
+            variant="ghost"
+            alignSelf="flex-start"
+            data-testid="order-detail-back"
+            onClick={() => navigate("/orders")}
+          >
+            <Icon as={ArrowLeft} boxSize="4" />
+            {t("orders.backToOrders")}
+          </Button>
+
+          {/* The header sits ABOVE the tabs, and stays put whichever one is open. The number, the status
+              and the two actions are properties of the ORDER, not of a section of it — an action that
+              moves the order would be strange to find filed under "Info". */}
+          <Flex align="center" gap="card">
+            <Heading size="md" data-testid="order-detail-title">
+              {t("orders.orderTitle", { id: order.id.toString() })}
+            </Heading>
+            <OrderStatusBadge status={order.status} />
+            <Spacer />
+
+            {/* NO CONFIRM BUTTON HERE ANY MORE (owner). Confirming is the WAREHOUSE accepting the job, and
+                it happens on that team's order screen — this seat can no longer do it, and the RPC would
+                refuse it anyway: OrderStatusChange lets only the order's warehouse move pending → processed.
+
+                The status still reads PENDING here until the building acts, which is the honest thing for
+                this screen to show: it is waiting on somebody else. Cancel stays — calling an order off is
+                still this team's decision, from PENDING only: a processed or picked order is handed back to
+                pending by the warehouse first (who-may-cancel-a-pending-order). */}
+
+            {cancellable && (
+              <ConfirmDialog
+                title={t("orders.cancelOrder")}
+                message={t("orders.cancelMessage", { id: order.id.toString() })}
+                confirmLabel={t("orders.cancelOrder")}
+                onConfirm={cancelOrder}
+                trigger={
+                  <Button variant="outline" colorPalette="error" data-testid="order-cancel">
+                    <Icon as={Ban} boxSize="4" />
+                    {t("orders.cancel")}
+                  </Button>
+                }
+              />
+            )}
+
+            {forceable && (
+              <Button
+                variant="outline"
+                colorPalette="error"
+                loading={forceReturn.busy}
+                onClick={() => forceReturn.ask({ id: order.id, status: order.status })}
+                data-testid="order-force-return"
+              >
+                <Icon as={Undo2} boxSize="4" />
+                {t("picking.action.forceReturn")}
+              </Button>
+            )}
+
+            {acceptable && (
+              <Button colorPalette="brand" onClick={() => openReturnAccept(order.id)} data-testid="order-accept-return">
+                <Icon as={PackageCheck} boxSize="4" />
+                {t("picking.action.acceptReturn")}
+              </Button>
+            )}
+
+            {/* A LOST ORDER'S PARCEL TURNED UP HERE — back in stock as a found naming the order; the order stays lost. */}
+            {reportable && (
+              <Button variant="outline" onClick={() => setReportingFound(true)} data-testid="order-report-found">
+                <Icon as={PackageSearch} boxSize="4" />
+                {t("picking.action.reportFound")}
+              </Button>
+            )}
+          </Flex>
+        </>
+      )}
 
       {forceReturn.dialog}
       {order.status === OrderStatus.LOST && order.warehouseId === current.teamId && (
@@ -231,19 +327,51 @@ export function WarehouseOrderDetailPage() {
           read section by section.
           Info first because it is WHAT THE ORDER IS, and it is where the lines live: the warehouse
           opens an order to pick it, and its pick list is those lines. Timeline second because it is
-          what has happened to it so far. */}
-      <Tabs.Root defaultValue="info" orientation="vertical" data-testid="order-detail-tabs">
-        <Tabs.List minW="40">
-          <Tabs.Trigger value="info" data-testid="order-detail-tab-info">
+          what has happened to it so far.
+
+          ON A PHONE THE TABS GO ACROSS THE TOP (backlog #104), as the order detail's preview does
+          (the-ledger-is-blocks-on-a-phone): beside the panel the list left every card ~190px wide — Tambah Catatan ran
+          past its card and the Tags hint was cut. The row is one line that scrolls sideways and a tab never shrinks
+          (nothing-runs-past-a-phones-edge), as the warehouse's order list's status tabs do. The page keeps its tabs —
+          the warehouse keeps the tabbed detail (the-detail-preview-became-the-order-detail). A JS breakpoint, never
+          CSS hiding; every phone-only prop is `undefined` on a desktop, so the desktop draws exactly as before. */}
+      <Tabs.Root
+        defaultValue="info"
+        orientation={mobile ? "horizontal" : "vertical"}
+        data-testid="order-detail-tabs"
+      >
+        <Tabs.List
+          minW={mobile ? undefined : "40"}
+          flexWrap={mobile ? "nowrap" : undefined}
+          overflowX={mobile ? "auto" : undefined}
+          overflowY={mobile ? "hidden" : undefined}
+          maxW={mobile ? "full" : undefined}
+        >
+          <Tabs.Trigger
+            value="info"
+            flexShrink={mobile ? 0 : undefined}
+            whiteSpace={mobile ? "nowrap" : undefined}
+            data-testid="order-detail-tab-info"
+          >
             {t("orders.detail.tab.info")}
           </Tabs.Trigger>
-          <Tabs.Trigger value="timeline" data-testid="order-detail-tab-timeline">
+          <Tabs.Trigger
+            value="timeline"
+            flexShrink={mobile ? 0 : undefined}
+            whiteSpace={mobile ? "nowrap" : undefined}
+            data-testid="order-detail-tab-timeline"
+          >
             {t("orders.detail.tab.timeline")}
           </Tabs.Trigger>
           {/* THIRD, and last, because it is the money AFTER the fact — the order exists and has
               happened before the marketplace pays anything against it
               (order-detail-manages-the-ledger). */}
-          <Tabs.Trigger value="settlement" data-testid="order-detail-tab-settlement">
+          <Tabs.Trigger
+            value="settlement"
+            flexShrink={mobile ? 0 : undefined}
+            whiteSpace={mobile ? "nowrap" : undefined}
+            data-testid="order-detail-tab-settlement"
+          >
             {t("orders.detail.tab.settlement")}
           </Tabs.Trigger>
           {/* The line slides down the list to the picked tab, and the panel fades in (motion-is-small-quick-and-shared). */}
@@ -261,6 +389,7 @@ export function WarehouseOrderDetailPage() {
           <InfoPanel
             order={order}
             teamId={teamId}
+            tags={<OrderTagsBox orderId={order.id} tags={tagsOfOrder(order)} api={tagsApi} />}
             notes={
               <NotesSection
                 key={order.id.toString()}

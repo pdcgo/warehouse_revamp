@@ -364,6 +364,8 @@ The switch waited for the old chat's builders to finish (*"i still have active s
 
 **The verdict.** On the owner's word naming the thens, the tester edits their status itself in `docs/acceptances/` — the then's cell and that action's counts in `<big>/context.md` and `progress.md` — left uncommitted in the live tree. It is the one exception to *the tester writes only reports in the main checkout*. A status still changes only on the owner's word (`docs/acceptances/guide.md`). revamp_dev commits those edits as bookkeeping and never reverts them.
 
+🔄 *(2026-11-20)* Widened by the owner's *"B"* — the tester now sets the statuses from its green results without his naming each then: [the-tester-sets-a-thens-status-from-its-green-results](#the-tester-sets-a-thens-status-from-its-green-results). His own word still wins.
+
 ---
 
 ## the-tester-writes-acceptance-specs-when-nothing-is-queued
@@ -371,3 +373,59 @@ The switch waited for the old chat's builders to finish (*"i still have active s
 > Owner (Heri), in `revamp_tester`'s desktop chat (2026-11-16): *"A"*, as recommended — to: when does the tester write the acceptance specs? A: on wakes with no snapshot queued — one given + when at a time, restock first (the owner's *"the focus is restock"*), a queued snapshot always first; each finished action gets a specs ref, the spec alone, the affected run and a report; idle wakes then cost model time and keep worker w1 busy; B: only when the owner names an action.
 
 **The verdict.** The tester works through `e2e_report/tester/acceptance_todo.md` (restock's actions, then order's) on every wake with nothing queued; a snapshot always goes first. Each action's report has `Snapshot: none` and no backlog row; on GREEN revamp_dev brings its specs in with the report's command, on RED its app bugs go first like any tester failure. Live from 2026-11-16 15:31.
+
+---
+
+## the-tester-sets-a-thens-status-from-its-green-results
+
+> Owner (Heri), in `revamp_tester`'s desktop chat (2026-11-20): *"is when youre finished running test, marked it too?"* — the tester asked: confirm or reverse [docs/acceptances/guide.md](acceptances/guide.md#status-is-per-then)'s *"The agent's own passing test does not make a then ✅ ok … stays ⬜ untested until the owner says it has been checked"*? A: confirm — ✅ stays the owner's own check, the tester reports and the owner names thens; B: reverse — the tester marks. The owner picked *"B"* (no recommendation was given either way). Relayed by the tester's note `e2e_report/tester/20261120-183000-note-tester-marks-acceptance-status.md`.
+
+**The verdict.** revamp_tester **sets a then's status from its green test results**: ✅ when the then's check passes for every role its given names in a green run (the report linked), ❌ with its `## Errors` entry when the check fails on an app bug, 🚧 while the check is a `test.fail` for something not built — the then's cell and that action's counts in `<big>/context.md` and `progress.md`, in the main checkout, left uncommitted for revamp_dev's next commit (`critical-projects/scripts/acceptance_mark.py`, run after every green report). **The owner's own word always wins.** It widens [the-tester-marks-a-then-on-the-owners-word](#the-tester-marks-a-then-on-the-owners-word) (2026-11-16: only the thens the owner names). First applied the same day: 488 status cells over 11 files (✅ 57 → 545 · 🚧 129 → 38 · ⬜ 502 → 105 of 688 thens).
+
+---
+
+## frontend-speed-is-measured-by-a-dev-tool
+
+> Owner (Heri), in `revamp_dev`'s desktop chat (2026-11-21): *"okay A"*, **as recommended** — to: *"is good idea to have bot that asses frontend speed that related state management?"* A: a measuring tool the dev bot runs, no new bot; B: the tester measures every snapshot (catches regressions automatically, but adds minutes to every run and widens its lane); C: a third bot just for frontend speed (its own profile, Telegram, cron and model cost; mostly repeats the tester's browser work).
+
+**The verdict.** Frontend speed is MEASURED by a tool the dev bot runs — no new bot, and the tester's runs do not grow. A `san` command opens each screen in a browser and counts, per screen:
+
+| the measure | what it catches |
+| --- | --- |
+| requests per page load, and the same RPC asked twice | missing caching, a screen fetching on its own |
+| calls waiting on each other | a slow first paint |
+| time until the page is usable | what a person feels |
+| requests fired after one save | too few — a stale screen; too many — a request storm |
+| re-renders while typing in a big form | `order-create`'s 31 `useState` |
+
+It writes `audits/frontend/<screen>.md` with a baseline, as `audits/services/` holds the backend's ([test-then-audit](#test-then-audit)). It joins the dev bot's Level 2 checks for a slice that changes a screen's reads, as the race/perf tests do when a write or a query changes. It is built FIRST, so the state work ([no-global-store-every-read-is-a-query-hook](technical/frontend/context_decision.md#no-global-store-every-read-is-a-query-hook)) reports before/after numbers.
+
+*(Not asked — follows from the lane, [the-tester-writes-the-e2e-specs](#the-tester-writes-the-e2e-specs).)* The tool lives outside `frontend/e2e/`, asserts nothing and writes no spec — a measurement, not a test — and runs on servers and a database of its own, so it collides with neither the tester's worker w1 nor the dev bot's Go DB tests. How it counts re-renders and judges "usable" is the scoping pass's to propose.
+
+⛔ Not built — backlog #119.
+
+✅ Built 2026-11-21 (P1) — `go run ./tools/san audit frontend` ([docs/tools/san.md](tools/san.md#audit-frontend)): its own seat (`warehouse_test_audit` cloned per run from a kept `warehouse_test_audit_tpl`, :8251/:5251, events `warehouse-audit`, `e2e_report/.frontend_audit.lock`), a seed through its own API, a cached production build served by `vite preview`, the request measures (requests per load, the same RPC asked twice, CORS pre-checks, calls waiting on each other — measured by holding each answer back —, time until usable, requests after one save) and the first baseline of ten screens in [audits/frontend/](../audits/frontend/). Re-renders while typing are P2; `--files` and the Level 2 line P3 (#124); the other screens P4.
+
+✅ Built 2026-11-21 (#125, re-renders and typing) — `go run ./tools/san audit frontend` also counts what React re-renders while a person types ([docs/tools/san.md](tools/san.md#typing--re-renders-per-keystroke)): per field of order-create (the buyer name, the address, a line's quantity), the restock form (a line's quantity, the note) and product-edit (the name), typed twice on fresh loads in a browser context of its own, a stub React DevTools hook counts the commits and the components rendered per keystroke, the commits trailing after the typing stops, where each re-render starts, and the components rendered most — named, because the audit's build alone turns on `esbuild.keepNames` (no request count moved: a `--files` run over that config). They are COUNTs in the `--files` verdict — commits/key +1, components/key +25 %, trailing +1 reads `FIX` — judged on every typing pass. order-create's save is now the whole OrderCreate a person types, and its ProductPicker is probed with the warehouse picked first. First readings: every key re-renders the whole form — order-create 3826–4213 components a key, all from `OrderCreatePage`; the restock form 3268; product-edit 934.
+
+✅ Built 2026-11-21 (#126, every other screen) — `go run ./tools/san audit frontend` measures **50 screens**: P1's ten and 40 daily ones ([docs/tools/san.md](tools/san.md#audit-frontend), `tools/san/audit_frontend_screens_daily.go`) — the main lists and the other screens a person works on every day, each as the role whose daily work it is (22 the seller's, 2 the warehouse crew's, 14 the warehouse owner's, 2 root's), with one save where that work has a cheap one (a note on an order, an order's next step). The seed grows through the audit's own API (`audit_frontend_seed_daily.go`: 25 orders, 25 drafts, 25 expenses, 3 found reports, an open count — 266 calls, the template rebuilt in 22 s), and the ten P1 screens read the same counts on it. Every new screen has its baseline entry in [audits/frontend/](../audits/frontend/) — counts only, taken beside the tester's isolated run; the ten P1 entries untouched — so `--files` judges a slice on any of them; a unit test holds every entry to a route `router.tsx` renders on its page directory. The routes left out, each with its reason, are in docs/tools/san.md. First readings worth a look (named, not fixed): waiting chains 7 deep on `batch-detail` and 6 on `warehouse-product`, 3 on `batches`, `found-stock`, `opname-session-detail`, `restock-warehouse`, `warehouse-order` and `analytic`; the same read twice on `orders`, `shops`, `restock-warehouse` (`UserByIDs`), `restock-selling` (`UserByIDs` ×2), `user-detail` (`UserTeams`), `batch-detail` and `warehouse-product` (`ProductPlaces`).
+
+---
+
+## a-slice-fixes-the-speed-regression-it-caused
+
+> Owner (Heri), in `revamp_dev`'s desktop chat (2026-11-21): *"A"*, **as recommended** — to: [audits/README.md](../audits/README.md) says audits are discussion documents whose fixes are asked for separately; when the frontend speed audit shows that a slice made a screen slower, what does the dev bot do? A: a regression in the COUNTS that the slice itself caused (an extra request, a new duplicate, a longer chain of waiting calls) is fixed in that slice before its snapshot; slower timings alone and problems that were already there are reported, never fixed unasked; B: report only — the slice goes on unchanged; C: any regression, timings included, holds the snapshot until it is fixed or the owner waives it.
+
+**The verdict.** When [frontend-speed-is-measured-by-a-dev-tool](#frontend-speed-is-measured-by-a-dev-tool)'s Level 2 check compares a slice against the baseline:
+
+| the change | what the dev bot does |
+| --- | --- |
+| a COUNT the slice made worse — requests per load, a new duplicate, a deeper waiting chain (and, once measured, renders per keystroke) | fixed in that slice, before its snapshot; the hand-off note names it |
+| a TIMING worse, counts unchanged | reported in the hand-off note, not fixed — timings move with the CPU |
+| a problem already in the baseline | reported, never fixed unasked — the [audits/README.md](../audits/README.md) rule stands for those |
+
+Why counts and not timings: a count is exact on every run, so a worse count is the slice's own doing; a time is not.
+
+⛔ Not built — backlog #124 (the Level 2 hook).
+
+✅ Built 2026-11-21 (#124, the Level 2 hook) — `go run ./tools/san audit frontend --files a,b` ([docs/tools/san.md](tools/san.md#--files--the-level-2-line)): it measures only the audited screens the files reach (`san test affected`'s page mapping, called — the app shell and the build reach every screen, a backend file the screens whose measured requests call its RPCs), compares them with `audits/frontend/baseline.json` without writing it, and prints one summary line and a line per change: `FIX` (a count the slice made worse — the screen, the measure, before → after, the RPCs — to be fixed in the slice), `timing` (reported, not to fix), `already` (in the baseline, never fixed unasked), `better`, and `unstable` — a count that does not hold in every run of the measurement is not judged: the dependency pass runs twice, and a link a screen declares unstable (order-create's `TeamList → WarehouseReceivingStatus`) never reads as a regression. It exits 0 whenever the measurement completed *(build default)*.

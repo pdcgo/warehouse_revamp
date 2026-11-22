@@ -53,7 +53,6 @@ import { ProductStickyStrip, ProductTitleRow } from "../../features/products/Pro
 import { StockHighlight } from "../../features/products/StockHighlight";
 import { PRODUCT_DETAIL_PENDING } from "./pending";
 import { DailySection } from "../../features/products/DailySection";
-import { sampleDaily } from "../../features/products/dailySample";
 import { DerivedSection } from "../../features/products/DerivedSection";
 import { sampleDerived } from "../../features/products/derivedSample";
 import { HistorySection } from "../../features/products/HistorySection";
@@ -690,7 +689,6 @@ export function ProductDetailPage() {
           {WAREHOUSE_TABS.map((key) => (
             <Tabs.Trigger key={key} value={key} flexShrink={0} whiteSpace="nowrap" data-testid={`pd-tab-${key}`}>
               {t(`products.detail.tab.${key}`)}
-              {(key === "suppliers" || key === "daily") && <NotImplemented list={PRODUCT_DETAIL_PENDING} id={key} />}
             </Tabs.Trigger>
           ))}
           <Tabs.Indicator />
@@ -702,18 +700,21 @@ export function ProductDetailPage() {
         </Tabs.Content>
 
         {/* PEMASOK — who supplies it, a tab of its own (owner: *"pemasok beda tab sama overview"*); the tab names it, so
-            the panel carries no heading, and its ⚠ rides on the tab, as Keluar Masuk Harian's does. With the store it was
-            bought at, and the owner's last cost (the-supplier-tab-names-the-store). */}
+            the panel carries no heading. With the store it was bought at, and the owner's last cost
+            (the-supplier-tab-names-the-store) — real (ProductSupplierGoods), in the picker's warehouse
+            (the-warehouse-picker-splits-the-page). */}
         <Tabs.Content value="suppliers" data-testid="pd-panel-suppliers">
-          <SuppliersSection teamId={teamId} productId={product.id} showCost />
+          <SuppliersSection teamId={teamId} productId={product.id} warehouseId={warehouseId} showCost />
         </Tabs.Content>
 
         <Tabs.Content value="price" data-testid="pd-panel-price">
           <PriceSection teamId={teamId} product={product} warehouseId={warehouseId} />
         </Tabs.Content>
 
+        {/* KELUAR MASUK HARIAN — the last fourteen days, real (ProductDailyMoves), in the picker's warehouse
+            (the-warehouse-picker-splits-the-page). */}
         <Tabs.Content value="daily" data-testid="pd-panel-daily">
-          <DailySection days={sampleDaily(product.id, Number(lensStock?.readyQty ?? 0n))} />
+          <DailySection teamId={teamId} productId={product.id} warehouseId={warehouseId} />
         </Tabs.Content>
 
         <Tabs.Content value="history" data-testid="pd-panel-history">

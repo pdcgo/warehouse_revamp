@@ -188,7 +188,12 @@ type ShipmentChannel struct {
 	IsDeleted bool                   `protobuf:"varint,5,opt,name=is_deleted,json=isDeleted,proto3" json:"is_deleted,omitempty"`
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// Set on every edit, delete and restore (a-channel-records-updated-at).
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// The courier's own tracking page, `{resi}` where the number goes — "" = none, and the order's resi stays copy-only
+	// (an-orders-resi-links-to-the-couriers-tracking-page, the-tracking-link-prototype-is-accepted). Kept by root, one per
+	// courier (a-channel-is-a-courier); a deleted channel's link still opens for its old orders
+	// (a-deleted-channel-still-resolves-by-id). Every `{resi}` is replaced by the order's resi, URL-encoded, by the screen.
+	TrackingUrl   string `protobuf:"bytes,8,opt,name=tracking_url,json=trackingUrl,proto3" json:"tracking_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -270,6 +275,13 @@ func (x *ShipmentChannel) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *ShipmentChannel) GetTrackingUrl() string {
+	if x != nil {
+		return x.TrackingUrl
+	}
+	return ""
 }
 
 type ShipmentChannelListRequest struct {
@@ -946,9 +958,12 @@ type ShipmentChannelCreateRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Refused with ALREADY_EXISTS when ANY row holds this code — a deleted one included, whose answer
 	// is restore, not re-create (a-deleted-code-is-restored-not-recreated).
-	Code          string `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
-	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Desc          string `protobuf:"bytes,3,opt,name=desc,proto3" json:"desc,omitempty"`
+	Code string `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Desc string `protobuf:"bytes,3,opt,name=desc,proto3" json:"desc,omitempty"`
+	// Optional — "" = none. Otherwise refused with INVALID_ARGUMENT, each for its own reason, when it is not an `https://`
+	// address, holds no `{resi}` (a-tracking-link-must-carry-the-resi), or is no address at all.
+	TrackingUrl   string `protobuf:"bytes,4,opt,name=tracking_url,json=trackingUrl,proto3" json:"tracking_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1004,6 +1019,13 @@ func (x *ShipmentChannelCreateRequest) GetDesc() string {
 	return ""
 }
 
+func (x *ShipmentChannelCreateRequest) GetTrackingUrl() string {
+	if x != nil {
+		return x.TrackingUrl
+	}
+	return ""
+}
+
 type ShipmentChannelCreateResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Channel       *ShipmentChannel       `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"`
@@ -1048,12 +1070,15 @@ func (x *ShipmentChannelCreateResponse) GetChannel() *ShipmentChannel {
 	return nil
 }
 
-// Edits name and desc. There is no `code` field — it cannot be changed (a-code-never-changes).
+// Edits name, desc and the tracking link. There is no `code` field — it cannot be changed (a-code-never-changes).
+// Every editable field is written as sent: an empty `desc` or `tracking_url` clears it.
 type ShipmentChannelUpdateRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ChannelId     uint64                 `protobuf:"varint,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Desc          string                 `protobuf:"bytes,3,opt,name=desc,proto3" json:"desc,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId uint64                 `protobuf:"varint,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	Name      string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Desc      string                 `protobuf:"bytes,3,opt,name=desc,proto3" json:"desc,omitempty"`
+	// As on create: "" clears the link; otherwise `https://`, holding `{resi}`, an address — each refusal its own reason.
+	TrackingUrl   string `protobuf:"bytes,4,opt,name=tracking_url,json=trackingUrl,proto3" json:"tracking_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1105,6 +1130,13 @@ func (x *ShipmentChannelUpdateRequest) GetName() string {
 func (x *ShipmentChannelUpdateRequest) GetDesc() string {
 	if x != nil {
 		return x.Desc
+	}
+	return ""
+}
+
+func (x *ShipmentChannelUpdateRequest) GetTrackingUrl() string {
+	if x != nil {
+		return x.TrackingUrl
 	}
 	return ""
 }
@@ -1335,7 +1367,7 @@ var File_warehouse_shipment_v1_shipment_proto protoreflect.FileDescriptor
 
 const file_warehouse_shipment_v1_shipment_proto_rawDesc = "" +
 	"\n" +
-	"$warehouse/shipment/v1/shipment.proto\x12\x15warehouse.shipment.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xf2\x01\n" +
+	"$warehouse/shipment/v1/shipment.proto\x12\x15warehouse.shipment.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\x95\x02\n" +
 	"\x0fShipmentChannel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x12\n" +
@@ -1346,7 +1378,8 @@ const file_warehouse_shipment_v1_shipment_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xd2\x02\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12!\n" +
+	"\ftracking_url\x18\b \x01(\tR\vtrackingUrl\"\xd2\x02\n" +
 	"\x1aShipmentChannelListRequest\x12H\n" +
 	"\x06filter\x18\x01 \x01(\v20.warehouse.shipment.v1.ShipmentChannelListFilterR\x06filter\x12H\n" +
 	"\x04sort\x18\x02 \x01(\v24.warehouse.shipment.v1.ShipmentChannelListFilterSortR\x04sort\x12U\n" +
@@ -1389,19 +1422,21 @@ const file_warehouse_shipment_v1_shipment_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12M\n" +
-	"\x05value\x18\x02 \x01(\v27.warehouse.shipment.v1.ShipmentChannelByIdsResponseListR\x05value:\x028\x01\"\x91\x01\n" +
+	"\x05value\x18\x02 \x01(\v27.warehouse.shipment.v1.ShipmentChannelByIdsResponseListR\x05value:\x028\x01\"\xbe\x01\n" +
 	"\x1cShipmentChannelCreateRequest\x12+\n" +
 	"\x04code\x18\x01 \x01(\tB\x17\xbaH\x14r\x12\x10\x01\x18(2\f^[a-z0-9_]+$R\x04code\x12\x1d\n" +
 	"\x04name\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18xR\x04name\x12\x1c\n" +
-	"\x04desc\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04desc:\a\x92\xb5\x18\x03\n" +
+	"\x04desc\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04desc\x12+\n" +
+	"\ftracking_url\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\vtrackingUrl:\a\x92\xb5\x18\x03\n" +
 	"\x01\x01\"a\n" +
 	"\x1dShipmentChannelCreateResponse\x12@\n" +
-	"\achannel\x18\x01 \x01(\v2&.warehouse.shipment.v1.ShipmentChannelR\achannel\"\x8c\x01\n" +
+	"\achannel\x18\x01 \x01(\v2&.warehouse.shipment.v1.ShipmentChannelR\achannel\"\xb9\x01\n" +
 	"\x1cShipmentChannelUpdateRequest\x12&\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\tchannelId\x12\x1d\n" +
 	"\x04name\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18xR\x04name\x12\x1c\n" +
-	"\x04desc\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04desc:\a\x92\xb5\x18\x03\n" +
+	"\x04desc\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\x04desc\x12+\n" +
+	"\ftracking_url\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\vtrackingUrl:\a\x92\xb5\x18\x03\n" +
 	"\x01\x01\"a\n" +
 	"\x1dShipmentChannelUpdateResponse\x12@\n" +
 	"\achannel\x18\x01 \x01(\v2&.warehouse.shipment.v1.ShipmentChannelR\achannel\"O\n" +

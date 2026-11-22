@@ -67,7 +67,7 @@ func TestExpensePersonList_ThePeopleOnTheTeamsRowsLatestFirst(t *testing.T) {
 
 	// The newest row of all, typed with no identity: user 0, never a person.
 	_, err := f.svc.ExpenseCreate(context.Background(), connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_OTHER, Amount: 10_000, OccurredAt: "2026-11-02",
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_OTHER, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_OTHER), Amount: 10_000, OccurredAt: "2026-11-02",
 		FinanceAccountId: payingAccount,
 	}))
 	if err != nil {

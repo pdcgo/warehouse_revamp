@@ -139,6 +139,9 @@ export function HistorySection({
         // received-count correction too (the-received-count-prototype-is-accepted).
         priceChange: m.priceChange,
         countCorrection: m.countCorrection,
+        // WHO RECEIVED A SAMPLE (a-sample-keeps-its-recipient): the owning team checks its samples by who got them — the
+        // server names the person on a sample row only, and the table says *given to Pak Budi* on its own line.
+        recipient: m.recipient,
       })),
     [history.data],
   );

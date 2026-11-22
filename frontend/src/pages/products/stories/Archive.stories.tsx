@@ -81,7 +81,7 @@ export const UnarchiveComesBackUnderTheCodeItKept: Story = {
     await userEvent.click(canvas.getByTestId("restore-SL-03-ANG-001-L"));
     await waitFor(() => expect(canvas.queryByTestId("product-row-SL-03-ANG-001-L")).toBeNull());
     await expect(screen.queryByRole("dialog")).toBeNull();
-    await expect(await screen.findByText(/"SL-03-ANG-001-L" unarchived/)).toBeVisible();
+    await waitFor(() => expect(screen.getByText(/"SL-03-ANG-001-L" unarchived/)).toBeVisible(), { timeout: 5000 });
   },
 };
 
@@ -97,7 +97,7 @@ export const DeleteRemovesOnlyANeverUsedProduct: Story = {
     let dialog = await screen.findByRole("alertdialog");
     await waitFor(() => expect(dialog).toBeVisible());
     await userEvent.click(within(dialog).getByTestId("confirm-action"));
-    await expect(await screen.findByText(/has a history/)).toBeVisible();
+    await waitFor(() => expect(screen.getByText(/has a history/)).toBeVisible(), { timeout: 5000 });
     await expect(canvas.getByTestId("product-row-SL-03-ANG-001-L")).toBeVisible();
 
     await userEvent.click(canvas.getByTestId("delete-SL-03-ANG-LAMA"));

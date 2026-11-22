@@ -48,6 +48,9 @@ const (
 	// ProductServiceProductDetailProcedure is the fully-qualified name of the ProductService's
 	// ProductDetail RPC.
 	ProductServiceProductDetailProcedure = "/warehouse.product.v1.ProductService/ProductDetail"
+	// ProductServiceProductCategoryCountsProcedure is the fully-qualified name of the ProductService's
+	// ProductCategoryCounts RPC.
+	ProductServiceProductCategoryCountsProcedure = "/warehouse.product.v1.ProductService/ProductCategoryCounts"
 	// ProductServiceProductUpdateProcedure is the fully-qualified name of the ProductService's
 	// ProductUpdate RPC.
 	ProductServiceProductUpdateProcedure = "/warehouse.product.v1.ProductService/ProductUpdate"
@@ -71,6 +74,9 @@ type ProductServiceClient interface {
 	// ProductByIds resolves ids a caller ALREADY HOLDS into products, whoever owns them (#138).
 	ProductByIds(context.Context, *connect.Request[v1.ProductByIdsRequest]) (*connect.Response[v1.ProductByIdsResponse], error)
 	ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error)
+	// ProductCategoryCounts is how many live products EVERY team has filed under each category — the Kategori page's
+	// *Produk* column (the-product-count-is-a-marked-sample). Root / the Administrator only, as the page is.
+	ProductCategoryCounts(context.Context, *connect.Request[v1.ProductCategoryCountsRequest]) (*connect.Response[v1.ProductCategoryCountsResponse], error)
 	ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error)
 	// Two actions, split by whether the product has a HISTORY (a-used-product-is-archived-never-deleted):
 	//
@@ -128,6 +134,13 @@ func NewProductServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		productCategoryCounts: connect.NewClient[v1.ProductCategoryCountsRequest, v1.ProductCategoryCountsResponse](
+			httpClient,
+			baseURL+ProductServiceProductCategoryCountsProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductCategoryCounts")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		productUpdate: connect.NewClient[v1.ProductUpdateRequest, v1.ProductUpdateResponse](
 			httpClient,
 			baseURL+ProductServiceProductUpdateProcedure,
@@ -157,15 +170,16 @@ func NewProductServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // productServiceClient implements ProductServiceClient.
 type productServiceClient struct {
-	productCreate    *connect.Client[v1.ProductCreateRequest, v1.ProductCreateResponse]
-	productList      *connect.Client[v1.ProductListRequest, v1.ProductListResponse]
-	productDiscover  *connect.Client[v1.ProductDiscoverRequest, v1.ProductDiscoverResponse]
-	productByIds     *connect.Client[v1.ProductByIdsRequest, v1.ProductByIdsResponse]
-	productDetail    *connect.Client[v1.ProductDetailRequest, v1.ProductDetailResponse]
-	productUpdate    *connect.Client[v1.ProductUpdateRequest, v1.ProductUpdateResponse]
-	productArchive   *connect.Client[v1.ProductArchiveRequest, v1.ProductArchiveResponse]
-	productUnarchive *connect.Client[v1.ProductUnarchiveRequest, v1.ProductUnarchiveResponse]
-	productDelete    *connect.Client[v1.ProductDeleteRequest, v1.ProductDeleteResponse]
+	productCreate         *connect.Client[v1.ProductCreateRequest, v1.ProductCreateResponse]
+	productList           *connect.Client[v1.ProductListRequest, v1.ProductListResponse]
+	productDiscover       *connect.Client[v1.ProductDiscoverRequest, v1.ProductDiscoverResponse]
+	productByIds          *connect.Client[v1.ProductByIdsRequest, v1.ProductByIdsResponse]
+	productDetail         *connect.Client[v1.ProductDetailRequest, v1.ProductDetailResponse]
+	productCategoryCounts *connect.Client[v1.ProductCategoryCountsRequest, v1.ProductCategoryCountsResponse]
+	productUpdate         *connect.Client[v1.ProductUpdateRequest, v1.ProductUpdateResponse]
+	productArchive        *connect.Client[v1.ProductArchiveRequest, v1.ProductArchiveResponse]
+	productUnarchive      *connect.Client[v1.ProductUnarchiveRequest, v1.ProductUnarchiveResponse]
+	productDelete         *connect.Client[v1.ProductDeleteRequest, v1.ProductDeleteResponse]
 }
 
 // ProductCreate calls warehouse.product.v1.ProductService.ProductCreate.
@@ -191,6 +205,11 @@ func (c *productServiceClient) ProductByIds(ctx context.Context, req *connect.Re
 // ProductDetail calls warehouse.product.v1.ProductService.ProductDetail.
 func (c *productServiceClient) ProductDetail(ctx context.Context, req *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error) {
 	return c.productDetail.CallUnary(ctx, req)
+}
+
+// ProductCategoryCounts calls warehouse.product.v1.ProductService.ProductCategoryCounts.
+func (c *productServiceClient) ProductCategoryCounts(ctx context.Context, req *connect.Request[v1.ProductCategoryCountsRequest]) (*connect.Response[v1.ProductCategoryCountsResponse], error) {
+	return c.productCategoryCounts.CallUnary(ctx, req)
 }
 
 // ProductUpdate calls warehouse.product.v1.ProductService.ProductUpdate.
@@ -222,6 +241,9 @@ type ProductServiceHandler interface {
 	// ProductByIds resolves ids a caller ALREADY HOLDS into products, whoever owns them (#138).
 	ProductByIds(context.Context, *connect.Request[v1.ProductByIdsRequest]) (*connect.Response[v1.ProductByIdsResponse], error)
 	ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error)
+	// ProductCategoryCounts is how many live products EVERY team has filed under each category — the Kategori page's
+	// *Produk* column (the-product-count-is-a-marked-sample). Root / the Administrator only, as the page is.
+	ProductCategoryCounts(context.Context, *connect.Request[v1.ProductCategoryCountsRequest]) (*connect.Response[v1.ProductCategoryCountsResponse], error)
 	ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error)
 	// Two actions, split by whether the product has a HISTORY (a-used-product-is-archived-never-deleted):
 	//
@@ -275,6 +297,13 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	productServiceProductCategoryCountsHandler := connect.NewUnaryHandler(
+		ProductServiceProductCategoryCountsProcedure,
+		svc.ProductCategoryCounts,
+		connect.WithSchema(productServiceMethods.ByName("ProductCategoryCounts")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	productServiceProductUpdateHandler := connect.NewUnaryHandler(
 		ProductServiceProductUpdateProcedure,
 		svc.ProductUpdate,
@@ -311,6 +340,8 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 			productServiceProductByIdsHandler.ServeHTTP(w, r)
 		case ProductServiceProductDetailProcedure:
 			productServiceProductDetailHandler.ServeHTTP(w, r)
+		case ProductServiceProductCategoryCountsProcedure:
+			productServiceProductCategoryCountsHandler.ServeHTTP(w, r)
 		case ProductServiceProductUpdateProcedure:
 			productServiceProductUpdateHandler.ServeHTTP(w, r)
 		case ProductServiceProductArchiveProcedure:
@@ -346,6 +377,10 @@ func (UnimplementedProductServiceHandler) ProductByIds(context.Context, *connect
 
 func (UnimplementedProductServiceHandler) ProductDetail(context.Context, *connect.Request[v1.ProductDetailRequest]) (*connect.Response[v1.ProductDetailResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductDetail is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductCategoryCounts(context.Context, *connect.Request[v1.ProductCategoryCountsRequest]) (*connect.Response[v1.ProductCategoryCountsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductCategoryCounts is not implemented"))
 }
 
 func (UnimplementedProductServiceHandler) ProductUpdate(context.Context, *connect.Request[v1.ProductUpdateRequest]) (*connect.Response[v1.ProductUpdateResponse], error) {

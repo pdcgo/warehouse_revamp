@@ -3,6 +3,7 @@ import type { Browser, Page } from "@playwright/test";
 import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { signIn } from "./session";
 import { API_URL } from "./env";
+import { readyAt } from "./restock_helpers";
 
 // ── return order — the checks behind docs/acceptances/inventory/order.md (## return) ─────────────────────────────────────
 //
@@ -54,6 +55,12 @@ import { API_URL } from "./env";
 //   ORDER_STATUS_RETURN_COMPLETED. (What the accept itself records — stock, history, metric — is accept return's spec.)
 // - `cannot return order` — Return Goods is absent from the picked order's row menu and from its page; the move sent
 //   anyway is refused, and the order stays picked.
+// - `stock unchanged until the return is accepted` — a forced return has no stock effect, the units move at the accept
+//   (docs/business/inventory/return_decision.md, a-forced-return-follows-the-status-move; only the accept moves stock,
+//   both-cs-and-the-warehouse-can-return-an-order). The two figures the accept moves, read before the WHEN and twice
+//   after the return (seconds apart, once its other thens are read): seller B's product on S's rack, as the role reads
+//   the rack's page, and seller B's Ready of it at S, as its owner reads it (the restock form's picker, as restock's specs
+//   read it) — both as before. A `regression:` step after the accept reads them one up, so the reads see a move.
 //
 // GROUND (beforeAll, as root, through the API):
 // - SELLER A, with a user per selling role, a shop per role (the shipped order each role returns — so the role's shop
@@ -97,6 +104,7 @@ const FROM = [
 
 const userOf = (key: string) => `e2ern${key}${SUFFIX}`;
 const nameOf = (key: string) => `Return ${key} ${SUFFIX}`;
+const S_CODE = `RNS${SUFFIX}`; // warehouse S's team code — what the restock form's warehouse picker finds it by
 const RC_USER = `e2ernrc${SUFFIX}`; // the return warehouse's crew
 const B_OWNER = `e2ernbo${SUFFIX}`; // seller B's owner
 // The marketplace's Order ID and the label's resi — both carry the run's suffix (a repeat within a team is refused).
@@ -112,6 +120,9 @@ const ground = {
   retRack: "",
   shop: "", // seller A's shared shop
   shopB: "",
+  // seller B's product (its units on S's rack) — what a warehouse's return would move at the accept
+  productB: "",
+  codeB: "",
   // seller A's role → the shop of its shipped order
   roleShops: {} as Record<string, string>,
   // slot → order id / its one item's id
@@ -259,6 +270,21 @@ async function acceptReturn(p: Page, orderId: string, warehouse: string, rack: s
 
 // ── the ground ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+// The stock a return of seller B's would move at its accept: the product on S's rack, as the crew on `crew` reads the
+// rack's page, and seller B's Ready of it at S, as its owner on `seller` reads it. Each read waits for its figure
+// (the picker shows an em dash until Ready is known — a different claim from 0).
+async function stockOfB(crew: Page, seller: Page) {
+  await crew.goto(`/inventories/racks/${ground.shipRack}`);
+  await expect(crew.getByTestId("rack-detail-stock")).toBeVisible({ timeout: 15_000 });
+  const onRack = crew.getByTestId("rack-detail-stock").getByTestId(`rack-stock-onhand-${ground.productB}`);
+  await expect(onRack).toHaveText(/^\d+$/, { timeout: 15_000 });
+
+  const ready = await readyAt(seller, S_CODE, ground.codeB);
+  await expect(ready).toHaveText(/^\d+$/, { timeout: 15_000 });
+
+  return { rack: Number(await onRack.textContent()), ready: Number(await ready.textContent()) };
+}
+
 async function seed(browser: Browser) {
   const page = await browser.newPage();
   await signIn(page, ROOT_USERNAME, ROOT_PASSWORD);
@@ -267,7 +293,7 @@ async function seed(browser: Browser) {
     String((await ok(page, "team.v1.TeamService/TeamCreate", { name, teamCode, type, ownerUserId: ROOT_USER_ID })).team.id);
   ground.sellerA = await team(`E2E Return Seller A ${SUFFIX}`, `RNA${SUFFIX}`, "TEAM_TYPE_SELLING");
   ground.sellerB = await team(`E2E Return Seller B ${SUFFIX}`, `RNB${SUFFIX}`, "TEAM_TYPE_SELLING");
-  ground.ship = await team(`E2E Return Ship WH ${SUFFIX}`, `RNS${SUFFIX}`, "TEAM_TYPE_WAREHOUSE");
+  ground.ship = await team(`E2E Return Ship WH ${SUFFIX}`, S_CODE, "TEAM_TYPE_WAREHOUSE");
   ground.ret = await team(`E2E Return Back WH ${SUFFIX}`, `RNR${SUFFIX}`, "TEAM_TYPE_WAREHOUSE");
 
   // Seller A's returns go to the OTHER building; seller B's come back to the one that ships.
@@ -366,6 +392,8 @@ async function seed(browser: Browser) {
   };
   const productA = await stock(ground.sellerA, `RNKA${SUFFIX}`, PRODUCT_A, STOCK_A, "A");
   const productB = await stock(ground.sellerB, `RNKB${SUFFIX}`, PRODUCT_B, STOCK_B, "B");
+  ground.productB = String(productB.id);
+  ground.codeB = productB.productCode;
 
   // GIVEN — every order placed by root, walked by the warehouse (processed → picked → shipping) and by the seller.
   const PATHS: Record<string, { warehouse: string[]; seller: string[] }> = {
@@ -542,9 +570,13 @@ test.describe("warehouse:all wants to return an order (status: shipped · 1 orde
       const ref = refOf(slot);
       await signIn(page, userOf(r.key), PASSWORD);
       await useTeam(page, ground.ship);
+      // Seller B's owner, on a page of their own: what the selling team sees, and its Ready at S.
+      const seller = await pageAs(browser, B_OWNER, ground.sellerB);
 
       // GIVEN — shipped, and nobody has claimed it back: the parcel is in the crew's hands.
       expect((await orderOf(page, orderId, ground.ship)).status).toBe("ORDER_STATUS_SHIPPED");
+      // …and the stock the accept moves, as it stands before anything happens.
+      const before = await stockOfB(page, seller);
 
       // WHEN — Orders › Receive a Return, the label's resi, Force Return, confirmed.
       await page.goto("/warehouse-orders");
@@ -593,7 +625,6 @@ test.describe("warehouse:all wants to return an order (status: shipped · 1 orde
         expect.soft(String(rows[0]?.actorId ?? "")).toBe(ground.users[r.key]);
       });
 
-      const seller = await pageAs(browser, B_OWNER, ground.sellerB);
       try {
         await test.step("then: selling team sees order return", async () => {
           await seller.goto(`/orders/${orderId}`);
@@ -613,13 +644,30 @@ test.describe("warehouse:all wants to return an order (status: shipped · 1 orde
             "ORDER_STATUS_RETURN",
           );
         });
+
+        // A forced return has no stock effect — the units move at the accept. Read twice, seconds apart, after the
+        // return's other thens: nothing on S's rack and nothing in seller B's Ready has moved.
+        await test.step("then: stock unchanged until the return is accepted", async () => {
+          for (const read of ["first", "second"]) {
+            const now = await stockOfB(page, seller);
+            expect.soft(now.rack, `on S's rack after the return, before the accept (${read} read)`).toBe(before.rack);
+            expect.soft(now.ready, `seller B's Ready at S after the return, before the accept (${read} read)`).toBe(before.ready);
+          }
+        });
+
+        await test.step("then: return can be accepted", async () => {
+          await acceptReturn(page, orderId, ground.ship, ground.shipRack);
+        });
+
+        // The reads above see a move when there is one: the accept puts the unit back on S's rack and in Ready.
+        await test.step("regression: the accept moves the stock — one more on S's rack and in seller B's Ready", async () => {
+          await expect
+            .poll(async () => JSON.stringify(await stockOfB(page, seller)), { timeout: 45_000, intervals: [1_000, 2_000, 4_000] })
+            .toBe(JSON.stringify({ rack: before.rack + 1, ready: before.ready + 1 }));
+        });
       } finally {
         await seller.close();
       }
-
-      await test.step("then: return can be accepted", async () => {
-        await acceptReturn(page, orderId, ground.ship, ground.shipRack);
-      });
     });
   }
 });

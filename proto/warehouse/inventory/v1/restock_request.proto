@@ -5,6 +5,7 @@ package warehouse.inventory.v1;
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/inventory/v1/received_count.proto";
+import "warehouse/inventory/v1/restock_resolution.proto";
 import "warehouse/inventory/v1/restock_tag.proto";
 import "warehouse/common/v1/list.proto";
 import "warehouse/role_base/v1/role.proto";
@@ -155,6 +156,17 @@ service RestockRequestService {
   // An admin's system tag on / off a restock — never the app's own.
   rpc RestockRequestSystemTagAdd(RestockRequestSystemTagAddRequest) returns (RestockRequestSystemTagAddResponse);
   rpc RestockRequestSystemTagRemove(RestockRequestSystemTagRemoveRequest) returns (RestockRequestSystemTagRemoveResponse);
+
+  // RESTOCK RESOLUTIONS (backlog #101; messages in restock_resolution.proto) — the selling team settles a problem restock
+  // (Diterima carrying a problem tag) or a lost one (Hilang) by resolution rows (a-restock-problem-is-settled-by-
+  // resolution-rows). One row per call, under the restock row's lock: a REFUND (amount + account, posted to the account
+  // after commit by RestockRefunded), a RETURN (links an existing outbound reship of this restock — a new one is made with
+  // its row by CustomShipmentCreate's `resolution`), a RESHIPPING (creates its inbound parcel in the same transaction).
+  // Also on a SETTLED restock, which stays settled; never a RETURN on a Hilang one.
+  rpc RestockResolutionCreate(RestockResolutionCreateRequest) returns (RestockResolutionCreateResponse);
+  // *Tandai Selesai* — the settled mark on the restock, its problem tags (*Barang kurang* / *Barang rusak*) off, in one
+  // transaction under the restock row's lock. A settled restock is refused (already settled).
+  rpc RestockRequestSettle(RestockRequestSettleRequest) returns (RestockRequestSettleResponse);
 }
 
 // Where a restock is. APPEND ONLY, like every enum here — the values were renamed in place
@@ -308,7 +320,30 @@ message RestockLog {
   // Set on an edit's row only (from = to), in the order the edit wrote them: the restock's own fields first, then the
   // lines. EMPTY on a status row, on an edit that changed nothing, and on every edit written before the changes were
   // kept (its `description` is the bare "edited"): nothing is made up for those. From `restock_log_changes` (00049).
+  // A RESOLUTION or REOPENED row (`kind`) carries its own facts here too (RESOLUTION, PARCEL, PARCEL_SHORT,
+  // PARCEL_BROKEN).
   repeated RestockLogChange changes = 8;
+  // WHAT THE ROW RECORDS when it is not a status change, the create or an edit (backlog #101 — the owner's 🔄 on
+  // a-restock-problem-is-settled-by-resolution-rows: the Riwayat gets REAL entries, one per resolution, per settle and per
+  // reopen, written when each happens and never rewritten, so settled → reopened → settled reads all three). Such a row
+  // keeps the status (from = to), as an edit's does; this is what tells it from one. UNSPECIFIED on every other row — read
+  // from its statuses as before. From `restock_logs.description` (the row's stored word).
+  RestockLogKind kind = 9;
+}
+
+// The trail rows a restock's settlement writes (backlog #101), each in the transaction of what it records.
+enum RestockLogKind {
+  // A status change, the create or an edit — what the statuses say.
+  RESTOCK_LOG_KIND_UNSPECIFIED = 0;
+  // A resolution recorded (RestockResolutionCreate, or CustomShipmentCreate's `resolution`) — its actor is who recorded
+  // it; one change, RESOLUTION, names the row (`restock_resolutions.id`), which the detail's `resolutions` carries.
+  RESTOCK_LOG_KIND_RESOLUTION = 1;
+  // *Tandai Selesai* (RestockRequestSettle) — who marked it settled, and when. No change under it.
+  RESTOCK_LOG_KIND_SETTLED = 2;
+  // A settled restock reopened by its inbound parcel's Terima with short or broken units (CustomShipmentReceive) — its
+  // actor is the warehouse member who counted; its changes name the parcel (PARCEL) and, per product, what was short
+  // (PARCEL_SHORT) and broken (PARCEL_BROKEN).
+  RESTOCK_LOG_KIND_REOPENED = 3;
 }
 
 // What one field of a restock read before an edit and after it. APPEND ONLY.
@@ -353,6 +388,15 @@ enum RestockLogChangeField {
   // The RECEIVING WAREHOUSE's own note on the restock (the-warehouse-writes-its-own-note) — a field of the restock
   // itself, written by RestockRequestWarehouseNoteSet alone, never by the selling team's edit.
   RESTOCK_LOG_CHANGE_FIELD_WAREHOUSE_NOTE = 16;
+
+  // A RESOLUTION row's (RestockLogKind): `after` = the resolution's id (`restock_resolutions.id`); no product.
+  RESTOCK_LOG_CHANGE_FIELD_RESOLUTION = 17;
+  // A REOPENED row's: `after` = the inbound parcel whose Terima reopened it (`custom_shipments.id`); no product.
+  RESTOCK_LOG_CHANGE_FIELD_PARCEL = 18;
+  // A REOPENED row's, per product the parcel came short of: `after` = the units short (sent − received).
+  RESTOCK_LOG_CHANGE_FIELD_PARCEL_SHORT = 19;
+  // A REOPENED row's, per product with broken units in the parcel: `after` = the units broken.
+  RESTOCK_LOG_CHANGE_FIELD_PARCEL_BROKEN = 20;
 }
 
 // ONE THING AN EDIT CHANGED (edits-are-in-the-same-trail). The values are TEXT as stored: a count or an amount in
@@ -472,6 +516,19 @@ message RestockRequest {
   // (custom-tags-are-shared-system-tags-are-the-admins-and-the-apps): the system's first, then by name. On List, Detail
   // and every write that answers the restock; `restock_count` is 0 here.
   repeated RestockTag tags = 52;
+
+  // RESOLUTIONS (backlog #101, restock_resolution.proto) — its resolution rows, oldest first: DETAIL ONLY (List leaves
+  // it empty and sends the count). A warehouse reader gets them without a refund's amount or account
+  // (a-warehouse-sees-no-seller-money).
+  repeated RestockResolution resolutions = 53;
+  // How many resolution rows it has — List and Detail.
+  uint32 resolution_count = 54;
+  // THE SETTLED MARK (*Tandai Selesai*) — 0 = not settled. Lifted again (0) when an inbound parcel's Terima finds short
+  // or broken units (a-restock-problem-is-settled-by-resolution-rows, 🔄 A: a late shortfall reopens it). List and
+  // Detail.
+  int64 settled_at_unix = 55;
+  uint64 settled_by_user_id = 56;
+  bool settled_by_is_override = 57;
 
   // Removed in the rewrite.
   reserved 4, 5, 6, 7, 8, 12, 14, 19, 25, 26;
@@ -604,6 +661,10 @@ message RestockRequestListFilter {
       uint64: {gt: 0}
     }
   }];
+  // By the settled mark (backlog #101): the seller's Hilang tab is status LOST + UNSETTLED — a settled lost restock
+  // leaves it and stays under Semua (the-restock-resolutions-prototype-is-accepted). UNSPECIFIED = either. Inside the
+  // list's one predicate, so its statistics and its export narrow alike.
+  RestockSettledFilter settled = 13 [(buf.validate.field).enum.defined_only = true];
 }
 
 // Which of a restock's dates a range filter is about. APPEND ONLY.
@@ -1467,5 +1528,10 @@ message RestockRequestWarehouseNoteSetRequest {
 }
 
 message RestockRequestWarehouseNoteSetResponse {
+  RestockRequest request = 1;
+}
+
+// The restock as the selling team now reads it — settled, its problem tags off.
+message RestockRequestSettleResponse {
   RestockRequest request = 1;
 }

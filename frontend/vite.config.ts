@@ -24,18 +24,18 @@ export default defineConfig({
         // Split the big, rarely-changing vendors into their own long-cached chunks so an app change
         // doesn't re-download React/Chakra, and no single chunk carries the whole world. The pages
         // themselves are code-split at the route (React.lazy in router.tsx).
+        //
+        // ⚠ THE CHUNKS MUST NOT IMPORT EACH OTHER IN A CIRCLE (#128). Chakra v3 is built on Ark UI, whose package is
+        // `@ark-ui/react` — a path holding "/react/". Matched by a loose `/react/` test it landed in the `react` chunk,
+        // which then imported @zag-js from `chakra` while `chakra` imported React from `react`: whichever ran first
+        // found the other undefined, and the production page drew blank ("reading 'createContext'"). So Ark UI goes
+        // with Chakra, and the `react` chunk takes only the packages NAMED react, react-dom, react-router(-dom) and
+        // scheduler — matched as whole package directories, never as a substring of another package's path.
         manualChunks(id) {
           if (!id.includes("node_modules")) return undefined;
-          if (id.includes("@chakra-ui") || id.includes("@zag-js") || id.includes("@emotion")) {
-            return "chakra";
-          }
-          if (id.includes("@connectrpc") || id.includes("@bufbuild")) return "connect";
-          if (
-            id.includes("react-dom") ||
-            id.includes("react-router") ||
-            id.includes("scheduler") ||
-            id.includes("/react/")
-          ) {
+          if (/[\\/]node_modules[\\/](@chakra-ui|@ark-ui|@zag-js|@emotion)[\\/]/.test(id)) return "chakra";
+          if (/[\\/]node_modules[\\/](@connectrpc|@bufbuild)[\\/]/.test(id)) return "connect";
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) {
             return "react";
           }
           return "vendor";

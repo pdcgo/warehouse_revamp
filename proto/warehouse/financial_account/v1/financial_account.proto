@@ -140,8 +140,13 @@ enum FinancialAccountChangeType {
   // Broker — the balance service's acceptance, out of the payer and into the creditor
   // (a-team-payment-posts-on-accept). Never reversed (a-team-payment-is-never-reversed).
   FINANCIAL_ACCOUNT_CHANGE_TYPE_TEAM_PAYMENT = 8;
-  // By hand — the business owner's own money, in or out (capital-joins-the-types).
+  // By hand — the business owner's own money, in or out (capital-joins-the-types). Since 2026-11-20 also from the
+  // broker: Prive (out) and Setoran modal (in) typed on Biaya write this same row
+  // (prive-and-deposit-on-pengeluaran-are-the-accounts-capital), the log naming the expense (`expense_id`).
   FINANCIAL_ACCOUNT_CHANGE_TYPE_CAPITAL = 9;
+  // Broker — money IN typed on Biaya (Piutang luar diterima, Uang masuk lain), INTO the operational account it entered
+  // (money-in-on-biaya-is-its-own-change-type): never a plus-sign `expense`, so the expense rows stay spending only.
+  FINANCIAL_ACCOUNT_CHANGE_TYPE_MONEY_IN = 10;
 }
 
 // ---------------------------------------------------------------------------- the account
@@ -425,6 +430,10 @@ message FinancialAccountLog {
   // the screen shows the shared "by Root team" badge beside the person (an-override-shows-a-platform-badge).
   // From `financial_account_logs.is_override`; a row an event wrote carries the act's own flag.
   bool is_override = 13;
+  // THE EXPENSE THIS ROW WAS POSTED FROM — an `expense_records` id of expense_service, for every row its listener posts
+  // (an expense, a correction, a Prive or Setoran modal typed on Biaya, money in); 0 for every other row. The account
+  // history's *dari Biaya #N* (the-expense-types-prototype-is-accepted). From `financial_account_logs.expense_id`.
+  uint64 expense_id = 14;
 }
 
 message FinancialAccountLogListRequest {

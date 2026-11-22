@@ -10,6 +10,7 @@ import { FULL, ORDER_DETAIL_META } from "./stories/kit";
 //
 //   Actions   the header's actions — Cancel, Edit Resi, Force Return
 //   Items     the lines: the price with its markup, three decimals, the picture, the placeholder
+//   Journey   the status journey: on a phone each label wraps under its dot, none runs into the next; a desktop, one line
 //   Money     the two totals, and the settlement ledger
 //   Notes     Catatan — the notes, newest first, and Add Note
 //   Shipping  the buyer's username under the customer, the order's own leg, and the shipping label

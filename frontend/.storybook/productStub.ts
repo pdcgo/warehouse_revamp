@@ -25,10 +25,11 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 
 import { CommonSortType } from "../src/gen/warehouse/common/v1/list_pb";
-import { BatchOrigin, MovementKind } from "../src/gen/warehouse/inventory/v1/inventory_pb";
+import { BatchOrigin, MovementKind, StockChangeType } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { ProductByIdsDataType, ProductLockFilter, ProductRowSort, ProductStatus } from "../src/gen/warehouse/product/v1/product_pb";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { SAMPLE_LOST_WAREHOUSE, SAMPLE_PRODUCTS, SAMPLE_SELLER } from "../src/features/analytic/sample";
+import { addDays, jakartaDayOfUnix } from "../src/lib/jakartaDay";
 import { productBatches, products as productFixtures, teams as teamFixtures, warehouseStock } from "./fixtures";
 import { isEmptied, priceLogsOf, priceNow } from "./batchPriceScenario";
 import { subtreeOf } from "./categoryStub";
@@ -37,7 +38,9 @@ import {
   discoverStockCalls,
   productDiscoverCalls,
   productImagesCalls,
+  productDailyCalls,
   productListCalls,
+  productSupplierCalls,
   resetProductListCalls,
 } from "./productListScenario";
 import { sessionScenario } from "./sessionScenario";
@@ -134,6 +137,59 @@ export function ownerBatchExpiriesForStory(days: Record<string, number | null>) 
   batchExpiryDays = { ...days };
 }
 
+// The samples handed out of team 15's products for THIS story (`ownerSampleForStory`) — none by default.
+type OwnerSample = { productId: bigint; quantity: bigint; recipient: string; note: string };
+let ownerSamples: OwnerSample[] = [];
+
+/**
+ * For ONE story (its `beforeEach`): `quantity` of `productId` handed out as a SAMPLE to `recipient`, the staff's `note`
+ * beside it (a-sample-keeps-its-recipient) — the newest row of OwnerStockHistory, drawn from the newest batch in the lens
+ * that holds that many, its `recipient` set as the server sets it on a sample row only.
+ */
+export function ownerSampleForStory(productId: bigint, quantity: bigint, recipient: string, note = "") {
+  ownerSamples.push({ productId, quantity, recipient, note });
+}
+
+// PEMASOK'S rows for ONE story (`productSuppliersForStory`) — added after a product's own; null = the sample's alone.
+// Declared above the module's resetProductStub() call, which writes it (a `let` below it would not exist yet).
+type SupplierGoodsRow = {
+  supplierId: bigint;
+  storeId: bigint;
+  warehouseId: bigint;
+  deliveries: bigint;
+  units: bigint;
+  lastDeliveryUnix: bigint;
+  lastUnitCost: number;
+};
+let extraSupplierRows: { productId: bigint; rows: SupplierGoodsRow[] } | null = null;
+
+/**
+ * For ONE story (its `beforeEach`): more Pemasok rows of `productId` — each already one (supplier, store) pair IN its
+ * warehouse — drawn after the product's own, as the server pages them. For a long list (the pager) or a deleted supplier.
+ */
+export function productSuppliersForStory(productId: bigint, rows: SupplierGoodsRow[]) {
+  extraSupplierRows = { productId, rows: rows.map((r) => ({ ...r })) };
+}
+
+// KELUAR MASUK HARIAN for ONE story (`productDailyMovesForStory`): the fold rows of `productId` that REPLACE the ones its
+// stock history gives — each `daysAgo` the stub's today, in its warehouse, one change type's net units. Today's stock
+// stays the product's own (its shelves), so Sisa still reads back from it. `dailyMapping` is the Masuk/Keluar split the
+// stub answers with — "A", the server's (every movement by its direction), unless a MOCK story of the owner's Q2 asks for
+// "B" (sales and purchases only). Declared above the module's resetProductStub() call, which writes them.
+export type DailyFoldRow = { daysAgo: number; warehouseId: bigint; changeType: StockChangeType; units: bigint };
+let dailyRows: { productId: bigint; rows: DailyFoldRow[] } | null = null;
+let dailyMapping: "A" | "B" = "A";
+
+/** For ONE story (its `beforeEach`): the fold rows of `productId` (they replace what its stock history gives). */
+export function productDailyMovesForStory(productId: bigint, rows: DailyFoldRow[]) {
+  dailyRows = { productId, rows: rows.map((r) => ({ ...r })) };
+}
+
+/** For ONE MOCK story of the owner's Q2: answer Masuk/Keluar as option B — restocks in, orders out, nothing else. */
+export function dailyMappingForStory(option: "A" | "B") {
+  dailyMapping = option;
+}
+
 function ownerBatchExpiry(batchId: bigint, acceptedAt: bigint): bigint {
   const days = batchExpiryDays?.[batchId.toString()];
   if (days === undefined) return acceptedAt + 365n * DAY;
@@ -143,7 +199,11 @@ function ownerBatchExpiry(batchId: bigint, acceptedAt: bigint): bigint {
 
 export function resetProductStub() {
   resetProductListCalls();
+  extraSupplierRows = null;
+  dailyRows = null;
+  dailyMapping = "A";
   batchExpiryDays = null;
+  ownerSamples = [];
   rows = [...productFixtures.map((p) => ({ ...p, images: [] as Image[] })), ...ARCHIVED.map((p) => ({ ...p }))];
   neverUsed = new Set([791n]);
   analyticSamplesListed = false;
@@ -162,6 +222,29 @@ resetProductStub();
  */
 export function patchProduct(productId: bigint, patch: Partial<ProductRow>) {
   Object.assign(rows.find((r) => r.id === productId)!, patch);
+}
+
+/**
+ * A STORY'S SETUP: `count` more products filed under ONE category, spread over three teams (the Kategori page's count is
+ * every team's), `archived` ones too when asked — the count leaves those out (ProductCategoryCounts). Ids from 9000, so
+ * no fixture is touched; the next story's reset takes them away.
+ */
+export function fileProductsForStory(categoryId: bigint, count: number, opts: { archived?: boolean } = {}) {
+  let id = rows.reduce((max, r) => (r.id > max ? r.id : max), 8999n);
+  for (let i = 0; i < count; i++) {
+    id += 1n;
+    const teamId = [11n, 12n, 13n][i % 3]!;
+    rows.push({
+      ...productFixtures[0]!,
+      id,
+      teamId,
+      productCode: `CAT${categoryId}-${id}`,
+      name: `Produk ${id}`,
+      categoryId,
+      archived: opts.archived ?? false,
+      images: [],
+    });
+  }
 }
 
 /**
@@ -243,6 +326,24 @@ function withCover(row: ProductRow) {
 }
 
 export const productService = {
+  // THE KATEGORI PAGE'S PRODUK COUNT as the server counts it (product_category_counts.go): every team's products filed
+  // DIRECTLY on each category, archived ones and category 0 left out, one row per category holding any, in id order. A
+  // branch's figure is the page's to make (productCounts.ts). Root / the Administrator on the server; a stub plays no
+  // policy.
+  productCategoryCounts: () => {
+    const counts = new Map<bigint, bigint>();
+    for (const p of rows) {
+      if (p.archived || p.categoryId === 0n) continue;
+      counts.set(p.categoryId, (counts.get(p.categoryId) ?? 0n) + 1n);
+    }
+
+    return {
+      counts: [...counts]
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([categoryId, products]) => ({ categoryId, products })),
+    };
+  },
+
   // PAGED, because a caller genuinely walks it: OwnStockedProductPicker collects a team's whole catalogue 200 ids at a
   // time and stops on a short page. In the fixtures' own order (the server sorts newest first unless asked), so the
   // pickers' stories keep their first rows; a sort by name or SKU is honoured.
@@ -856,6 +957,7 @@ export function ownerStockHistory(req: { teamId: bigint; filter?: { productId?: 
         reason?: string;
         actor?: bigint;
         correction?: ReturnType<typeof priceLogsOf>[number];
+        recipient?: string;
       }[] = [{ batch: b, kind: MovementKind.RECEIVE, delta: b.arrived, at: b.acceptedAt, ref: `RST-${b.id}` }];
       if (b.arrived > b.ready) {
         out.push({ batch: b, kind: MovementKind.PICK, delta: -(b.arrived - b.ready), at: b.acceptedAt + 2n * DAY, ref: `ORD-${b.id}` });
@@ -868,6 +970,26 @@ export function ownerStockHistory(req: { teamId: bigint; filter?: { productId?: 
       return out;
     })
     .sort((a, b) => (a.at < b.at ? -1 : 1));
+
+  // A story's samples (`ownerSampleForStory`): after everything else, off the newest batch in the lens holding enough.
+  for (const sample of ownerSamples.filter((x) => x.productId === product.id)) {
+    const from = batchesOf(product.id)
+      .filter(inLens(req.filter?.warehouseId))
+      .filter((b) => b.ready >= sample.quantity)
+      .sort((a, b) => (a.acceptedAt > b.acceptedAt ? -1 : 1))[0];
+    if (!from) continue;
+    const last = events.length > 0 ? events[events.length - 1]!.at : NOW;
+    events.push({
+      batch: from,
+      kind: MovementKind.SAMPLE,
+      delta: -sample.quantity,
+      at: last + 3600n,
+      ref: "",
+      reason: sample.note,
+      actor: 64n,
+      recipient: sample.recipient,
+    });
+  }
 
   // Every row carries its batch's price and the value it moved, as the server's do — each batch from its minted price.
   const priceOf = new Map<string, number>();
@@ -897,6 +1019,8 @@ export function ownerStockHistory(req: { teamId: bigint; filter?: { productId?: 
         priceUnitBefore: before,
         priceUnitAfter: after,
         valueChange: e.correction ? e.correction.valueDelta : Number(e.delta) * after,
+        // Who received a sample — set on a sample row only, as the server's (a-sample-keeps-its-recipient).
+        recipient: e.recipient ?? "",
       };
     })
     .reverse();
@@ -915,7 +1039,14 @@ export function discoverStockHistory(req: { teamId: bigint; filter?: { productId
   const warehouseId = req.filter?.warehouseId ?? 0n;
   discoverHistoryCalls.push({ teamId: req.teamId, productId, warehouseId, page: Number(req.page?.page ?? 1n) || 1 });
 
-  type Row = { id: bigint; productId: bigint; warehouseId: bigint; kind: MovementKind; delta: bigint; balance: bigint; createdAtUnix: bigint };
+  return paged("movement", discoverRowsOf(productId, warehouseId), (m) => m.id, req.page);
+}
+
+type DiscoverRow = { id: bigint; productId: bigint; warehouseId: bigint; kind: MovementKind; delta: bigint; balance: bigint; createdAtUnix: bigint };
+
+/** A product's stock history in the lens as ANY team reads it, newest first — DiscoverStockHistory's rows, unrecorded. */
+function discoverRowsOf(productId: bigint, warehouseId: bigint): DiscoverRow[] {
+  type Row = DiscoverRow;
   let all: Row[] = [];
 
   if (figured(productId)) {
@@ -944,5 +1075,182 @@ export function discoverStockHistory(req: { teamId: bigint; filter?: { productId
     }
   }
 
-  return paged("movement", all, (m) => m.id, req.page);
+  return all;
+}
+
+/**
+ * ProductSupplierGoods — PEMASOK, any team's read of who supplies a product (the-supplier-tab-names-the-store), as the
+ * server answers it: per supplier and the store it was bought at, from the owner's RESTOCK batches in the lens
+ * (the-warehouse-picker-splits-the-page) — the deliveries, their good units, the newest accept and its batch's unit cost
+ * as the batch holds it now, which goes to the OWNING team alone (another team's answer has no cost at all). Newest
+ * delivery first, paged. Every call is recorded (`productSupplierCalls`).
+ *
+ *   team 15's products   each batch bought from a fixture supplier by its place in the product (SUPPLIER_OF_BATCH): the
+ *                        first and third (Gudang Pusat) from PT Sumber Makmur's Shopee store, the second (Gudang Cabang)
+ *                        from Linen House with NO store — so 700 reads Sumber Makmur 2 deliveries, 84 pcs, then Linen
+ *                        House —, 1, 40 pcs; Gudang Cabang alone, Linen House only
+ *   a fixture product    with a shelf: the ONE delivery of its stock history's story into Gudang Pusat (`discoverStockHistory`),
+ *                        from UD Makmur Jaya's Shopee store
+ */
+const SUPPLIER_OF_BATCH: Record<string, { supplierId: bigint; storeId: bigint }> = {
+  "1": { supplierId: 31n, storeId: 311n },
+  "2": { supplierId: 37n, storeId: 0n },
+  "3": { supplierId: 31n, storeId: 311n },
+};
+
+export function productSupplierGoods(req: { teamId: bigint; filter?: { productId?: bigint; warehouseId?: bigint }; page?: PageReq }) {
+  const productId = req.filter?.productId ?? 0n;
+  const warehouseId = req.filter?.warehouseId ?? 0n;
+  productSupplierCalls.push({ teamId: req.teamId, productId, warehouseId, page: Number(req.page?.page ?? 1n) || 1 });
+
+  const product = rows.find((r) => r.id === productId);
+  const lots: SupplierGoodsRow[] = [];
+
+  if (figured(productId)) {
+    for (const b of batchesOf(productId)) {
+      const from = SUPPLIER_OF_BATCH[(b.id % 10n).toString()];
+      if (!from) continue;
+      lots.push({ ...from, warehouseId: b.warehouseId, deliveries: 1n, units: b.arrived, lastDeliveryUnix: b.acceptedAt, lastUnitCost: b.unitCost });
+    }
+  } else if (product) {
+    const shelf = warehouseStock[productId.toString()] ?? 0n;
+    if (shelf > 0n) {
+      const n = Number(productId % 97n);
+      const picks = [1, 2, 3, 4].map((i) => BigInt(1 + ((n + i * 3) % 4)));
+      lots.push({
+        supplierId: 34n,
+        storeId: 341n,
+        warehouseId: GUDANG_PUSAT,
+        deliveries: 1n,
+        units: shelf + picks.reduce((a, b) => a + b, 0n),
+        lastDeliveryUnix: NOW - BigInt(20 + (n % 9)) * DAY,
+        lastUnitCost: 10_000 + n * 100,
+      });
+    }
+  }
+
+  if (extraSupplierRows?.productId === productId) lots.push(...extraSupplierRows.rows);
+
+  // One row per (supplier, store) over the lots in the lens: deliveries and units added, the newest's date and cost.
+  const byPair = new Map<string, SupplierGoodsRow>();
+  for (const lot of lots.filter((l) => warehouseId === 0n || l.warehouseId === warehouseId)) {
+    const key = `${lot.supplierId}/${lot.storeId}`;
+    const seen = byPair.get(key);
+    if (!seen) {
+      byPair.set(key, { ...lot });
+      continue;
+    }
+    seen.deliveries += lot.deliveries;
+    seen.units += lot.units;
+    if (lot.lastDeliveryUnix > seen.lastDeliveryUnix) {
+      seen.lastDeliveryUnix = lot.lastDeliveryUnix;
+      seen.lastUnitCost = lot.lastUnitCost;
+    }
+  }
+
+  const owner = product !== undefined && product.teamId === req.teamId;
+  const ordered = [...byPair.values()].sort((a, b) =>
+    a.lastDeliveryUnix !== b.lastDeliveryUnix
+      ? a.lastDeliveryUnix > b.lastDeliveryUnix
+        ? -1
+        : 1
+      : a.supplierId !== b.supplierId
+        ? a.supplierId < b.supplierId
+          ? -1
+          : 1
+        : a.storeId < b.storeId
+          ? -1
+          : a.storeId > b.storeId
+            ? 1
+            : 0,
+  );
+  const goods = ordered.map((r, i) => ({
+    id: BigInt(i + 1),
+    supplierId: r.supplierId,
+    storeId: r.storeId,
+    deliveries: r.deliveries,
+    units: r.units,
+    lastDeliveryUnix: r.lastDeliveryUnix,
+    // THE OWNER'S COST, to the owner alone — absent, not zero, for anybody else.
+    lastUnitCost: owner ? r.lastUnitCost : undefined,
+  }));
+
+  return paged("goods", goods, (g) => g.id, req.page);
+}
+
+/**
+ * ProductDailyMoves — KELUAR MASUK HARIAN, any team's read of a product's last fourteen days (the-warehouse-zone-is-tabs),
+ * as the server answers it: per Jakarta day of the stub's clock (8 Oct 2026 is today), each change type's net units, Masuk
+ * and Keluar (option A — every movement by its direction — unless a Q2 mock story asks for B), and Sisa walked back from
+ * the product's stock now in the lens. The fold rows are the product's stock history in the lens (the same rows Riwayat
+ * Stok shows: a receipt is a restock, a pick an order, …), or a story's (`productDailyMovesForStory`). Units only, the
+ * same for every team. Every call is recorded (`productDailyCalls`).
+ */
+export function productDailyMoves(req: { teamId: bigint; filter?: { productId?: bigint; warehouseId?: bigint } }) {
+  const productId = req.filter?.productId ?? 0n;
+  const warehouseId = req.filter?.warehouseId ?? 0n;
+  productDailyCalls.push({ teamId: req.teamId, productId, warehouseId });
+
+  const history = discoverRowsOf(productId, warehouseId);
+  const onHand = history.reduce((a, m) => a + m.delta, 0n);
+  const today = jakartaDayOfUnix(NOW);
+
+  const CHANGE_OF: Partial<Record<MovementKind, StockChangeType>> = {
+    [MovementKind.RECEIVE]: StockChangeType.RESTOCK,
+    [MovementKind.PICK]: StockChangeType.ORDER,
+    [MovementKind.RETURN]: StockChangeType.ORDER,
+    [MovementKind.SAMPLE]: StockChangeType.SAMPLE,
+    [MovementKind.TRANSFER_IN]: StockChangeType.TRANSFER_IN,
+    [MovementKind.TRANSFER_OUT]: StockChangeType.TRANSFER_OUT,
+    [MovementKind.ADJUST]: StockChangeType.ADJUSTMENT,
+  };
+  const folded: { day: string; changeType: StockChangeType; units: bigint }[] =
+    dailyRows?.productId === productId
+      ? dailyRows.rows
+          .filter((r) => warehouseId === 0n || r.warehouseId === warehouseId)
+          .map((r) => ({ day: addDays(today, -r.daysAgo), changeType: r.changeType, units: r.units }))
+      : history.flatMap((m) => {
+          const changeType = CHANGE_OF[m.kind];
+          return changeType === undefined || m.delta === 0n ? [] : [{ day: jakartaDayOfUnix(m.createdAtUnix), changeType, units: m.delta }];
+        });
+
+  // Each (day, change type)'s net, and each day's.
+  const byDay = new Map<string, Map<StockChangeType, bigint>>();
+  const net = new Map<string, bigint>();
+  for (const f of folded) {
+    const kinds = byDay.get(f.day) ?? new Map<StockChangeType, bigint>();
+    kinds.set(f.changeType, (kinds.get(f.changeType) ?? 0n) + f.units);
+    byDay.set(f.day, kinds);
+    net.set(f.day, (net.get(f.day) ?? 0n) + f.units);
+  }
+
+  // THE MASUK / KELUAR SPLIT — the server's dailySide (⚠ HELD, the owner's Q2): A counts every change type by the sign of
+  // its day net; B only restocks (in) and orders (out).
+  const counted = (c: StockChangeType) => dailyMapping === "A" || c === StockChangeType.RESTOCK || c === StockChangeType.ORDER;
+
+  let sisa = onHand;
+  for (const [day, units] of net) if (day > today) sisa -= units;
+
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const day = addDays(today, -i);
+    const kinds = [...(byDay.get(day) ?? new Map<StockChangeType, bigint>())]
+      .filter(([, units]) => units !== 0n)
+      .sort(([a], [b]) => a - b)
+      .map(([changeType, units]) => ({ changeType, units }));
+    let inUnits = 0n;
+    let outUnits = 0n;
+    for (const k of kinds) {
+      if (!counted(k.changeType)) continue;
+      if (k.units > 0n) inUnits += k.units;
+      else outUnits -= k.units;
+    }
+    const move = { id: BigInt(i + 1), day, inUnits, outUnits, onHand: sisa, kinds };
+    sisa -= net.get(day) ?? 0n;
+    return move;
+  });
+
+  const mapData: Record<string, (typeof days)[number]> = {};
+  for (const d of days) mapData[d.id.toString()] = d;
+
+  return { items: [{ d: { case: "day" as const, value: { mapData } } }], ids: days.map((d) => d.id) };
 }

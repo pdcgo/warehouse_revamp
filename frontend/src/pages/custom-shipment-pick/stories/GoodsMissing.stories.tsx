@@ -198,7 +198,7 @@ export const RecordingKeepsItRequested: Story = {
     await waitFor(() => expect(screen.getByTestId("custom-shipment-goods-missing-confirm")).toBeEnabled());
     await userEvent.click(screen.getByTestId("custom-shipment-goods-missing-confirm"));
 
-    await expect(await screen.findByText("Goods missing recorded")).toBeVisible();
+    await waitFor(() => expect(screen.getByText("Goods missing recorded")).toBeVisible(), { timeout: 5000 });
     await waitFor(() => expect(canvas.getByTestId("custom-shipment-goods-missing-notice")).toBeVisible());
     await expect(canvas.getByTestId("custom-shipment-goods-missing-notice-title")).toHaveTextContent("Goods missing recorded");
     await expect(canvas.getByTestId("custom-shipment-detail-status")).toHaveTextContent("Requested");

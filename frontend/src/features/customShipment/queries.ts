@@ -7,6 +7,10 @@ import { useInvalidateStock } from "../inventory/queries";
 import { supplierByIdsRowData, suppliersFromByIds } from "../suppliers/adapt";
 import type { CustomShipment, CustomShipmentKind, CustomShipmentPick, CustomShipmentStatus, ReshipOption } from "./customShipments";
 import { customShipmentFromWire, reshipOptionFromWire, wireKind, wireStatus } from "./adapt";
+import { CustomShipmentKind as WireKind } from "../../gen/warehouse/inventory/v1/custom_shipment_pb";
+import type { InboundParcel } from "../restockResolution/resolutions";
+import { inboundFromWire, isInbound } from "../restockResolution/resolutions";
+import { withSupplierNames } from "../restockResolution/queries";
 
 // THE CUSTOM SHIPMENTS' READS AND WRITES — inventory_service's CustomShipmentService (backlog #88), for the five accepted
 // screens (the-custom-shipments-prototype-is-accepted). Every read is the current team's: the server answers the selling
@@ -25,19 +29,25 @@ export interface CustomShipmentListArgs {
    * one- or two-letter term too (a-product-picker-needs-no-two-letters' spirit; rpc.md, the list's volume table).
    */
   q: string;
+  /**
+   * Backlog #101 — the Kind filter's third pick, the supplier's reshipping (kind SUPPLIER_RESHIPPING) — `kind` is then
+   * ignored. The selling team's list answers both ways when no direction is asked (custom_shipment.proto
+   * `CustomShipmentListFilter.direction`), so its inbound parcels come back among the outbound ones, as `inbound`.
+   */
+  inboundKind?: boolean;
   page: number;
   pageSize: number;
 }
 
 export function useCustomShipments(args: CustomShipmentListArgs) {
-  const { teamId, status, kind, warehouseId, q, page, pageSize } = args;
+  const { teamId, status, kind, warehouseId, q, inboundKind = false, page, pageSize } = args;
 
   return useQuery({
     // EVERY filter is the server's (the list is paged), so every one is in the key.
     queryKey: key.customShipments(teamId, {
       list: true,
       status: status ?? "",
-      kind: kind ?? "",
+      kind: inboundKind ? "SUPPLIER_RESHIPPING" : (kind ?? ""),
       warehouseId: warehouseId.toString(),
       q,
       page,
@@ -48,12 +58,16 @@ export function useCustomShipments(args: CustomShipmentListArgs) {
     queryFn: async () => {
       const res = await customShipmentClient.customShipmentList({
         teamId: teamId!,
-        filter: { status: wireStatus(status), kind: wireKind(kind), q, warehouseId },
+        filter: { status: wireStatus(status), kind: inboundKind ? WireKind.SUPPLIER_RESHIPPING : wireKind(kind), q, warehouseId },
         page: { page, limit: pageSize },
       });
+      // The page's inbound parcels (backlog #101) apart from the outbound ones — each drawn its own way — their
+      // supplier names resolved in this same read.
+      const inbound: InboundParcel[] = await withSupplierNames(teamId!, res.customShipments.filter(isInbound).map(inboundFromWire));
 
       return {
-        shipments: res.customShipments.map(customShipmentFromWire),
+        shipments: res.customShipments.filter((m) => !isInbound(m)).map(customShipmentFromWire),
+        inbound,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -193,6 +207,7 @@ function useInvalidateShipmentsAndStock() {
 
 export function useCreateCustomShipment() {
   const invalidate = useInvalidateShipmentsAndStock();
+  const client = useQueryClient();
 
   return useMutation({
     mutationFn: async (vars: Parameters<typeof customShipmentClient.customShipmentCreate>[0]) => {
@@ -200,7 +215,11 @@ export function useCreateCustomShipment() {
 
       return res.customShipment ? customShipmentFromWire(res.customShipment) : null;
     },
-    onSuccess: () => invalidate(),
+    onSuccess: async (_created, vars) => {
+      await invalidate();
+      // A RETURN (backlog #101 — `resolution` set) is also the restock's resolution row and its Riwayat row.
+      if (vars.resolution) await client.invalidateQueries({ queryKey: ["restock"] });
+    },
   });
 }
 

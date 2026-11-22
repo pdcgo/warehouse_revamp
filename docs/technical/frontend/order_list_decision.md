@@ -32,6 +32,7 @@ each old heading there now points here.
 | [the-status-tabs-carry-no-counts](#the-status-tabs-carry-no-counts) | the order list's status tabs carry no counts — how many sit in each status is the statistics' to say |
 | [the-statistics-are-shut-and-read-when-opened](#the-statistics-are-shut-and-read-when-opened) | the statistics open shut on every visit, are read only once opened and then follow the filters; open or shut is page state, never kept. Its button's own row under the tabs is REPLACED by [a-statistics-button-ends-the-tab-row](context_decision.md#a-statistics-button-ends-the-tab-row) |
 | [the-import-is-platform-then-shop-and-file-then-log](#the-import-is-platform-then-shop-and-file-then-log) | the Import dialog is three steps: the marketplace, then the shop and the file together, then the import's log |
+| [the-order-tags-prototype-is-accepted](#the-order-tags-prototype-is-accepted) | order tags are accepted as drawn: chips + an any-of Tag filter on both order lists, a Tag box on both order pages and the pick page, admins' Kelola tag pesanan |
 
 ## status-colours-are-carried-over-verbatim
 
@@ -829,3 +830,25 @@ stateDiagram-v2
 | ⚠ until the import is built | *my reading, not asked:* **Import** opens step 3 on one error line — nothing was read — and never on a sample result, because a log that says *moved 41* after a click reads as done. The designed log is reviewed in the story `Pages/Orders/OrderImportLog` |
 | ✅ built *(2026-10-30)* | [ImportOrdersDialog.tsx](../../../frontend/src/pages/orders/components/ImportOrdersDialog.tsx), [OrderImportLog.tsx](../../../frontend/src/pages/orders/components/OrderImportLog.tsx), and a story for each |
 | 🔄 *(2026-10-30, the same day)* | the ⚠ row above is spent: Import now runs the real stream ([the-order-import-is-one-rpc-per-platform](../order/design_decision.md#the-order-import-is-one-rpc-per-platform)). Shopee and TikTok are read; a marketplace with no reader says *not yet* at step 2, in place of the shop and the file. Closing the dialog mid-import stops the log, not the import |
+
+---
+
+## the-order-tags-prototype-is-accepted
+
+> Owner (Heri), in chat (2026-11-20): *"A"*, as recommended — to the design accept of backlog #100, order tags (Storybook `Pages/Order/SellerOrderListPage/Tags`, `Pages/Warehouse/PickQueuePage/Tags`, `Pages/Order/OrderDetailPage/Tags`, `Pages/Order/PickOrderPage/Tags`; screenshots `01_proposed_seller_list_chips_desktop` … `18_proposed_seller_detail_phone`, today's two lists last as BEFORE): A approve as drawn; B approve with changes. The rules: [orders-have-their-own-tag-list](../../business/order/context_decision.md#orders-have-their-own-tag-list) with its 🔄 lines; the design it follows: [the-restock-tags-prototype-is-accepted](restock_decision.md#the-restock-tags-prototype-is-accepted).
+
+**The verdict.** The prototype is the design to build:
+
+| part | as accepted |
+| --- | --- |
+| seller's order list | a **Tag** column after Toko / Tim, before the dates (two chips + `+N`, two lines at most, system first); the **Tag filter** after *Semua toko* — several tags, **any of** them, in the address (`?tag=1,2`), cleared by Hapus Filter; on a phone in the Filter sheet |
+| warehouse's order list | a **Tag** column right after Status; the Tag filter beside the courier filter; a line of chips per phone block |
+| order pages | a **Tag** box on the seller's order detail (own nav item, before Catatan), on the warehouse's order detail (Info tab, before Catatan) **and on the pick page** (before Catatan — the page the warehouse list and Scan Label open) |
+| tagging | add from the orders' own list, *Buat tag*, one name = one tag (no twin), × on a tag — every role but a monitor, both sides, every status; restock tags never offered |
+| admins (Root / Administrator) | *Buat tag sistem*, take a system tag off, **Kelola tag pesanan** — rename (a taken name refused) and delete (the confirm says how many orders it comes off); no app-owned order tags, so nothing is locked |
+| what the filter narrows | in the build, inside the order list's one server-side scope: the rows, the warehouse's tab counts, the seller's Statistik and Ekspor alike (as `restockListScope`); the export gains a Tag column |
+| width | fits today's lists at 1440 px with the sidebar open; the seller list with a status-date column goes 10–20 px over and scrolls in its box, as accepted for restocks |
+
+**What it does NOT settle:** nothing open. Not drawn and not built: tags on the order form, drafts and the import. ⛔ Not built — backlog #100.
+
+✅ Built 2026-11-20 — live on both order lists, both order details and the pick page (backlog #100). The Storybook gate (`features/orders/tags/orderTagsPrototype.tsx`, `.storybook/orderTagStory.tsx`) is deleted; `features/orders/tags/tagQueries.ts` reads the orders' own list (`OrderTagList`, one large first page — a picker feed) and writes through the real RPCs (selling rpc.md *Order tags*); a reader may tag an order when its team is one of the order's two sides. `OrderTagFilter` takes several tags, any of them (`?tag=1,2`), sent as `OrderListFilter.tag_ids` / `OrderStatFilter.tag_ids` by the list, the tab counts, Statistik and Ekspor alike — one predicate on the server (`scopedOrders`); the file gains a *Tags* column after Status in both views. The Tag column, the filter and the Tag box are drawn always. Stories, on the stub's real RPCs (`.storybook/orderTagScenario.ts`): `SellerOrderListPage/Tags` (7, incl. *the statistics and Ekspor follow it*), `PickQueuePage/Tags` (4, incl. *the tab counts and Ekspor follow it*), `OrderDetailPage/Tags` (15), `PickOrderPage/Tags` (3); the `Live · …` BEFORE stories went with the gate.

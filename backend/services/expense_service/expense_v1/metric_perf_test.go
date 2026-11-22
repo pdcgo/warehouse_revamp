@@ -157,7 +157,7 @@ func TestPerf_ExpenseMetric(t *testing.T) {
 
 	perfMetricRun(t, db, probe, "ExpenseCreate ads (with the fold)", func() error {
 		res, err := svc.ExpenseCreate(budi, connect.NewRequest(&expensev1.ExpenseCreateRequest{
-			TeamId: seller, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Amount: 250_000, OccurredAt: today.Format("2006-01-02"),
+			TeamId: seller, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_ADS), Amount: 250_000, OccurredAt: today.Format("2006-01-02"),
 			ShopId: 905, FinanceAccountId: payingAccount,
 		}))
 		if err == nil {

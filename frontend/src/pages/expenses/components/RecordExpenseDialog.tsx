@@ -23,8 +23,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 
 import { rpcError } from "../../../api/clients";
 import { useSaveExpense } from "../queries";
-import { ExpenseKind } from "../../../gen/warehouse/expense/v1/expense_pb";
-import { ExpenseKindSelect } from "../../../components/pickers/ExpenseKindSelect";
+import { ExpenseKind, ExpenseType } from "../../../gen/warehouse/expense/v1/expense_pb";
 import { CurrencyInput } from "../../../components/inputs/CurrencyInput";
 import { DatePicker } from "../../../components/datetime/DatePicker";
 import { ShopSelect } from "../../../components/pickers/ShopSelect";
@@ -33,15 +32,13 @@ import { useFinancialAccountOptions } from "../../../features/financialAccount/q
 import { isUnknown } from "../../../features/financialAccount/vocab";
 import { toaster } from "../../../components/feedback/Toaster";
 import { todayWibDateInput } from "../../../lib/datetime";
-// ⚠ #99 PROTOTYPE (expense types) — inert live: the dialog draws and sends exactly what it did unless a story mounts it.
-import { typeDef, useExpenseTypes } from "../../../features/expense/expenseTypesPrototype";
 import {
-  ExpenseTypeLine,
-  ExpenseTypeSelect,
   accountHelpKey,
   accountLabelKey,
   operationalOnlyFor,
-} from "../../../features/expense/ExpenseTypesParts";
+  typeDef,
+} from "../../../features/expense/expenseTypes";
+import { ExpenseTypeLine, ExpenseTypeSelect } from "./ExpenseTypeParts";
 
 interface RecordCostDialogProps {
   teamId: bigint;
@@ -61,8 +58,15 @@ interface RecordCostDialogProps {
 // with the restock form's own picker. A team with none cannot send the form — as a restock cannot — and is told where
 // an admin marks one.
 //
-// THE SHOP IS FOR ADS ONLY, AND ADS NEEDS ONE (an-expense-names-a-shop-only-for-ads): the field shows only on Ads,
-// required there; any other kind sends shop 0, and switching away from Ads clears it. The server refuses both ways.
+// THE TYPE (expense-types-sit-under-groups, the-expense-types-prototype-is-accepted): the picker lists the types under
+// their group; the type's group is sent as the kind. Under it the direction — a badge and a line (the amount stays
+// positive), and for Prive / Setoran modal the line that it is the account's capital row. The account field reads
+// *Dibayar dari*, *Diambil dari* (Prive) or *Masuk ke* (money in); Prive and Setoran modal pick among ANY of the team's
+// active accounts, every other type among the operational ones.
+//
+// THE SHOP IS FOR THE MARKETPLACE'S ADS ONLY, AND THEY NEED ONE (an-expense-names-a-shop-only-for-ads, read per type):
+// the field shows only on Iklan marketplace, required there; any other type sends shop 0, and switching away clears it.
+// The server refuses both ways.
 //
 // AN ACCOUNT THAT MAY NO LONGER PAY — unmarked or archived since the picker loaded — is refused by the server
 // (FailedPrecondition, naming it). Its words are said in the dialog, the pick is dropped and the picker re-reads the
@@ -72,6 +76,8 @@ export function RecordExpenseDialog({ teamId, compact = false }: RecordCostDialo
 
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<ExpenseKind>(ExpenseKind.UNSPECIFIED);
+  // The picked type (UNSPECIFIED until picked) — its group is `kind`.
+  const [typeId, setTypeId] = useState<ExpenseType>(ExpenseType.UNSPECIFIED);
   const [amount, setAmount] = useState("");
   // TODAY IN JAKARTA — the day the month on the screen is counted in. The UTC day was yesterday from 00:00 to 07:00 WIB,
   // and on the 1st it was last month's last day: the cost went into a month the screen was not showing.
@@ -80,9 +86,6 @@ export function RecordExpenseDialog({ teamId, compact = false }: RecordCostDialo
   const [financeAccountId, setFinanceAccountId] = useState<bigint>(0n);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
-  // #99 PROTOTYPE: the picked type (0 = none). Never set live — the prototype's picker is the only thing that sets it.
-  const types = useExpenseTypes();
-  const [typeId, setTypeId] = useState(0);
 
   // The write, and what it invalidates, declared together in queries.ts (#177). `busy` is gone: the
   // mutation already knows whether it is in flight, and a second flag beside it is a second answer to
@@ -98,26 +101,22 @@ export function RecordExpenseDialog({ teamId, compact = false }: RecordCostDialo
     setFinanceAccountId(0n);
     setNote("");
     setError("");
-    setTypeId(0);
+    setTypeId(ExpenseType.UNSPECIFIED);
   }
 
   // The picker's own read (the same cache entry), asked here only to say WHY nothing can be picked.
   const accounts = useFinancialAccountOptions({ teamId, operationalOnly: true });
-  const noOperational = accounts.isSuccess && accounts.data.filter((a) => !isUnknown(a)).length === 0;
+  // Capital takes any active account, so only a type that needs an operational one is blocked by having none.
+  const noOperational =
+    operationalOnlyFor(typeId) && accounts.isSuccess && accounts.data.filter((a) => !isUnknown(a)).length === 0;
 
-  // The shop is the Ads kind's — in the prototype, the one type that names it (Konten · endorse sits under Iklan and names
-  // none).
-  const isAds = types ? typeDef(typeId)?.namesShop === true : kind === ExpenseKind.ADS;
+  // The shop is the marketplace's ads' — the one type that names it (Konten · endorse sits under Iklan and names none).
+  const isAds = typeDef(typeId)?.namesShop === true;
 
-  function pickKind(next: ExpenseKind) {
-    setKind(next);
-    // The shop is for ads only — leaving Ads clears it, so a hidden pick is never sent.
-    if (next !== ExpenseKind.ADS) setShopId(0n);
-  }
-
-  // #99 PROTOTYPE: a type names its group (the kind), and only the Iklan marketplace type keeps a shop. Moving between
-  // capital and the rest drops the account, since capital picks among every account and the rest among operational ones.
-  function pickType(next: number) {
+  // A type names its group (the kind), and only the Iklan marketplace type keeps a shop — leaving it clears the shop, so
+  // a hidden pick is never sent. Moving between capital and the rest drops the account, since capital picks among every
+  // account and the rest among the operational ones.
+  function pickType(next: ExpenseType) {
     const def = typeDef(next);
     if (!def) return;
     if (def.capital !== typeDef(typeId)?.capital) setFinanceAccountId(0n);
@@ -132,7 +131,7 @@ export function RecordExpenseDialog({ teamId, compact = false }: RecordCostDialo
   //
   // Plus the account that paid, and on Ads the shop — what is still missing is listed under the form, as on a restock.
   const missing: ("kind" | "amount" | "shop" | "account")[] = [];
-  if (kind === ExpenseKind.UNSPECIFIED) missing.push("kind");
+  if (typeId === ExpenseType.UNSPECIFIED) missing.push("kind");
   if (amount === "" || Number(amount) <= 0) missing.push("amount");
   if (isAds && shopId === 0n) missing.push("shop");
   if (financeAccountId === 0n) missing.push("account");
@@ -145,25 +144,11 @@ export function RecordExpenseDialog({ teamId, compact = false }: RecordCostDialo
 
     setError("");
 
-    // #99 PROTOTYPE: the in-memory server records it with its type (never reached live).
-    if (types) {
-      types
-        .record({ teamId, typeId, amount: Number(amount), occurredAt, shopId: isAds ? shopId : 0n, note, financeAccountId })
-        .then(
-          () => {
-            toaster.create({ type: "success", title: t("expenses.toast.recorded") });
-            setOpen(false);
-            reset();
-          },
-          (err) => setError(rpcError(err)),
-        );
-      return;
-    }
-
     save.mutate(
       {
         teamId,
         kind,
+        type: typeId,
         amount: Number(amount),
         occurredAt,
         shopId: isAds ? shopId : 0n,
@@ -237,11 +222,7 @@ export function RecordExpenseDialog({ teamId, compact = false }: RecordCostDialo
                 <Stack gap="field">
                   <Field.Root required>
                     <Field.Label>{t("expenses.table.kind")}</Field.Label>
-                    {types ? (
-                      <ExpenseTypeSelect value={typeId} onChange={pickType} disabled={busy} />
-                    ) : (
-                      <ExpenseKindSelect value={kind} onChange={pickKind} disabled={busy} />
-                    )}
+                    <ExpenseTypeSelect value={typeId} onChange={pickType} disabled={busy} />
                     <ExpenseTypeLine typeId={typeId} />
                   </Field.Root>
 
@@ -285,14 +266,14 @@ export function RecordExpenseDialog({ teamId, compact = false }: RecordCostDialo
                   <Field.Root required>
                     <Field.Label>
                       <HStack gap="1">
-                        {types ? t(accountLabelKey(typeId)) : t("expenses.paidFrom")}
+                        {t(accountLabelKey(typeId))}
                         <Field.RequiredIndicator />
                       </HStack>
                     </Field.Label>
                     <Box w="full">
                       <FinancialAccountSelect
                         teamId={teamId}
-                        operationalOnly={types ? operationalOnlyFor(typeId) : true}
+                        operationalOnly={operationalOnlyFor(typeId)}
                         // One operational account is the answer; asking would be ceremony — as on a restock.
                         autoPickSingle
                         value={financeAccountId}
@@ -314,7 +295,7 @@ export function RecordExpenseDialog({ teamId, compact = false }: RecordCostDialo
                         </Alert.Content>
                       </Alert.Root>
                     ) : (
-                      <Field.HelperText>{types ? t(accountHelpKey(typeId)) : t("expenses.paidFromHelp")}</Field.HelperText>
+                      <Field.HelperText>{t(accountHelpKey(typeId))}</Field.HelperText>
                     )}
                   </Field.Root>
 

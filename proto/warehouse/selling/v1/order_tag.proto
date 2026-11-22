@@ -1,0 +1,300 @@
+syntax = "proto3";
+
+package warehouse.selling.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1";
+
+// ORDER TAGS (backlog #100) — the messages of OrderService's tag RPCs (order.proto), split out as restock_tag.proto is
+// from restock_request.proto. The owner's rules (docs/business/order/context_decision.md):
+//
+//   - orders-have-their-own-tag-list: tags belong to a DOMAIN — orders keep a tag list of their OWN, apart from the
+//     restocks' (inventory's `tags`). A restock tag is never offered on an order, the same name may exist in both lists,
+//     and a name is unique WITHIN the orders' list. The list lives with orders (selling);
+//   - its 🔄 "A": the restock tags' rules on that list — a tag is SYSTEM or CUSTOM (a-restock-tag-is-system-or-custom);
+//     ONE order list for every team; a custom tag made and used by anyone who may write on the order; seen and tagged by
+//     the selling team AND the warehouse that ships the order, in every status, not by a monitor; system tags, rename and
+//     delete for admins (Root / Administrator) only; the order lists filter by tag, ANY of the picked
+//     (custom-tags-are-shared-system-tags-are-the-admins-and-the-apps);
+//   - its 🔄 "A" on app tags: NO APP-OWNED ORDER TAGS for now — the app puts no tag on an order, so an order tag carries no
+//     app task and nothing is locked for an admin;
+//   - the-order-tags-prototype-is-accepted (docs/technical/frontend/order_list_decision.md): the screens drawn are the
+//     design; the filter narrows inside the order list's one server-side scope.
+//
+// WHY THE ADMINS' ACTS ARE THEIR OWN MESSAGES — as on restock_tag.proto: the ACL lives on the request message, and a
+// handler cannot tell a platform admin from the team role it holds (san_auth.GetCallerRole is the SCOPED team's role).
+// So making a system tag, putting one on or taking one off, renaming, deleting and the counting list are separate
+// requests whose policy is [ROOT, ADMINISTRATOR] — the root-team bypass is the one way in.
+
+// An order tag's kind (a-restock-tag-is-system-or-custom, on the orders' list). APPEND ONLY.
+enum OrderTagType {
+  ORDER_TAG_TYPE_UNSPECIFIED = 0;
+  // Owned by the system: made, put on and taken off only by Root / the Administrator.
+  ORDER_TAG_TYPE_SYSTEM = 1;
+  // Made freely by anyone who may write on an order; usable by every team.
+  ORDER_TAG_TYPE_CUSTOM = 2;
+}
+
+// One tag of the orders' list.
+message OrderTag {
+  uint64 id = 1;
+  // As kept: trimmed, inner spaces folded to one, the case as first typed. Unique within the orders' list, compared
+  // case-insensitively.
+  string name = 2;
+  OrderTagType type = 3;
+  // How many orders carry it, every team's — OrderTagManageList only (what the admins' delete confirm says); 0 elsewhere.
+  uint64 order_count = 4;
+}
+
+// THE ORDERS' LIST, for the Tag filter and the add box — every team's order tags, the system's first, then by name.
+// Paged (a list that grows with the data pages); a picker asks a large first page. A READ, so the admin team's monitor
+// and an agent's credential reach it.
+message OrderTagListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The caller's team — the list is the same for every team; the scope only says who asks.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Only tags whose name contains this, any case, spaces folded; "" = every tag.
+  string q = 2 [(buf.validate.field).string.max_len = 100];
+  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
+}
+
+message OrderTagListResponse {
+  repeated OrderTag tags = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// THE ADMINS' LIST (Kelola tag pesanan) — OrderTagList's tags and order, each with how many orders carry it
+// (`order_count`, every team's), which the delete's confirm says. Root / the Administrator only.
+message OrderTagManageListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  string q = 1 [(buf.validate.field).string.max_len = 100];
+  warehouse.common.v1.CommonPagination page = 2 [(buf.validate.field).required = true];
+}
+
+message OrderTagManageListResponse {
+  repeated OrderTag tags = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// A CUSTOM TAG, made by anyone who may write on an order — every role on either side but a monitor. ONE NAME, ONE TAG: a
+// name already on the orders' list — any case, spaces folded — answers THAT tag (`created` false), whatever its type,
+// and never makes a twin; two makes of one new name at the same second make one tag. A restock tag's name is another
+// list's and is free here.
+message OrderTagCreateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // Trimmed and its inner spaces folded on the server; empty after that is InvalidArgument.
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 60
+  }];
+}
+
+message OrderTagCreateResponse {
+  OrderTag tag = 1;
+  // False when the name was already taken and the answer is that tag.
+  bool created = 2;
+}
+
+// A SYSTEM TAG, made by an admin (Root / the Administrator) — the same one-name-one-tag answer as OrderTagCreate.
+message OrderTagSystemCreateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 60
+  }];
+}
+
+message OrderTagSystemCreateResponse {
+  OrderTag tag = 1;
+  bool created = 2;
+}
+
+// RENAME, the admins' alone, any order tag — custom or system (no app-owned order tags, so none is locked). A name
+// ANOTHER order tag carries, any case, is ALREADY_EXISTS; an unknown tag NOT_FOUND. A change of letter case alone is a
+// rename.
+message OrderTagRenameRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  uint64 tag_id = 1 [(buf.validate.field).uint64.gt = 0];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 60
+  }];
+}
+
+message OrderTagRenameResponse {
+  OrderTag tag = 1;
+}
+
+// DELETE, the admins' alone: the tag leaves the orders' list AND comes off every order that carries it, every team's, in
+// one transaction. An unknown (or already deleted) tag is NOT_FOUND.
+message OrderTagDeleteRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  uint64 tag_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderTagDeleteResponse {
+  // How many orders it came off.
+  uint64 order_count = 1;
+}
+
+// A CUSTOM TAG ON AN ORDER — either side that writes on it: its selling team (team_id = the order's team) or the
+// warehouse that ships it (team_id = its warehouse); any other team's order reads NOT_FOUND (the root team's included —
+// it is neither side). Every role but a monitor, in EVERY status. A SYSTEM tag is PERMISSION_DENIED here — an admin puts
+// one on with OrderSystemTagAdd. A tag already on is no change. Nothing else of the order moves: no timeline row, no
+// event.
+message OrderTagAddRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 tag_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderTagAddResponse {
+  // The order's tags now, the system's first, then by name.
+  repeated OrderTag tags = 1;
+}
+
+// A CUSTOM TAG OFF AN ORDER — OrderTagAdd's sides, roles and statuses; anyone who may tag takes it off, whoever put it on
+// (an order's tags are one set for both sides). A system tag is PERMISSION_DENIED here. A tag not on is no change.
+message OrderTagRemoveRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 tag_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderTagRemoveResponse {
+  repeated OrderTag tags = 1;
+}
+
+// AN ADMIN'S SYSTEM TAG ON AN ORDER — Root / the Administrator, naming either side of the order as team_id, in every
+// status. A system tag only: a custom one is INVALID_ARGUMENT (it goes on with OrderTagAdd).
+message OrderSystemTagAddRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 tag_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderSystemTagAddResponse {
+  repeated OrderTag tags = 1;
+}
+
+// AN ADMIN'S SYSTEM TAG OFF AN ORDER — OrderSystemTagAdd's mirror.
+message OrderSystemTagRemoveRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 order_id = 2 [(buf.validate.field).uint64.gt = 0];
+  uint64 tag_id = 3 [(buf.validate.field).uint64.gt = 0];
+}
+
+message OrderSystemTagRemoveResponse {
+  repeated OrderTag tags = 1;
+}

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Box, Button, Flex, HStack, Icon, IconButton, Input, Popover, Spinner, Stack, Text } from "@chakra-ui/react";
 import { ChevronDown, ChevronRight, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { categoryClient, rpcError } from "../../api/clients";
+import { rpcError } from "../../api/clients";
 import type { Category } from "../../gen/warehouse/category/v1/category_pb";
+import { useCategoryOptions } from "../../features/categories/queries";
 import { childrenByParent } from "../../features/categories/categoryTree";
 
 export interface CategorySelectProps {
@@ -60,6 +61,25 @@ function findPath(forest: CatNode[], id: bigint): CatNode[] | null {
   return null;
 }
 
+// The nodes a drilled path of ids walks through, in the CURRENT forest — so a tree that re-reads while the panel is
+// open (a category added elsewhere) shows its new children under the same drill, and an id gone from the tree simply
+// ends the walk there.
+function nodesAlong(forest: CatNode[], ids: bigint[]): CatNode[] {
+  const out: CatNode[] = [];
+  let level = forest;
+
+  for (const id of ids) {
+    const node = level.find((n) => n.cat.id === id);
+    if (!node) {
+      break;
+    }
+    out.push(node);
+    level = node.children;
+  }
+
+  return out;
+}
+
 // Every node with its full ancestor path — powers the flat search list.
 function collectAll(forest: CatNode[], trail: CatNode[], out: { node: CatNode; path: CatNode[] }[]) {
   for (const n of forest) {
@@ -81,6 +101,9 @@ function collectAll(forest: CatNode[], trail: CatNode[], out: { node: CatNode; p
 export const description =
   "Nested-category picker (#63): a Popover with a breadcrumb trigger and cascading Miller columns over the global taxonomy. Emits a category id (0 = none). Pass `leafOnly` to allow selecting only end (leaf) categories — parents then drill instead of select.";
 
+// One empty tree for every render while nothing has landed — a fresh `[]` would rebuild the forest memo each time.
+const NO_CATEGORIES: Category[] = [];
+
 export function CategorySelect({
   value = 0n,
   onChange,
@@ -92,46 +115,42 @@ export function CategorySelect({
 }: CategorySelectProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("catalog.categorySelect.placeholder");
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+
+  // THE TREE THROUGH THE QUERY CACHE (#121), not a fetch of its own on every mount: the picker sits on several forms
+  // and dialogs, and each used to ask CategoryList again. The category page's writes invalidate `categories`, so a
+  // category added there is in this picker without a reload — and a failed read is retried on the next mount instead
+  // of leaving this field "unavailable" for its life.
+  const tree = useCategoryOptions();
+  const categories = tree.data ?? NO_CATEGORIES;
+  const loading = tree.isPending;
+  const error = tree.isError ? rpcError(tree.error) : "";
 
   const [open, setOpen] = useState(false);
-  const [path, setPath] = useState<CatNode[]>([]); // the drilled (non-selected) columns
+  // The drilled (non-selected) columns, as the ids they pass through. `null` = not drilled since the panel opened:
+  // the columns then follow the current selection's ancestry — read from the tree as it is NOW, so a selection made
+  // before the tree landed still opens on its own branch.
+  const [drilledIds, setDrilledIds] = useState<bigint[] | null>(null);
   const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    let alive = true;
-
-    categoryClient
-      .categoryList({})
-      .then((res) => {
-        if (alive) setCategories(res.categories);
-      })
-      .catch((err) => {
-        if (alive) setError(rpcError(err));
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   const forest = useMemo(() => buildForest(categories, excludeId), [categories, excludeId]);
 
-  // On open: reset search and seed the columns from the current selection's ancestry.
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    setQuery("");
+  const seeded = useMemo(() => {
     const p = value > 0n ? findPath(forest, value) : null;
-    setPath(p ? p.slice(0, -1) : []);
-  }, [open, value, forest]);
+
+    return p ? p.slice(0, -1).map((n) => n.cat.id) : [];
+  }, [forest, value]);
+
+  const path = useMemo(() => nodesAlong(forest, drilledIds ?? seeded), [forest, drilledIds, seeded]);
+
+  // On open: the search starts over and the columns re-seed from the selection — in the open handler, not an effect,
+  // so a tree re-read landing while the panel is open never wipes what is being typed or drilled.
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      setQuery("");
+      setDrilledIds(null);
+    }
+    setOpen(next);
+  }
 
   const columns = useMemo<CatNode[][]>(() => [forest, ...path.map((p) => p.children)], [forest, path]);
 
@@ -161,13 +180,13 @@ export function CategorySelect({
   }
 
   function drill(colIndex: number, node: CatNode) {
-    setPath((prev) => [...prev.slice(0, colIndex), node]);
+    setDrilledIds((prev) => [...(prev ?? seeded).slice(0, colIndex), node.cat.id]);
   }
 
   return (
     <Popover.Root
       open={open}
-      onOpenChange={(e) => setOpen(e.open)}
+      onOpenChange={(e) => handleOpenChange(e.open)}
       positioning={{ placement: "bottom-start", strategy: positioningStrategy }}
     >
       <Popover.Trigger asChild>

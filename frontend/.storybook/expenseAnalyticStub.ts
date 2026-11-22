@@ -1,6 +1,6 @@
 import type { ServiceImpl } from "@connectrpc/connect";
 
-import { type MetricDef, type TableGroup, EXPENSE_METRICS, isTimeGroup } from "../src/features/analytic/catalogue";
+import { type MetricDef, type TableGroup, EXPENSE_METRICS, EXPENSES_AS_SERVED, isTimeGroup } from "../src/features/analytic/catalogue";
 import { type MetricBody, type ReportFilters, sampleService } from "../src/features/analytic/provider";
 import { sampleFacts } from "../src/features/analytic/sample";
 import { type FilterItem, GroupType, SortType } from "../src/gen/warehouse/analytic_base/v1/analytic_pb";
@@ -31,8 +31,16 @@ const GROUP: Partial<Record<GroupType, TableGroup>> = {
   [GroupType.USER]: "user",
 };
 
+/**
+ * The two metrics AS THE SERVER ANSWERS THEM — Expenses with every field its message carries, the three #99 summaries
+ * (money in, Prive, Setoran modal) included, which the screen does not offer
+ * (the-expense-metric-shows-each-type-not-the-three-summaries): a story then proves the screen leaves out what the answer
+ * still holds.
+ */
+const SERVED: MetricDef[] = [EXPENSE_METRICS[0]!, EXPENSES_AS_SERVED];
+
 function defOf(metricId: string): MetricDef {
-  const def = EXPENSE_METRICS.find((m) => m.metricId === metricId);
+  const def = SERVED.find((m) => m.metricId === metricId);
   if (!def) throw new Error(`expense_service does not serve ${metricId}`);
 
   return def;
@@ -71,8 +79,14 @@ export const expensePersonCalls: { teamId: bigint; metricIds: string[] }[] = [];
 
 const ROOT_READER = "1";
 
+/**
+ * One answer's message init — each field under its GENERATED name (`localName`: `money_in` is `moneyIn`,
+ * `bank_fee` `bankFee`), as inventoryAnalyticStub and orderAnalyticStub write theirs. Keyed by the proto name, a
+ * two-word field was dropped by the message and read 0 (#99's money_in / capital_out / capital_in until backlog #107 —
+ * still answered, as the server does, though the screen no longer offers them).
+ */
 function messageOf(def: MetricDef, body: MetricBody): Record<string, number> {
-  return Object.fromEntries(def.fields.map((f) => [f.name, body[f.name] ?? 0]));
+  return Object.fromEntries(def.schema!.fields.map((f) => [f.localName, body[f.name] ?? 0]));
 }
 
 /** The case names of one metric's answer — `adsSummary`, `expensesByDay`, … — as the generated oneof spells them. */

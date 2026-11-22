@@ -1,11 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { create } from "@bufbuild/protobuf";
 import { Box, Card, Flex, HStack, Icon, Separator, Stack, Text, Timeline } from "@chakra-ui/react";
-import { ArrowRight, Ban, ClipboardPen, Clock, FilePlus2, PackageCheck, PackageOpen, PackageX, Pencil } from "lucide-react";
+import { ArrowRight, Ban, BadgeCheck, ClipboardPen, Clock, FilePlus2, ListChecks, PackageCheck, PackageOpen, PackageX, Pencil, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import type { RestockLog, RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
-import { RestockLogSchema, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockLogKind, RestockLogSchema, RestockRequestStatus } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import type { ReceivedCountCorrection } from "../../gen/warehouse/inventory/v1/received_count_pb";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import { useRestockActors } from "./queries";
@@ -16,6 +16,7 @@ import { formatUnixDateTime } from "../../lib/datetime";
 import { formatRupiahNumber } from "../../lib/money";
 import { trailOf } from "../receivedCount/corrections";
 import { RestockEditChanges, type TrailNames, useTrailNames } from "./RestockEditChanges";
+import { SettlementStep } from "../restockResolution/SettlementStep";
 
 // THE TRAIL — `request.logs`, oldest first (every-status-change-is-logged). One row per status change AND per edit: an
 // edit is a row whose status did not change, and under it what did — "Kopi 10 → 12, extra stock", each field the server
@@ -33,10 +34,18 @@ import { RestockEditChanges, type TrailNames, useTrailNames } from "./RestockEdi
 // KOREKSI JUMLAH TERIMA's rows sit in the same trail, by time (`request.count_corrections`, one per corrected line): their
 // own kind, never a status row, so a correction is never read as the selling team's edit
 // (the-received-count-prototype-is-accepted).
+//
+// THE SETTLEMENT'S ROWS (backlog #101 — the owner's 🔄 on a-restock-problem-is-settled-by-resolution-rows): a resolution
+// recorded, *Tandai Selesai*, a reopen by an inbound parcel's short or broken Terima — REAL rows of the same trail, each
+// written when it happened and never rewritten (so settled → reopened → settled reads all three). They keep the status as
+// an edit does; the row's `kind` tells them from one (SettlementStep draws what each names).
 
-type Kind = "created" | "edit" | "status";
+type Kind = "created" | "edit" | "status" | "resolution" | "settled" | "reopened";
 
 function kindOf(log: RestockLog): Kind {
+  if (log.kind === RestockLogKind.RESOLUTION) return "resolution";
+  if (log.kind === RestockLogKind.SETTLED) return "settled";
+  if (log.kind === RestockLogKind.REOPENED) return "reopened";
   if (log.fromStatus === RestockRequestStatus.UNSPECIFIED) return "created";
   if (log.fromStatus === log.toStatus) return "edit";
 
@@ -56,6 +65,12 @@ function lookOf(log: RestockLog): { icon: LucideIcon; titleKey: string; palette?
       return { icon: FilePlus2, titleKey: "restock.timeline.created" };
     case "edit":
       return { icon: Pencil, titleKey: "restock.timeline.edited" };
+    case "resolution":
+      return { icon: ListChecks, titleKey: "restockResolution.trail.recordedTitle", palette: "blue" };
+    case "settled":
+      return { icon: BadgeCheck, titleKey: "restockResolution.trail.settled", palette: "green" };
+    case "reopened":
+      return { icon: RotateCcw, titleKey: "restockResolution.trail.reopened", palette: "orange" };
     default:
       return STATUS_LOOK[log.toStatus] ?? { icon: Clock, titleKey: "restock.timeline.changed" };
   }
@@ -139,6 +154,8 @@ export function RestockTimeline({
                 last={i === trail.length - 1 && !awaitingKey}
                 names={names}
                 purchase={purchase}
+                request={request}
+                teamId={teamId}
               />
             ) : (
               <LogStep
@@ -200,6 +217,8 @@ function LogStep({
   productName = "",
   names,
   purchase = false,
+  request,
+  teamId,
 }: {
   log: RestockLog;
   actor?: PublicUser;
@@ -211,6 +230,9 @@ function LogStep({
   /** The received-count correction this row stands for — its own kind, never a status row. */
   correction?: ReceivedCountCorrection;
   productName?: string;
+  /** The restock — a settlement row names its resolution, read from the restock's `resolutions`. */
+  request?: RestockRequest;
+  teamId?: bigint;
 }) {
   const { t } = useTranslation();
   const kind = correction ? "correction" : kindOf(log);
@@ -218,6 +240,7 @@ function LogStep({
   const fallback = log.actorUserId > 0n ? t("restock.table.userRef", { id: log.actorUserId.toString() }) : "";
   // A correction's row id is its own table's — kept apart from the trail's ids.
   const testId = correction ? `restock-timeline-c${correction.id}` : `restock-timeline-${log.id}`;
+  const settlement = kind === "resolution" || kind === "settled" || kind === "reopened";
 
   return (
     <Timeline.Item data-testid={testId} data-kind={kind}>
@@ -255,8 +278,9 @@ function LogStep({
             ) : (
             <HStack gap="2" wrap="wrap">
               <Timeline.Title>{t(look.titleKey)}</Timeline.Title>
-              {/* The move itself — FROM → TO for a status change; an edit keeps its status, so it shows that once. */}
-              {kind === "status" ? (
+              {/* The move itself — FROM → TO for a status change; an edit keeps its status, so it shows that once; a
+                  settlement row is no move at all. */}
+              {settlement ? null : kind === "status" ? (
                 <HStack gap="1" wrap="wrap" data-testid={`${testId}-move`}>
                   <RestockStatusBadge status={log.fromStatus} />
                   <Icon as={ArrowRight} boxSize="3" color="fg.muted" />
@@ -270,7 +294,8 @@ function LogStep({
             {/* What changed (an edit) or why (a status change). A raise has no "why" — the row says it was raised. */}
             {/* The server's bare "edited" says nothing the row's title does not — it is not shown: an edit's row names what
                 changed, field by field, under it (the-notes-are-one-per-writer, edits-are-in-the-same-trail). */}
-            {!correction && kind !== "created" && log.description && log.description !== "edited" && (
+            {settlement && request && <SettlementStep log={log} request={request} teamId={teamId} testId={testId} />}
+            {!correction && !settlement && kind !== "created" && log.description && log.description !== "edited" && (
               <Text
                 fontSize="sm"
                 whiteSpace="pre-wrap"

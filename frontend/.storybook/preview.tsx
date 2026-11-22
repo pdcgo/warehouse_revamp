@@ -11,7 +11,6 @@ import { PendingMarksProvider } from "../src/features/pending/PendingMarks";
 import { Toaster } from "../src/components/feedback/Toaster";
 import { AuthProvider } from "../src/features/auth/AuthContext";
 import { clearToken, setToken } from "../src/features/auth/tokenStorage";
-import { invalidateShippingCatalogue } from "../src/features/shipping/catalogue";
 import {
   resetLiabilityPayments,
   resetLiabilityTerms,
@@ -373,13 +372,10 @@ const preview: Preview = {
     // leave every later story in Indonesian.
     localStorage.removeItem("warehouse.lang");
     await i18n.changeLanguage(langOf(context.globals));
-    // The courier catalogue is a MODULE-LEVEL session cache, not a query — it is loaded once and
-    // shared by every ShippingBadge on a page (features/shipping/catalogue.ts). Module state
-    // survives between stories in one browser tab, so without this a later story would render from
-    // an earlier story's fetch and its loading state would be untestable.
-    invalidateShippingCatalogue();
-    // Same reasoning for the persisted color-mode override: a story that toggles the mode would
-    // otherwise decide the mode for every story that runs after it.
+    // (The courier catalogue needs no reset here since #121: it is a query now, and every story gets a fresh
+    // QueryClient — StoryProviders above.)
+    // The persisted color-mode override: module and storage state survive between stories in one browser tab, so a
+    // story that toggles the mode would otherwise decide the mode for every story that runs after it.
     localStorage.removeItem("wh-color-mode");
     // …and for the legacy sidebar's collapse preference, which is persisted on purpose (an operator
     // sets it once) and would otherwise leave every later sidebar story rendering collapsed.

@@ -58,13 +58,52 @@ func (s *Service) OrderSettlementDetail(
 		return nil, dbError(err)
 	}
 
+	// WHO TYPED IT, BY NAME — a manual row's badge reads *Manual · <who typed it>* (the-source-is-a-badge), and the
+	// proto promises `actor_name` is resolved here so the panel needs no second call.
+	names, err := s.actorNames(ctx, logs)
+	if err != nil {
+		return nil, err
+	}
+
 	entries := make([]*settlementv1.SettlementEntry, 0, len(logs))
 	for i := range logs {
-		entries = append(entries, entryToProto(&logs[i], ""))
+		entries = append(entries, entryToProto(&logs[i], names[logs[i].ActorID]))
 	}
 
 	return connect.NewResponse(&settlementv1.OrderSettlementDetailResponse{
 		Settlement: settlementToProto(&state),
 		Entries:    entries,
 	}), nil
+}
+
+// actorNames names every row's actor with ONE user read for the whole log — never one per row — the way
+// ShopSettlementEntryList names its rows. An id the read does not know (a user since removed) is absent, so its row
+// keeps an empty name and the panel falls back to the id.
+func (s *Service) actorNames(
+	ctx context.Context,
+	logs []settlement_service_models.SettlementLog,
+) (map[uint64]string, error) {
+	seen := make(map[uint64]bool, len(logs))
+	wanted := make([]uint64, 0, len(logs))
+
+	for i := range logs {
+		id := logs[i].ActorID
+		if id == 0 || seen[id] {
+			continue
+		}
+
+		seen[id] = true
+		wanted = append(wanted, id)
+	}
+
+	if len(wanted) == 0 {
+		return map[uint64]string{}, nil
+	}
+
+	names, err := s.users.UserNames(ctx, wanted)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+
+	return names, nil
 }

@@ -27,6 +27,10 @@ import {
   productByIdsRowData,
   productImagesData,
   productListRowData,
+  productDailyFromList,
+  productDailyMovesData,
+  productSupplierGoodsData,
+  productSuppliersFromList,
   productsFromByIds,
   productsFromList,
 } from "./adapt";
@@ -733,6 +737,65 @@ export function useDiscoverStockHistory(args: {
   });
 }
 
+// PEMASOK — WHO SUPPLIES A PRODUCT, any team's (the-supplier-tab-names-the-store, another-team-sees-everything-of-a-
+// supplier): ProductSupplierGoods, per supplier and store, in the page's warehouse lens (the-warehouse-picker-splits-the-
+// page). The last cost comes back to the OWNING team only. Paged as the product page's other lists.
+export function useProductSupplierGoods(args: {
+  teamId: bigint | undefined;
+  productId: bigint;
+  warehouseId: bigint;
+  page: number;
+  pageSize: number;
+}) {
+  const { teamId, productId, warehouseId, page, pageSize } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, {
+      supplierGoods: productId.toString(),
+      warehouseId: warehouseId.toString(),
+      page,
+      pageSize,
+    }),
+    ...listQuery,
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.productSupplierGoods({
+        teamId: teamId!,
+        filter: { productId, warehouseId },
+        dataRequest: productSupplierGoodsData(),
+        page: { page, limit: pageSize },
+      });
+
+      return {
+        rows: productSuppliersFromList(res),
+        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
+      };
+    },
+  });
+}
+
+// KELUAR MASUK HARIAN — A PRODUCT'S LAST FOURTEEN DAYS, any team's (the-warehouse-zone-is-tabs, stock-history-is-
+// everyones): ProductDailyMoves, per Jakarta day what came in, what went out and what was left, in the page's warehouse
+// lens (the-warehouse-picker-splits-the-page). Always fourteen days, today first — no pager.
+export function useProductDailyMoves(args: { teamId: bigint | undefined; productId: bigint; warehouseId: bigint }) {
+  const { teamId, productId, warehouseId } = args;
+
+  return useQuery({
+    queryKey: key.products(teamId, { dailyMoves: productId.toString(), warehouseId: warehouseId.toString() }),
+    ...listQuery,
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async () => {
+      const res = await inventoryClient.productDailyMoves({
+        teamId: teamId!,
+        filter: { productId, warehouseId },
+        dataRequest: productDailyMovesData(),
+      });
+
+      return productDailyFromList(res);
+    },
+  });
+}
+
 // ── Writes (#177) ───────────────────────────────────────────────────────────────────────────────
 //
 // The catalogue's writes. Each declares its invalidation here rather than leaving the page that
@@ -746,10 +809,16 @@ export function useDiscoverStockHistory(args: {
 //
 // It does NOT cross into orders: an order line SNAPSHOTS sku/name and freezes its money at order time precisely
 // so later catalogue edits never rewrite history, which is the whole point of freezing them.
+//
+// Keyed (SAVE_PRODUCT) so the product form can keep its own read still while it runs (pages/product-edit, #122): the form
+// leaves on success, and the screen it returns to reads afresh.
+export const SAVE_PRODUCT = ["products", "write", "save"] as const;
+
 export function useSaveProduct() {
   const invalidate = useInvalidateProducts();
 
   return useMutation({
+    mutationKey: SAVE_PRODUCT,
     mutationFn: async (
       vars:
         | { productId: bigint; fields: Parameters<typeof productClient.productUpdate>[0] }

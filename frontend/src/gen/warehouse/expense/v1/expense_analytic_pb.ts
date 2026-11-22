@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/expense/v1/expense_analytic.proto.
  */
 export const file_warehouse_expense_v1_expense_analytic: GenFile = /*@__PURE__*/
-  fileDesc("Cit3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlX2FuYWx5dGljLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSJVChBBZHNFeHBlbnNlTWV0cmljEhoKBmFtb3VudBgBIAEoAUIKmrUYAggBoLUYAzolmrUYIQoEAQUECBIBARoJAQcJCwoCAwQFIgttZXRyaWNzL2FkcyKyAQoUQWRzRXhwZW5zZU1ldHJpY0J5SUQSRAoFaXRlbXMYASADKAsyNS53YXJlaG91c2UuZXhwZW5zZS52MS5BZHNFeHBlbnNlTWV0cmljQnlJRC5JdGVtc0VudHJ5GlQKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmV4cGVuc2UudjEuQWRzRXhwZW5zZU1ldHJpYzoCOAEitAEKFUFkc0V4cGVuc2VNZXRyaWNCeURheRJFCgVpdGVtcxgBIAMoCzI2LndhcmVob3VzZS5leHBlbnNlLnYxLkFkc0V4cGVuc2VNZXRyaWNCeURheS5JdGVtc0VudHJ5GlQKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmV4cGVuc2UudjEuQWRzRXhwZW5zZU1ldHJpYzoCOAEixwEKDkV4cGVuc2VzTWV0cmljEhcKA2FkcxgBIAEoAUIKmrUYAggBoLUYAxIbCgdwYXlyb2xsGAIgASgBQgqatRgCCAGgtRgDEh8KC29wZXJhdGlvbmFsGAMgASgBQgqatRgCCAGgtRgDEhkKBW90aGVyGAQgASgBQgqatRgCCAGgtRgDEhkKBXRvdGFsGAUgASgBQgqatRgCCAGgtRgDOiiatRgkCgMBBAgSAQEaCAEJCwoCAwQFIhBtZXRyaWNzL2V4cGVuc2VzIqwBChJFeHBlbnNlc01ldHJpY0J5SUQSQgoFaXRlbXMYASADKAsyMy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlc01ldHJpY0J5SUQuSXRlbXNFbnRyeRpSCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBIzCgV2YWx1ZRgCIAEoCzIkLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljOgI4ASKuAQoTRXhwZW5zZXNNZXRyaWNCeURheRJDCgVpdGVtcxgBIAMoCzI0LndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljQnlEYXkuSXRlbXNFbnRyeRpSCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljOgI4ASLPAgoTTWV0cmljU2VhcmNoUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJFCghncm91cF9ieRgCIAEoDjIlLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkdyb3VwVHlwZUIMukgJggEGEAEgACABEkEKB2ZpbHRlcnMYAyADKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5GaWx0ZXJJdGVtQgi6SAWSAQIQBhI8CgRzb3J0GAQgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljU29ydEIGukgDyAEBEkIKBHBhZ2UYBSABKAsyLC53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5QYWdpbmF0aW9uRmlsdGVyQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIl4KFE1ldHJpY1NlYXJjaFJlc3BvbnNlEjQKBGtleXMYASABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNLZXlzEhAKCGhhc19uZXh0GAIgASgIIuYCChFNZXRyaWNEYXRhUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARJDCghncm91cF9ieRgCIAEoDjIlLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkdyb3VwVHlwZUIKukgHggEEEAEgABJBCgdmaWx0ZXJzGAMgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIIukgFkgECEAYSNAoEa2V5cxgEIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY0tleXMSIAoKbWV0cmljX2lkcxgFIAMoCUIMukgJkgEGCAEQChgBEkMKCnJvd3NfZ3JvdXAYBiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCCLpIBYIBAhABOg6StRgKCggBAgMEBQYJCCKgAwoKTWV0cmljRGF0YRI/CglhZHNfYnlfaWQYASABKAsyKi53YXJlaG91c2UuZXhwZW5zZS52MS5BZHNFeHBlbnNlTWV0cmljQnlJREgAEkEKCmFkc19ieV9kYXkYAiABKAsyKy53YXJlaG91c2UuZXhwZW5zZS52MS5BZHNFeHBlbnNlTWV0cmljQnlEYXlIABI9CgthZHNfc3VtbWFyeRgDIAEoCzImLndhcmVob3VzZS5leHBlbnNlLnYxLkFkc0V4cGVuc2VNZXRyaWNIABJCCg5leHBlbnNlc19ieV9pZBgEIAEoCzIoLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljQnlJREgAEkQKD2V4cGVuc2VzX2J5X2RheRgFIAEoCzIpLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljQnlEYXlIABJAChBleHBlbnNlc19zdW1tYXJ5GAYgASgLMiQud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZXNNZXRyaWNIAEIDCgFtImAKEk1ldHJpY0RhdGFSZXNwb25zZRI2CgxtZXRyaWNfZGF0YXMYASADKAsyIC53YXJlaG91c2UuZXhwZW5zZS52MS5NZXRyaWNEYXRhEhIKCmFzX29mX3VuaXgYAiABKAMiOQoXRXhwZW5zZVBlcnNvbkxpc3RGaWx0ZXISHgoKbWV0cmljX2lkcxgBIAMoCUIKukgHkgEEEAoYASKVAQobRXhwZW5zZVBlcnNvbkxpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSOQoGcGVyc29uGAIgASgOMicud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVBlcnNvblNvcnRIAEIDCgFzIswCChhFeHBlbnNlUGVyc29uTGlzdFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESPQoGZmlsdGVyGAIgASgLMi0ud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVBlcnNvbkxpc3RGaWx0ZXISPwoEc29ydBgDIAEoCzIxLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VQZXJzb25MaXN0RmlsdGVyU29ydBJFCgxkYXRhX3JlcXVlc3QYBCADKA4yLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uTGlzdERhdGFUeXBlEjsKBHBhZ2UYBSABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToOkrUYCgoIAQIDBAUGCQgiNgoRRXhwZW5zZVBlcnNvbkl0ZW0SDwoHdXNlcl9pZBgBIAEoBBIQCghsYXN0X2RheRgCIAEoCSK6AQoURXhwZW5zZVBlcnNvbk1hcEl0ZW0SSQoIbWFwX2RhdGEYASADKAsyNy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uTWFwSXRlbS5NYXBEYXRhRW50cnkaVwoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBI2CgV2YWx1ZRgCIAEoCzInLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VQZXJzb25JdGVtOgI4ASJiCh1FeHBlbnNlUGVyc29uTGlzdFJlc3BvbnNlSXRlbRI8CgZwZXJzb24YASABKAsyKi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uTWFwSXRlbUgAQgMKAWQingEKGUV4cGVuc2VQZXJzb25MaXN0UmVzcG9uc2USQgoFaXRlbXMYASADKAsyMy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyp0ChlFeHBlbnNlUGVyc29uTGlzdERhdGFUeXBlEi0KKUVYUEVOU0VfUEVSU09OX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASKAokRVhQRU5TRV9QRVJTT05fTElTVF9EQVRBX1RZUEVfUEVSU09OEAEqWgoRRXhwZW5zZVBlcnNvblNvcnQSIwofRVhQRU5TRV9QRVJTT05fU09SVF9VTlNQRUNJRklFRBAAEiAKHEVYUEVOU0VfUEVSU09OX1NPUlRfTEFTVF9EQVkQATLlAgoWRXhwZW5zZUFuYWx5dGljU2VydmljZRJqCgxNZXRyaWNTZWFyY2gSKS53YXJlaG91c2UuZXhwZW5zZS52MS5NZXRyaWNTZWFyY2hSZXF1ZXN0Gioud2FyZWhvdXNlLmV4cGVuc2UudjEuTWV0cmljU2VhcmNoUmVzcG9uc2UiA5ACARJkCgpNZXRyaWNEYXRhEicud2FyZWhvdXNlLmV4cGVuc2UudjEuTWV0cmljRGF0YVJlcXVlc3QaKC53YXJlaG91c2UuZXhwZW5zZS52MS5NZXRyaWNEYXRhUmVzcG9uc2UiA5ACARJ5ChFFeHBlbnNlUGVyc29uTGlzdBIuLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VQZXJzb25MaXN0UmVxdWVzdBovLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VQZXJzb25MaXN0UmVzcG9uc2UiA5ACAUJOWkxnaXRodWIuY29tL3BkY2dvL3dhcmVob3VzZV9yZXZhbXAvYmFja2VuZC9nZW4vd2FyZWhvdXNlL2V4cGVuc2UvdjE7ZXhwZW5zZXYxYgZwcm90bzM", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Cit3YXJlaG91c2UvZXhwZW5zZS92MS9leHBlbnNlX2FuYWx5dGljLnByb3RvEhR3YXJlaG91c2UuZXhwZW5zZS52MSJVChBBZHNFeHBlbnNlTWV0cmljEhoKBmFtb3VudBgBIAEoAUIKmrUYAggBoLUYAzolmrUYIQoEAQUECBIBARoJAQcJCwoCAwQFIgttZXRyaWNzL2FkcyKyAQoUQWRzRXhwZW5zZU1ldHJpY0J5SUQSRAoFaXRlbXMYASADKAsyNS53YXJlaG91c2UuZXhwZW5zZS52MS5BZHNFeHBlbnNlTWV0cmljQnlJRC5JdGVtc0VudHJ5GlQKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgEEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmV4cGVuc2UudjEuQWRzRXhwZW5zZU1ldHJpYzoCOAEitAEKFUFkc0V4cGVuc2VNZXRyaWNCeURheRJFCgVpdGVtcxgBIAMoCzI2LndhcmVob3VzZS5leHBlbnNlLnYxLkFkc0V4cGVuc2VNZXRyaWNCeURheS5JdGVtc0VudHJ5GlQKCkl0ZW1zRW50cnkSCwoDa2V5GAEgASgJEjUKBXZhbHVlGAIgASgLMiYud2FyZWhvdXNlLmV4cGVuc2UudjEuQWRzRXhwZW5zZU1ldHJpYzoCOAEi+gYKDkV4cGVuc2VzTWV0cmljEhcKA2FkcxgBIAEoAUIKmrUYAggBoLUYAxIbCgdwYXlyb2xsGAIgASgBQgqatRgCCAGgtRgDEh8KC29wZXJhdGlvbmFsGAMgASgBQgqatRgCCAGgtRgDEhkKBW90aGVyGAQgASgBQgqatRgCCAGgtRgDEhkKBXRvdGFsGAUgASgBQgqatRgCCAGgtRgDEhwKCG1vbmV5X2luGAYgASgBQgqatRgCCAGgtRgDEh8KC2NhcGl0YWxfb3V0GAcgASgBQgqatRgCCAGgtRgDEh4KCmNhcGl0YWxfaW4YCCABKAFCCpq1GAIIAaC1GAMSIwoPYWRzX21hcmtldHBsYWNlGAkgASgBQgqatRgCCAGgtRgDEiMKD2NvbnRlbnRfZW5kb3JzZRgKIAEoAUIKmrUYAggBoLUYAxIgCgxiYXNpY19zYWxhcnkYCyABKAFCCpq1GAIIAaC1GAMSGQoFYm9udXMYDCABKAFCCpq1GAIIAaC1GAMSIQoNY29udHJpYnV0aW9ucxgNIAEoAUIKmrUYAggBoLUYAxIfCgtlbGVjdHJpY2l0eRgOIAEoAUIKmrUYAggBoLUYAxIcCghpbnRlcm5ldBgPIAEoAUIKmrUYAggBoLUYAxIbCgdraXRjaGVuGBAgASgBQgqatRgCCAGgtRgDEhkKBXRvb2xzGBEgASgBQgqatRgCCAGgtRgDEh0KCWVxdWlwbWVudBgSIAEoAUIKmrUYAggBoLUYAxIcCghiYW5rX2ZlZRgTIAEoAUIKmrUYAggBoLUYAxIfCgtkaXNjcmVwYW5jeRgUIAEoAUIKmrUYAggBoLUYAxIlChFvdXRzaWRlX2RlYnRfcGFpZBgVIAEoAUIKmrUYAggBoLUYAxIvChtvdXRzaWRlX3JlY2VpdmFibGVfcmVjZWl2ZWQYFiABKAFCCpq1GAIIAaC1GAMSGQoFcHJpdmUYFyABKAFCCpq1GAIIAaC1GAMSIwoPY2FwaXRhbF9kZXBvc2l0GBggASgBQgqatRgCCAGgtRgDEh0KCW90aGVyX291dBgZIAEoAUIKmrUYAggBoLUYAxIcCghvdGhlcl9pbhgaIAEoAUIKmrUYAggBoLUYAzoomrUYJAoDAQQIEgEBGggBCQsKAgMEBSIQbWV0cmljcy9leHBlbnNlcyKsAQoSRXhwZW5zZXNNZXRyaWNCeUlEEkIKBWl0ZW1zGAEgAygLMjMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZXNNZXRyaWNCeUlELkl0ZW1zRW50cnkaUgoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSMwoFdmFsdWUYAiABKAsyJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlc01ldHJpYzoCOAEirgEKE0V4cGVuc2VzTWV0cmljQnlEYXkSQwoFaXRlbXMYASADKAsyNC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlc01ldHJpY0J5RGF5Lkl0ZW1zRW50cnkaUgoKSXRlbXNFbnRyeRILCgNrZXkYASABKAkSMwoFdmFsdWUYAiABKAsyJC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlc01ldHJpYzoCOAEizwIKE01ldHJpY1NlYXJjaFJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESRQoIZ3JvdXBfYnkYAiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCDLpICYIBBhABIAAgARJBCgdmaWx0ZXJzGAMgAygLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuRmlsdGVySXRlbUIIukgFkgECEAYSPAoEc29ydBgEIAEoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLk1ldHJpY1NvcnRCBrpIA8gBARJCCgRwYWdlGAUgASgLMiwud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuUGFnaW5hdGlvbkZpbHRlckIGukgDyAEBOg6StRgKCggBAgMEBQYJCCJeChRNZXRyaWNTZWFyY2hSZXNwb25zZRI0CgRrZXlzGAEgASgLMiYud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuTWV0cmljS2V5cxIQCghoYXNfbmV4dBgCIAEoCCLmAgoRTWV0cmljRGF0YVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESQwoIZ3JvdXBfYnkYAiABKA4yJS53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5Hcm91cFR5cGVCCrpIB4IBBBABIAASQQoHZmlsdGVycxgDIAMoCzImLndhcmVob3VzZS5hbmFseXRpY19iYXNlLnYxLkZpbHRlckl0ZW1CCLpIBZIBAhAGEjQKBGtleXMYBCABKAsyJi53YXJlaG91c2UuYW5hbHl0aWNfYmFzZS52MS5NZXRyaWNLZXlzEiAKCm1ldHJpY19pZHMYBSADKAlCDLpICZIBBggBEAoYARJDCgpyb3dzX2dyb3VwGAYgASgOMiUud2FyZWhvdXNlLmFuYWx5dGljX2Jhc2UudjEuR3JvdXBUeXBlQgi6SAWCAQIQAToOkrUYCgoIAQIDBAUGCQgioAMKCk1ldHJpY0RhdGESPwoJYWRzX2J5X2lkGAEgASgLMioud2FyZWhvdXNlLmV4cGVuc2UudjEuQWRzRXhwZW5zZU1ldHJpY0J5SURIABJBCgphZHNfYnlfZGF5GAIgASgLMisud2FyZWhvdXNlLmV4cGVuc2UudjEuQWRzRXhwZW5zZU1ldHJpY0J5RGF5SAASPQoLYWRzX3N1bW1hcnkYAyABKAsyJi53YXJlaG91c2UuZXhwZW5zZS52MS5BZHNFeHBlbnNlTWV0cmljSAASQgoOZXhwZW5zZXNfYnlfaWQYBCABKAsyKC53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlc01ldHJpY0J5SURIABJECg9leHBlbnNlc19ieV9kYXkYBSABKAsyKS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlc01ldHJpY0J5RGF5SAASQAoQZXhwZW5zZXNfc3VtbWFyeRgGIAEoCzIkLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VzTWV0cmljSABCAwoBbSJgChJNZXRyaWNEYXRhUmVzcG9uc2USNgoMbWV0cmljX2RhdGFzGAEgAygLMiAud2FyZWhvdXNlLmV4cGVuc2UudjEuTWV0cmljRGF0YRISCgphc19vZl91bml4GAIgASgDIjkKF0V4cGVuc2VQZXJzb25MaXN0RmlsdGVyEh4KCm1ldHJpY19pZHMYASADKAlCCrpIB5IBBBAKGAEilQEKG0V4cGVuc2VQZXJzb25MaXN0RmlsdGVyU29ydBI2Cglzb3J0X3R5cGUYASABKA4yIy53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblNvcnRUeXBlEjkKBnBlcnNvbhgCIAEoDjInLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VQZXJzb25Tb3J0SABCAwoBcyLMAgoYRXhwZW5zZVBlcnNvbkxpc3RSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEj0KBmZpbHRlchgCIAEoCzItLndhcmVob3VzZS5leHBlbnNlLnYxLkV4cGVuc2VQZXJzb25MaXN0RmlsdGVyEj8KBHNvcnQYAyABKAsyMS53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uTGlzdEZpbHRlclNvcnQSRQoMZGF0YV9yZXF1ZXN0GAQgAygOMi8ud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVBlcnNvbkxpc3REYXRhVHlwZRI7CgRwYWdlGAUgASgLMiUud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25QYWdpbmF0aW9uQga6SAPIAQE6DpK1GAoKCAECAwQFBgkIIjYKEUV4cGVuc2VQZXJzb25JdGVtEg8KB3VzZXJfaWQYASABKAQSEAoIbGFzdF9kYXkYAiABKAkiugEKFEV4cGVuc2VQZXJzb25NYXBJdGVtEkkKCG1hcF9kYXRhGAEgAygLMjcud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVBlcnNvbk1hcEl0ZW0uTWFwRGF0YUVudHJ5GlcKDE1hcERhdGFFbnRyeRILCgNrZXkYASABKAQSNgoFdmFsdWUYAiABKAsyJy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uSXRlbToCOAEiYgodRXhwZW5zZVBlcnNvbkxpc3RSZXNwb25zZUl0ZW0SPAoGcGVyc29uGAEgASgLMioud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVBlcnNvbk1hcEl0ZW1IAEIDCgFkIp4BChlFeHBlbnNlUGVyc29uTGlzdFJlc3BvbnNlEkIKBWl0ZW1zGAEgAygLMjMud2FyZWhvdXNlLmV4cGVuc2UudjEuRXhwZW5zZVBlcnNvbkxpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8qdAoZRXhwZW5zZVBlcnNvbkxpc3REYXRhVHlwZRItCilFWFBFTlNFX1BFUlNPTl9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEigKJEVYUEVOU0VfUEVSU09OX0xJU1RfREFUQV9UWVBFX1BFUlNPThABKloKEUV4cGVuc2VQZXJzb25Tb3J0EiMKH0VYUEVOU0VfUEVSU09OX1NPUlRfVU5TUEVDSUZJRUQQABIgChxFWFBFTlNFX1BFUlNPTl9TT1JUX0xBU1RfREFZEAEy5QIKFkV4cGVuc2VBbmFseXRpY1NlcnZpY2USagoMTWV0cmljU2VhcmNoEikud2FyZWhvdXNlLmV4cGVuc2UudjEuTWV0cmljU2VhcmNoUmVxdWVzdBoqLndhcmVob3VzZS5leHBlbnNlLnYxLk1ldHJpY1NlYXJjaFJlc3BvbnNlIgOQAgESZAoKTWV0cmljRGF0YRInLndhcmVob3VzZS5leHBlbnNlLnYxLk1ldHJpY0RhdGFSZXF1ZXN0Gigud2FyZWhvdXNlLmV4cGVuc2UudjEuTWV0cmljRGF0YVJlc3BvbnNlIgOQAgESeQoRRXhwZW5zZVBlcnNvbkxpc3QSLi53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uTGlzdFJlcXVlc3QaLy53YXJlaG91c2UuZXhwZW5zZS52MS5FeHBlbnNlUGVyc29uTGlzdFJlc3BvbnNlIgOQAgFCTlpMZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS9leHBlbnNlL3YxO2V4cGVuc2V2MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_analytic_base_v1_analytic, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * ADS EXPENSE — the typed ADS expenses, net of their corrections, each on its own day (the owner's tree: *Ads Expense —
@@ -87,10 +87,12 @@ export const AdsExpenseMetricByDaySchema: GenMessage<AdsExpenseMetricByDay> = /*
   messageDesc(file_warehouse_expense_v1_expense_analytic, 2);
 
 /**
- * EXPENSES — every expense a person TYPES, one field per kind and their total: Ads, Payroll, Operational, Other. The
- * STOCK_LOSS expense is not in it (stock-loss-stays-out-of-analytic-expenses) — a loss is read as Lost stock and as Team
- * Balance. A transfer's shipping is not in it either: it is a paying-account row, never an Expenses-screen record
- * (a-transfers-shipping-posts-as-an-expense). No shop: only an ads expense names one.
+ * EXPENSES — every expense a person TYPES: one field per kind (Ads, Payroll, Operational, Other — each group's spending),
+ * the month's total, money in and capital, and one field per expense TYPE (expense-types-sit-under-groups; acceptance
+ * analytic/expense_metric.md givens 6–22: *<type> shown*). The STOCK_LOSS expense is not in it
+ * (stock-loss-stays-out-of-analytic-expenses) — a loss is read as Lost stock and as Team Balance. A transfer's shipping is
+ * not in it either: it is a paying-account row, never an Expenses-screen record (a-transfers-shipping-posts-as-an-expense).
+ * No shop: only an ads expense names one.
  *
  * Who reads: as Ads expense.
  *
@@ -126,11 +128,168 @@ export type ExpensesMetric = Message<"warehouse.expense.v1.ExpensesMetric"> & {
   other: number;
 
   /**
-   * The four kinds' sum — every typed expense, never a stock loss.
+   * THE MONTH TOTAL as Biaya's *Total bulan ini* moves (the-expense-types-prototype-is-accepted; acceptance
+   * analytic/expense_metric.md givens 6–22, financial_account/expense.md givens 17–22): spending − money_in +
+   * capital_out − capital_in — Prive raises it, Setoran modal and money in lower it. Equal to every type field below
+   * summed plus the rows from before the types (each in its group's spending only). Never a stock loss. ⚠ Until backlog
+   * #107 it was the four kinds' sum, spending only; each of the four above stays its group's SPENDING — every money-out
+   * type but Prive — and money in and capital stay their own fields below.
    *
    * @generated from field: double total = 5;
    */
   total: number;
+
+  /**
+   * Uang masuk — Piutang luar diterima and Uang masuk lain, positive (a correction signed), on the same days and people
+   * as the rest.
+   *
+   * @generated from field: double money_in = 6;
+   */
+  moneyIn: number;
+
+  /**
+   * Modal keluar — Prive, the owner's capital taken out, positive.
+   *
+   * @generated from field: double capital_out = 7;
+   */
+  capitalOut: number;
+
+  /**
+   * Modal masuk — Setoran modal, the owner's capital put in, positive.
+   *
+   * @generated from field: double capital_in = 8;
+   */
+  capitalIn: number;
+
+  /**
+   * EXPENSE_TYPE_ADS_MARKETPLACE — Iklan › Iklan marketplace (spending). Each type field is its rows' signed net, as Biaya's
+   * month card shows the type (ExpenseTotals.by_type): money out plus, money in (Piutang luar diterima, Setoran modal,
+   * Uang masuk lain) minus — so the type fields and the rows from before the types add up to `total`. A row from before
+   * the types (type 0) is in no type field, only in its group's. Appended in ExpenseType's order: field 8 + the type's
+   * number.
+   *
+   * @generated from field: double ads_marketplace = 9;
+   */
+  adsMarketplace: number;
+
+  /**
+   * EXPENSE_TYPE_CONTENT_ENDORSE — Iklan › Konten · endorse.
+   *
+   * @generated from field: double content_endorse = 10;
+   */
+  contentEndorse: number;
+
+  /**
+   * EXPENSE_TYPE_BASIC_SALARY — Gaji › Gaji pokok.
+   *
+   * @generated from field: double basic_salary = 11;
+   */
+  basicSalary: number;
+
+  /**
+   * EXPENSE_TYPE_BONUS — Gaji › Bonus.
+   *
+   * @generated from field: double bonus = 12;
+   */
+  bonus: number;
+
+  /**
+   * EXPENSE_TYPE_CONTRIBUTIONS — Gaji › Iuran (BPJS).
+   *
+   * @generated from field: double contributions = 13;
+   */
+  contributions: number;
+
+  /**
+   * EXPENSE_TYPE_ELECTRICITY — Operasional › Listrik.
+   *
+   * @generated from field: double electricity = 14;
+   */
+  electricity: number;
+
+  /**
+   * EXPENSE_TYPE_INTERNET — Operasional › Internet · paket data.
+   *
+   * @generated from field: double internet = 15;
+   */
+  internet: number;
+
+  /**
+   * EXPENSE_TYPE_KITCHEN — Operasional › Dapur · makan tim.
+   *
+   * @generated from field: double kitchen = 16;
+   */
+  kitchen: number;
+
+  /**
+   * EXPENSE_TYPE_TOOLS — Operasional › Alat.
+   *
+   * @generated from field: double tools = 17;
+   */
+  tools: number;
+
+  /**
+   * EXPENSE_TYPE_EQUIPMENT — Operasional › Perlengkapan.
+   *
+   * @generated from field: double equipment = 18;
+   */
+  equipment: number;
+
+  /**
+   * EXPENSE_TYPE_BANK_FEE — Operasional › Biaya bank.
+   *
+   * @generated from field: double bank_fee = 19;
+   */
+  bankFee: number;
+
+  /**
+   * EXPENSE_TYPE_DISCREPANCY — Operasional › Selisih · transaksi tak tercatat (the checklist's *adjustment*).
+   *
+   * @generated from field: double discrepancy = 20;
+   */
+  discrepancy: number;
+
+  /**
+   * EXPENSE_TYPE_OUTSIDE_DEBT_PAID — Lainnya › Utang luar dibayar (spending).
+   *
+   * @generated from field: double outside_debt_paid = 21;
+   */
+  outsideDebtPaid: number;
+
+  /**
+   * EXPENSE_TYPE_OUTSIDE_RECEIVABLE_RECEIVED — Lainnya › Piutang luar diterima: money in, minus.
+   *
+   * @generated from field: double outside_receivable_received = 22;
+   */
+  outsideReceivableReceived: number;
+
+  /**
+   * EXPENSE_TYPE_PRIVE — Lainnya › Prive: capital out, plus (never in a group's spending).
+   *
+   * @generated from field: double prive = 23;
+   */
+  prive: number;
+
+  /**
+   * EXPENSE_TYPE_CAPITAL_DEPOSIT — Lainnya › Setoran modal: capital in, minus.
+   *
+   * @generated from field: double capital_deposit = 24;
+   */
+  capitalDeposit: number;
+
+  /**
+   * EXPENSE_TYPE_OTHER_OUT — Lainnya › Uang keluar lain (spending).
+   *
+   * @generated from field: double other_out = 25;
+   */
+  otherOut: number;
+
+  /**
+   * EXPENSE_TYPE_OTHER_IN — Lainnya › Uang masuk lain: money in, minus.
+   *
+   * @generated from field: double other_in = 26;
+   */
+  otherIn: number;
 };
 
 /**

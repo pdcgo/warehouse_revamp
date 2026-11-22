@@ -1,19 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { categoryClient } from "../../api/clients";
+import { categoryClient, productClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
+import { categoryTreeQuery } from "../../features/categories/queries";
 
 // The category screen's reads (#176).
 //
 // GLOBAL reference data — no team in the key. The taxonomy is the same for everyone, which is why
 // `key.categories` is one of the three non-scoped helpers in api/queryClient.ts. Putting a team in
 // this key would give every team its own copy of an identical tree.
+//
+// The tree is the SAME entry CategorySelect reads (features/categories/queries.ts, #121) — on the plain always-fresh
+// default here, because this screen is where root works on it.
 export function useCategories() {
-  return useQuery({
-    queryKey: key.categories(),
-    queryFn: async () => {
-      const res = await categoryClient.categoryList({});
+  return useQuery(categoryTreeQuery());
+}
 
-      return res.categories;
+// HOW MANY PRODUCTS EACH CATEGORY HOLDS — every team's live products filed DIRECTLY on each node, keyed by category id
+// (ProductCategoryCounts; Root / the Administrator, as this page is). A branch's figure is the page's to make from these
+// and the tree (productCounts.ts). Under the `categories` prefix, so a category write re-reads it with the tree.
+export function useCategoryProductCounts() {
+  return useQuery({
+    queryKey: key.categories({ view: "productCounts" }),
+    queryFn: async () => {
+      const res = await productClient.productCategoryCounts({});
+
+      return new Map(res.counts.map((c) => [c.categoryId.toString(), Number(c.products)]));
     },
   });
 }

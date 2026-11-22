@@ -17,11 +17,18 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { productClient, rpcError, teamClient } from "../../api/clients";
-import { teamByIdsRowData, teamsByIds } from "../../features/teams/adapt";
+import { useQueryClient } from "@tanstack/react-query";
+import { rpcError } from "../../api/clients";
+import {
+  productPickerSeedQuery,
+  useProductPickerBadges,
+  useProductPickerPage,
+  useProductPickerSeed,
+  useProductPickerTeamNames,
+} from "../../features/products/pickerQueries";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
-import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
 import { GrowingPager } from "../chrome/GrowingPager";
+import { RefreshOverlay } from "../feedback/RefreshOverlay";
 import { ProductListItem } from "./ProductListItem";
 import type { PickedProduct } from "./ProductSelect";
 
@@ -116,11 +123,11 @@ export interface ProductPickerShellProps {
   /** Copy for the no-team state — the two catalogues word it differently. */
   noTeamMessage: string;
   /**
-   * Re-run `load` when this changes, and reset to page 1.
+   * What the answer depends on — part of every read's cache key, and a change starts the browse over at page 1.
    *
    * ⚠ A KEY RATHER THAN THE FUNCTION'S IDENTITY, deliberately. `load` is a closure a variant rebuilds
-   * every render, so depending on it would re-fetch forever; depending on nothing would ignore a
-   * changed warehouse. The key is the variant stating what its answer actually depends on.
+   * every render, so keying on it would re-fetch forever; keying on nothing would serve one warehouse's
+   * answer for another. The key is the variant stating what its answer actually depends on.
    */
   loadKey: string;
   /** The single source. Ignored when `sources` is given — the active tab supplies its own. */
@@ -135,6 +142,12 @@ export interface ProductPickerShellProps {
    * announcing that it is the only one.
    */
   sources?: PickerSource[];
+  /**
+   * The rows ARE a warehouse's stock — the stocked pickers, whose list is what a building holds and carries READY with
+   * it. Read always fresh (a stale shelf is not cosmetic, HARD RULE 10), where a catalogue page is a picker feed read
+   * through `referenceQuery`. See features/products/pickerQueries.ts.
+   */
+  stocked?: boolean;
   /**
    * How a row is drawn.
    *
@@ -158,6 +171,10 @@ export interface ProductPickerShellProps {
   trigger?: ReactNode;
 }
 
+// Stable empties, so a memo or effect keyed on them is not re-run by a fresh `[]` / `new Map()` each render.
+const NO_PRODUCTS: Product[] = [];
+const NO_FIGURES: Map<string, bigint> = new Map();
+
 export function ProductPickerShell({
   scopeTeamId,
   noTeamMessage,
@@ -166,6 +183,7 @@ export function ProductPickerShell({
   loadBadges,
   filters,
   sources,
+  stocked = false,
   layout = "list",
   value,
   onChange,
@@ -173,6 +191,7 @@ export function ProductPickerShell({
   trigger,
 }: ProductPickerShellProps) {
   const { t } = useTranslation();
+  const client = useQueryClient();
 
   const [open, setOpen] = useState(false);
 
@@ -186,142 +205,113 @@ export function ProductPickerShell({
   const active = sources?.find((s) => s.key === tab) ?? sources?.[0];
 
   // One resolved set of behaviour, whether this picker has tabs or not, so everything below is
-  // written once. `loadKey` gains the tab, which is what makes a tab change re-fetch and reset paging
-  // through the machinery that already exists for a changed warehouse.
+  // written once. `loadKey` gains the tab, which is what makes a tab change a different read and
+  // start the paging over — the same as a changed warehouse.
   const activeLoad = active?.load ?? load;
   const activeLoadBadges = active?.loadBadges ?? loadBadges;
   const activeFilters = active?.filters ?? filters;
   const activeKey = active ? `${loadKey}:${active.key}` : loadKey;
 
   // The draft: ticked ids ONLY. Keeping ids (not a filter over the loaded page) is what lets a tick
-  // survive paging and searching — page 2 replaces `products`, never `ticked`.
+  // survive paging and searching — page 2 replaces the rows, never `ticked`.
   const [ticked, setTicked] = useState<Set<string>>(new Set());
 
-  // Everything we have ever seen: id -> its sku/name snapshot. Grows from every loaded page, every
-  // search hit, and the on-open resolve below; it outlives paging, searching, and closing, so a tick
-  // can always be emitted with real data once its product has been seen ONCE.
+  // Everything we have ever seen: id -> its sku/name snapshot. Grows from every loaded page; it outlives paging,
+  // searching, and closing, so a tick can always be emitted with real data once its product has been seen ONCE.
   const [known, setKnown] = useState<Map<string, PickedProduct>>(new Map());
 
   const [input, setInput] = useState("");
   const [q, setQ] = useState("");
-  const [page, setPage] = useState(1);
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  // THE PAGE, held with the question it was turned on. Another tab, source or search term is a different list, so the
+  // page is 1 again on the SAME render — derived, not reset by an effect a render late, which would first send a read
+  // for page 4 of the new list.
+  const [paged, setPaged] = useState({ question: "", page: 1 });
+  const question = `${activeKey}|${q}`;
+  const page = paged.question === question ? paged.page : 1;
+  const setPage = (next: number) => setPaged({ question, page: next });
 
-  // Whether the last search matched more products than it could resolve — surfaced, never swallowed.
-  const [searchCapped, setSearchCapped] = useState(false);
-
-  // productId -> READY at the picker's warehouse. A MAP, not a lookup on the product: 0n is falsy, so
-  // "has the id" is the only way to tell a real zero (→ "Out of stock") from unknown (→ no badge).
-  const [onHand, setOnHand] = useState<Map<string, bigint>>(new Map());
-
-  // productId -> ONGOING across every warehouse. Its own map, because it has its own LENS and its own
-  // failure: with no warehouse chosen the ready read does not happen at all, and this one still does.
-  const [ongoing, setOngoing] = useState<Map<string, bigint>>(new Map());
-
-  // teamId -> name, for the row badge. Batched per page (TeamByIds), never per row.
-  const [teamNames, setTeamNames] = useState<Map<string, string>>(new Map());
+  // The seeded ids no page had shown when the dialog opened — captured AT OPEN, so the browse filling `known` while the
+  // resolve is in flight does not change what it asks.
+  const [seed, setSeed] = useState<bigint[]>([]);
 
   // THE ONE SCROLLER (owner). Held so a new page can be shown from its FIRST row — see below.
   const rowsRef = useRef<HTMLDivElement>(null);
 
   const noTeam = scopeTeamId <= 0n;
+  // Only while open — a closed dialog costs nothing.
+  const reading = open && !noTeam;
 
-  // Read inside effects WITHOUT making them dependencies: `value` is typically an inline `.map()` (a
-  // fresh array identity every render), `known` grows as pages load, and `load`/`loadBadges` are
-  // rebuilt every render by the variant — depending on any of them would re-seed, re-resolve or
-  // re-fetch in the middle of an edit. `loadKey` is what says when a re-fetch is actually warranted.
-  const valueRef = useRef(value);
-  valueRef.current = value;
-  const knownRef = useRef(known);
-  knownRef.current = known;
-  const teamNamesRef = useRef(teamNames);
-  teamNamesRef.current = teamNames;
-  const loadRef = useRef(activeLoad);
-  loadRef.current = activeLoad;
-  const loadBadgesRef = useRef(activeLoadBadges);
-  loadBadgesRef.current = activeLoadBadges;
+  // ── THE READS — through the query cache (features/products/pickerQueries.ts, #121) ─────────────────────────────
+  //
+  // The page: a catalogue page is a picker feed (referenceQuery — a reopened dialog draws it with no request), a
+  // stocked page is stock (always fresh). A page turn or a new term keeps the rows on screen while the next answer
+  // loads, under RefreshOverlay; another tab or source is a first load.
+  const pageQuery = useProductPickerPage({
+    scopeTeamId,
+    source: activeKey,
+    stocked,
+    q,
+    page,
+    enabled: reading,
+    load: activeLoad,
+  });
+  const pageData = pageQuery.data;
+  const products = pageData?.products ?? NO_PRODUCTS;
+  const totalItems = pageData?.total ?? 0;
+  // Whether the last search matched more products than it could resolve — surfaced, never swallowed.
+  const searchCapped = pageData?.capped === true;
+  const loading = reading && activeLoad !== undefined && pageQuery.isPending;
+  const error = pageQuery.isError ? rpcError(pageQuery.error) : "";
 
-  // The in-flight on-open resolve, so confirm() can wait for it instead of emitting blanks.
-  const resolveRef = useRef<Promise<PickedProduct[]> | null>(null);
-  const [confirming, setConfirming] = useState(false);
+  // READY and ONGOING for the products ON THIS PAGE (owner) — for the pickers whose list did not carry them. A source
+  // that already knows READY says so (`ready` on its page), and nothing asks again.
+  const badgesQuery = useProductPickerBadges({
+    scopeTeamId,
+    source: activeKey,
+    products,
+    enabled: reading && pageData !== undefined && !pageData.ready,
+    loadBadges: activeLoadBadges,
+  });
 
-  // A seeded id has no sku/name until its product is loaded. Resolve the missing ones on open, so a
-  // selection the user never scrolls to still Confirms with a real snapshot instead of a blank one.
-  //
-  // ProductByIds (#138), in ONE call: it resolves ids the caller ALREADY HOLDS whoever owns them,
-  // which is exactly this. It replaces a per-id ProductDetail loop — N round-trips for N ticks, and
-  // team-scoped, so while browsing all teams a cross-team id could not resolve at all and that tick
-  // stayed id-only. An id that still does not come back is preserved as a tick regardless, never
-  // dropped (see confirm()).
-  //
-  // The promise is kept so confirm() can AWAIT it. Confirm is live from the first frame, and a click
-  // landing inside this window used to read the not-yet-populated `known` and emit {sku:"", name:""}
-  // for ids that were about to resolve — silently replacing the caller's good snapshot with blanks,
-  // outcome decided purely by click timing.
-  //
-  // It resolves TO the products rather than only writing state: after `await`, this render's `known`
-  // is still the stale captured value, so confirm() has to read the resolved data itself.
+  // productId -> READY at the picker's warehouse, and -> ONGOING across every warehouse. MAPS, not a lookup on the
+  // product: 0n is falsy, so "has the id" is the only way to tell a real zero (→ "Out of stock") from unknown (→ no
+  // badge). A source that knows READY brings it and no ONGOING; a source with neither the figure nor a badge reader
+  // shows NONE — never the previous tab's figures beside a different catalogue's rows, which is the worst of the three
+  // states. An empty map from the badge read is "the read failed or was never made": no badge, not a fabricated 0.
+  const onHand = pageData?.ready ?? (activeLoadBadges ? (badgesQuery.data?.ready ?? NO_FIGURES) : NO_FIGURES);
+  const ongoing = pageData?.ready || !activeLoadBadges ? NO_FIGURES : (badgesQuery.data?.ongoing ?? NO_FIGURES);
+
+  // The owning team's NAME for the row badge, one batch per page — it never gates `loading`: rows draw with
+  // ProductListItem's "Team #<id>" fallback and upgrade in place when the names land.
+  const teamsQuery = useProductPickerTeamNames({ products, enabled: reading });
+  const teamNameOf = (teamId: bigint) => teamsQuery.data?.[teamId.toString()]?.name;
+
+  // A seeded id has no sku/name until its product is loaded. Resolved on open (ProductByIds, ONE call — whoever owns
+  // them, so a cross-team tick resolves too), so a selection the user never scrolls to still Confirms with a real
+  // snapshot instead of a blank one. An id that does not come back is preserved as a tick regardless (confirm()).
+  const seedQuery = useProductPickerSeed({ scopeTeamId, ids: seed, enabled: reading });
+
+  // Every product we render is one we can now describe — remember it for Confirm.
   useEffect(() => {
-    if (!open || noTeam) {
+    if (!pageData) {
       return;
     }
 
-    let cancelled = false;
-
-    const missing = valueRef.current.filter((id) => !knownRef.current.has(id.toString()));
-    if (missing.length === 0) {
-      resolveRef.current = null;
-
-      return;
-    }
-
-    const resolving = (async () => {
-      try {
-        const res = await productClient.productByIds({
-          teamId: scopeTeamId,
-          filter: { ids: missing },
-          dataRequest: productByIdsRowData(),
-        });
-
-        return productsFromByIds(res).map(pickedOf);
-      } catch {
-        // Deleted, or a scope that cannot see them. The ticks survive; only their labels are unknown.
-        //
-        // The catch swallows the whole call, so this never rejects — confirm() can await it without a
-        // catch of its own, and it always settles, so the button can never hang.
-        return [];
-      }
-    })();
-
-    resolveRef.current = resolving;
-
-    void resolving.then((found) => {
-      if (cancelled) {
-        return;
+    setKnown((prev) => {
+      const next = new Map(prev);
+      for (const p of pageData.products) {
+        next.set(p.id.toString(), pickedOf(p));
       }
 
-      setKnown((prev) => {
-        const next = new Map(prev);
-        for (const p of found) {
-          next.set(p.id.toString(), p);
-        }
-
-        return next;
-      });
+      return next;
     });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, scopeTeamId, noTeam]);
+  }, [pageData]);
 
   // Server-side search, debounced, >= 2 characters — mirroring ProductSelect. Below the threshold the
   // term is dropped rather than sent, so the dialog falls back to BROWSING the catalogue (q: "")
-  // instead of going blank: a picker with nothing in it is useless.
+  // instead of going blank: a picker with nothing in it is useless. A new term is a new question, so
+  // the page goes back to 1 with it (`page` above).
   useEffect(() => {
     const term = input.trim();
     const effective = term.length >= 2 ? term : "";
@@ -330,163 +320,10 @@ export function ProductPickerShell({
       return;
     }
 
-    const timer = setTimeout(() => {
-      setQ(effective);
-      setPage(1);
-    }, 250);
+    const timer = setTimeout(() => setQ(effective), 250);
 
     return () => clearTimeout(timer);
   }, [input, q]);
-
-  // A changed source is a different list, so page 4 of the old one is meaningless in the new one —
-  // and landing past the end of a shorter list reads as "there is nothing here".
-  useEffect(() => {
-    setPage(1);
-  }, [activeKey]);
-
-  // The page load. Only runs while open — a closed dialog costs nothing.
-  useEffect(() => {
-    if (!open || noTeam || !loadRef.current) {
-      return;
-    }
-
-    let cancelled = false;
-
-    setLoading(true);
-    setError("");
-
-    void (async () => {
-      try {
-        const res = await loadRef.current!({ page, q });
-
-        if (cancelled) {
-          return;
-        }
-
-        setProducts(res.products);
-        setTotalItems(res.total);
-        setSearchCapped(res.capped === true);
-
-        // A source that already knows READY says so, and nothing asks again.
-        if (res.ready) {
-          setOnHand(res.ready);
-          setOngoing(new Map());
-        } else if (!loadBadgesRef.current) {
-          // Neither the list nor a badge reader can answer — so CLEAR, rather than leaving the
-          // previous tab's figures sitting beside a different catalogue's rows. Crossing from a tab
-          // that shows stock to one that cannot is the only way to reach this, and stale numbers
-          // under new names is the worst of the three possible states.
-          setOnHand(new Map());
-          setOngoing(new Map());
-        }
-
-        // Every product we render is one we can now describe — remember it for Confirm.
-        setKnown((prev) => {
-          const next = new Map(prev);
-          for (const p of res.products) {
-            next.set(p.id.toString(), pickedOf(p));
-          }
-          return next;
-        });
-      } catch (err) {
-        if (!cancelled) {
-          setError(rpcError(err));
-          setProducts([]);
-          setTotalItems(0);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, noTeam, activeKey, q, page]);
-
-  // READY and ONGOING for the products ON THIS PAGE (owner) — for the pickers whose list did not
-  // carry them. Per PAGE, not per open: the ask is the ten ids on screen, so paging re-reads and
-  // nothing is pulled that nobody looks at.
-  //
-  // Stock is DECORATION here — the job of this dialog is picking products — so the variant's
-  // `loadBadges` swallows its own failures and simply yields no badge.
-  useEffect(() => {
-    if (!open || noTeam || products.length === 0 || !loadBadgesRef.current) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      const badges = await loadBadgesRef.current!(products);
-
-      if (cancelled) {
-        return;
-      }
-
-      // An empty map is "the read failed or was never made" and shows NO badge, rather than a
-      // fabricated 0. The variant is what decides which ids get a real zero — see its `spread`.
-      setOnHand(badges.ready ?? new Map<string, bigint>());
-      setOngoing(badges.ongoing ?? new Map<string, bigint>());
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, noTeam, products]);
-
-  // The owning team's NAME for the row badge. Browsing all teams, a page's rows come from many teams,
-  // so this resolves the page's ids in ONE batch and caches them for the component's life — paging
-  // back costs nothing. It deliberately does NOT gate `loading`: rows render immediately with
-  // ProductListItem's "Team #<id>" fallback and upgrade in place when the names land.
-  useEffect(() => {
-    if (products.length === 0) {
-      return;
-    }
-
-    // Unique, non-zero, not already known. TeamByIds requires min_items:1 and unique ids, so an
-    // empty set must not become a call.
-    const missing = [
-      ...new Set(
-        products
-          .map((p) => p.teamId)
-          .filter((id) => id > 0n && !teamNamesRef.current.has(id.toString())),
-      ),
-    ];
-
-    if (missing.length === 0) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const teams = teamsByIds(await teamClient.teamByIds({ filter: { ids: missing }, dataRequest: teamByIdsRowData() }));
-
-        if (cancelled) {
-          return;
-        }
-
-        setTeamNames((prev) => {
-          const next = new Map(prev);
-          for (const [id, team] of Object.entries(teams)) {
-            next.set(id, team.name);
-          }
-
-          return next;
-        });
-      } catch {
-        // A name is decoration: ProductListItem falls back to "Team #<id>".
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [products]);
 
   // A NEW SET OF ROWS IS SHOWN FROM ITS FIRST ROW.
   //
@@ -496,10 +333,11 @@ export function ProductPickerShell({
   // starting there.
   //
   // Keyed on `products` rather than on page/q/tab: it is the arrival of the new rows that has to be
-  // scrolled to the top, and one dependency covers a page turn, a search and a tab crossing alike.
+  // scrolled to the top, and one dependency covers a page turn, a search and a tab crossing alike. And
+  // on `open`: a reopened dialog can draw the very rows it closed on, from the cache.
   useEffect(() => {
     rowsRef.current?.scrollTo({ top: 0 });
-  }, [products]);
+  }, [products, open]);
 
   // Opening re-seeds the draft from `value` and resets the browse — so a draft discarded by Cancel
   // never leaks into the next open.
@@ -509,11 +347,11 @@ export function ProductPickerShell({
         return;
       }
 
-      setTicked(new Set(valueRef.current.map((id) => id.toString())));
+      setTicked(new Set(value.map((id) => id.toString())));
       setInput("");
       setQ("");
-      setPage(1);
-      setError("");
+      setPaged({ question: "", page: 1 });
+      setSeed(value.filter((id) => id > 0n && !known.has(id.toString())));
     }
 
     setOpen(next);
@@ -535,6 +373,8 @@ export function ProductPickerShell({
     });
   }
 
+  const [confirming, setConfirming] = useState(false);
+
   // Confirm is ALWAYS available — including at zero ticks, which means "cleared". An id we never
   // managed to resolve is still emitted (id only): the caller asked for it, so dropping it here would
   // quietly delete their selection.
@@ -542,17 +382,20 @@ export function ProductPickerShell({
   // It waits for the on-open resolve first. Without that, a click landing while those lookups are in
   // flight emits {sku:"", name:""} for ids that were ABOUT to resolve, and the caller cannot tell
   // that apart from a genuinely unresolvable one — so it overwrites a good snapshot with blanks,
-  // decided purely by click timing. The resolve never rejects and always settles, so this cannot
-  // hang; the button only shows a spinner while it lands.
+  // decided purely by click timing. The wait is `fetchQuery` on the SAME entry, so it joins the request in flight
+  // instead of sending a second; a failure is caught and the ticks go out id-only, so it always settles and the
+  // button only shows a spinner while it lands.
   async function confirm() {
-    let resolved: PickedProduct[] = [];
+    let resolved: Product[] = seedQuery.data ?? [];
 
-    if (resolveRef.current) {
+    if (!noTeam && seed.length > 0 && seedQuery.data === undefined) {
       setConfirming(true);
 
       try {
-        // The resolved value, not `known`: after the await, this render's `known` is still stale.
-        resolved = await resolveRef.current;
+        resolved = await client.fetchQuery(productPickerSeedQuery(scopeTeamId, seed));
+      } catch {
+        // Deleted, or a scope that cannot see them. The ticks survive; only their labels are unknown.
+        resolved = [];
       } finally {
         setConfirming(false);
       }
@@ -560,7 +403,7 @@ export function ProductPickerShell({
 
     const lookup = new Map(known);
     for (const p of resolved) {
-      lookup.set(p.id.toString(), p);
+      lookup.set(p.id.toString(), pickedOf(p));
     }
 
     const picked = [...ticked].map(
@@ -622,7 +465,7 @@ export function ProductPickerShell({
                 product={p}
                 stock={readyOf(key)}
                 ongoing={ongoingOf(key)}
-                teamName={teamNames.get(p.teamId.toString())}
+                teamName={teamNameOf(p.teamId)}
               />
             </Flex>
           </Checkbox.Root>
@@ -699,7 +542,7 @@ export function ProductPickerShell({
                 {/* No `stock`/`ongoing` passed: they have their own columns now, and the badges
                     would say the same thing twice on one row. */}
                 <Table.Cell>
-                  <ProductListItem product={p} teamName={teamNames.get(p.teamId.toString())} />
+                  <ProductListItem product={p} teamName={teamNameOf(p.teamId)} />
                 </Table.Cell>
 
                 <Table.Cell textAlign="end" data-testid={`product-picker-ongoing-${p.id}`}>
@@ -868,7 +711,12 @@ export function ProductPickerShell({
                         </Text>
                       )}
 
-                      {!loading && !error && products.length > 0 && rows}
+                      {/* KEPT ROWS SAY SO (HARD RULE 10): a page turn or a new term keeps the last answer on screen while the
+                          next one loads, dimmed under the bar once the wait passes 150ms and unclickable meanwhile — a tick
+                          landing on the old row 3 would tick whatever row 3 turns out to be. */}
+                      {!loading && !error && products.length > 0 && (
+                        <RefreshOverlay busy={pageQuery.isFetching && !pageQuery.isPending}>{rows}</RefreshOverlay>
+                      )}
                     </Box>
 
                     {/* A DIALOG'S PAGER IS ONE NUMBER — ‹ [2] ›, the app's pager boxes with the current page alone:
@@ -878,7 +726,8 @@ export function ProductPickerShell({
                       compact
                       page={page}
                       onPageChange={setPage}
-                      hasNext={loading ? undefined : page * PAGE_SIZE < totalItems}
+                      // Unknown while the page is still answering — a kept page says nothing about the next one.
+                      hasNext={pageQuery.isFetching || loading ? undefined : page * PAGE_SIZE < totalItems}
                       resetKey={`${activeKey}:${q}`}
                       pageSize={PAGE_SIZE}
                       testId="product-picker-pager"

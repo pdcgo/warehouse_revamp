@@ -147,6 +147,7 @@ async function recordCost(page: Page, amount: number, note: string) {
   await rpc(page, "expense.v1.ExpenseService/ExpenseCreate", {
     teamId: "1",
     kind: 3, // EXPENSE_KIND_OPERATIONAL
+    type: "EXPENSE_TYPE_ELECTRICITY", // a type is required since #99 (expense-types-sit-under-groups)
     amount: String(amount),
     occurredAt: today(),
     note,
@@ -401,6 +402,7 @@ test("Statement: Bulanan and Tahunan are the server's months and years — each 
     await rpc(page, "expense.v1.ExpenseService/ExpenseCreate", {
       teamId: team,
       kind: 3, // EXPENSE_KIND_OPERATIONAL
+      type: "EXPENSE_TYPE_ELECTRICITY", // a type is required since #99 (expense-types-sit-under-groups)
       amount: String(amount),
       occurredAt: day,
       note: `E2E statement grain ${SUFFIX}`,
@@ -561,6 +563,7 @@ test("Statement: a hand-picked three years of Tahunan is three rows from one cal
     await rpc(page, "expense.v1.ExpenseService/ExpenseCreate", {
       teamId: team,
       kind: 3, // EXPENSE_KIND_OPERATIONAL
+      type: "EXPENSE_TYPE_ELECTRICITY", // a type is required since #99 (expense-types-sit-under-groups)
       amount: String(amount),
       occurredAt: day,
       note: `E2E statement years ${SUFFIX}`,

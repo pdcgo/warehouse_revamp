@@ -1,0 +1,5039 @@
+{
+  "analytic": {
+    "screen": "analytic",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/analytic?g=shop\u0026m=metrics/orders/created\u0026r=7d",
+    "requests_shell": 3,
+    "requests_screen": 10,
+    "by_method": {
+      "OrderAnalyticService/MetricData": 2,
+      "OrderAnalyticService/MetricSearch": 1,
+      "OrderService/OrderCreatorList": 1,
+      "ShopService/ShopByIds": 1,
+      "ShopService/ShopList": 2,
+      "TeamService/TeamList": 2,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 3,
+    "chain": [
+      "OrderAnalyticService/MetricSearch",
+      "OrderAnalyticService/MetricData",
+      "ShopService/ShopByIds"
+    ],
+    "chains": [
+      [
+        "OrderAnalyticService/MetricSearch",
+        "OrderAnalyticService/MetricData",
+        "ShopService/ShopByIds"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      3,
+      3
+    ],
+    "waves": {
+      "OrderAnalyticService/MetricData": [
+        2
+      ],
+      "OrderAnalyticService/MetricSearch": [
+        1
+      ],
+      "OrderService/OrderCreatorList": [
+        1
+      ],
+      "ShopService/ShopByIds": [
+        3
+      ],
+      "ShopService/ShopList": [
+        1
+      ],
+      "TeamService/TeamList": [
+        1
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 814.2,
+      "min": 814.2,
+      "max": 814.2,
+      "n": 1
+    },
+    "cold_usable_ms": 1422.2,
+    "cold_requests": 13,
+    "cold_preflights": 11,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 10,
+        "dup": 0,
+        "chain": 3,
+        "usable_ms": 814.2,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "batch-detail": {
+    "screen": "batch-detail",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/batches/60",
+    "requests_shell": 4,
+    "requests_screen": 10,
+    "by_method": {
+      "InventoryService/BatchDetail": 1,
+      "InventoryService/BatchPlacementList": 1,
+      "InventoryService/ProductPlaces": 2,
+      "InventoryService/StockHistory": 1,
+      "ProductService/ProductByIds": 1,
+      "RackService/RackList": 1,
+      "SupplierService/SupplierByIds": 1,
+      "TeamService/TeamByIds": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 1,
+    "duplicate_of": [
+      "InventoryService/ProductPlaces"
+    ],
+    "preflights": 0,
+    "chain_depth": 7,
+    "chain": [
+      "InventoryService/BatchDetail",
+      "InventoryService/ProductPlaces",
+      "ProductService/ProductByIds",
+      "TeamService/TeamByIds",
+      "SupplierService/SupplierByIds",
+      "UserService/UserByIDs",
+      "InventoryService/StockHistory"
+    ],
+    "chains": [
+      [
+        "InventoryService/BatchDetail",
+        "InventoryService/ProductPlaces",
+        "ProductService/ProductByIds",
+        "TeamService/TeamByIds",
+        "SupplierService/SupplierByIds",
+        "UserService/UserByIDs",
+        "InventoryService/ProductPlaces"
+      ],
+      [
+        "InventoryService/BatchDetail",
+        "InventoryService/ProductPlaces",
+        "ProductService/ProductByIds",
+        "TeamService/TeamByIds",
+        "SupplierService/SupplierByIds",
+        "UserService/UserByIDs",
+        "InventoryService/StockHistory"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      7,
+      7
+    ],
+    "waves": {
+      "InventoryService/BatchDetail": [
+        1
+      ],
+      "InventoryService/BatchPlacementList": [
+        1
+      ],
+      "InventoryService/ProductPlaces": [
+        2,
+        7
+      ],
+      "InventoryService/StockHistory": [
+        7
+      ],
+      "ProductService/ProductByIds": [
+        3
+      ],
+      "RackService/RackList": [
+        1
+      ],
+      "SupplierService/SupplierByIds": [
+        5
+      ],
+      "TeamService/TeamByIds": [
+        4
+      ],
+      "UserService/UserByIDs": [
+        6
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 584.6,
+      "min": 584.6,
+      "max": 584.6,
+      "n": 1
+    },
+    "cold_usable_ms": 1150.6,
+    "cold_requests": 14,
+    "cold_preflights": 13,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 10,
+        "dup": 1,
+        "chain": 7,
+        "usable_ms": 584.6,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "batches": {
+    "screen": "batches",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/batches",
+    "requests_shell": 4,
+    "requests_screen": 4,
+    "by_method": {
+      "InventoryService/BatchList": 1,
+      "ProductService/ProductByIds": 1,
+      "TeamService/TeamByIds": 1,
+      "TeamService/TeamList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 3,
+    "chain": [
+      "InventoryService/BatchList",
+      "ProductService/ProductByIds",
+      "TeamService/TeamByIds"
+    ],
+    "chains": [
+      [
+        "InventoryService/BatchList",
+        "ProductService/ProductByIds",
+        "TeamService/TeamByIds"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      3,
+      3
+    ],
+    "waves": {
+      "InventoryService/BatchList": [
+        1
+      ],
+      "ProductService/ProductByIds": [
+        2
+      ],
+      "TeamService/TeamByIds": [
+        3
+      ],
+      "TeamService/TeamList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 565.6,
+      "min": 565.6,
+      "max": 565.6,
+      "n": 1
+    },
+    "cold_usable_ms": 1119.9,
+    "cold_requests": 8,
+    "cold_preflights": 8,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 4,
+        "dup": 0,
+        "chain": 3,
+        "usable_ms": 565.6,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "custom-shipments-selling": {
+    "screen": "custom-shipments-selling",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/inventories/custom-shipments",
+    "requests_shell": 3,
+    "requests_screen": 2,
+    "by_method": {
+      "CustomShipmentService/CustomShipmentList": 1,
+      "TeamService/TeamList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 1,
+    "chain": [
+      "TeamService/TeamList"
+    ],
+    "chains": [
+      [
+        "CustomShipmentService/CustomShipmentList"
+      ],
+      [
+        "TeamService/TeamList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      1,
+      1
+    ],
+    "waves": {
+      "CustomShipmentService/CustomShipmentList": [
+        1
+      ],
+      "TeamService/TeamList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 512.1,
+      "min": 512.1,
+      "max": 512.1,
+      "n": 1
+    },
+    "cold_usable_ms": 1021.4,
+    "cold_requests": 5,
+    "cold_preflights": 5,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 2,
+        "dup": 0,
+        "chain": 1,
+        "usable_ms": 512.1,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "expenses": {
+    "screen": "expenses",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/expenses",
+    "requests_shell": 3,
+    "requests_screen": 4,
+    "by_method": {
+      "ExpenseService/ExpenseList": 1,
+      "FinancialAccountService/FinancialAccountByIds": 1,
+      "FinancialAccountService/FinancialAccountList": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "ExpenseService/ExpenseList",
+      "FinancialAccountService/FinancialAccountByIds"
+    ],
+    "chains": [
+      [
+        "ExpenseService/ExpenseList",
+        "FinancialAccountService/FinancialAccountByIds"
+      ],
+      [
+        "ExpenseService/ExpenseList",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "ExpenseService/ExpenseList": [
+        1
+      ],
+      "FinancialAccountService/FinancialAccountByIds": [
+        2
+      ],
+      "FinancialAccountService/FinancialAccountList": [
+        1
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 615.9,
+      "min": 615.9,
+      "max": 615.9,
+      "n": 1
+    },
+    "cold_usable_ms": 1149.1,
+    "cold_requests": 7,
+    "cold_preflights": 7,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 4,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 615.9,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "financial-account-detail": {
+    "screen": "financial-account-detail",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/financial-accounts/1",
+    "requests_shell": 3,
+    "requests_screen": 5,
+    "by_method": {
+      "FinancialAccountService/FinancialAccountByIds": 1,
+      "FinancialAccountService/FinancialAccountLogList": 1,
+      "FinancialAccountService/FinancialAccountOverview": 1,
+      "ShopService/ShopList": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "FinancialAccountService/FinancialAccountLogList",
+      "UserService/UserByIDs"
+    ],
+    "chains": [
+      [
+        "FinancialAccountService/FinancialAccountLogList",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "FinancialAccountService/FinancialAccountByIds": [
+        1
+      ],
+      "FinancialAccountService/FinancialAccountLogList": [
+        1
+      ],
+      "FinancialAccountService/FinancialAccountOverview": [
+        1
+      ],
+      "ShopService/ShopList": [
+        1
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 633,
+      "min": 633,
+      "max": 633,
+      "n": 1
+    },
+    "cold_usable_ms": 1100.2,
+    "cold_requests": 8,
+    "cold_preflights": 8,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 5,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 633,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "financial-accounts": {
+    "screen": "financial-accounts",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/financial-accounts",
+    "requests_shell": 3,
+    "requests_screen": 6,
+    "by_method": {
+      "FinancialAccountService/FinancialAccountList": 1,
+      "FinancialAccountService/FinancialAccountOverview": 2,
+      "ShopService/ShopList": 3
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "FinancialAccountService/FinancialAccountList",
+      "FinancialAccountService/FinancialAccountOverview"
+    ],
+    "chains": [
+      [
+        "FinancialAccountService/FinancialAccountList",
+        "FinancialAccountService/FinancialAccountOverview"
+      ],
+      [
+        "ShopService/ShopList",
+        "ShopService/ShopList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "FinancialAccountService/FinancialAccountList": [
+        1
+      ],
+      "FinancialAccountService/FinancialAccountOverview": [
+        1,
+        2
+      ],
+      "ShopService/ShopList": [
+        1,
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 671,
+      "min": 671,
+      "max": 671,
+      "n": 1
+    },
+    "cold_usable_ms": 1068.3,
+    "cold_requests": 9,
+    "cold_preflights": 6,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 6,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 671,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "found-stock": {
+    "screen": "found-stock",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/found-stock",
+    "requests_shell": 4,
+    "requests_screen": 4,
+    "by_method": {
+      "FoundRequestService/FoundRequestList": 1,
+      "ProductService/ProductByIds": 1,
+      "TeamService/TeamByIds": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 3,
+    "chain": [
+      "FoundRequestService/FoundRequestList",
+      "UserService/UserByIDs",
+      "ProductService/ProductByIds"
+    ],
+    "chains": [
+      [
+        "FoundRequestService/FoundRequestList",
+        "UserService/UserByIDs",
+        "ProductService/ProductByIds"
+      ],
+      [
+        "FoundRequestService/FoundRequestList",
+        "UserService/UserByIDs",
+        "TeamService/TeamByIds"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      3,
+      3
+    ],
+    "waves": {
+      "FoundRequestService/FoundRequestList": [
+        1
+      ],
+      "ProductService/ProductByIds": [
+        3
+      ],
+      "TeamService/TeamByIds": [
+        3
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 545.3,
+      "min": 545.3,
+      "max": 545.3,
+      "n": 1
+    },
+    "cold_usable_ms": 1072.1,
+    "cold_requests": 8,
+    "cold_preflights": 8,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 4,
+        "dup": 0,
+        "chain": 3,
+        "usable_ms": 545.3,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "home": {
+    "screen": "home",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/",
+    "requests_shell": 3,
+    "requests_screen": 0,
+    "by_method": {},
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 0,
+    "chain": null,
+    "chain_method": "measured",
+    "chain_depths": [
+      0,
+      0
+    ],
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 339.7,
+      "min": 339.7,
+      "max": 339.7,
+      "n": 1
+    },
+    "cold_usable_ms": 962.9,
+    "cold_requests": 3,
+    "cold_preflights": 3,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 0,
+        "dup": 0,
+        "chain": 0,
+        "usable_ms": 339.7,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "inventory": {
+    "screen": "inventory",
+    "date": "2026-11-21",
+    "role": "root",
+    "url": "http://localhost:5251/inventory?warehouse=2",
+    "requests_shell": 2,
+    "requests_screen": 3,
+    "by_method": {
+      "InventoryService/WarehouseStockList": 1,
+      "TeamService/TeamByIds": 1,
+      "TeamService/TeamList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "InventoryService/WarehouseStockList",
+      "TeamService/TeamByIds"
+    ],
+    "chains": [
+      [
+        "InventoryService/WarehouseStockList",
+        "TeamService/TeamByIds"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "InventoryService/WarehouseStockList": [
+        1
+      ],
+      "TeamService/TeamByIds": [
+        2
+      ],
+      "TeamService/TeamList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 483.2,
+      "min": 483.2,
+      "max": 483.2,
+      "n": 1
+    },
+    "cold_usable_ms": 1031.3,
+    "cold_requests": 5,
+    "cold_preflights": 5,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 3,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 483.2,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "liability-detail": {
+    "screen": "liability-detail",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/liability/3",
+    "requests_shell": 4,
+    "requests_screen": 6,
+    "by_method": {
+      "LiabilityPaymentService/LiabilityPaymentList": 1,
+      "LiabilityService/LiabilityCreditByIds": 1,
+      "LiabilityService/LiabilityLogList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "TeamService/TeamByIds": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "LiabilityPaymentService/LiabilityPaymentList",
+      "UserService/UserByIDs"
+    ],
+    "chains": [
+      [
+        "LiabilityPaymentService/LiabilityPaymentList",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "waves": {
+      "LiabilityPaymentService/LiabilityPaymentList": [
+        1
+      ],
+      "LiabilityService/LiabilityCreditByIds": [
+        1
+      ],
+      "LiabilityService/LiabilityLogList": [
+        1
+      ],
+      "LiabilityService/LiabilityPositionList": [
+        1
+      ],
+      "TeamService/TeamByIds": [
+        1
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 515.9,
+      "min": 515.9,
+      "max": 515.9,
+      "n": 1
+    },
+    "cold_usable_ms": 1092.1,
+    "cold_requests": 10,
+    "cold_preflights": 9,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "after_save": {
+      "name": "request payment (LiabilityPaymentRequestSend)",
+      "rpc": "LiabilityPaymentService/LiabilityPaymentRequestSend",
+      "sent": true,
+      "count": 5,
+      "rpcs": [
+        "LiabilityService/LiabilityPositionList",
+        "LiabilityService/LiabilityLogList",
+        "LiabilityPaymentService/LiabilityPaymentList",
+        "LiabilityService/LiabilityPositionList",
+        "LiabilityService/LiabilityCreditByIds"
+      ],
+      "by_method": {
+        "LiabilityPaymentService/LiabilityPaymentList": 1,
+        "LiabilityService/LiabilityCreditByIds": 1,
+        "LiabilityService/LiabilityLogList": 1,
+        "LiabilityService/LiabilityPositionList": 2
+      },
+      "verdict": "recorded"
+    },
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 6,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 515.9,
+        "noisy": true,
+        "after_save": 5,
+        "change": "first baseline (P1)"
+      }
+    ]
+  },
+  "liability-list": {
+    "screen": "liability-list",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/liability",
+    "requests_shell": 4,
+    "requests_screen": 3,
+    "by_method": {
+      "LiabilityService/LiabilityPositionList": 1,
+      "LiabilityTermsService/LiabilityTermsList": 1,
+      "TeamService/TeamByIds": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "LiabilityService/LiabilityPositionList",
+      "TeamService/TeamByIds"
+    ],
+    "chains": [
+      [
+        "LiabilityService/LiabilityPositionList",
+        "TeamService/TeamByIds"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "LiabilityService/LiabilityPositionList": [
+        1
+      ],
+      "LiabilityTermsService/LiabilityTermsList": [
+        1
+      ],
+      "TeamService/TeamByIds": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 506,
+      "min": 506,
+      "max": 506,
+      "n": 1
+    },
+    "cold_usable_ms": 1052.8,
+    "cold_requests": 7,
+    "cold_preflights": 6,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 3,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 506,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "opname-session-detail": {
+    "screen": "opname-session-detail",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/opname/sessions/1",
+    "requests_shell": 4,
+    "requests_screen": 5,
+    "by_method": {
+      "OpnameService/OpnameRowList": 1,
+      "OpnameService/OpnameSessionDetail": 1,
+      "RackService/RackList": 1,
+      "TeamService/TeamByIds": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 3,
+    "chain": [
+      "OpnameService/OpnameSessionDetail",
+      "UserService/UserByIDs",
+      "RackService/RackList"
+    ],
+    "chains": [
+      [
+        "OpnameService/OpnameSessionDetail",
+        "UserService/UserByIDs",
+        "RackService/RackList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      3,
+      3
+    ],
+    "waves": {
+      "OpnameService/OpnameRowList": [
+        1
+      ],
+      "OpnameService/OpnameSessionDetail": [
+        1
+      ],
+      "RackService/RackList": [
+        3
+      ],
+      "TeamService/TeamByIds": [
+        2
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 546.8,
+      "min": 546.8,
+      "max": 546.8,
+      "n": 1
+    },
+    "cold_usable_ms": 1074.8,
+    "cold_requests": 9,
+    "cold_preflights": 9,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 5,
+        "dup": 0,
+        "chain": 3,
+        "usable_ms": 546.8,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "opname-sessions": {
+    "screen": "opname-sessions",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/opname/sessions",
+    "requests_shell": 4,
+    "requests_screen": 3,
+    "by_method": {
+      "OpnameService/OpnameSessionList": 2,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "OpnameService/OpnameSessionList",
+      "UserService/UserByIDs"
+    ],
+    "chains": [
+      [
+        "OpnameService/OpnameSessionList",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "OpnameService/OpnameSessionList": [
+        1
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 385.6,
+      "min": 385.6,
+      "max": 385.6,
+      "n": 1
+    },
+    "cold_usable_ms": 955.7,
+    "cold_requests": 7,
+    "cold_preflights": 7,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 3,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 385.6,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "order-create": {
+    "screen": "order-create",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/orders/new",
+    "requests_shell": 3,
+    "requests_screen": 9,
+    "by_method": {
+      "RegionService/RegionList": 1,
+      "ShipmentChannelService/ShipmentChannelList": 1,
+      "ShopService/ShopList": 2,
+      "TeamService/TeamDetail": 1,
+      "TeamService/TeamList": 3,
+      "WarehouseInfoService/WarehouseReceivingStatus": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "TeamService/TeamList",
+      "WarehouseInfoService/WarehouseReceivingStatus"
+    ],
+    "chains": [
+      [
+        "TeamService/TeamList",
+        "WarehouseInfoService/WarehouseReceivingStatus"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "RegionService/RegionList": [
+        1
+      ],
+      "ShipmentChannelService/ShipmentChannelList": [
+        1
+      ],
+      "ShopService/ShopList": [
+        1
+      ],
+      "TeamService/TeamDetail": [
+        1
+      ],
+      "TeamService/TeamList": [
+        1
+      ],
+      "WarehouseInfoService/WarehouseReceivingStatus": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 678.4,
+      "min": 650.7,
+      "max": 714.5,
+      "n": 5
+    },
+    "cold_usable_ms": 1196,
+    "cold_requests": 12,
+    "cold_preflights": 10,
+    "warm_loads": 5,
+    "counts_agree": true,
+    "never_usable": 0,
+    "after_save": {
+      "name": "OrderCreate (customer, warehouse, shop, courier, a product, today, a price, the ref, a receipt) — opens the order",
+      "rpc": "OrderService/OrderCreate",
+      "sent": true,
+      "count": 8,
+      "rpcs": [
+        "LiabilityService/LiabilityPositionList",
+        "OrderService/OrderDetail",
+        "OrderService/OrderTagList",
+        "ShipmentChannelService/ShipmentChannelList",
+        "SettlementService/OrderSettlementDetail",
+        "UserService/UserByIDs",
+        "ShopService/ShopList",
+        "ProductService/ProductByIds"
+      ],
+      "by_method": {
+        "LiabilityService/LiabilityPositionList": 1,
+        "OrderService/OrderDetail": 1,
+        "OrderService/OrderTagList": 1,
+        "ProductService/ProductByIds": 1,
+        "SettlementService/OrderSettlementDetail": 1,
+        "ShipmentChannelService/ShipmentChannelList": 1,
+        "ShopService/ShopList": 1,
+        "UserService/UserByIDs": 1
+      },
+      "verdict": "recorded",
+      "url_after": "http://localhost:5251/orders/1"
+    },
+    "probes": [
+      {
+        "name": "open ProductPicker (the warehouse picked first)",
+        "count": 4,
+        "by_method": {
+          "InventoryService/OwnerStockByIds": 1,
+          "InventoryService/StockAvailability": 1,
+          "ProductService/ProductList": 1,
+          "TeamService/TeamByIds": 1
+        },
+        "duplicates": 0
+      }
+    ],
+    "typing": [
+      {
+        "field": "buyer name",
+        "testid": "order-create-customer-name",
+        "keys": 10,
+        "commits_per_key": 1,
+        "components_per_key": 3826,
+        "trailing": 0,
+        "passes": [
+          {
+            "commits_per_key": 1,
+            "components_per_key": 3826,
+            "trailing": 0
+          },
+          {
+            "commits_per_key": 1,
+            "components_per_key": 3826,
+            "trailing": 0
+          }
+        ],
+        "starts": [
+          {
+            "name": "OrderCreatePage",
+            "starts": 10,
+            "renders": 38260
+          }
+        ],
+        "top": [
+          {
+            "name": "(anonymous)",
+            "renders": 8980
+          },
+          {
+            "name": "Insertion",
+            "renders": 7520
+          },
+          {
+            "name": "DatePickerTableCell",
+            "renders": 2280
+          },
+          {
+            "name": "DatePickerTableCellTrigger",
+            "renders": 2280
+          },
+          {
+            "name": "chakra(DatePickerTableCell)",
+            "renders": 1140
+          },
+          {
+            "name": "chakra(DatePickerTableCellTrigger)",
+            "renders": 1140
+          },
+          {
+            "name": "chakra(div)",
+            "renders": 1030
+          },
+          {
+            "name": "DatePickerTableRow",
+            "renders": 480
+          }
+        ],
+        "app": [
+          {
+            "name": "ShipmentChannelBadge",
+            "renders": 110
+          },
+          {
+            "name": "CardTitle",
+            "renders": 100
+          },
+          {
+            "name": "MarketplaceBadge",
+            "renders": 90
+          },
+          {
+            "name": "Button",
+            "renders": 70
+          },
+          {
+            "name": "ConfirmDialog",
+            "renders": 40
+          },
+          {
+            "name": "LevelSelect",
+            "renders": 40
+          },
+          {
+            "name": "Row",
+            "renders": 30
+          },
+          {
+            "name": "DatePicker",
+            "renders": 20
+          }
+        ]
+      },
+      {
+        "field": "address",
+        "testid": "address-line",
+        "keys": 10,
+        "commits_per_key": 2,
+        "components_per_key": 4213,
+        "trailing": 0,
+        "passes": [
+          {
+            "commits_per_key": 2,
+            "components_per_key": 4213,
+            "trailing": 0
+          },
+          {
+            "commits_per_key": 2,
+            "components_per_key": 4213,
+            "trailing": 0
+          }
+        ],
+        "starts": [
+          {
+            "name": "OrderCreatePage",
+            "starts": 10,
+            "renders": 38260
+          },
+          {
+            "name": "FieldRoot",
+            "starts": 190,
+            "renders": 570
+          },
+          {
+            "name": "ComboboxItem",
+            "starts": 140,
+            "renders": 420
+          },
+          {
+            "name": "RadioGroupItem",
+            "starts": 20,
+            "renders": 260
+          },
+          {
+            "name": "ComboboxContent",
+            "starts": 80,
+            "renders": 240
+          },
+          {
+            "name": "ComboboxInput",
+            "starts": 80,
+            "renders": 240
+          },
+          {
+            "name": "ComboboxPositioner",
+            "starts": 80,
+            "renders": 240
+          },
+          {
+            "name": "SelectItem",
+            "starts": 70,
+            "renders": 210
+          }
+        ],
+        "top": [
+          {
+            "name": "(anonymous)",
+            "renders": 10740
+          },
+          {
+            "name": "Insertion",
+            "renders": 7610
+          },
+          {
+            "name": "DatePickerTableCell",
+            "renders": 2280
+          },
+          {
+            "name": "DatePickerTableCellTrigger",
+            "renders": 2280
+          },
+          {
+            "name": "chakra(DatePickerTableCell)",
+            "renders": 1140
+          },
+          {
+            "name": "chakra(DatePickerTableCellTrigger)",
+            "renders": 1140
+          },
+          {
+            "name": "chakra(div)",
+            "renders": 1050
+          },
+          {
+            "name": "FieldRoot",
+            "renders": 570
+          }
+        ],
+        "app": [
+          {
+            "name": "ShipmentChannelBadge",
+            "renders": 110
+          },
+          {
+            "name": "CardTitle",
+            "renders": 100
+          },
+          {
+            "name": "MarketplaceBadge",
+            "renders": 90
+          },
+          {
+            "name": "Button",
+            "renders": 70
+          },
+          {
+            "name": "ConfirmDialog",
+            "renders": 40
+          },
+          {
+            "name": "LevelSelect",
+            "renders": 40
+          },
+          {
+            "name": "Row",
+            "renders": 30
+          },
+          {
+            "name": "DatePicker",
+            "renders": 20
+          }
+        ]
+      },
+      {
+        "field": "quantity",
+        "testid": "order-line-qty-0",
+        "keys": 10,
+        "commits_per_key": 1,
+        "components_per_key": 4079,
+        "trailing": 2,
+        "passes": [
+          {
+            "commits_per_key": 1,
+            "components_per_key": 4079,
+            "trailing": 2
+          },
+          {
+            "commits_per_key": 1,
+            "components_per_key": 4079,
+            "trailing": 2
+          }
+        ],
+        "starts": [
+          {
+            "name": "OrderCreatePage",
+            "starts": 13,
+            "renders": 53030
+          },
+          {
+            "name": "FieldRoot",
+            "starts": 19,
+            "renders": 57
+          },
+          {
+            "name": "ComboboxItem",
+            "starts": 14,
+            "renders": 42
+          },
+          {
+            "name": "RadioGroupItem",
+            "starts": 2,
+            "renders": 26
+          },
+          {
+            "name": "ComboboxContent",
+            "starts": 8,
+            "renders": 24
+          },
+          {
+            "name": "ComboboxInput",
+            "starts": 8,
+            "renders": 24
+          },
+          {
+            "name": "ComboboxPositioner",
+            "starts": 8,
+            "renders": 24
+          },
+          {
+            "name": "SelectItem",
+            "starts": 7,
+            "renders": 21
+          }
+        ],
+        "top": [
+          {
+            "name": "(anonymous)",
+            "renders": 12162
+          },
+          {
+            "name": "Insertion",
+            "renders": 10696
+          },
+          {
+            "name": "DatePickerTableCell",
+            "renders": 2964
+          },
+          {
+            "name": "DatePickerTableCellTrigger",
+            "renders": 2964
+          },
+          {
+            "name": "chakra(div)",
+            "renders": 1537
+          },
+          {
+            "name": "chakra(DatePickerTableCell)",
+            "renders": 1482
+          },
+          {
+            "name": "chakra(DatePickerTableCellTrigger)",
+            "renders": 1482
+          },
+          {
+            "name": "DatePickerTableRow",
+            "renders": 624
+          }
+        ],
+        "app": [
+          {
+            "name": "ShipmentChannelBadge",
+            "renders": 143
+          },
+          {
+            "name": "Button",
+            "renders": 130
+          },
+          {
+            "name": "CardTitle",
+            "renders": 130
+          },
+          {
+            "name": "MarketplaceBadge",
+            "renders": 117
+          },
+          {
+            "name": "ConfirmDialog",
+            "renders": 52
+          },
+          {
+            "name": "LevelSelect",
+            "renders": 52
+          },
+          {
+            "name": "Row",
+            "renders": 39
+          },
+          {
+            "name": "DatePicker",
+            "renders": 26
+          }
+        ]
+      }
+    ],
+    "noisy": false,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 9,
+        "dup": 0,
+        "chain": 1,
+        "usable_ms": 1210.3,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P1)"
+      },
+      {
+        "date": "2026-11-21",
+        "requests": 9,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 678.4,
+        "after_save": 8,
+        "typing": "buyer name 1 · address 2 · quantity 1",
+        "change": "chain 1→2; typing first measured (P2); its save first measured (P2)"
+      }
+    ]
+  },
+  "order-detail": {
+    "screen": "order-detail",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/orders/1",
+    "requests_shell": 3,
+    "requests_screen": 8,
+    "by_method": {
+      "OrderService/OrderDetail": 1,
+      "OrderService/OrderTagList": 1,
+      "ProductService/ProductByIds": 1,
+      "SettlementService/OrderSettlementDetail": 1,
+      "ShipmentChannelService/ShipmentChannelList": 1,
+      "ShopService/ShopList": 1,
+      "TeamService/TeamList": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "OrderService/OrderDetail",
+      "ProductService/ProductByIds"
+    ],
+    "chains": [
+      [
+        "OrderService/OrderDetail",
+        "ProductService/ProductByIds"
+      ],
+      [
+        "OrderService/OrderDetail",
+        "SettlementService/OrderSettlementDetail"
+      ],
+      [
+        "OrderService/OrderDetail",
+        "ShipmentChannelService/ShipmentChannelList"
+      ],
+      [
+        "OrderService/OrderDetail",
+        "ShopService/ShopList"
+      ],
+      [
+        "OrderService/OrderDetail",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "OrderService/OrderDetail": [
+        1
+      ],
+      "OrderService/OrderTagList": [
+        1
+      ],
+      "ProductService/ProductByIds": [
+        2
+      ],
+      "SettlementService/OrderSettlementDetail": [
+        2
+      ],
+      "ShipmentChannelService/ShipmentChannelList": [
+        2
+      ],
+      "ShopService/ShopList": [
+        2
+      ],
+      "TeamService/TeamList": [
+        1
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 764.2,
+      "min": 764.2,
+      "max": 764.2,
+      "n": 1
+    },
+    "cold_usable_ms": 1330.9,
+    "cold_requests": 11,
+    "cold_preflights": 11,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "after_save": {
+      "name": "OrderNoteCreate (a note on the order)",
+      "rpc": "OrderService/OrderNoteCreate",
+      "sent": true,
+      "count": 3,
+      "rpcs": [
+        "OrderService/OrderDetail",
+        "OrderService/OrderTagList",
+        "UserService/UserByIDs"
+      ],
+      "by_method": {
+        "OrderService/OrderDetail": 1,
+        "OrderService/OrderTagList": 1,
+        "UserService/UserByIDs": 1
+      },
+      "verdict": "recorded"
+    },
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 8,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 764.2,
+        "noisy": true,
+        "after_save": 3,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "order-drafts": {
+    "screen": "order-drafts",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/order-drafts",
+    "requests_shell": 3,
+    "requests_screen": 3,
+    "by_method": {
+      "OrderDraftService/OrderDraftList": 2,
+      "ShopService/ShopList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 1,
+    "chain": [
+      "OrderDraftService/OrderDraftList"
+    ],
+    "chains": [
+      [
+        "OrderDraftService/OrderDraftList"
+      ],
+      [
+        "ShopService/ShopList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      1,
+      1
+    ],
+    "waves": {
+      "OrderDraftService/OrderDraftList": [
+        1
+      ],
+      "ShopService/ShopList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 474.1,
+      "min": 474.1,
+      "max": 474.1,
+      "n": 1
+    },
+    "cold_usable_ms": 1016.3,
+    "cold_requests": 6,
+    "cold_preflights": 5,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 3,
+        "dup": 0,
+        "chain": 1,
+        "usable_ms": 474.1,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "orders": {
+    "screen": "orders",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/orders",
+    "requests_shell": 3,
+    "requests_screen": 10,
+    "by_method": {
+      "OrderService/OrderCreatorList": 1,
+      "OrderService/OrderList": 1,
+      "OrderService/OrderTagList": 1,
+      "ShipmentChannelService/ShipmentChannelList": 1,
+      "ShopService/ShopList": 3,
+      "TeamService/TeamList": 1,
+      "UserService/UserByIDs": 2
+    },
+    "duplicates": 1,
+    "duplicate_of": [
+      "UserService/UserByIDs"
+    ],
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "OrderService/OrderList",
+      "ShipmentChannelService/ShipmentChannelList"
+    ],
+    "chains": [
+      [
+        "OrderService/OrderList",
+        "ShipmentChannelService/ShipmentChannelList"
+      ],
+      [
+        "OrderService/OrderList",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "OrderService/OrderCreatorList": [
+        1
+      ],
+      "OrderService/OrderList": [
+        1
+      ],
+      "OrderService/OrderTagList": [
+        1
+      ],
+      "ShipmentChannelService/ShipmentChannelList": [
+        2
+      ],
+      "ShopService/ShopList": [
+        1
+      ],
+      "TeamService/TeamList": [
+        1
+      ],
+      "UserService/UserByIDs": [
+        1,
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 1123.5,
+      "min": 1123.5,
+      "max": 1123.5,
+      "n": 1
+    },
+    "cold_usable_ms": 1766.2,
+    "cold_requests": 13,
+    "cold_preflights": 10,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 10,
+        "dup": 1,
+        "chain": 2,
+        "usable_ms": 1123.5,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "product-detail": {
+    "screen": "product-detail",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/products/1",
+    "requests_shell": 3,
+    "requests_screen": 7,
+    "by_method": {
+      "CategoryService/CategoryList": 1,
+      "InventoryService/OwnerBatchList": 1,
+      "InventoryService/OwnerStockByIds": 1,
+      "OrderService/OrderProductActivityByIds": 1,
+      "ProductService/ProductDetail": 1,
+      "TeamService/TeamList": 2
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "CategoryService/CategoryList",
+      "InventoryService/OwnerBatchList"
+    ],
+    "chains": [
+      [
+        "CategoryService/CategoryList",
+        "InventoryService/OwnerBatchList"
+      ],
+      [
+        "CategoryService/CategoryList",
+        "TeamService/TeamList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "CategoryService/CategoryList": [
+        1
+      ],
+      "InventoryService/OwnerBatchList": [
+        2
+      ],
+      "InventoryService/OwnerStockByIds": [
+        1
+      ],
+      "OrderService/OrderProductActivityByIds": [
+        1
+      ],
+      "ProductService/ProductDetail": [
+        1
+      ],
+      "TeamService/TeamList": [
+        1,
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 602.6,
+      "min": 602.6,
+      "max": 602.6,
+      "n": 1
+    },
+    "cold_usable_ms": 1198.8,
+    "cold_requests": 10,
+    "cold_preflights": 9,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 7,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 602.6,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "product-edit": {
+    "screen": "product-edit",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/products/1/edit",
+    "requests_shell": 3,
+    "requests_screen": 3,
+    "by_method": {
+      "CategoryService/CategoryList": 1,
+      "ProductService/ProductDetail": 1,
+      "TeamService/TeamByIds": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "ProductService/ProductDetail",
+      "CategoryService/CategoryList"
+    ],
+    "chains": [
+      [
+        "ProductService/ProductDetail",
+        "CategoryService/CategoryList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "CategoryService/CategoryList": [
+        2
+      ],
+      "ProductService/ProductDetail": [
+        1
+      ],
+      "TeamService/TeamByIds": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 339.2,
+      "min": 337.8,
+      "max": 346,
+      "n": 5
+    },
+    "cold_usable_ms": 824.6,
+    "cold_requests": 6,
+    "cold_preflights": 6,
+    "warm_loads": 5,
+    "counts_agree": true,
+    "never_usable": 0,
+    "after_save": {
+      "name": "ProductUpdate (unchanged)",
+      "rpc": "ProductService/ProductUpdate",
+      "sent": true,
+      "count": 9,
+      "rpcs": [
+        "LiabilityService/LiabilityPositionList",
+        "ProductService/ProductList",
+        "TeamService/TeamList",
+        "ProductService/ProductList",
+        "InventoryService/OwnerStockStat",
+        "OrderService/OrderActivityStat",
+        "TeamService/TeamList",
+        "InventoryService/OwnerStockByIds",
+        "OrderService/OrderProductActivityByIds"
+      ],
+      "by_method": {
+        "InventoryService/OwnerStockByIds": 1,
+        "InventoryService/OwnerStockStat": 1,
+        "LiabilityService/LiabilityPositionList": 1,
+        "OrderService/OrderActivityStat": 1,
+        "OrderService/OrderProductActivityByIds": 1,
+        "ProductService/ProductList": 2,
+        "TeamService/TeamList": 2
+      },
+      "verdict": "recorded",
+      "url_after": "http://localhost:5251/products"
+    },
+    "probes": [
+      {
+        "name": "open CategorySelect",
+        "count": 0,
+        "by_method": {},
+        "duplicates": 0
+      }
+    ],
+    "typing": [
+      {
+        "field": "name",
+        "testid": "product-edit-name",
+        "keys": 10,
+        "commits_per_key": 1,
+        "components_per_key": 934,
+        "trailing": 0,
+        "passes": [
+          {
+            "commits_per_key": 1,
+            "components_per_key": 934,
+            "trailing": 0
+          },
+          {
+            "commits_per_key": 1,
+            "components_per_key": 934,
+            "trailing": 0
+          }
+        ],
+        "starts": [
+          {
+            "name": "ProductEditPage",
+            "starts": 10,
+            "renders": 9340
+          }
+        ],
+        "top": [
+          {
+            "name": "Insertion",
+            "renders": 2390
+          },
+          {
+            "name": "(anonymous)",
+            "renders": 940
+          },
+          {
+            "name": "Button",
+            "renders": 610
+          },
+          {
+            "name": "chakra(button)",
+            "renders": 610
+          },
+          {
+            "name": "chakra(div)",
+            "renders": 600
+          },
+          {
+            "name": "Icon2",
+            "renders": 360
+          },
+          {
+            "name": "chakra(p)",
+            "renders": 360
+          },
+          {
+            "name": "chakra(svg)",
+            "renders": 360
+          }
+        ],
+        "app": [
+          {
+            "name": "Button",
+            "renders": 610
+          },
+          {
+            "name": "CardTitle",
+            "renders": 30
+          },
+          {
+            "name": "CharCount",
+            "renders": 30
+          },
+          {
+            "name": "Group",
+            "renders": 20
+          },
+          {
+            "name": "CategorySelect",
+            "renders": 10
+          },
+          {
+            "name": "LockModeField",
+            "renders": 10
+          },
+          {
+            "name": "ProductEditPage",
+            "renders": 10
+          },
+          {
+            "name": "ProductImagesInput",
+            "renders": 10
+          }
+        ]
+      }
+    ],
+    "noisy": false,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 3,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 423.2,
+        "noisy": true,
+        "after_save": 9,
+        "change": "first baseline (P1)"
+      },
+      {
+        "date": "2026-11-21",
+        "requests": 3,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 339.2,
+        "after_save": 9,
+        "typing": "name 1",
+        "change": "no change past a threshold; typing first measured (P2)"
+      }
+    ]
+  },
+  "products": {
+    "screen": "products",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/products",
+    "requests_shell": 3,
+    "requests_screen": 8,
+    "by_method": {
+      "InventoryService/OwnerStockByIds": 1,
+      "InventoryService/OwnerStockStat": 1,
+      "OrderService/OrderActivityStat": 1,
+      "OrderService/OrderProductActivityByIds": 1,
+      "ProductService/ProductList": 2,
+      "TeamService/TeamList": 2
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "ProductService/ProductList",
+      "InventoryService/OwnerStockByIds"
+    ],
+    "chains": [
+      [
+        "ProductService/ProductList",
+        "InventoryService/OwnerStockByIds"
+      ],
+      [
+        "ProductService/ProductList",
+        "OrderService/OrderProductActivityByIds"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "InventoryService/OwnerStockByIds": [
+        2
+      ],
+      "InventoryService/OwnerStockStat": [
+        1
+      ],
+      "OrderService/OrderActivityStat": [
+        1
+      ],
+      "OrderService/OrderProductActivityByIds": [
+        2
+      ],
+      "ProductService/ProductList": [
+        1
+      ],
+      "TeamService/TeamList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 1095.9,
+      "min": 1095.9,
+      "max": 1095.9,
+      "n": 1
+    },
+    "cold_usable_ms": 1656.2,
+    "cold_requests": 11,
+    "cold_preflights": 9,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 8,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 1095.9,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "profile": {
+    "screen": "profile",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/profile",
+    "requests_shell": 3,
+    "requests_screen": 2,
+    "by_method": {
+      "AgentService/AgentConnectionList": 1,
+      "UserService/ProfileDetail": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "UserService/ProfileDetail",
+      "AgentService/AgentConnectionList"
+    ],
+    "chains": [
+      [
+        "UserService/ProfileDetail",
+        "AgentService/AgentConnectionList"
+      ]
+    ],
+    "chain_method": "measured",
+    "waves": {
+      "AgentService/AgentConnectionList": [
+        2
+      ],
+      "UserService/ProfileDetail": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 351.3,
+      "min": 351.3,
+      "max": 351.3,
+      "n": 1
+    },
+    "cold_usable_ms": 883.6,
+    "cold_requests": 5,
+    "cold_preflights": 5,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "after_save": {
+      "name": "UpdateProfile (unchanged)",
+      "rpc": "UserService/UpdateProfile",
+      "sent": true,
+      "count": 0,
+      "rpcs": null,
+      "by_method": {},
+      "verdict": "recorded"
+    },
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 2,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 351.3,
+        "noisy": true,
+        "after_save": 0,
+        "change": "first baseline (P1)"
+      }
+    ]
+  },
+  "rack-detail": {
+    "screen": "rack-detail",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/racks/1",
+    "requests_shell": 4,
+    "requests_screen": 7,
+    "by_method": {
+      "ProductService/ProductByIds": 2,
+      "RackService/RackDetail": 1,
+      "RackService/RackHistory": 1,
+      "RackService/RackStock": 1,
+      "TeamService/TeamByIds": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 3,
+    "chain": [
+      "RackService/RackStock",
+      "ProductService/ProductByIds",
+      "TeamService/TeamByIds"
+    ],
+    "chains": [
+      [
+        "RackService/RackDetail",
+        "RackService/RackHistory",
+        "ProductService/ProductByIds"
+      ],
+      [
+        "RackService/RackDetail",
+        "RackService/RackHistory",
+        "UserService/UserByIDs"
+      ],
+      [
+        "RackService/RackStock",
+        "ProductService/ProductByIds",
+        "TeamService/TeamByIds"
+      ]
+    ],
+    "chain_method": "measured",
+    "waves": {
+      "ProductService/ProductByIds": [
+        2,
+        3
+      ],
+      "RackService/RackDetail": [
+        1
+      ],
+      "RackService/RackHistory": [
+        2
+      ],
+      "RackService/RackStock": [
+        1
+      ],
+      "TeamService/TeamByIds": [
+        3
+      ],
+      "UserService/UserByIDs": [
+        3
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 706.6,
+      "min": 706.6,
+      "max": 706.6,
+      "n": 1
+    },
+    "cold_usable_ms": 1379.2,
+    "cold_requests": 11,
+    "cold_preflights": 10,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "after_save": {
+      "name": "RackMove 1 unit A→B",
+      "rpc": "RackService/RackMove",
+      "sent": true,
+      "count": 5,
+      "rpcs": [
+        "RackService/RackDetail",
+        "RackService/RackStock",
+        "RackService/RackHistory",
+        "UserService/UserByIDs",
+        "ProductService/ProductByIds"
+      ],
+      "by_method": {
+        "ProductService/ProductByIds": 1,
+        "RackService/RackDetail": 1,
+        "RackService/RackHistory": 1,
+        "RackService/RackStock": 1,
+        "UserService/UserByIDs": 1
+      },
+      "listed": [
+        "RackService/RackDetail",
+        "RackService/RackStock",
+        "RackService/RackHistory"
+      ],
+      "verdict": "ok"
+    },
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 7,
+        "dup": 0,
+        "chain": 3,
+        "usable_ms": 948.6,
+        "noisy": true,
+        "after_save": 9,
+        "change": "first baseline (P1)"
+      },
+      {
+        "date": "2026-11-21",
+        "requests": 7,
+        "dup": 0,
+        "chain": 3,
+        "usable_ms": 706.6,
+        "noisy": true,
+        "after_save": 5,
+        "change": "no change past a threshold"
+      }
+    ]
+  },
+  "racks": {
+    "screen": "racks",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/racks",
+    "requests_shell": 4,
+    "requests_screen": 2,
+    "by_method": {
+      "RackService/RackList": 1,
+      "RackService/RackStat": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 1,
+    "chain": [
+      "RackService/RackList"
+    ],
+    "chains": [
+      [
+        "RackService/RackList"
+      ],
+      [
+        "RackService/RackStat"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      1,
+      1
+    ],
+    "waves": {
+      "RackService/RackList": [
+        1
+      ],
+      "RackService/RackStat": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 483.6,
+      "min": 483.6,
+      "max": 483.6,
+      "n": 1
+    },
+    "cold_usable_ms": 1065.1,
+    "cold_requests": 6,
+    "cold_preflights": 6,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 2,
+        "dup": 0,
+        "chain": 1,
+        "usable_ms": 483.6,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "restock-accept": {
+    "screen": "restock-accept",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/restock/32/accept",
+    "requests_shell": 4,
+    "requests_screen": 8,
+    "by_method": {
+      "InventoryService/ProductPlaces": 1,
+      "ProductService/ProductByIds": 1,
+      "RackService/RackList": 1,
+      "RestockRequestService/RestockRequestDetail": 1,
+      "ShipmentChannelService/ShipmentChannelByIds": 1,
+      "ShipmentChannelService/ShipmentChannelList": 1,
+      "TeamService/TeamDetail": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "RestockRequestService/RestockRequestDetail",
+      "ProductService/ProductByIds"
+    ],
+    "chains": [
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "InventoryService/ProductPlaces"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "ProductService/ProductByIds"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "RackService/RackList"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "ShipmentChannelService/ShipmentChannelByIds"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "ShipmentChannelService/ShipmentChannelList"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "TeamService/TeamDetail"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "InventoryService/ProductPlaces": [
+        2
+      ],
+      "ProductService/ProductByIds": [
+        2
+      ],
+      "RackService/RackList": [
+        2
+      ],
+      "RestockRequestService/RestockRequestDetail": [
+        1
+      ],
+      "ShipmentChannelService/ShipmentChannelByIds": [
+        2
+      ],
+      "ShipmentChannelService/ShipmentChannelList": [
+        2
+      ],
+      "TeamService/TeamDetail": [
+        2
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 918.2,
+      "min": 918.2,
+      "max": 918.2,
+      "n": 1
+    },
+    "cold_usable_ms": 1502.7,
+    "cold_requests": 12,
+    "cold_preflights": 12,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 8,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 918.2,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "restock-edit": {
+    "screen": "restock-edit",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/inventories/restock/31/edit",
+    "requests_shell": 3,
+    "requests_screen": 7,
+    "by_method": {
+      "FinancialAccountService/FinancialAccountList": 1,
+      "ProductService/ProductByIds": 1,
+      "RestockRequestService/RestockRequestDetail": 1,
+      "RestockRequestService/RestockRequestList": 1,
+      "ShipmentChannelService/ShipmentChannelList": 1,
+      "SupplierService/SupplierByIds": 1,
+      "TeamService/TeamList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "RestockRequestService/RestockRequestDetail",
+      "RestockRequestService/RestockRequestList"
+    ],
+    "chains": [
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "FinancialAccountService/FinancialAccountList"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "ProductService/ProductByIds"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "RestockRequestService/RestockRequestList"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "ShipmentChannelService/ShipmentChannelList"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "SupplierService/SupplierByIds"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "TeamService/TeamList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "FinancialAccountService/FinancialAccountList": [
+        2
+      ],
+      "ProductService/ProductByIds": [
+        2
+      ],
+      "RestockRequestService/RestockRequestDetail": [
+        1
+      ],
+      "RestockRequestService/RestockRequestList": [
+        2
+      ],
+      "ShipmentChannelService/ShipmentChannelList": [
+        2
+      ],
+      "SupplierService/SupplierByIds": [
+        2
+      ],
+      "TeamService/TeamList": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 983.8,
+      "min": 962.4,
+      "max": 1019.4,
+      "n": 5
+    },
+    "cold_usable_ms": 1501.5,
+    "cold_requests": 10,
+    "cold_preflights": 10,
+    "warm_loads": 5,
+    "counts_agree": true,
+    "never_usable": 0,
+    "after_save": {
+      "name": "RestockRequestUpdate (the note) — saves and opens the restock",
+      "rpc": "RestockRequestService/RestockRequestUpdate",
+      "sent": true,
+      "count": 12,
+      "rpcs": [
+        "RestockRequestService/RestockRequestDetail",
+        "RestockRequestService/RestockRequestList",
+        "LiabilityService/LiabilityPositionList",
+        "RestockRequestService/RestockRequestList",
+        "RestockRequestService/RestockActorList",
+        "RestockRequestService/RestockActorList",
+        "RestockRequestService/RestockTagList",
+        "UserService/UserByIDs",
+        "UserService/UserByIDs",
+        "UserService/UserByIDs",
+        "SupplierService/SupplierByIds",
+        "ShipmentChannelService/ShipmentChannelByIds"
+      ],
+      "by_method": {
+        "LiabilityService/LiabilityPositionList": 1,
+        "RestockRequestService/RestockActorList": 2,
+        "RestockRequestService/RestockRequestDetail": 1,
+        "RestockRequestService/RestockRequestList": 2,
+        "RestockRequestService/RestockTagList": 1,
+        "ShipmentChannelService/ShipmentChannelByIds": 1,
+        "SupplierService/SupplierByIds": 1,
+        "UserService/UserByIDs": 3
+      },
+      "verdict": "recorded",
+      "url_after": "http://localhost:5251/inventories/restock"
+    },
+    "probes": [
+      {
+        "name": "open ProductPicker",
+        "count": 5,
+        "by_method": {
+          "InventoryService/OwnerStockByIds": 2,
+          "ProductService/ProductByIds": 1,
+          "ProductService/ProductList": 1,
+          "TeamService/TeamByIds": 1
+        },
+        "duplicates": 0
+      }
+    ],
+    "typing": [
+      {
+        "field": "line quantity",
+        "testid": "restock-qty-0",
+        "keys": 10,
+        "commits_per_key": 1,
+        "components_per_key": 3268,
+        "trailing": 0,
+        "passes": [
+          {
+            "commits_per_key": 1,
+            "components_per_key": 3268,
+            "trailing": 0
+          },
+          {
+            "commits_per_key": 1,
+            "components_per_key": 3268,
+            "trailing": 0
+          }
+        ],
+        "starts": [
+          {
+            "name": "RestockFormPage",
+            "starts": 10,
+            "renders": 32680
+          }
+        ],
+        "top": [
+          {
+            "name": "Insertion",
+            "renders": 7580
+          },
+          {
+            "name": "(anonymous)",
+            "renders": 4980
+          },
+          {
+            "name": "chakra(div)",
+            "renders": 1870
+          },
+          {
+            "name": "Stack",
+            "renders": 1090
+          },
+          {
+            "name": "FieldRoot",
+            "renders": 800
+          },
+          {
+            "name": "FieldLabel",
+            "renders": 780
+          },
+          {
+            "name": "Text",
+            "renders": 610
+          },
+          {
+            "name": "chakra(p)",
+            "renders": 610
+          }
+        ],
+        "app": [
+          {
+            "name": "Button",
+            "renders": 460
+          },
+          {
+            "name": "ShipmentChannelBadge",
+            "renders": 110
+          },
+          {
+            "name": "CurrencyInput",
+            "renders": 90
+          },
+          {
+            "name": "SupplierBox",
+            "renders": 90
+          },
+          {
+            "name": "SupplierChannelPicker",
+            "renders": 90
+          },
+          {
+            "name": "Textarea",
+            "renders": 90
+          },
+          {
+            "name": "Group",
+            "renders": 80
+          },
+          {
+            "name": "LineCard",
+            "renders": 80
+          }
+        ]
+      },
+      {
+        "field": "note",
+        "testid": "restock-note",
+        "keys": 10,
+        "commits_per_key": 1,
+        "components_per_key": 3268,
+        "trailing": 0,
+        "passes": [
+          {
+            "commits_per_key": 1,
+            "components_per_key": 3268,
+            "trailing": 0
+          },
+          {
+            "commits_per_key": 1,
+            "components_per_key": 3268,
+            "trailing": 0
+          }
+        ],
+        "starts": [
+          {
+            "name": "RestockFormPage",
+            "starts": 10,
+            "renders": 32680
+          }
+        ],
+        "top": [
+          {
+            "name": "Insertion",
+            "renders": 7580
+          },
+          {
+            "name": "(anonymous)",
+            "renders": 4980
+          },
+          {
+            "name": "chakra(div)",
+            "renders": 1870
+          },
+          {
+            "name": "Stack",
+            "renders": 1090
+          },
+          {
+            "name": "FieldRoot",
+            "renders": 800
+          },
+          {
+            "name": "FieldLabel",
+            "renders": 780
+          },
+          {
+            "name": "Text",
+            "renders": 610
+          },
+          {
+            "name": "chakra(p)",
+            "renders": 610
+          }
+        ],
+        "app": [
+          {
+            "name": "Button",
+            "renders": 460
+          },
+          {
+            "name": "ShipmentChannelBadge",
+            "renders": 110
+          },
+          {
+            "name": "CurrencyInput",
+            "renders": 90
+          },
+          {
+            "name": "SupplierBox",
+            "renders": 90
+          },
+          {
+            "name": "SupplierChannelPicker",
+            "renders": 90
+          },
+          {
+            "name": "Textarea",
+            "renders": 90
+          },
+          {
+            "name": "Group",
+            "renders": 80
+          },
+          {
+            "name": "LineCard",
+            "renders": 80
+          }
+        ]
+      }
+    ],
+    "noisy": false,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 7,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 1300.5,
+        "noisy": true,
+        "after_save": 12,
+        "change": "first baseline (P1)"
+      },
+      {
+        "date": "2026-11-21",
+        "requests": 7,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 983.8,
+        "after_save": 12,
+        "typing": "line quantity 1 · note 1",
+        "change": "no change past a threshold; typing first measured (P2)"
+      }
+    ]
+  },
+  "restock-new": {
+    "screen": "restock-new",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/inventories/restock/new",
+    "requests_shell": 3,
+    "requests_screen": 3,
+    "by_method": {
+      "FinancialAccountService/FinancialAccountList": 1,
+      "ShipmentChannelService/ShipmentChannelList": 1,
+      "TeamService/TeamList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 1,
+    "chain": [
+      "ShipmentChannelService/ShipmentChannelList"
+    ],
+    "chains": [
+      [
+        "FinancialAccountService/FinancialAccountList"
+      ],
+      [
+        "ShipmentChannelService/ShipmentChannelList"
+      ],
+      [
+        "TeamService/TeamList"
+      ]
+    ],
+    "chain_method": "measured",
+    "waves": {
+      "FinancialAccountService/FinancialAccountList": [
+        1
+      ],
+      "ShipmentChannelService/ShipmentChannelList": [
+        1
+      ],
+      "TeamService/TeamList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 649.4,
+      "min": 649.4,
+      "max": 649.4,
+      "n": 1
+    },
+    "cold_usable_ms": 1229.9,
+    "cold_requests": 6,
+    "cold_preflights": 6,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "probes": [
+      {
+        "name": "open ProductPicker",
+        "count": 3,
+        "by_method": {
+          "InventoryService/OwnerStockByIds": 1,
+          "ProductService/ProductList": 1,
+          "TeamService/TeamByIds": 1
+        },
+        "duplicates": 0
+      },
+      {
+        "name": "open the supplier picker",
+        "count": 2,
+        "by_method": {
+          "SupplierService/SupplierList": 1,
+          "TeamService/TeamByIds": 1
+        },
+        "duplicates": 0
+      }
+    ],
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 3,
+        "dup": 0,
+        "chain": 1,
+        "usable_ms": 649.4,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P1)"
+      }
+    ]
+  },
+  "restock-selling": {
+    "screen": "restock-selling",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/inventories/restock",
+    "requests_shell": 3,
+    "requests_screen": 11,
+    "by_method": {
+      "RestockRequestService/RestockActorList": 2,
+      "RestockRequestService/RestockRequestList": 1,
+      "RestockRequestService/RestockTagList": 1,
+      "ShipmentChannelService/ShipmentChannelByIds": 1,
+      "ShipmentChannelService/ShipmentChannelList": 1,
+      "SupplierService/SupplierByIds": 1,
+      "TeamService/TeamList": 1,
+      "UserService/UserByIDs": 3
+    },
+    "duplicates": 2,
+    "duplicate_of": [
+      "UserService/UserByIDs"
+    ],
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "UserService/UserByIDs",
+      "SupplierService/SupplierByIds"
+    ],
+    "chains": [
+      [
+        "RestockRequestService/RestockActorList",
+        "UserService/UserByIDs"
+      ],
+      [
+        "UserService/UserByIDs",
+        "ShipmentChannelService/ShipmentChannelByIds"
+      ],
+      [
+        "UserService/UserByIDs",
+        "SupplierService/SupplierByIds"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      3
+    ],
+    "waves": {
+      "RestockRequestService/RestockActorList": [
+        1
+      ],
+      "RestockRequestService/RestockRequestList": [
+        1
+      ],
+      "RestockRequestService/RestockTagList": [
+        1
+      ],
+      "ShipmentChannelService/ShipmentChannelByIds": [
+        2
+      ],
+      "ShipmentChannelService/ShipmentChannelList": [
+        1
+      ],
+      "SupplierService/SupplierByIds": [
+        2
+      ],
+      "TeamService/TeamList": [
+        1
+      ],
+      "UserService/UserByIDs": [
+        1,
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 1166.9,
+      "min": 1166.9,
+      "max": 1166.9,
+      "n": 1
+    },
+    "cold_usable_ms": 1576.2,
+    "cold_requests": 14,
+    "cold_preflights": 13,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 11,
+        "dup": 2,
+        "chain": 2,
+        "usable_ms": 1166.9,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "restock-selling-detail": {
+    "screen": "restock-selling-detail",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/inventories/restock/1",
+    "requests_shell": 3,
+    "requests_screen": 7,
+    "by_method": {
+      "FinancialAccountService/FinancialAccountByIds": 1,
+      "ProductService/ProductByIds": 1,
+      "RestockRequestService/RestockRequestDetail": 1,
+      "RestockRequestService/RestockTagList": 1,
+      "SupplierService/SupplierByIds": 1,
+      "TeamService/TeamDetail": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "RestockRequestService/RestockRequestDetail",
+      "FinancialAccountService/FinancialAccountByIds"
+    ],
+    "chains": [
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "FinancialAccountService/FinancialAccountByIds"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "ProductService/ProductByIds"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "SupplierService/SupplierByIds"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "TeamService/TeamDetail"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "FinancialAccountService/FinancialAccountByIds": [
+        2
+      ],
+      "ProductService/ProductByIds": [
+        2
+      ],
+      "RestockRequestService/RestockRequestDetail": [
+        1
+      ],
+      "RestockRequestService/RestockTagList": [
+        1
+      ],
+      "SupplierService/SupplierByIds": [
+        2
+      ],
+      "TeamService/TeamDetail": [
+        2
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 673.6,
+      "min": 673.6,
+      "max": 673.6,
+      "n": 1
+    },
+    "cold_usable_ms": 1217.7,
+    "cold_requests": 10,
+    "cold_preflights": 10,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 7,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 673.6,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "restock-warehouse": {
+    "screen": "restock-warehouse",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/restock",
+    "requests_shell": 4,
+    "requests_screen": 11,
+    "by_method": {
+      "CustomShipmentService/CustomShipmentList": 1,
+      "RestockRequestService/RestockActorList": 1,
+      "RestockRequestService/RestockCodPaidStat": 1,
+      "RestockRequestService/RestockInboundStat": 1,
+      "RestockRequestService/RestockRequestList": 1,
+      "RestockRequestService/RestockTagList": 1,
+      "ShipmentChannelService/ShipmentChannelByIds": 1,
+      "TeamService/TeamList": 2,
+      "UserService/UserByIDs": 2
+    },
+    "duplicates": 1,
+    "duplicate_of": [
+      "UserService/UserByIDs"
+    ],
+    "preflights": 0,
+    "chain_depth": 3,
+    "chain": [
+      "RestockRequestService/RestockRequestList",
+      "UserService/UserByIDs",
+      "ShipmentChannelService/ShipmentChannelByIds"
+    ],
+    "chains": [
+      [
+        "RestockRequestService/RestockRequestList",
+        "UserService/UserByIDs",
+        "ShipmentChannelService/ShipmentChannelByIds"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      3,
+      3
+    ],
+    "waves": {
+      "CustomShipmentService/CustomShipmentList": [
+        1
+      ],
+      "RestockRequestService/RestockActorList": [
+        1
+      ],
+      "RestockRequestService/RestockCodPaidStat": [
+        1
+      ],
+      "RestockRequestService/RestockInboundStat": [
+        1
+      ],
+      "RestockRequestService/RestockRequestList": [
+        1
+      ],
+      "RestockRequestService/RestockTagList": [
+        1
+      ],
+      "ShipmentChannelService/ShipmentChannelByIds": [
+        3
+      ],
+      "TeamService/TeamList": [
+        1
+      ],
+      "UserService/UserByIDs": [
+        1,
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 1112.8,
+      "min": 1112.8,
+      "max": 1112.8,
+      "n": 1
+    },
+    "cold_usable_ms": 1889.9,
+    "cold_requests": 15,
+    "cold_preflights": 13,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 11,
+        "dup": 1,
+        "chain": 3,
+        "usable_ms": 1112.8,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "restock-warehouse-detail": {
+    "screen": "restock-warehouse-detail",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/restock/1",
+    "requests_shell": 4,
+    "requests_screen": 6,
+    "by_method": {
+      "ProductService/ProductByIds": 1,
+      "RackService/RackList": 1,
+      "RestockRequestService/RestockRequestDetail": 1,
+      "RestockRequestService/RestockTagList": 1,
+      "TeamService/TeamDetail": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "RestockRequestService/RestockRequestDetail",
+      "TeamService/TeamDetail"
+    ],
+    "chains": [
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "ProductService/ProductByIds"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "RackService/RackList"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "TeamService/TeamDetail"
+      ],
+      [
+        "RestockRequestService/RestockRequestDetail",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "ProductService/ProductByIds": [
+        2
+      ],
+      "RackService/RackList": [
+        2
+      ],
+      "RestockRequestService/RestockRequestDetail": [
+        1
+      ],
+      "RestockRequestService/RestockTagList": [
+        1
+      ],
+      "TeamService/TeamDetail": [
+        2
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 668.2,
+      "min": 668.2,
+      "max": 668.2,
+      "n": 1
+    },
+    "cold_usable_ms": 1230.5,
+    "cold_requests": 10,
+    "cold_preflights": 10,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 6,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 668.2,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "returns": {
+    "screen": "returns",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/returns",
+    "requests_shell": 4,
+    "requests_screen": 4,
+    "by_method": {
+      "OrderService/OrderList": 1,
+      "OrderService/OrderStat": 1,
+      "ShipmentChannelService/ShipmentChannelList": 1,
+      "TeamService/TeamList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 1,
+    "chain": [
+      "ShipmentChannelService/ShipmentChannelList"
+    ],
+    "chains": [
+      [
+        "OrderService/OrderList"
+      ],
+      [
+        "OrderService/OrderStat"
+      ],
+      [
+        "ShipmentChannelService/ShipmentChannelList"
+      ],
+      [
+        "TeamService/TeamList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      1,
+      1
+    ],
+    "waves": {
+      "OrderService/OrderList": [
+        1
+      ],
+      "OrderService/OrderStat": [
+        1
+      ],
+      "ShipmentChannelService/ShipmentChannelList": [
+        1
+      ],
+      "TeamService/TeamList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 596.8,
+      "min": 596.8,
+      "max": 596.8,
+      "n": 1
+    },
+    "cold_usable_ms": 1059.5,
+    "cold_requests": 8,
+    "cold_preflights": 8,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 4,
+        "dup": 0,
+        "chain": 1,
+        "usable_ms": 596.8,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "settlement": {
+    "screen": "settlement",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/settlement",
+    "requests_shell": 3,
+    "requests_screen": 3,
+    "by_method": {
+      "SettlementService/OrderSettlementList": 1,
+      "ShopService/ShopList": 2
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 1,
+    "chain": [
+      "ShopService/ShopList"
+    ],
+    "chains": [
+      [
+        "SettlementService/OrderSettlementList"
+      ],
+      [
+        "ShopService/ShopList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      1,
+      1
+    ],
+    "waves": {
+      "SettlementService/OrderSettlementList": [
+        1
+      ],
+      "ShopService/ShopList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 665.7,
+      "min": 665.7,
+      "max": 665.7,
+      "n": 1
+    },
+    "cold_usable_ms": 1062.7,
+    "cold_requests": 6,
+    "cold_preflights": 5,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 3,
+        "dup": 0,
+        "chain": 1,
+        "usable_ms": 665.7,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "settlement-imports": {
+    "screen": "settlement-imports",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/settlement/imports",
+    "requests_shell": 3,
+    "requests_screen": 6,
+    "by_method": {
+      "SettlementImporterService/UploadedFileList": 1,
+      "ShopService/ShopList": 5
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 1,
+    "chain": [
+      "ShopService/ShopList"
+    ],
+    "chains": [
+      [
+        "SettlementImporterService/UploadedFileList"
+      ],
+      [
+        "ShopService/ShopList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      1,
+      1
+    ],
+    "waves": {
+      "SettlementImporterService/UploadedFileList": [
+        1
+      ],
+      "ShopService/ShopList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 520,
+      "min": 520,
+      "max": 520,
+      "n": 1
+    },
+    "cold_usable_ms": 920,
+    "cold_requests": 9,
+    "cold_preflights": 9,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 6,
+        "dup": 0,
+        "chain": 1,
+        "usable_ms": 520,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "settlement-report": {
+    "screen": "settlement-report",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/settlement/report",
+    "requests_shell": 3,
+    "requests_screen": 5,
+    "by_method": {
+      "SettlementAnalyticService/MetricData": 3,
+      "SettlementAnalyticService/MetricSearch": 1,
+      "ShopService/ShopList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "SettlementAnalyticService/MetricSearch",
+      "SettlementAnalyticService/MetricData"
+    ],
+    "chains": [
+      [
+        "SettlementAnalyticService/MetricSearch",
+        "SettlementAnalyticService/MetricData"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "SettlementAnalyticService/MetricData": [
+        1,
+        2
+      ],
+      "SettlementAnalyticService/MetricSearch": [
+        1
+      ],
+      "ShopService/ShopList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 753.6,
+      "min": 753.6,
+      "max": 753.6,
+      "n": 1
+    },
+    "cold_usable_ms": 1158.2,
+    "cold_requests": 8,
+    "cold_preflights": 6,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 5,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 753.6,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "shop-detail": {
+    "screen": "shop-detail",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/shops/1",
+    "requests_shell": 3,
+    "requests_screen": 5,
+    "by_method": {
+      "FinancialAccountService/FinancialAccountList": 1,
+      "ShopService/ShopDetail": 1,
+      "ShopService/ShopUserList": 1,
+      "UserService/UserByIDs": 1,
+      "UserService/UserList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 3,
+    "chain": [
+      "ShopService/ShopDetail",
+      "ShopService/ShopUserList",
+      "UserService/UserByIDs"
+    ],
+    "chains": [
+      [
+        "ShopService/ShopDetail",
+        "ShopService/ShopUserList",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "waves": {
+      "FinancialAccountService/FinancialAccountList": [
+        2
+      ],
+      "ShopService/ShopDetail": [
+        1
+      ],
+      "ShopService/ShopUserList": [
+        2
+      ],
+      "UserService/UserByIDs": [
+        3
+      ],
+      "UserService/UserList": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 522.1,
+      "min": 522.1,
+      "max": 522.1,
+      "n": 1
+    },
+    "cold_usable_ms": 1056.9,
+    "cold_requests": 8,
+    "cold_preflights": 8,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "after_save": {
+      "name": "ShopUserSetPrimary",
+      "rpc": "ShopService/ShopUserSetPrimary",
+      "sent": true,
+      "count": 1,
+      "rpcs": [
+        "ShopService/ShopDetail"
+      ],
+      "by_method": {
+        "ShopService/ShopDetail": 1
+      },
+      "verdict": "recorded"
+    },
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 5,
+        "dup": 0,
+        "chain": 3,
+        "usable_ms": 522.1,
+        "noisy": true,
+        "after_save": 1,
+        "change": "first baseline (P1)"
+      }
+    ]
+  },
+  "shops": {
+    "screen": "shops",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/shops",
+    "requests_shell": 3,
+    "requests_screen": 4,
+    "by_method": {
+      "ShopService/ShopList": 2,
+      "UserService/UserByIDs": 2
+    },
+    "duplicates": 1,
+    "duplicate_of": [
+      "UserService/UserByIDs"
+    ],
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "ShopService/ShopList",
+      "UserService/UserByIDs"
+    ],
+    "chains": [
+      [
+        "ShopService/ShopList",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "ShopService/ShopList": [
+        1
+      ],
+      "UserService/UserByIDs": [
+        1,
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 637.6,
+      "min": 637.6,
+      "max": 637.6,
+      "n": 1
+    },
+    "cold_usable_ms": 1030.3,
+    "cold_requests": 7,
+    "cold_preflights": 6,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 4,
+        "dup": 1,
+        "chain": 2,
+        "usable_ms": 637.6,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "statement": {
+    "screen": "statement",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/statement",
+    "requests_shell": 4,
+    "requests_screen": 2,
+    "by_method": {
+      "ExpenseService/ExpenseDaily": 1,
+      "LiabilityService/LiabilityDaily": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 1,
+    "chain": [
+      "ExpenseService/ExpenseDaily"
+    ],
+    "chains": [
+      [
+        "ExpenseService/ExpenseDaily"
+      ],
+      [
+        "LiabilityService/LiabilityDaily"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      1,
+      1
+    ],
+    "waves": {
+      "ExpenseService/ExpenseDaily": [
+        1
+      ],
+      "LiabilityService/LiabilityDaily": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 466.2,
+      "min": 466.2,
+      "max": 466.2,
+      "n": 1
+    },
+    "cold_usable_ms": 1081.8,
+    "cold_requests": 6,
+    "cold_preflights": 6,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 2,
+        "dup": 0,
+        "chain": 1,
+        "usable_ms": 466.2,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "supplier-detail": {
+    "screen": "supplier-detail",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/inventories/suppliers/1",
+    "requests_shell": 3,
+    "requests_screen": 6,
+    "by_method": {
+      "InventoryService/SupplierGoods": 2,
+      "SupplierChannelService/SupplierChannelList": 2,
+      "SupplierService/SupplierDetail": 1,
+      "TeamService/TeamByIds": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "InventoryService/SupplierGoods",
+      "TeamService/TeamByIds"
+    ],
+    "chains": [
+      [
+        "InventoryService/SupplierGoods",
+        "TeamService/TeamByIds"
+      ],
+      [
+        "SupplierService/SupplierDetail",
+        "InventoryService/SupplierGoods"
+      ],
+      [
+        "SupplierService/SupplierDetail",
+        "SupplierChannelService/SupplierChannelList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "InventoryService/SupplierGoods": [
+        1,
+        2
+      ],
+      "SupplierChannelService/SupplierChannelList": [
+        1,
+        2
+      ],
+      "SupplierService/SupplierDetail": [
+        1
+      ],
+      "TeamService/TeamByIds": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 576.4,
+      "min": 576.4,
+      "max": 576.4,
+      "n": 1
+    },
+    "cold_usable_ms": 1074.8,
+    "cold_requests": 9,
+    "cold_preflights": 7,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 6,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 576.4,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "suppliers": {
+    "screen": "suppliers",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/inventories/suppliers",
+    "requests_shell": 3,
+    "requests_screen": 3,
+    "by_method": {
+      "InventoryService/SupplierGoods": 1,
+      "SupplierService/SupplierList": 1,
+      "TeamService/TeamList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "SupplierService/SupplierList",
+      "InventoryService/SupplierGoods"
+    ],
+    "chains": [
+      [
+        "SupplierService/SupplierList",
+        "InventoryService/SupplierGoods"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "InventoryService/SupplierGoods": [
+        2
+      ],
+      "SupplierService/SupplierList": [
+        1
+      ],
+      "TeamService/TeamList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 614.1,
+      "min": 614.1,
+      "max": 614.1,
+      "n": 1
+    },
+    "cold_usable_ms": 1187.9,
+    "cold_requests": 6,
+    "cold_preflights": 6,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 3,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 614.1,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "team-detail": {
+    "screen": "team-detail",
+    "date": "2026-11-21",
+    "role": "root",
+    "url": "http://localhost:5251/teams/2",
+    "requests_shell": 2,
+    "requests_screen": 3,
+    "by_method": {
+      "TeamService/TeamDetail": 1,
+      "UserService/UserList": 1,
+      "WarehouseInfoService/WarehouseInfoDetail": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "TeamService/TeamDetail",
+      "UserService/UserList"
+    ],
+    "chains": [
+      [
+        "TeamService/TeamDetail",
+        "UserService/UserList"
+      ],
+      [
+        "TeamService/TeamDetail",
+        "WarehouseInfoService/WarehouseInfoDetail"
+      ]
+    ],
+    "chain_method": "measured",
+    "waves": {
+      "TeamService/TeamDetail": [
+        1
+      ],
+      "UserService/UserList": [
+        2
+      ],
+      "WarehouseInfoService/WarehouseInfoDetail": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 463,
+      "min": 463,
+      "max": 463,
+      "n": 1
+    },
+    "cold_usable_ms": 913.5,
+    "cold_requests": 5,
+    "cold_preflights": 5,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 3,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 463,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P1)"
+      }
+    ]
+  },
+  "teams": {
+    "screen": "teams",
+    "date": "2026-11-21",
+    "role": "root",
+    "url": "http://localhost:5251/teams",
+    "requests_shell": 2,
+    "requests_screen": 2,
+    "by_method": {
+      "TeamReturnConfigurationService/TeamReturnConfigurationByIds": 1,
+      "TeamService/TeamList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "TeamService/TeamList",
+      "TeamReturnConfigurationService/TeamReturnConfigurationByIds"
+    ],
+    "chains": [
+      [
+        "TeamService/TeamList",
+        "TeamReturnConfigurationService/TeamReturnConfigurationByIds"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "TeamReturnConfigurationService/TeamReturnConfigurationByIds": [
+        2
+      ],
+      "TeamService/TeamList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 448.7,
+      "min": 448.7,
+      "max": 448.7,
+      "n": 1
+    },
+    "cold_usable_ms": 805.7,
+    "cold_requests": 4,
+    "cold_preflights": 4,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 2,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 448.7,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "transfers-selling": {
+    "screen": "transfers-selling",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/inventories/transfer",
+    "requests_shell": 3,
+    "requests_screen": 2,
+    "by_method": {
+      "TeamService/TeamList": 1,
+      "WarehouseTransferService/WarehouseTransferList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 1,
+    "chain": [
+      "TeamService/TeamList"
+    ],
+    "chains": [
+      [
+        "TeamService/TeamList"
+      ],
+      [
+        "WarehouseTransferService/WarehouseTransferList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      1,
+      1
+    ],
+    "waves": {
+      "TeamService/TeamList": [
+        1
+      ],
+      "WarehouseTransferService/WarehouseTransferList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 469.9,
+      "min": 469.9,
+      "max": 469.9,
+      "n": 1
+    },
+    "cold_usable_ms": 912.2,
+    "cold_requests": 5,
+    "cold_preflights": 5,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 2,
+        "dup": 0,
+        "chain": 1,
+        "usable_ms": 469.9,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "user-detail": {
+    "screen": "user-detail",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/users/5",
+    "requests_shell": 3,
+    "requests_screen": 2,
+    "by_method": {
+      "UserService/UserTeams": 2
+    },
+    "duplicates": 1,
+    "duplicate_of": [
+      "UserService/UserTeams"
+    ],
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "UserService/UserTeams",
+      "UserService/UserTeams"
+    ],
+    "chains": [
+      [
+        "UserService/UserTeams",
+        "UserService/UserTeams"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "UserService/UserTeams": [
+        1,
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 1278.4,
+      "min": 1278.4,
+      "max": 1278.4,
+      "n": 1
+    },
+    "cold_usable_ms": 1804.3,
+    "cold_requests": 5,
+    "cold_preflights": 4,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 2,
+        "dup": 1,
+        "chain": 2,
+        "usable_ms": 1278.4,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "users": {
+    "screen": "users",
+    "date": "2026-11-21",
+    "role": "seller",
+    "url": "http://localhost:5251/users",
+    "requests_shell": 3,
+    "requests_screen": 1,
+    "by_method": {
+      "UserService/UserList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 1,
+    "chain": [
+      "UserService/UserList"
+    ],
+    "chains": [
+      [
+        "UserService/UserList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      1,
+      1
+    ],
+    "waves": {
+      "UserService/UserList": [
+        1
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 441,
+      "min": 441,
+      "max": 441,
+      "n": 1
+    },
+    "cold_usable_ms": 917.8,
+    "cold_requests": 4,
+    "cold_preflights": 4,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 1,
+        "dup": 0,
+        "chain": 1,
+        "usable_ms": 441,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "warehouse-edit": {
+    "screen": "warehouse-edit",
+    "date": "2026-11-21",
+    "role": "root",
+    "url": "http://localhost:5251/teams/2/edit",
+    "requests_shell": 2,
+    "requests_screen": 3,
+    "by_method": {
+      "TeamService/TeamDetail": 1,
+      "WarehouseInfoService/WarehouseInfoDetail": 2
+    },
+    "duplicates": 1,
+    "duplicate_of": [
+      "WarehouseInfoService/WarehouseInfoDetail"
+    ],
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "WarehouseInfoService/WarehouseInfoDetail",
+      "WarehouseInfoService/WarehouseInfoDetail"
+    ],
+    "chains": [
+      [
+        "WarehouseInfoService/WarehouseInfoDetail",
+        "WarehouseInfoService/WarehouseInfoDetail"
+      ]
+    ],
+    "chain_method": "measured",
+    "waves": {
+      "TeamService/TeamDetail": [
+        1
+      ],
+      "WarehouseInfoService/WarehouseInfoDetail": [
+        1,
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 433.8,
+      "min": 433.8,
+      "max": 433.8,
+      "n": 1
+    },
+    "cold_usable_ms": 1060.8,
+    "cold_requests": 5,
+    "cold_preflights": 4,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "after_save": {
+      "name": "save unchanged (TeamUpdate → WarehouseInfoUpdate) — opens the team",
+      "rpc": "WarehouseInfoService/WarehouseInfoUpdate",
+      "sent": true,
+      "count": 3,
+      "rpcs": [
+        "TeamService/TeamDetail",
+        "WarehouseInfoService/WarehouseInfoDetail",
+        "UserService/UserList"
+      ],
+      "by_method": {
+        "TeamService/TeamDetail": 1,
+        "UserService/UserList": 1,
+        "WarehouseInfoService/WarehouseInfoDetail": 1
+      },
+      "verdict": "recorded",
+      "url_after": "http://localhost:5251/teams/2"
+    },
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 3,
+        "dup": 1,
+        "chain": 2,
+        "usable_ms": 433.8,
+        "noisy": true,
+        "after_save": 3,
+        "change": "first baseline (P1)"
+      }
+    ]
+  },
+  "warehouse-order": {
+    "screen": "warehouse-order",
+    "date": "2026-11-21",
+    "role": "wh_staff",
+    "url": "http://localhost:5251/warehouse-orders/2",
+    "requests_shell": 2,
+    "requests_screen": 4,
+    "by_method": {
+      "InventoryService/StockPickLocations": 1,
+      "OrderService/OrderDetail": 1,
+      "OrderService/OrderTagList": 1,
+      "ShipmentChannelService/ShipmentChannelList": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 3,
+    "chain": [
+      "OrderService/OrderDetail",
+      "InventoryService/StockPickLocations",
+      "ShipmentChannelService/ShipmentChannelList"
+    ],
+    "chains": [
+      [
+        "OrderService/OrderDetail",
+        "InventoryService/StockPickLocations",
+        "ShipmentChannelService/ShipmentChannelList"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      3,
+      3
+    ],
+    "waves": {
+      "InventoryService/StockPickLocations": [
+        2
+      ],
+      "OrderService/OrderDetail": [
+        1
+      ],
+      "OrderService/OrderTagList": [
+        1
+      ],
+      "ShipmentChannelService/ShipmentChannelList": [
+        3
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 345,
+      "min": 345,
+      "max": 345,
+      "n": 1
+    },
+    "cold_usable_ms": 867.2,
+    "cold_requests": 6,
+    "cold_preflights": 6,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "after_save": {
+      "name": "OrderStatusChange (the order's next step)",
+      "rpc": "OrderService/OrderStatusChange",
+      "sent": true,
+      "count": 3,
+      "rpcs": [
+        "OrderService/OrderDetail",
+        "OrderService/OrderTagList",
+        "InventoryService/StockPickLocations"
+      ],
+      "by_method": {
+        "InventoryService/StockPickLocations": 1,
+        "OrderService/OrderDetail": 1,
+        "OrderService/OrderTagList": 1
+      },
+      "verdict": "recorded"
+    },
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 4,
+        "dup": 0,
+        "chain": 3,
+        "usable_ms": 345,
+        "noisy": true,
+        "after_save": 3,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "warehouse-orders": {
+    "screen": "warehouse-orders",
+    "date": "2026-11-21",
+    "role": "wh_staff",
+    "url": "http://localhost:5251/warehouse-orders",
+    "requests_shell": 2,
+    "requests_screen": 9,
+    "by_method": {
+      "OrderService/OrderList": 1,
+      "OrderService/OrderStat": 1,
+      "OrderService/OrderTagList": 1,
+      "ShipmentChannelService/ShipmentChannelList": 2,
+      "ShopService/ShopByIds": 1,
+      "TeamService/TeamList": 2,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "OrderService/OrderList",
+      "ShopService/ShopByIds"
+    ],
+    "chains": [
+      [
+        "OrderService/OrderList",
+        "ShipmentChannelService/ShipmentChannelList"
+      ],
+      [
+        "OrderService/OrderList",
+        "ShopService/ShopByIds"
+      ],
+      [
+        "OrderService/OrderList",
+        "UserService/UserByIDs"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "OrderService/OrderList": [
+        1
+      ],
+      "OrderService/OrderStat": [
+        1
+      ],
+      "OrderService/OrderTagList": [
+        1
+      ],
+      "ShipmentChannelService/ShipmentChannelList": [
+        1,
+        2
+      ],
+      "ShopService/ShopByIds": [
+        2
+      ],
+      "TeamService/TeamList": [
+        1
+      ],
+      "UserService/UserByIDs": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 1052.9,
+      "min": 1052.9,
+      "max": 1052.9,
+      "n": 1
+    },
+    "cold_usable_ms": 1512.6,
+    "cold_requests": 11,
+    "cold_preflights": 9,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 9,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 1052.9,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "warehouse-product": {
+    "screen": "warehouse-product",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/inventories/products/1",
+    "requests_shell": 4,
+    "requests_screen": 17,
+    "by_method": {
+      "InventoryService/BatchList": 1,
+      "InventoryService/CostLayerList": 1,
+      "InventoryService/PlacementList": 1,
+      "InventoryService/ProductPlaces": 2,
+      "InventoryService/ProductStockSummary": 1,
+      "InventoryService/StockCost": 1,
+      "InventoryService/StockHistory": 3,
+      "OrderService/OrderList": 1,
+      "ProductService/ProductByIds": 1,
+      "RackService/RackList": 1,
+      "RestockRequestService/RestockRequestList": 2,
+      "TeamService/TeamByIds": 1,
+      "UserService/UserByIDs": 1
+    },
+    "duplicates": 1,
+    "duplicate_of": [
+      "InventoryService/ProductPlaces"
+    ],
+    "preflights": 0,
+    "chain_depth": 6,
+    "chain": [
+      "ProductService/ProductByIds",
+      "InventoryService/StockHistory",
+      "TeamService/TeamByIds",
+      "RackService/RackList",
+      "UserService/UserByIDs",
+      "InventoryService/ProductPlaces"
+    ],
+    "chains": [
+      [
+        "ProductService/ProductByIds",
+        "InventoryService/StockHistory",
+        "TeamService/TeamByIds",
+        "RackService/RackList",
+        "UserService/UserByIDs",
+        "InventoryService/ProductPlaces"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      6,
+      6
+    ],
+    "waves": {
+      "InventoryService/BatchList": [
+        1
+      ],
+      "InventoryService/CostLayerList": [
+        1
+      ],
+      "InventoryService/PlacementList": [
+        1
+      ],
+      "InventoryService/ProductPlaces": [
+        2,
+        6
+      ],
+      "InventoryService/ProductStockSummary": [
+        1
+      ],
+      "InventoryService/StockCost": [
+        2
+      ],
+      "InventoryService/StockHistory": [
+        2
+      ],
+      "OrderService/OrderList": [
+        1
+      ],
+      "ProductService/ProductByIds": [
+        1
+      ],
+      "RackService/RackList": [
+        4
+      ],
+      "RestockRequestService/RestockRequestList": [
+        1
+      ],
+      "TeamService/TeamByIds": [
+        3
+      ],
+      "UserService/UserByIDs": [
+        5
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 478.7,
+      "min": 478.7,
+      "max": 478.7,
+      "n": 1
+    },
+    "cold_usable_ms": 986,
+    "cold_requests": 21,
+    "cold_preflights": 20,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 17,
+        "dup": 1,
+        "chain": 6,
+        "usable_ms": 478.7,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  },
+  "warehouse-products": {
+    "screen": "warehouse-products",
+    "date": "2026-11-21",
+    "role": "wh_owner",
+    "url": "http://localhost:5251/products",
+    "requests_shell": 4,
+    "requests_screen": 2,
+    "by_method": {
+      "InventoryService/WarehouseStockList": 1,
+      "TeamService/TeamByIds": 1
+    },
+    "duplicates": 0,
+    "preflights": 0,
+    "chain_depth": 2,
+    "chain": [
+      "InventoryService/WarehouseStockList",
+      "TeamService/TeamByIds"
+    ],
+    "chains": [
+      [
+        "InventoryService/WarehouseStockList",
+        "TeamService/TeamByIds"
+      ]
+    ],
+    "chain_method": "measured",
+    "chain_depths": [
+      2,
+      2
+    ],
+    "waves": {
+      "InventoryService/WarehouseStockList": [
+        1
+      ],
+      "TeamService/TeamByIds": [
+        2
+      ]
+    },
+    "shell_by_method": {
+      "AuthService/CheckAccess": 1,
+      "FoundRequestService/FoundRequestList": 1,
+      "LiabilityService/LiabilityPositionList": 1,
+      "UserService/TeamAccessList": 1
+    },
+    "usable_ms": {
+      "median": 479.5,
+      "min": 479.5,
+      "max": 479.5,
+      "n": 1
+    },
+    "cold_usable_ms": 895.5,
+    "cold_requests": 7,
+    "cold_preflights": 7,
+    "warm_loads": 1,
+    "counts_agree": true,
+    "never_usable": 0,
+    "noisy": true,
+    "history": [
+      {
+        "date": "2026-11-21",
+        "requests": 2,
+        "dup": 0,
+        "chain": 2,
+        "usable_ms": 479.5,
+        "noisy": true,
+        "after_save": -1,
+        "change": "first baseline (P4)"
+      }
+    ]
+  }
+}

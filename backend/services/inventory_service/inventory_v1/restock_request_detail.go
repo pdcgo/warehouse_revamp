@@ -77,6 +77,13 @@ func (s *Service) restockDetail(ctx context.Context, requestID, teamID uint64) (
 		return nil, err
 	}
 
+	// ITS RESOLUTIONS (backlog #101) — oldest first, with the parcel each rides; a refund's money for its own selling team
+	// only (a-warehouse-sees-no-seller-money).
+	err = withRestockResolutions(s.db.WithContext(ctx), wire, teamID)
+	if err != nil {
+		return nil, err
+	}
+
 	return wire, nil
 }
 

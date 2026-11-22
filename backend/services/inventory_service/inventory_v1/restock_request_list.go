@@ -82,6 +82,13 @@ func (s *Service) RestockRequestList(
 		return nil, restockErr(err)
 	}
 
+	// HOW MANY RESOLUTIONS EACH ROW HAS (backlog #101, the-restock-resolutions-prototype-is-accepted: a resolution count or
+	// *Selesai* beside the status) — the page's, in ONE grouped statement; the settled mark rides the row.
+	err = withResolutionCounts(s.db.WithContext(ctx), out...)
+	if err != nil {
+		return nil, restockErr(err)
+	}
+
 	items, ids := restockRequestListItems(out, req.Msg.GetDataRequest())
 
 	return connect.NewResponse(&inventoryv1.RestockRequestListResponse{

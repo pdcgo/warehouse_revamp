@@ -199,6 +199,14 @@ func restockLogChangeFieldFromText(field string) inventoryv1.RestockLogChangeFie
 		return inventoryv1.RestockLogChangeField_RESTOCK_LOG_CHANGE_FIELD_LINE_SUPPLIER
 	case restockChangeLineStore:
 		return inventoryv1.RestockLogChangeField_RESTOCK_LOG_CHANGE_FIELD_LINE_STORE
+	case restockChangeResolution:
+		return inventoryv1.RestockLogChangeField_RESTOCK_LOG_CHANGE_FIELD_RESOLUTION
+	case restockChangeParcel:
+		return inventoryv1.RestockLogChangeField_RESTOCK_LOG_CHANGE_FIELD_PARCEL
+	case restockChangeParcelShort:
+		return inventoryv1.RestockLogChangeField_RESTOCK_LOG_CHANGE_FIELD_PARCEL_SHORT
+	case restockChangeParcelBroken:
+		return inventoryv1.RestockLogChangeField_RESTOCK_LOG_CHANGE_FIELD_PARCEL_BROKEN
 	default:
 		return inventoryv1.RestockLogChangeField_RESTOCK_LOG_CHANGE_FIELD_UNSPECIFIED
 	}

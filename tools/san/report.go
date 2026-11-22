@@ -13,6 +13,7 @@ import (
 
 	eventsv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/events/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_money"
+	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
 	inventory_v1 "github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
@@ -44,7 +45,7 @@ var (
 var (
 	refoldReports = []string{
 		settlement_v1.ReportShopDaily, settlement_v1.ReportUserDaily, selling_v1.ReportOrderDaily,
-		supplier_v1.ReportRestockDaily, supplier_v1.ReportSaleDaily,
+		supplier_v1.ReportRestockDaily, supplier_v1.ReportSaleDaily, expense_v1.ReportExpenseDaily,
 	}
 	refoldScopes = map[string]string{
 		settlement_v1.ReportShopDaily:  "shop",
@@ -52,8 +53,12 @@ var (
 		selling_v1.ReportOrderDaily:    "team",
 		supplier_v1.ReportRestockDaily: "supplier",
 		supplier_v1.ReportSaleDaily:    "supplier",
+		expense_v1.ReportExpenseDaily:  "team",
 	}
 	refoldNouns = map[string]string{"shop": "shop", "user": "person", "team": "seller team", "supplier": "supplier"}
+	// refoldReportNouns names a report's scope where the flag's own noun is wrong for it: the expense report's team is
+	// any team, a warehouse's included.
+	refoldReportNouns = map[string]string{expense_v1.ReportExpenseDaily: "team"}
 )
 
 // refoldFlagsFit refuses a scope flag the report is not keyed by — before any database is asked for, so a wrong flag
@@ -64,9 +69,14 @@ func refoldFlagsFit(report string, given []string) error {
 		return errRefoldUnknown
 	}
 
+	noun := refoldNouns[scope]
+	if own, ok := refoldReportNouns[report]; ok {
+		noun = own
+	}
+
 	for _, flag := range given {
 		if flag != scope {
-			return fmt.Errorf("--report %s re-folds one %s: give --%s, not --%s", report, refoldNouns[scope], scope, flag)
+			return fmt.Errorf("--report %s re-folds one %s: give --%s, not --%s", report, noun, scope, flag)
 		}
 	}
 
@@ -75,7 +85,8 @@ func refoldFlagsFit(report string, given []string) error {
 
 // reportCommand is the reports' operator actions: today, the day re-fold of a-wrong-day-is-refolded-from-the-log, for
 // every event-fed daily report — settlement's shop and person reports (the-person-report-refolds-too), the order
-// metrics, and a supplier's restock figures and Penjualan.
+// metrics, and a supplier's restock figures and Penjualan — and for the expense metrics, folded in the expense's own
+// transaction, whose rows from before expense 00009 carry no type (backlog #107).
 func reportCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "report",
@@ -93,17 +104,20 @@ func reportCommand() *cli.Command {
 					"until its own re-fold runs, and the output names the command. A row written within the hour is left to the\n" +
 					"fold. --dry-run prints the same before/after and writes nothing. Run it again and it changes nothing.\n" +
 					"The order and supplier reports carry no balance, so no later day moves; their lost events are claimed the\n" +
-					"same way, and a Penjualan claim names the other suppliers' and days' re-folds it leaves short.\n\n" +
+					"same way, and a Penjualan claim names the other suppliers' and days' re-folds it leaves short.\n" +
+					"The expense metrics are folded in the expense's own transaction and lose nothing: their re-fold rebuilds\n" +
+					"a team's day from expense_records — each row under its type, the rows from before expense 00009 too.\n\n" +
 					"  --report " + settlement_v1.ReportShopDaily + " --shop <id>          the shop report\n" +
 					"  --report " + settlement_v1.ReportUserDaily + " --user <id>          the person report (the-person-report-refolds-too)\n" +
 					"  --report " + selling_v1.ReportOrderDaily + " --team <id>                    the order metrics of one seller team\n" +
 					"  --report " + supplier_v1.ReportRestockDaily + " --supplier <id>   a supplier's restock, lost and broken figures\n" +
-					"  --report " + supplier_v1.ReportSaleDaily + " --supplier <id>      a supplier's Penjualan",
+					"  --report " + supplier_v1.ReportSaleDaily + " --supplier <id>      a supplier's Penjualan\n" +
+					"  --report " + expense_v1.ReportExpenseDaily + " --team <id>                  the expense metrics of one team",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "report", Required: true, Usage: "the report to rebuild: " + strings.Join(refoldReports, ", ")},
 					&cli.Uint64Flag{Name: "shop", Usage: "the shop id — for " + settlement_v1.ReportShopDaily},
 					&cli.Uint64Flag{Name: "user", Usage: "the person's user id — for " + settlement_v1.ReportUserDaily + " (0 is the row of \"not recorded\")"},
-					&cli.Uint64Flag{Name: "team", Usage: "the seller team id — for " + selling_v1.ReportOrderDaily},
+					&cli.Uint64Flag{Name: "team", Usage: "the team id — the seller team for " + selling_v1.ReportOrderDaily + ", any team for " + expense_v1.ReportExpenseDaily},
 					&cli.Uint64Flag{Name: "supplier", Usage: "the supplier id — for " + supplier_v1.ReportRestockDaily + " and " + supplier_v1.ReportSaleDaily},
 					&cli.StringFlag{Name: "date", Required: true, Usage: "the Jakarta day, yyyy-mm-dd"},
 					&cli.BoolFlag{Name: "dry-run", Usage: "print what would be written, write nothing"},
@@ -133,6 +147,15 @@ func runReportRefold(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		return runOrderRefold(ctx, cmd, selling_v1.OrderDayRefoldInput{
+			TeamID: cmd.Uint64("team"), Day: cmd.String("date"), DryRun: cmd.Bool("dry-run"),
+		})
+	case expense_v1.ReportExpenseDaily:
+		err := refoldFlagsFit(report, given)
+		if err != nil {
+			return err
+		}
+
+		return runExpenseRefold(ctx, cmd, expense_v1.MetricDayRefoldInput{
 			TeamID: cmd.Uint64("team"), Day: cmd.String("date"), DryRun: cmd.Bool("dry-run"),
 		})
 	case supplier_v1.ReportRestockDaily, supplier_v1.ReportSaleDaily:
@@ -515,6 +538,63 @@ func printSupplierRefold(w io.Writer, target string, in supplier_v1.DayRefoldInp
 			fmt.Fprintf(w, "      go run ./tools/san report refold --report %s --supplier %d --date %s\n", in.Report, scope.SupplierID, scope.Day)
 		}
 	}
+}
+
+// ── the expense metrics — expense_service ──────────────────────────────────────────────────────────
+
+func runExpenseRefold(ctx context.Context, cmd *cli.Command, in expense_v1.MetricDayRefoldInput) error {
+	return withSan(ctx, cmd, func(ctx context.Context, san *San) error {
+		result, err := san.ExpenseReportRefold(ctx, in)
+		if err != nil {
+			return err
+		}
+
+		printExpenseRefold(os.Stdout, san.target, in, result)
+
+		return nil
+	})
+}
+
+// ExpenseReportRefold re-folds one team's day through expense_service's own method — the fold's key, its lock, its
+// table — on the team's side asked of team_service (sanTeamSides). No broker, no account or shop to ask: the re-fold
+// writes no expense.
+func (s *San) ExpenseReportRefold(ctx context.Context, in expense_v1.MetricDayRefoldInput) (expense_v1.MetricDayRefoldResult, error) {
+	return expense_v1.NewService(s.db, nil, nil, sanTeamSides{teams: s.teams}, nil).MetricDayRefold(ctx, in)
+}
+
+// printExpenseRefold writes what the expense re-fold found: a line per report row of the day.
+func printExpenseRefold(w io.Writer, target string, in expense_v1.MetricDayRefoldInput, result expense_v1.MetricDayRefoldResult) {
+	fmt.Fprintf(w, "[%s] %s · team %d · %s · %s\n", target, expense_v1.ReportExpenseDaily, in.TeamID, in.Day, refoldMode(result.DryRun))
+	fmt.Fprintf(w, "  expense records counted %d\n", result.Counted)
+
+	if len(result.Rows) == 0 {
+		fmt.Fprintln(w, "  no expense record and no report row on that day — nothing to do")
+
+		return
+	}
+
+	for _, row := range result.Rows {
+		label := fmt.Sprintf("kind %d · flow %d · type %d · shop %d · user %d", row.Kind, row.Flow, row.Type, row.ShopID, row.UserID)
+		printRefoldRow(w, label, []string{"amount"}, expenseFigure(row.Before), expenseFigure(row.After),
+			"its records now sit under their types, or hold nothing there")
+	}
+}
+
+func expenseFigure(v *float64) []float64 {
+	if v == nil {
+		return nil
+	}
+
+	return []float64{*v}
+}
+
+// expenseRefoldLine is printExpenseRefold's output as one string — for a test.
+func expenseRefoldLine(target string, in expense_v1.MetricDayRefoldInput, result expense_v1.MetricDayRefoldResult) string {
+	var b strings.Builder
+
+	printExpenseRefold(&b, target, in, result)
+
+	return b.String()
 }
 
 // ── shared by the order and supplier output ────────────────────────────────────────────────────────

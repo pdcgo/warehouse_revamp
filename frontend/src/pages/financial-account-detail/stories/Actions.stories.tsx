@@ -1,10 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor } from "storybook/test";
+import { useNavigate } from "react-router-dom";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { EXPENSE_TEAM, FIRST_NEW_EXPENSE_ID, expenseFixtures } from "../../../../.storybook/expenseFixtures";
+import { expenseCountForStory } from "../../../../.storybook/expenseStub";
 import { expectedBalance } from "../../../../.storybook/financialAccountFixtures";
-import { asTeam } from "../../../../.storybook/pageStory";
+import { asTeam, routedPage } from "../../../../.storybook/pageStory";
 import { asRole } from "../../../../.storybook/sessionScenario";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
+import { formatRupiah } from "../../../lib/money";
+import { ExpensesPage } from "../../expenses/index";
+import { FinancialAccountDetailPage } from "../index";
 import { ACCOUNT_DETAIL_META, AtBcaGaji, AtKasGudang, BCA_GAJI, BCA_OPS, KAS, firstRow, loaded, rp } from "./kit";
 
 // ACCOUNT DETAIL — Match Balance and Capital — a difference, an agreement, a cash box, and who may move money. The page's stories are grouped by the part of the screen they are about
@@ -117,5 +123,114 @@ export const AMemberReadsButDoesNotMove: Story = {
     await expect(canvas.queryByTestId(`account-actions-${BCA_OPS.id}`)).toBeNull();
     await expect(canvas.queryByTestId(`account-reconcile-button-${BCA_OPS.id}`)).toBeNull();
     await expect(canvas.queryByTestId("open-shop-set")).toBeNull();
+  },
+};
+
+// CAPITAL'S SECOND DOOR (prive-and-deposit-on-pengeluaran-are-the-accounts-capital — one act, one record, two doors).
+// On a SELLING team's account the dialog says the act shows on Biaya too; a warehouse team's says nothing — its Setor /
+// Tarik Modal stays on the account page alone.
+async function openCapital(canvas: ReturnType<typeof within>, accountId: bigint) {
+  await userEvent.click(canvas.getByTestId(`account-actions-${accountId}`));
+  const capital = await screen.findByTestId(`account-capital-${accountId}`);
+  await waitFor(() => expect(capital).toBeVisible());
+  await userEvent.click(capital);
+  await screen.findByTestId("capital-out");
+}
+
+export const ASellingTeamsCapitalSaysBiaya: Story = {
+  name: "Capital says it shows on Biaya",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, expectedBalance["1301"]!);
+
+    await openCapital(canvas, BCA_OPS.id);
+    await expect(screen.getByTestId("capital-on-expenses-hint")).toHaveTextContent(
+      "Also shown on Expenses — Withdraw as Prive, Add as Deposit. One record.",
+    );
+  },
+};
+
+export const AWarehousesCapitalStaysHere: Story = {
+  name: "Warehouse capital, no Biaya",
+  beforeEach: () => {
+    asTeam(11n)();
+    asRole(Role.WAREHOUSE_OWNER)();
+  },
+  render: () => <AtKasGudang />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, expectedBalance["1306"]!);
+
+    await openCapital(canvas, KAS.id);
+    await expect(screen.queryByTestId("capital-on-expenses-hint")).toBeNull();
+
+    // Setor Modal as today — the box holds more — and nothing on Biaya.
+    await userEvent.type(screen.getByTestId("capital-amount"), "150000", { delay: 20 });
+    await userEvent.click(screen.getByTestId("capital-save"));
+    await waitFor(() => expect(canvas.getByTestId("account-detail-balance")).toHaveTextContent(rp(1_000_000)));
+    await expect(firstRow(canvas)).toHaveTextContent("Capital in");
+    await expect(expenseCountForStory(11n)).toBe(0);
+  },
+};
+
+// THE SAME ACT ON BOTH PAGES: a Setor Modal on BCA Operasional moves the balance at once (as always) and is, on Biaya,
+// one Setoran modal *Recorded on the account page* — Modal and the month's total down by it (given 19).
+function GoToBiaya() {
+  const navigate = useNavigate();
+
+  return (
+    <button type="button" data-testid="story-go-to-biaya" onClick={() => navigate("/expenses")}>
+      Biaya
+    </button>
+  );
+}
+
+const AccountThenBiaya = routedPage(
+  [
+    {
+      path: "/financial-accounts/:accountId",
+      element: (
+        <>
+          <FinancialAccountDetailPage />
+          <GoToBiaya />
+        </>
+      ),
+    },
+    { path: "/expenses", element: <ExpensesPage /> },
+  ],
+  `/financial-accounts/${BCA_OPS.id}`,
+);
+
+// Toko Melati's month before the act (expenseFixtures.ts): Rp 6.350.000, no capital.
+const MELATI_MONTH = 6_350_000;
+
+export const ASetorModalShowsOnBiaya: Story = {
+  name: "Setor Modal shows on Biaya",
+  render: () => <AccountThenBiaya />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement, expectedBalance["1301"]!);
+    const before = expenseCountForStory(EXPENSE_TEAM);
+
+    await openCapital(canvas, BCA_OPS.id);
+    await userEvent.type(screen.getByTestId("capital-amount"), "1000000", { delay: 20 });
+    await userEvent.type(screen.getByTestId("capital-note"), "Top up for stock", { delay: 10 });
+    await userEvent.click(screen.getByTestId("capital-save"));
+
+    // The account: one by-hand capital row, the balance moved at once.
+    await waitFor(() => expect(canvas.getByTestId("account-detail-balance")).toHaveTextContent(rp(12_443_500)));
+    await expect(firstRow(canvas)).toHaveTextContent("Capital in — Top up for stock");
+    await expect(firstRow(canvas)).toHaveTextContent("by hand");
+    // Biaya: exactly one record for the act.
+    await expect(expenseCountForStory(EXPENSE_TEAM)).toBe(before + 1);
+
+    await userEvent.click(canvas.getByTestId("story-go-to-biaya"));
+    const id = FIRST_NEW_EXPENSE_ID;
+    await canvas.findByTestId(`expense-row-${id}`, {}, { timeout: 4000 });
+
+    await expect(canvas.getByTestId(`expense-type-${id}`)).toHaveTextContent("Other › Deposit · owner adds capital");
+    await expect(canvas.getByTestId(`expense-origin-${id}`)).toHaveTextContent("Recorded on the account page");
+    await expect(canvas.getByTestId(`expense-mark-${id}-capital`)).toBeInTheDocument();
+    await expect(canvas.getByTestId("expenses-total-capital")).toHaveTextContent(formatRupiah(-1_000_000));
+    await expect(canvas.getByTestId("expenses-total")).toHaveTextContent(formatRupiah(MELATI_MONTH - 1_000_000));
+    // The rows from before stay as they were.
+    await expect(canvas.queryByTestId(`expense-origin-${expenseFixtures[0]!.id}`)).toBeNull();
   },
 };

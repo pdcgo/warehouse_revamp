@@ -5,8 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Box, Flex, Heading, Icon, Spinner, Stack, Table, Text } from "@chakra-ui/react";
 import { ArrowRight, History } from "lucide-react";
 
-import { rpcError, userClient } from "../../api/clients";
-import { publicUsersByIds, userByIdsRowData } from "../users/adapt";
+import { rpcError } from "../../api/clients";
+import { usersByIdsQuery } from "../users/queries";
 import { useTermsHistory } from "./queries";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
@@ -14,6 +14,10 @@ import { formatRupiah, isZeroRupiah, type Rupiah } from "../../lib/money";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ActorName } from "../../components/entity/ActorName";
+import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
+
+/** No names yet — shared, so a render before the lookup answers never builds a new empty Map. */
+const NO_ACTORS: Map<string, PublicUser> = new Map();
 
 const PAGE_SIZE = 10;
 
@@ -68,23 +72,11 @@ export function ChangeLogPanel({
   const query = useTermsHistory({ teamId, counterpartyId, page, pageSize: PAGE_SIZE, from, to });
   const changes = query.data?.changes ?? [];
 
-  // Resolve the actors in one batch — they are users, and this service does not know their names.
-  const actorIds = useMemo(
-    () => [...new Set(changes.map((c) => c.actorId.toString()))].sort(),
-    [changes],
-  );
-  const actorsQuery = useQuery({
-    queryKey: ["user-by-ids", actorIds],
-    enabled: actorIds.length > 0,
-    queryFn: async () =>
-      publicUsersByIds(
-        await userClient.userByIDs({
-          filter: { ids: actorIds.map((id) => BigInt(id)) },
-          dataRequest: userByIdsRowData(),
-        }),
-      ),
-  });
-  const actors = actorsQuery.data ?? {};
+  // Resolve the actors in one batch — they are users, and this service does not know their names. A name lookup
+  // (usersByIdsQuery, `referenceQuery`, keyed `key.users` by the id set — #122).
+  const actorIds = useMemo(() => changes.map((c) => c.actorId), [changes]);
+  const actorsQuery = useQuery({ ...usersByIdsQuery(actorIds), enabled: actorIds.some((id) => id > 0n) });
+  const actors = actorsQuery.data ?? NO_ACTORS;
 
   return (
     <Stack gap="card" data-testid="terms-history">
@@ -131,7 +123,7 @@ export function ChangeLogPanel({
                     <Text fontSize="xs" color="fg.muted" mt="0.5">
                       {formatUnixDateTimeShort(c.changedAtUnix)} ·{" "}
                       <ActorName
-                        name={personName(actors[c.actorId.toString()], t("terms.userFallback", { id: c.actorId.toString() }))}
+                        name={personName(actors.get(c.actorId.toString()), t("terms.userFallback", { id: c.actorId.toString() }))}
                         isOverride={c.override}
                         size="xs"
                       />
@@ -170,7 +162,7 @@ export function ChangeLogPanel({
                       {/* An override is a write by somebody outside the creditor team, derived by the server from who
                           acted — never claimed by the caller. It shows as the shared "by Root team" badge. */}
                       <ActorName
-                        name={personName(actors[c.actorId.toString()], t("terms.userFallback", { id: c.actorId.toString() }))}
+                        name={personName(actors.get(c.actorId.toString()), t("terms.userFallback", { id: c.actorId.toString() }))}
                         isOverride={c.override}
                       />
                     </Table.Cell>

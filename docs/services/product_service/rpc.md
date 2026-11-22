@@ -360,3 +360,41 @@ sequenceDiagram
 **Performance** (`product_v1/product_by_ids_images_perf_test.go`, `-tags perfaudit`; 100 000 products over 40 teams, each
 with a full gallery — 500 000 image rows; median of 5): 1 id 0.52 → 1.05 ms with IMAGES, 200 ids 1.66 → 4.78 ms; the
 images read is an index scan of `product_images_product_idx` (0.78 ms executed for 1 000 rows). Not heavy; no audit file.
+
+## The Kategori page's product count — `ProductCategoryCounts` (built 2026-11-21)
+
+The **Kategori** page's *Produk* column was an invented, marked sample until backlog #115
+([the-product-count-is-a-marked-sample](../../technical/frontend/categories_decision.md#the-product-count-is-a-marked-sample)).
+`ProductCategoryCounts` counts it: how many products are filed DIRECTLY on each category, over EVERY team's catalogue —
+a product has exactly one category
+([a-product-has-one-category](../../business/product/context_decision.md#a-product-has-one-category)), so it is one
+`GROUP BY category_id` (`product_v1/product_category_counts.go`).
+
+| | |
+| --- | --- |
+| who | Root / the Administrator only, as the page is — **unscoped** (no `team_id`: the taxonomy is global and the count is every team's). Marked `NO_SIDE_EFFECTS`; with no team scope the admin team's monitor never reaches it |
+| counted | live products: `archived = FALSE` (an archived product is out of the list and every picker) — ⚠ the scoping's reading, a build default. A product on category 0 (from before categories existed) is left out: no node can show it. A category holding none is not listed |
+| answer | `(category_id, products)` per category holding a live product, in id order; NOT paged — bounded by the taxonomy, the tree exception (CLAUDE.md RULE 9), since the page sums a branch over every node at once |
+| a branch | the screen's, made in the page from these figures and the tree it already holds (`CategoryList`) — `pages/categories/productCounts.ts`. ⚠ HELD, the owner's Q3 (own vs whole branch): built as **A**, the whole branch, the set Discover's Kategori keeps ([a-picked-branch-keeps-its-whole-subtree](../../technical/frontend/categories_decision.md#a-picked-branch-keeps-its-whole-subtree)) — ✅ settled 2026-11-21, owner *"A"*: [a-categorys-count-is-its-whole-branch](../../technical/frontend/categories_decision.md#a-categorys-count-is-its-whole-branch) |
+| a deleted category | its products are counted under its id, but the page lists live nodes only, so they land on no row and in no branch — while Discover's subtree (`category_v1.SubtreeIDs`) still walks a deleted node. A branch can therefore read fewer here than Discover keeps when products sit on a deleted child (open point, reported with the build) |
+| tests | `product_category_counts_test.go` — every team's per category, archived and category 0 left out, id order, archive/unarchive followed, the policy (roles, no scope, the read mark); `access_interceptors/product_category_counts_test.go` — every role through the real interceptor: Root / Administrator in the root team answered, every other role (root team, a team, the admin team's monitor) PermissionDenied. 7 mutations killed |
+
+```mermaid
+sequenceDiagram
+    participant K as Kategori page — Root or the Administrator
+    participant C as CategoryList — category_service
+    participant P as ProductCategoryCounts — product_service
+    participant DB as products
+    K->>C: the whole tree
+    K->>P: no fields
+    P->>DB: category_id, COUNT(*) WHERE archived = FALSE AND category_id <> 0 GROUP BY category_id
+    P-->>K: per category, its own live products
+    K->>K: a branch = its own + every node below it (option A, held)
+```
+
+**Performance** (`product_v1/product_category_counts_perf_test.go`, `-tags perfaudit`; 40 teams, 1 500 categories, one
+product in ten archived; median of 5, in the test transaction): 100 000 products 27.9 ms, 300 000 products 51.9 ms — a
+sequential scan and a hash aggregate; with `products_category_idx` dropped on the same seed 25.4 / 48.9 ms. On a
+COMMITTED, `VACUUM ANALYZE`d copy of 300 000 rows: a parallel index-only scan of `products_category_idx` (0 heap
+fetches) 46–57 ms, the generic plan 58 ms, with no category index 48–50 ms. The count reads every live row by nature, so
+no index buys anything; none added. The page is opened rarely. Not heavy; no audit file.

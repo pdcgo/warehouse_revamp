@@ -329,6 +329,7 @@ test("Report exports: the account report's Periode and Rincian files", async ({ 
     "Periode",
     "Penarikan",
     "Modal",
+    "Uang masuk", // money in typed on Biaya, its own change type since #99 (money-in-on-biaya-is-its-own-change-type)
     "Restok",
     "Biaya",
     "Iklan",
@@ -340,13 +341,13 @@ test("Report exports: the account report's Periode and Rincian files", async ({ 
     "Saldo akhir",
   ]);
   // Today: opened at Rp 50.000, the restock paid Rp 50.000 out of it — exact, the net 0, the close 0.
-  expect(periods[1]).toEqual([today, "0", "0", "-50000", "0", "0", "0", "0", "0", "50000", "0", "0"]);
+  expect(periods[1]).toEqual([today, "0", "0", "0", "-50000", "0", "0", "0", "0", "0", "50000", "0", "0"]);
   // A month of days, one a row, consecutive — the quiet ones are rows too.
   expect(periods.length - 1).toBeGreaterThanOrEqual(28);
   for (let i = 2; i < periods.length; i++) {
     const newer = new Date(`${periods[i - 1]![0]}T00:00:00Z`).getTime();
     expect(new Date(`${periods[i]![0]}T00:00:00Z`).getTime()).toBe(newer - 86_400_000);
-    expect(periods[i]!.slice(1)).toEqual(Array(11).fill("0"));
+    expect(periods[i]!.slice(1)).toEqual(Array(12).fill("0"));
   }
 
   // RINCIAN — one sheet per breakdown, every row of each.

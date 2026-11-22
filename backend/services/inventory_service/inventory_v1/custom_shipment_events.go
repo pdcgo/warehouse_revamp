@@ -151,6 +151,41 @@ func customShipmentHandedOverEvent(cs *models.CustomShipment, override bool) *ev
 	}
 }
 
+// customShipmentReceivedEvent announces an INBOUND parcel counted in (backlog #101) — the courier's charge at the door as
+// Terima finalised it, which Team Balance posts as the selling team's debt to the warehouse (0 posts nothing); the
+// restock, its resolution and the stock-in it made. A parcel is counted in once.
+func customShipmentReceivedEvent(cs *models.CustomShipment, link *models.RestockCustomShipment, override bool) *eventsv1.Event {
+	ref := customShipmentRef(cs)
+
+	receivedAt := cs.UpdatedAt
+	if cs.ReceivedAt != nil {
+		receivedAt = *cs.ReceivedAt
+	}
+
+	received := &eventsv1.CustomShipmentReceived{
+		CustomShipmentId: cs.ID,
+		TeamId:           cs.TeamID,
+		WarehouseId:      cs.WarehouseID,
+		RestockId:        cs.RestockID,
+		ResolutionId:     link.ResolutionID,
+		DoorCharge:       cs.ShippingCost,
+		ActorId:          cs.ReceivedByUserID,
+		ActorIsOverride:  override,
+		ReceivedAtUnix:   receivedAt.Unix(),
+	}
+
+	if link.InventoryTransactionID != nil {
+		received.TransactionId = *link.InventoryTransactionID
+	}
+
+	return &eventsv1.Event{
+		EventId:     "custom-shipment-received:" + ref,
+		OccurredAt:  timestamppb.New(receivedAt),
+		AggregateId: "custom-shipment:" + ref,
+		Message:     &eventsv1.Event_CustomShipmentReceived{CustomShipmentReceived: received},
+	}
+}
+
 // publishCustomShipmentEvent sends one of the events above after its commit. A failure is logged with the event_id and
 // never fails the request that already committed.
 func (s *Service) publishCustomShipmentEvent(ctx context.Context, event *eventsv1.Event) {

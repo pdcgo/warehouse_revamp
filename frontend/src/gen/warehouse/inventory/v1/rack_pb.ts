@@ -495,9 +495,9 @@ export type RackSummary = Message<"warehouse.inventory.v1.RackSummary"> & {
    * `unknown_cost_products` travels beside it rather than being left to be inferred from a low
    * number.
    *
-   * UNSET FOR A WAREHOUSE (a-warehouse-sees-ready-value-but-a-shelf-only-units): at the placement level a caller acting
-   * with a warehouse role reads units only — never 0, which would say the shelf is worth nothing. The owning seller and
-   * root (Root or the Administrator from outside the warehouse, and the admin team's monitor) are given it.
+   * SET FOR EVERY READER, a warehouse included — a 0 too: an empty shelf is worth Rp 0. A warehouse reads a rack's value
+   * again since 2026-11-20 (the 🔄 line of a-warehouse-sees-ready-value-but-a-shelf-only-units: the owner's acceptance
+   * gives it each product with its units and value); `optional` stays from the days it read units only.
    *
    * @generated from field: optional double total_value = 2;
    */
@@ -506,7 +506,7 @@ export type RackSummary = Message<"warehouse.inventory.v1.RackSummary"> & {
   /**
    * How many distinct products on this shelf have no recorded cost. Non-zero means `total_value` is
    * understated, and by an unknown amount — the screen says so rather than presenting a confident
-   * figure built on a gap. Unset with `total_value`.
+   * figure built on a gap. Set with `total_value`.
    *
    * @generated from field: optional uint32 unknown_cost_products = 3;
    */
@@ -564,8 +564,8 @@ export type RackStockLine = Message<"warehouse.inventory.v1.RackStockLine"> & {
    * guess it from a zero, because "this shelf holds nothing of value" and "we never recorded what
    * this cost" are opposite things to tell a manager.
    *
-   * UNSET FOR A WAREHOUSE, all three (a-warehouse-sees-ready-value-but-a-shelf-only-units): a caller acting with a
-   * warehouse role reads the shelf in units only. Set for everybody else, `cost_known` false included.
+   * SET FOR EVERY READER, all three — `cost_known` false included; a warehouse reads them too since 2026-11-20 (the 🔄
+   * line of a-warehouse-sees-ready-value-but-a-shelf-only-units). `optional` stays from the days it read units only.
    *
    * @generated from field: optional double unit_cost = 3;
    */
@@ -578,7 +578,7 @@ export type RackStockLine = Message<"warehouse.inventory.v1.RackStockLine"> & {
 
   /**
    * `on_hand × unit_cost`, exact — 0 when the cost is unknown. Computed here rather than in the
-   * client so the line and the header tile cannot disagree about the same multiplication. Unset for a warehouse.
+   * client so the line and the header tile cannot disagree about the same multiplication.
    *
    * @generated from field: optional double value = 5;
    */

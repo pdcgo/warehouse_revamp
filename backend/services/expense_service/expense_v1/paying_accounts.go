@@ -31,18 +31,26 @@ func (noPayingAccounts) Account(context.Context, uint64, uint64) (PayingAccount,
 }
 
 // checkPayingAccount refuses an account that is not one of the team's ACTIVE OPERATIONAL accounts — FailedPrecondition,
-// naming it, so the person knows which pick to change. Asked BEFORE any transaction: a call to another service never
-// holds a pooled connection or a lock across its round-trip.
-func (s *Service) checkPayingAccount(ctx context.Context, teamID, accountID uint64) error {
+// naming it, so the person knows which pick to change. `anyActive` (Prive, Setoran modal) takes ANY of the team's
+// ACTIVE accounts, operational or not, as Setor / Tarik Modal on the account page does
+// (the-expense-types-prototype-is-accepted). Asked BEFORE any transaction: a call to another service never holds a
+// pooled connection or a lock across its round-trip.
+func (s *Service) checkPayingAccount(ctx context.Context, teamID, accountID uint64, anyActive bool) error {
 	account, found, err := s.accounts.Account(ctx, teamID, accountID)
 	if err != nil {
 		return fmt.Errorf("ask the account that paid: %w", err)
 	}
 
 	switch {
+	case !found && anyActive:
+		return fmt.Errorf("account #%d is %w", accountID, errNotActive)
 	case !found:
 		// Another team's id reads as one that never existed.
 		return fmt.Errorf("account #%d is %w", accountID, errNotOperational)
+	case !account.Active && anyActive:
+		return fmt.Errorf("%s is archived — it is %w", accountName(account, accountID), errNotActive)
+	case anyActive:
+		return nil
 	case !account.Active:
 		return fmt.Errorf("%s is archived — it is %w", accountName(account, accountID), errNotOperational)
 	case !account.Operational:

@@ -40,6 +40,11 @@ export function clearCategoriesForStory() {
   rows = [];
 }
 
+/** A STORY'S SETUP: THIS tree instead of the fixtures' — `resetCategoryStub` (preview's beforeEach) brings them back. */
+export function categoriesForStory(tree: { id: bigint; name: string; parentId: bigint }[]) {
+  rows = tree.map((c) => ({ ...c, deleted: false }));
+}
+
 const live = () => rows.filter((r) => !r.deleted);
 
 /**

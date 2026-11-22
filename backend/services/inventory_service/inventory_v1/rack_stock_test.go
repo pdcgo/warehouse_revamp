@@ -9,48 +9,18 @@ import (
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
 )
 
-// THE SHELF'S LINES IN UNITS FOR A WAREHOUSE (a-warehouse-sees-ready-value-but-a-shelf-only-units): every line keeps its
-// product, its count on this rack and whether a count holds it; the unit price, whether the cost is known and the value
-// are UNSET — the rack page's Harga/pcs and Nilai are not a warehouse's. Root and the admin monitor keep all three.
+// THE SHELF'S LINES WITH THEIR PRICE AND VALUE FOR EVERY READER (placement.md given 11 — a warehouse reads each product
+// on a rack with its units and value; the 🔄 2026-11-20 line of a-warehouse-sees-ready-value-but-a-shelf-only-units,
+// backlog #109): every line keeps its product, its count on this rack and whether a count holds it, and carries its unit
+// price, whether the cost is known and its value — SET, for the warehouse's three roles as for Root and the monitor.
 
-func TestRackStock_AWarehouseReadsEachLineInUnitsOnly(t *testing.T) {
+func TestRackStock_EveryReaderIsGivenEachLinesPriceAndValue(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newService(t, db)
 
 	rackID, priced, unpriced := aRackWithGoods(t, svc, db)
 
-	for _, role := range warehouseReaders {
-		res, err := svc.RackStock(asRole(1, role), connect.NewRequest(&inventoryv1.RackStockRequest{
-			TeamId: rackWarehouse, Filter: &inventoryv1.RackStockFilter{RackId: rackID}, Page: page1(),
-		}))
-		if err != nil {
-			t.Fatalf("%s: RackStock: %v", role, err)
-		}
-
-		onHand := map[uint64]int64{}
-
-		for _, line := range rackStockRows(res.Msg) {
-			onHand[line.GetProductId()] = line.GetOnHand()
-
-			if line.UnitCost != nil || line.CostKnown != nil || line.Value != nil {
-				t.Fatalf("%s: line %d carries money %v / %v / %v, want all three unset",
-					role, line.GetProductId(), line.UnitCost, line.CostKnown, line.Value)
-			}
-		}
-
-		if onHand[priced] != 10 || onHand[unpriced] != 4 {
-			t.Fatalf("%s: on hand = %v, want %d:10 and %d:4", role, onHand, priced, unpriced)
-		}
-	}
-}
-
-func TestRackStock_RootAndTheMonitorKeepThePriceAndTheValue(t *testing.T) {
-	db := san_testdb.DB(t)
-	svc := newService(t, db)
-
-	rackID, priced, unpriced := aRackWithGoods(t, svc, db)
-
-	for who, ctx := range valueReaders() {
+	for who, ctx := range shelfReaders() {
 		res, err := svc.RackStock(ctx, connect.NewRequest(&inventoryv1.RackStockRequest{
 			TeamId: rackWarehouse, Filter: &inventoryv1.RackStockFilter{RackId: rackID}, Page: page1(),
 		}))
@@ -68,13 +38,13 @@ func TestRackStock_RootAndTheMonitorKeepThePriceAndTheValue(t *testing.T) {
 		}
 
 		got := byProduct[priced]
-		if got == nil || !got.GetCostKnown() || got.GetUnitCost() != 50000 || got.GetValue() != 500000 {
-			t.Fatalf("%s: the restocked line = %+v, want 50000 × 10 = 500000", who, got)
+		if got == nil || got.GetOnHand() != 10 || !got.GetCostKnown() || got.GetUnitCost() != 50000 || got.GetValue() != 500000 {
+			t.Fatalf("%s: the restocked line = %+v, want 10 at 50000 = 500000", who, got)
 		}
 
 		other := byProduct[unpriced]
-		if other == nil || !other.GetCostKnown() || other.GetUnitCost() != 1000 || other.GetValue() != 4000 {
-			t.Fatalf("%s: the moved-in line = %+v, want 1000 × 4 = 4000", who, other)
+		if other == nil || other.GetOnHand() != 4 || !other.GetCostKnown() || other.GetUnitCost() != 1000 || other.GetValue() != 4000 {
+			t.Fatalf("%s: the moved-in line = %+v, want 4 at 1000 = 4000", who, other)
 		}
 	}
 }

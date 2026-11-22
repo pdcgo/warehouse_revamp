@@ -224,7 +224,7 @@ func TestExpenseAdjust_FoldsOnTheDayItIsMadeForWhoMadeIt(t *testing.T) {
 	budi := asCaller(62, teamA, role_basev1.Role_ROLE_SELLING_OWNER)
 
 	res, err := svc.ExpenseCreate(budi, connect.NewRequest(&expensev1.ExpenseCreateRequest{
-		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Amount: 500_000, OccurredAt: "2026-10-14",
+		TeamId: teamA, Kind: expensev1.ExpenseKind_EXPENSE_KIND_ADS, Type: typeFor(expensev1.ExpenseKind_EXPENSE_KIND_ADS), Amount: 500_000, OccurredAt: "2026-10-14",
 		ShopId: adsShop, FinanceAccountId: payingAccount,
 	}))
 	if err != nil {

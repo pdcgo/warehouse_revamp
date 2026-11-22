@@ -21,6 +21,12 @@ import type { OrderStage, OrderStageId } from "../../../features/orders/stages";
 
 const JOURNEY: OrderStageId[] = ["pending", "processed", "picked", "shipping", "shipped", "completed"];
 
+// ⚠ BELOW 360px A LABEL IS 11px, NOT 12 (backlog #106). At 320 — the narrowest phone
+// `nothing-runs-past-a-phones-edge` is judged on — even the one-word labels touched at 12px (*Pending* and
+// *Processed* by 1.3px, *Menunggu* and *Diproses* by 0.2px); the owner approved the fix from a mock drawn with 11px
+// labels. From 360 up they stay 12. A query, like the shell's own breakpoint: 360px (22.5em) minus a hair.
+const NARROW_PHONE = "@media (max-width: 22.4375em)";
+
 /** The forward step an off-journey status leaves from. */
 function branchesFrom(id: OrderStageId): OrderStageId {
   return id === "cancel" ? "pending" : "shipped";
@@ -62,11 +68,20 @@ export function StageStepper({ stage }: { stage: OrderStage | undefined }) {
                   data-testid={`stage-step-${id}`}
                   data-state={current ? "current" : done ? "done" : "todo"}
                 />
+                {/* ⚠ THE LABEL WRAPS UNDER ITS DOT (backlog #106, owner from his phone: *"This status journey is
+                    overlapping each other"*). On one line (`nowrap`) at 390px, *Sudah diambil*, *Sudah diserahkan*
+                    and *Dikirim* ran into each other; now a long label breaks into two lines, centred under its dot,
+                    so none runs into the next. With room to spare — a desktop — each still reads on one line. Below
+                    360px it is 11px (`NARROW_PHONE`). */}
                 <Text
                   fontSize="xs"
-                  whiteSpace="nowrap"
+                  css={{ [NARROW_PHONE]: { fontSize: "0.6875rem" } }}
+                  lineHeight="shorter"
+                  textAlign="center"
+                  lineClamp={2}
                   fontWeight={current ? "bold" : undefined}
                   color={done ? "fg" : "fg.muted"}
+                  data-testid={`stage-step-label-${id}`}
                 >
                   {t(`orders.stage.${id}`)}
                 </Text>

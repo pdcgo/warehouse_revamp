@@ -92,7 +92,19 @@ import {
   resetRestockTagScenario,
   setTag,
   tagsOnWire,
+  takeProblemTagsOff,
 } from "./restockTagScenario";
+import {
+  inboundWire,
+  recordResolution,
+  recordResolutionCall,
+  resetRestockResolutionScenario,
+  resolutionFieldsOf,
+  restockResolutionScenario,
+  settleRestock,
+  settledMatches,
+  settlementLogsOf,
+} from "./restockResolutionScenario";
 import { RestockTagType } from "../src/gen/warehouse/inventory/v1/restock_tag_pb";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 
@@ -115,6 +127,8 @@ export function resetRestockStub() {
   resetRestockWriteScenario();
   resetDoorPhotoScenario();
   resetRestockTagScenario(rows);
+  // The resolutions, settled marks, Riwayat rows and inbound parcels (backlog #101) — empty until a story seeds them.
+  resetRestockResolutionScenario();
 }
 
 /**
@@ -399,7 +413,11 @@ function toWire(r: RestockFixture, withLogs: boolean, reader?: bigint) {
     items,
     subtotal,
     total: subtotal + r.shipmentCost,
-    logs: withLogs ? r.logs : [],
+    // The trail — and its settlement rows (backlog #101: a resolution, a settle, a reopen; restockResolutionScenario.ts),
+    // by their time.
+    logs: withLogs ? [...r.logs, ...settlementLogsOf(r.id, r.status)].sort((a, b) => (a.atUnix < b.atUnix ? -1 : a.atUnix > b.atUnix ? 1 : 0)) : [],
+    // Its resolution rows (the detail), their count and the settled mark (both) — money for the owner only (#101).
+    ...resolutionFieldsOf(r, withLogs, reader),
     // Its tags (#87), on the list's rows and the detail alike.
     tags: tagsOnWire(r.id),
     countCorrections: withLogs ? correctionRowsOf("restock", r.id, withMoney) : [],
@@ -652,6 +670,8 @@ function inListScope(r: RestockFixture, teamId: bigint, f: ListFilter): boolean 
   if (f?.shipmentId && r.shipmentId !== f.shipmentId) return false;
   // The tags (#87): none picked = any; else it carries ANY of them.
   if (!carriesAnyTag(r.id, f?.tagIds)) return false;
+  // The settled mark (#101): the Hilang tab sends LOST + UNSETTLED.
+  if (!settledMatches(r.id, f?.settled)) return false;
 
   if (f?.fromUnix || f?.toUnix) {
     const at = dateOf(r, field);
@@ -745,6 +765,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
   },
 
   restockRequestList(req) {
+    restockResolutionScenario.listAsks.push({ status: req.filter?.status ?? S.UNSPECIFIED, settled: req.filter?.settled ?? 0 });
     const matched = rows
       .filter((r) => inListScope(r, req.teamId, req.filter))
       .sort((a, b) => (a.id > b.id ? -1 : 1));
@@ -786,6 +807,38 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
 
   restockRequestDetail(req) {
     return { request: toWire(visible(req.teamId, req.requestId), true, req.teamId) };
+  },
+
+  // ── RESTOCK RESOLUTIONS (backlog #101) — the owning selling team's; restockResolutionScenario.ts plays the rules. ──
+  restockResolutionCreate(req) {
+    recordResolutionCall("RestockResolutionCreate", req);
+    const r = raisedBy(req.teamId, req.restockId);
+    const { row, parcel } = recordResolution(r, {
+      teamId: req.teamId,
+      restockId: req.restockId,
+      type: req.type,
+      note: req.note,
+      refundAmount: req.refundAmount,
+      financeAccountId: req.financeAccountId,
+      customShipmentId: req.customShipmentId,
+      reshipping: req.reshipping,
+      idempotencyKey: req.idempotencyKey,
+    });
+
+    return {
+      resolution: { ...row, refundAmount: row.refundAmount, createdByIsOverride: false },
+      customShipment: parcel ? inboundWire(parcel, req.teamId) : undefined,
+    };
+  },
+
+  restockRequestSettle(req) {
+    recordResolutionCall("RestockRequestSettle", req);
+    const r = raisedBy(req.teamId, req.requestId);
+    settleRestock(r);
+    // The app takes *Barang kurang* / *Barang rusak* off in the same step.
+    takeProblemTagsOff(r.id);
+
+    return { request: toWire(r, true, req.teamId) };
   },
 
   // KOREKSI JUMLAH TERIMA (restock_received_count_correct.go): the RECEIVING warehouse only (another's reads NotFound),

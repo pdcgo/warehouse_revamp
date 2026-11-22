@@ -85,6 +85,10 @@ import { ListSkeleton } from "../../components/feedback/ListSkeleton";
 import { useIsMobile } from "../../layouts/shell";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { StatsToggle } from "../../components/chrome/StatsToggle";
+import { RestockTagChips } from "../../features/restock/RestockTagChips";
+import { OrderTagFilter } from "../../features/orders/tags/OrderTagFilter";
+import { NO_TAGS, TAGS_CODEC, tagsOfOrder } from "../../features/orders/tags/orderTags";
+import { NO_ORDER_TAGS, useOrderTagCatalogue } from "../../features/orders/tags/tagQueries";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -164,6 +168,10 @@ export function SellerOrdersPage() {
   const [dateType, setDateType] = useUrlState<OrderDateType>("date", "created", DATE_TYPE_CODEC);
   // The orders whose settlement account never opened (the-settlement-missing-badge-is-accepted).
   const [notOpened, setNotOpened] = useUrlState("unopened", false, boolCodec);
+  // ORDER TAGS (backlog #100, the-order-tags-prototype-is-accepted): the pick lives in the address like every filter
+  // (`?tag=1,2`) and goes to the server as `tag_ids` — an order shown when it carries ANY of the picked, inside the list's
+  // one scope, so the rows, the tab counts, the Statistik and Ekspor narrow alike.
+  const [tagIds, setTagIds] = useUrlState("tag", NO_TAGS, TAGS_CODEC);
 
   const [importing, setImporting] = useState(false);
 
@@ -172,6 +180,8 @@ export function SellerOrdersPage() {
   const [statsOpen, setStatsOpen] = useState(false);
 
   const teamId = current?.teamId;
+  // The Tag filter's options — the orders' one list, every team's (OrderTagList, a picker feed).
+  const tagCatalogue = useOrderTagCatalogue(teamId).data ?? NO_ORDER_TAGS;
 
   // A shop belongs to a SELLING team. This list is read from both ends (#151) — a warehouse sees the
   // orders shipping from it — and a warehouse holds no shops, so the picker would be an empty control
@@ -208,8 +218,9 @@ export function SellerOrdersPage() {
       warehouseId,
       dateField,
       settlementNotOpened: notOpened,
+      tagIds,
     };
-  }, [debouncedSearch, shopId, canFilterByShop, range, dateType, creatorId, marketplace, warehouseId, notOpened]);
+  }, [debouncedSearch, shopId, canFilterByShop, range, dateType, creatorId, marketplace, warehouseId, notOpened, tagIds]);
 
   // The "created by" filter's people: everyone who typed in an order this team may list
   // (a-who-filter-lists-the-people-on-its-rows) — Customer Service asks it too.
@@ -257,6 +268,7 @@ export function SellerOrdersPage() {
     marketplace !== Marketplace.UNSPECIFIED,
     !isAllDates(range),
     notOpened,
+    tagIds.length > 0,
   ].filter(Boolean).length;
   const filtered = filterCount > 0;
 
@@ -509,6 +521,7 @@ export function SellerOrdersPage() {
             setRange(ALL_DATES);
             setDateType("created");
             setNotOpened(false);
+            setTagIds(NO_TAGS);
           })
         }
       >
@@ -575,6 +588,12 @@ export function SellerOrdersPage() {
             />
           </FilterField>
         )}
+
+        {/* THE TAG FILTER, after the shop and before the date: several tags of the orders' one list, an order shown when
+            it carries ANY of them (the-order-tags-prototype-is-accepted). */}
+        <FilterField w="15rem" testId="orders-tag-filter">
+          <OrderTagFilter tags={tagCatalogue} value={tagIds} onChange={(ids) => refilter(() => setTagIds(ids))} />
+        </FilterField>
 
         {/* WHICH DATE, THEN WHICH WINDOW — one panel (`a-date-type-is-picked-inside-the-range-panel`): Dibuat, Tanggal
             order (the-date-filter-switches-created-or-platform), and the first entry into each of five statuses
@@ -702,6 +721,10 @@ export function SellerOrdersPage() {
                           {rowShowsShop ? t("orders.shop") : t("orders.team")}
                         </Table.ColumnHeader>
 
+                        {/* The order's tags (the-order-tags-prototype-is-accepted), after whose order it is and before the
+                          dates, as the restock lists carry theirs before theirs. Two chips + N, two lines at most. */}
+                        <Table.ColumnHeader>{t("orders.tags.column")}</Table.ColumnHeader>
+
                         <Table.ColumnHeader>
                           <Flex gap="1" align="center">
                             {t("orders.placed")}
@@ -774,7 +797,7 @@ export function SellerOrdersPage() {
 
                             {/* The number printed on the slip — `receipt_code`, beside the slip itself. */}
                             <Table.Cell>
-                              <ReceiptCell code={o.receiptCode} />
+                              <ReceiptCell code={o.receiptCode} channelId={o.shipmentChannelId} />
                             </Table.Cell>
 
                             <Table.Cell>
@@ -782,6 +805,10 @@ export function SellerOrdersPage() {
                                 shop={rowShowsShop ? shopOf(o.shopId) : undefined}
                                 team={rowShowsShop ? undefined : teamOf(o.teamId)}
                               />
+                            </Table.Cell>
+
+                            <Table.Cell data-testid={`order-tags-cell-${o.id}`}>
+                              <RestockTagChips tags={tagsOfOrder(o)} testId={`order-tags-${o.id}`} />
                             </Table.Cell>
 
                             <Table.Cell>

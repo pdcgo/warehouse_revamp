@@ -23,7 +23,8 @@ import (
 //
 // Plain functions over inventory's own tables (HARD RULE 3), asked by supplier_service through the composition root's
 // seam (cmd/app_development/supplier_goods_reader.go). Both walk the supplier's batches through batches_supplier_idx
-// (supplier_id, supplier_channel_id, warehouse_id); the warehouse is checked inside the index entry.
+// (supplier_id, supplier_channel_id, warehouse_id) — the Produk set, by plan, through batches_supplier_product_idx
+// (00063), whose order is its DISTINCT's; the warehouse is checked inside the index entry.
 func SupplierStoresAtWarehouse(ctx context.Context, db *gorm.DB, supplierID, warehouseID uint64) ([]uint64, error) {
 	if supplierID == 0 || warehouseID == 0 {
 		return nil, nil

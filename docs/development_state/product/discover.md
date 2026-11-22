@@ -1,5 +1,20 @@
 # Development state — product discover
 
+> 🔀 **2026-11-21 — the detail's Keluar Masuk Harian tab is real** (backlog #114;
+> [the-discover-detail-has-the-warehouse-zone](../../technical/frontend/products_decision.md#the-discover-detail-has-the-warehouse-zone),
+> [stock-history-is-everyones](../../technical/frontend/products_decision.md#stock-history-is-everyones)): `InventoryService.ProductDailyMoves`, the same shared
+> tab as the product's own page ([context.md](context.md)) — the owner's last fourteen days from the daily fold, in the
+> card's warehouse lens, units only. ⚠ Which movements are Masuk and which Keluar is HELD (owner's Q2; built as A).
+> `pending.ts` left: `division`, `derived`. Stories `AnotherTeamsDaysAreReal`, `AnotherTeamsDaysFollowThePicker`.
+
+> 🔀 **2026-11-21 — the detail's Pemasok tab is real** (backlog #112;
+> [the-supplier-tab-names-the-store](../../technical/frontend/products_decision.md#the-supplier-tab-names-the-store),
+> [the-discover-detail-has-the-warehouse-zone](../../technical/frontend/products_decision.md#the-discover-detail-has-the-warehouse-zone)):
+> `InventoryService.ProductSupplierGoods`, the same shared tab as the product's own page ([context.md](context.md)), in
+> the card's warehouse lens, never a cost here (the server sends the last cost to the owning team only, and the page
+> draws none even then). `pending.ts` left: `division`, `derived`, `daily`. Stories `AnotherTeamsSuppliersShowNoCost`,
+> `TheSuppliersFollowThePicker`, `YourOwnProductsSuppliersShowNoCostHere`.
+
 > 🔀 **2026-11-16 — the detail's gallery and another team's Riwayat Stok are real** (backlog #69; decisions
 > [the-discover-detail-shows-no-markup](../../technical/frontend/products_decision.md#the-discover-detail-shows-no-markup),
 > [stock-history-is-everyones](../../technical/frontend/products_decision.md#stock-history-is-everyones)).
@@ -129,7 +144,8 @@ What the screen is built ahead of, in the order a seller would feel it. Each is 
 | 4 | **Kategori filter** | ProductDiscover takes no category filter (product context_decision: a subquery, not a join, or the page count breaks) |
 | 5 | **Prioritas · Riset · Umum** stored per product | not in the business context yet; replaces or sits beside the team-level `priority_product` — the business context decides |
 | 7 | ~~**A product's stock history for any team**~~ ✅ built 2026-11-16 (`DiscoverStockHistory`) | every team may read it ([stock-history-is-everyones](../../technical/frontend/products_decision.md#stock-history-is-everyones)), but `OwnerStockHistory` filters by the caller's team — another team's product reads nothing, so the tab shows samples |
-| 8 | **Who supplies a product** (the Pemasok tab, both pages) | `metrics/suppliers` takes no product filter, and `supplier_channel_products` is not written yet — the tab's rows are samples |
+| 8 | ~~**Who supplies a product**~~ ✅ built 2026-11-21 (`ProductSupplierGoods`) | the Pemasok tab, both pages — the owner's restock batches grouped per supplier and store |
+| 9 | ~~**A product's days in and out**~~ ✅ built 2026-11-21 (`ProductDailyMoves`) | the Keluar Masuk Harian tab, both pages — the owner's daily fold, Sisa read back from today's stock; ⚠ Masuk/Keluar HELD (owner's Q2) |
 | 6 | **The reserve check on an order at exactly the minimum** | the screens close a product AT its minimum (≤); the business context opens it there (`<`) — [product clarify Q13](../../business/product/context_clarify.md#question). Whatever enforces the reserve on an order follows the answer |
 
 **Pass (2026-10-06):** the discover page got its Storybook, and a separate **discover product detail**
@@ -165,7 +181,8 @@ carries only the cover).
 | ~~`ongoing`~~ | ✅ real 2026-11-14 | DiscoverStockByIds (every warehouse and each), the card's read — mark gone |
 | ~~`crossPrice`~~ | ✅ real 2026-11-14 | DiscoverStockByIds' cross range, per warehouse too; the cost never sent — mark gone |
 | `derived` | sample | the link a return to another team makes is recorded nowhere — the product page's `sampleDerived` |
-| `suppliers` | sample | `supplier_channel_products` read backwards — waits on [linking-products-is-deferred](../../business/supplier/context_decision.md#linking-products-is-deferred), and no cross-team supplier read exists; rows are picked from the supplier discover sample |
+| ~~`suppliers`~~ | ✅ real 2026-11-21 | ProductSupplierGoods — the owner's restock batches per supplier and store, in the lens; no cost here — mark gone |
+| ~~`daily`~~ | ✅ real 2026-11-21 | ProductDailyMoves — the owner's last fourteen days from the daily fold, in the lens; units only — mark gone |
 
 ## Not built / worth a decision
 

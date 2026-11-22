@@ -26,9 +26,12 @@ Evidence: [`profile_picture_erase_race_test.go`](../../../../backend/services/do
 | a share in flight is skipped, not waited on | `TestInterleave_SweepGeneratedFiles_AShareInFlightIsSkipped`: B's share insert holds the row → A's pick returns without it, not blocked |
 | a share after the pick waits and is refused | `TestInterleave_SweepGeneratedFiles_AShareAfterThePickWaitsAndIsRefused`: B's insert BLOCKS on A's row lock, A deletes and commits → B gets 23503 |
 
-**Observed, not a finding:** a share that loses to the sweep (the schedule above) surfaces as `ShareDocument`'s
+**Observed, not a finding:** a share that loses to the sweep (the schedule above) surfaced as `ShareDocument`'s
 **Internal** (the FK violation), not NotFound — 8 of the 20 losers; the other 12 read NotFound before inserting. No data
-is wrong and no screen shares a generated file, so it is left as is.
+was wrong. ✅ **Answered NotFound since 2026-11-20** (backlog #102): the handler maps a foreign-key violation on its
+insert to the NotFound of a document already gone — an error mapping, no lock changed. `TestRace_SweepGeneratedFiles_AShareRacingTheSweep`
+now requires NotFound of every loser (20 of 20 in the re-run), and `TestShareDocument_LosingTheRaceToTheSweepAnswersNotFound`
+writes the schedule down (the real sweep between the share's read and write); both fail with the mapping removed.
 
 **Found and fixed by it:** the local store's delete failed for the second of two simultaneous deletes of one file on
 Windows (*Access is denied*, the file still mid-delete). `LocalStore.Delete` now retries briefly, and
@@ -38,3 +41,4 @@ Windows (*Access is denied*, the file still mid-delete). `LocalStore.Delete` now
 | --- | --- |
 | 2026-10-06 | first matrix — `ProfilePictureErase` |
 | 2026-11-11 | `SweepGeneratedFiles` (generated-files-are-kept-seven-days) — raced against itself, a download and a share: safe |
+| 2026-11-20 | `ShareDocument` losing to the sweep answers NotFound, not Internal (#102) — the share race re-run: 20 landed, 20 lost, all NotFound |

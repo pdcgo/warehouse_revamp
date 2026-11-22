@@ -11,6 +11,8 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_testdb"
+	"github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_service_models"
+	expense_v1 "github.com/pdcgo/warehouse_revamp/backend/services/expense_service/expense_v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/inventory_service/inventory_service_models"
 	"github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_service_models"
 	selling_v1 "github.com/pdcgo/warehouse_revamp/backend/services/selling_service/selling_v1"
@@ -148,6 +150,7 @@ func TestReportRefold_EachReportTakesItsOwnScope(t *testing.T) {
 		selling_v1.ReportOrderDaily:    "team",
 		supplier_v1.ReportRestockDaily: "supplier",
 		supplier_v1.ReportSaleDaily:    "supplier",
+		expense_v1.ReportExpenseDaily:  "team",
 	} {
 		err := refoldFlagsFit(report, []string{flag})
 		if err != nil {
@@ -345,5 +348,81 @@ func TestReportRefold_SupplierSaleReadsSellingsOrdersAndInventorysTake(t *testin
 	again, err := san.SupplierReportRefold(ctx, in)
 	if err != nil || again.Changed() || again.Claimed != 0 {
 		t.Fatalf("a second run = %+v, %v", again, err)
+	}
+}
+
+// `san report refold --report expense-daily` on a selling team's day whose report row sits as expense 00009 left the
+// older rows — untyped (type 0): the dry run shows the untyped row out and the typed row in and writes nothing; the real
+// run puts the bonus under its type (BONUS, 4), Seller side kept; a second run changes nothing. A warehouse team's flag
+// noun is "team", not "seller team".
+func TestReportRefold_ExpenseDailyGivesOldRowsTheirTypes(t *testing.T) {
+	db := san_testdb.DB(t)
+	san := &San{db: db, teams: NewTeamCodes(db), target: "test"}
+	ctx := context.Background()
+
+	team := importTeam(t, db, "selling", "RF-EXP")
+	day := time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC)
+
+	err := db.Create(&expense_service_models.ExpenseRecord{
+		TeamID: team, Kind: 2, Type: 4, Amount: 600_000, OccurredAt: day, CreatedBy: 61, FinanceAccountID: 7,
+	}).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = db.Create(&expense_service_models.ExpenseMetricDailyReport{
+		Day: day, TeamID: team, SellerID: team, Kind: 2, UserID: 61, Amount: 600_000,
+	}).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	in := expense_v1.MetricDayRefoldInput{TeamID: team, Day: "2026-11-10", DryRun: true}
+
+	dry, err := san.ExpenseReportRefold(ctx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out := expenseRefoldLine(san.target, in, dry)
+	t.Logf("the dry run:\n%s", out)
+
+	for _, want := range []string{"DRY RUN", fmt.Sprintf("expense-daily · team %d", team), "expense records counted 1",
+		"kind 2 · flow 0 · type 0 · shop 0 · user 61: row removed", "kind 2 · flow 0 · type 4 · shop 0 · user 61: row added",
+		"600.000"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("dry-run output lacks %q:\n%s", want, out)
+		}
+	}
+
+	var typed int64
+
+	err = db.Raw(`SELECT COUNT(*) FROM expense_metric_daily_reports WHERE team_id = ? AND type = 4`, team).Scan(&typed).Error
+	if err != nil || typed != 0 {
+		t.Fatalf("the dry run wrote %d typed rows (%v)", typed, err)
+	}
+
+	in.DryRun = false
+
+	done, err := san.ExpenseReportRefold(ctx, in)
+	if err != nil || !done.Changed() {
+		t.Fatalf("real run = %+v, %v", done, err)
+	}
+
+	var rows []expense_service_models.ExpenseMetricDailyReport
+
+	err = db.Where("team_id = ?", team).Find(&rows).Error
+	if err != nil || len(rows) != 1 || rows[0].Type != 4 || rows[0].SellerID != team || rows[0].Amount != 600_000 {
+		t.Fatalf("after the re-fold: %+v, %v — want one BONUS row of 600.000 under Seller", rows, err)
+	}
+
+	again, err := san.ExpenseReportRefold(ctx, in)
+	if err != nil || again.Changed() || !strings.Contains(expenseRefoldLine(san.target, in, again), ": unchanged") {
+		t.Fatalf("a second run = %+v, %v", again, err)
+	}
+
+	err = refoldFlagsFit(expense_v1.ReportExpenseDaily, []string{"team", "supplier"})
+	if err == nil || !strings.Contains(err.Error(), "re-folds one team: give --team, not --supplier") {
+		t.Fatalf("expense-daily with --supplier: %v", err)
 	}
 }

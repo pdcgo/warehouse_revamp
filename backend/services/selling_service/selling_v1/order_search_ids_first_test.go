@@ -220,6 +220,7 @@ func statFilterOf(f *sellingv1.OrderListFilter) *sellingv1.OrderStatFilter {
 		CreatedFromUnix: f.GetCreatedFromUnix(), CreatedToUnix: f.GetCreatedToUnix(), CreatedByUserId: f.GetCreatedByUserId(),
 		SellerTeamId: f.GetSellerTeamId(), Marketplace: f.GetMarketplace(), ShipmentChannelId: f.GetShipmentChannelId(),
 		WarehouseId: f.GetWarehouseId(), DateField: f.GetDateField(), SettlementNotOpened: f.GetSettlementNotOpened(),
+		TagIds: f.GetTagIds(),
 	}
 }
 

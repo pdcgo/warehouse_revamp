@@ -1,20 +1,16 @@
 import { useEffect, useState } from "react";
 import { Combobox, Portal, Spinner, useListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { rpcError, supplierClient } from "../../api/clients";
-import { type SupplierRecord, suppliersFromList, supplierListRowData } from "../../features/suppliers/adapt";
-import { SupplierListScope } from "../../gen/warehouse/supplier/v1/supplier_pb";
+import type { SupplierRecord } from "../../features/suppliers/adapt";
+import { useSupplierOptions } from "../../features/suppliers/queries";
 import { searchOnlyWhatIsTyped } from "../../lib/comboboxSearch";
 
-// How many suppliers are loaded. A team buys from a handful — dozens at most — so the whole list is
-// fetched and filtered in the browser.
-//
-// Said plainly because it IS a cap: a team with more suppliers than this would find the surplus
-// silently unselectable. That becomes the wrong trade the day it happens, and the fix then is
-// SupplierList's `q` driving a server-side search the way ProductSelect does. It is not the right
-// trade today, because a server-side search breaks the case #131 exists to protect — see the remount
-// note below.
-const SUPPLIER_LIMIT = 200;
+// The whole list is loaded and filtered in the browser — a team buys from a handful. The cap and why it is not a
+// server-side search: `SUPPLIER_OPTIONS_LIMIT` in features/suppliers/queries.ts, and the remount note below.
+
+// One empty list for every render, so "nothing loaded" is the SAME value each time and the fill effect below does not
+// re-run on a fresh `[]` (ShopSelect's loop note).
+const NO_SUPPLIERS: SupplierRecord[] = [];
 
 export interface SupplierSelectProps {
   /** The team whose OWN suppliers to list — a deleted one is never offered (a-deleted-supplier-is-kept-for-its-figures). */
@@ -45,8 +41,18 @@ export function SupplierSelect({
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("suppliers.select.placeholder");
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  // THE LIST THROUGH THE QUERY CACHE (#121), not a fetch of its own: the same entry for every SupplierSelect of the
+  // team, so a second form (or the same form mounted again) asks nothing, and a supplier added on My Supplier is in
+  // the list without a reload (its write invalidates `suppliers`). The effect version this replaces fetched once per
+  // mount and, on a failure, stayed "unavailable" until the field was mounted again.
+  const noTeam = teamId <= 0n;
+  const query = useSupplierOptions({ teamId });
+  const suppliers = noTeam ? NO_SUPPLIERS : (query.data ?? NO_SUPPLIERS);
+  // A read that failed with nothing to show. A re-read that fails over a list already shown keeps that list.
+  const error = !noTeam && query.isError && query.data === undefined;
+  // Answered: the list landed, or the read failed (the list is then empty and says why). No team is answered at once —
+  // there is nothing to read.
+  const settled = noTeam || query.isSuccess || query.isError;
 
   const { collection, filter, set } = useListCollection<SupplierRecord>({
     initialItems: [],
@@ -67,43 +73,22 @@ export function SupplierSelect({
     },
   });
 
-  useEffect(() => {
-    if (teamId <= 0n) {
-      set([]);
-      setLoading(false);
+  // THE COLLECTION FILLS FROM THE QUERY, and `filledFor` says whose list it now holds — set in the SAME effect as the
+  // fill, so the remount below (`key`) happens on the render where the collection already has the suppliers, never one
+  // render before it (the prefilled-blank trap). A team switch empties the claim, so the field shows the spinner and
+  // remounts again on the new team's list rather than offering the old team's suppliers under the new team.
+  const [filledFor, setFilledFor] = useState<bigint | null>(null);
 
+  useEffect(() => {
+    if (!settled) {
       return;
     }
 
-    let alive = true;
+    set(suppliers);
+    setFilledFor(teamId);
+  }, [settled, suppliers, set, teamId]);
 
-    setLoading(true);
-
-    supplierClient
-      .supplierList({
-        teamId,
-        // This team's own — another team's supplier is Discover's question, not this picker's.
-        filter: { scope: SupplierListScope.OWN },
-        dataRequest: supplierListRowData(),
-        page: { page: 1, limit: SUPPLIER_LIMIT },
-      })
-      .then((res) => {
-        if (alive) set(suppliersFromList(res.items, res.ids));
-      })
-      .catch((err) => {
-        if (alive) {
-          setError(rpcError(err));
-          set([]);
-        }
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [teamId, set]);
+  const loading = !settled || filledFor !== teamId;
 
   return (
     <Combobox.Root

@@ -94,7 +94,7 @@ message Event {
     option (buf.validate.oneof).required = true;
 
     // Variants are numbered in a block per context: user 100–199, selling 200–299, settlement 300–399,
-    // inventory 400–499, liability 500–599, expense 600–699.
+    // inventory 400–499, liability 500–599, expense 600–699, financial account 700–799.
     MemberRemoved member_removed = 100;
 
     OrderPlaced order_placed = 200;
@@ -119,11 +119,15 @@ message Event {
     CustomShipmentCostUpdated custom_shipment_cost_updated = 410;
     CustomShipmentCancelled custom_shipment_cancelled = 411;
     CustomShipmentHandedOver custom_shipment_handed_over = 412;
+    RestockRefunded restock_refunded = 413;
+    CustomShipmentReceived custom_shipment_received = 414;
 
     LiabilityPaymentAccepted liability_payment_accepted = 500;
 
     ExpenseCreated expense_created = 600;
     ExpenseAdjusted expense_adjusted = 601;
+
+    FinancialAccountCapitalRecorded financial_account_capital_recorded = 700;
   }
 }
 
@@ -857,6 +861,58 @@ message CustomShipmentHandedOver {
   int64 handed_over_at_unix = 9;
 }
 
+// RestockRefunded announces a REFUND resolution recorded on a problem or lost restock (backlog #101,
+// a-restock-problem-is-settled-by-resolution-rows): money came back from the supplier into the account the row names.
+// financial_account_service posts it as a `restock` row INTO that account — the way a cancelled restock's money comes
+// back (restock-is-never-typed-by-hand, RestockCancelled): its balance up, its history naming the restock.
+//
+// Published by inventory_service after RestockResolutionCreate commits. `event_id` is
+// `restock-refunded:<resolution_id>` — one per refund row, so a redelivery or a republish posts once.
+message RestockRefunded {
+  option (event_config).topic = "restock-refunded";
+
+  uint64 restock_id = 1;
+  // The resolution row.
+  uint64 resolution_id = 2;
+  // The selling team whose account it is.
+  uint64 team_id = 3;
+  // The account the money went into — one of the team's active accounts, checked by inventory before the write.
+  uint64 finance_account_id = 4;
+  // Above 0, rupiah, exact (money-is-double-in-the-api-too).
+  double amount = 5;
+  // Who recorded it — read from the stored row, never from the envelope's identity.
+  uint64 actor_id = 6;
+  bool actor_is_override = 7;
+  int64 refunded_at_unix = 8;
+}
+
+// CustomShipmentReceived announces an INBOUND parcel (a supplier's reshipping, backlog #101) counted in at Terima — final.
+// It carries the courier's charge at the door as Terima finalised it: the warehouse paid it, so the selling team owes it
+// back through Team Balance, nothing for 0 — the restock's door charge path
+// (the-courier-charge-is-noted-at-tiba-and-final-at-terima: posted only from the count-in, never at Tiba), under the
+// parcels' own source type `custom_shipment_fee` keyed by the parcel (an inbound parcel is never handed over, so its id
+// never carries a handover's charge too). `event_id` is `custom-shipment-received:<custom_shipment_id>` — counted in once.
+message CustomShipmentReceived {
+  option (event_config).topic = "custom-shipment-received";
+
+  uint64 custom_shipment_id = 1;
+  // The selling team — the debtor of the charge.
+  uint64 team_id = 2;
+  // The warehouse it came to — the creditor.
+  uint64 warehouse_id = 3;
+  // The restock it settles, and its resolution row.
+  uint64 restock_id = 4;
+  uint64 resolution_id = 5;
+  // The courier's charge at the door, rupiah; 0 = none.
+  double door_charge = 6;
+  // Who counted it in — read from the stored parcel.
+  uint64 actor_id = 7;
+  bool actor_is_override = 8;
+  int64 received_at_unix = 9;
+  // The stock-in the count made — 0 when no unit was good.
+  uint64 transaction_id = 10;
+}
+
 // LiabilityPaymentAccepted announces that a CREDITOR accepted a team payment — they looked at their bank and the
 // money was there (a-team-payment-posts-on-accept). Published by liability_service after LiabilityPaymentConfirm
 // commits; the financial accounts post one `team_payment` row out of `from_account_id` and one into
@@ -908,6 +964,11 @@ message ExpenseCreated {
   uint64 actor_id = 8;
   bool actor_is_override = 9;
   int64 created_at_unix = 10;
+  // The expense's TYPE (expense-types-sit-under-groups) — UNSPECIFIED on none published today but an old expense's
+  // correction. The account posts by it: the Iklan group as `ads_expense`, Prive / Setoran modal as `capital` (out −,
+  // in +), Piutang luar diterima and Uang masuk lain as `money_in` INTO the account
+  // (money-in-on-biaya-is-its-own-change-type), every other type as `expense`. `amount` stays positive either way.
+  warehouse.expense.v1.ExpenseType type = 11;
 }
 
 // ExpenseAdjusted announces a correction of an expense — an adjustment, or the screen's Batalkan, which is an adjustment
@@ -937,4 +998,42 @@ message ExpenseAdjusted {
   uint64 actor_id = 9;
   bool actor_is_override = 10;
   int64 created_at_unix = 11;
+  // The expense's TYPE, copied — the correction posts as the same change type, on the same account, signed the same way
+  // (a correction down of a money-in takes money back out). UNSPECIFIED for an expense from before the types.
+  warehouse.expense.v1.ExpenseType type = 12;
+}
+
+// FinancialAccountCapitalRecorded announces a Setor / Tarik Modal made on the ACCOUNT PAGE — one by-hand `capital` row of
+// `financial_account_logs` (capital-joins-the-types), already posted: the account's balance has moved.
+//
+// Published by financial_account_service after FinancialAccountCapital commits, for EVERY team — the account service
+// knows no team types. expense_service records a SELLING team's as the same one record on Biaya — Setoran modal (in) or
+// Prive (out), origin ACCOUNT_PAGE, linked to this row (`log_id`) — and posts nothing back: the account row is the act's
+// own (prive-and-deposit-on-pengeluaran-are-the-accounts-capital — one act, one record, two doors). A WAREHOUSE team's is
+// acked and dropped: its Setor / Tarik Modal stays on the account page alone.
+//
+// `event_id` is `financial-account-capital:<log_id>` — one per row, so a republish collides in the listener's claim, and
+// `log_id` is the listener's second key (one expense per row, whoever brings it — the live door or the one-time import
+// `san expense import-capital`, which builds this same message from the row).
+message FinancialAccountCapitalRecorded {
+  option (event_config).topic = "financial-account-capital-recorded";
+
+  // financial_account_logs.id — the by-hand capital row.
+  uint64 log_id = 1;
+  uint64 team_id = 2;
+  uint64 account_id = 3;
+  // Exact rupiah (the-backend-never-rounds-money), SIGNED as the row's `change`: plus = money put in (setoran modal),
+  // minus = money taken out (prive). Never 0.
+  double change = 4;
+  // The day the money moved (YYYY-MM-DD, Jakarta), as the person chose it — the row's `occurred_at`.
+  string occurred_on = 5;
+  // What the person typed in the dialog's note — the row's description without its *Capital in — * / *Capital out — *
+  // lead. Empty when none was typed.
+  string note = 6;
+  // Who made it, and whether as Root or the Administrator from outside the team (an-override-is-stamped-in-every-service)
+  // — the row's `actor_id` / `is_override`.
+  uint64 actor_id = 7;
+  bool actor_is_override = 8;
+  // When the row was written — the expense's *recorded on*.
+  int64 created_at_unix = 9;
 }

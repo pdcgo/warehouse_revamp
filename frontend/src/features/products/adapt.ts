@@ -24,7 +24,14 @@ import {
   type OwnerStockByIdsResponse,
   OwnerStockHistoryDataType,
   type OwnerStockHistoryResponse,
+  type ProductDailyMove,
+  ProductDailyMovesDataType,
+  type ProductDailyMovesResponse,
+  type ProductSupplierGoods,
+  ProductSupplierGoodsDataType,
+  type ProductSupplierGoodsResponse,
   type StockBatch,
+  type StockChangeType,
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { OrderProductActivityByIdsResponse } from "../../gen/warehouse/selling/v1/order_pb";
 
@@ -286,6 +293,99 @@ export function discoverMovementsFromList(res: DiscoverStockHistoryResponse): Di
     for (const id of res.ids) {
       const row = it.d.value.mapData[id.toString()];
       if (row) out.push(row);
+    }
+  }
+
+  return out;
+}
+
+// PEMASOK — who supplies a product (ProductSupplierGoods, the-supplier-tab-names-the-store): one row per supplier and
+// the store it was bought at, newest delivery first, keyed by position.
+export const productSupplierGoodsData = (): ProductSupplierGoodsDataType[] => [ProductSupplierGoodsDataType.GOODS];
+
+/** One supplier at one of its stores, for one product. */
+export interface ProductSupplierRow {
+  /** The row's position in the whole list — a pair has no id of its own. */
+  id: bigint;
+  supplierId: bigint;
+  /** 0n = lines that named the supplier and no store (a-line-with-no-store-links-under-the-supplier). */
+  storeId: bigint;
+  /** Kiriman — the accepted restocks that brought it. */
+  deliveries: bigint;
+  /** Unit — the good units they accepted. */
+  units: bigint;
+  lastDeliveryUnix: bigint;
+  /** Modal terakhir — the newest delivery's batch unit cost; `undefined` whenever the server sent none, as it does for
+   * every team but the owner. */
+  lastUnitCost: number | undefined;
+}
+
+export function productSuppliersFromList(res: ProductSupplierGoodsResponse): ProductSupplierRow[] {
+  const out: ProductSupplierRow[] = [];
+
+  for (const it of res.items) {
+    if (it.d.case !== "goods") continue;
+
+    for (const id of res.ids) {
+      const row: ProductSupplierGoods | undefined = it.d.value.mapData[id.toString()];
+      if (!row) continue;
+
+      out.push({
+        id: row.id,
+        supplierId: row.supplierId,
+        storeId: row.storeId,
+        deliveries: row.deliveries,
+        units: row.units,
+        lastDeliveryUnix: row.lastDeliveryUnix,
+        lastUnitCost: row.lastUnitCost,
+      });
+    }
+  }
+
+  return out;
+}
+
+// KELUAR MASUK HARIAN — a product's last fourteen Jakarta days (ProductDailyMoves, the-warehouse-zone-is-tabs), today
+// first, in the page's warehouse lens. Units only — the server sends nothing of the owner's money.
+export const productDailyMovesData = (): ProductDailyMovesDataType[] => [ProductDailyMovesDataType.DAY];
+
+/** One change type's net units on a day — signed: + in, − out. */
+export interface DailyKind {
+  changeType: StockChangeType;
+  units: bigint;
+}
+
+/** One Jakarta day of a product, in the lens. */
+export interface DailyRow {
+  /** The Jakarta day, `yyyy-mm-dd`. */
+  day: string;
+  /** Masuk — ⚠ HELD (the owner's Q2): drawn as every change type whose net units that day are positive. */
+  inQty: bigint;
+  /** Keluar, a positive count — ⚠ HELD (the owner's Q2): every change type whose net units that day are negative. */
+  outQty: bigint;
+  /** Sisa — on hand at the end of the day. */
+  onHand: bigint;
+  /** Each change type that moved units that day, its net. */
+  kinds: DailyKind[];
+}
+
+export function productDailyFromList(res: ProductDailyMovesResponse): DailyRow[] {
+  const out: DailyRow[] = [];
+
+  for (const it of res.items) {
+    if (it.d.case !== "day") continue;
+
+    for (const id of res.ids) {
+      const d: ProductDailyMove | undefined = it.d.value.mapData[id.toString()];
+      if (!d) continue;
+
+      out.push({
+        day: d.day,
+        inQty: d.inUnits,
+        outQty: d.outUnits,
+        onHand: d.onHand,
+        kinds: d.kinds.map((k) => ({ changeType: k.changeType, units: k.units })),
+      });
     }
   }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import {
   Button,
@@ -14,6 +14,8 @@ import { useTranslation } from "react-i18next";
 import { rpcError, userClient } from "../../api/clients";
 import { useAuth } from "../../features/auth/AuthContext";
 import { toaster } from "../../components/feedback/Toaster";
+import { useSeedOnce } from "../../lib/useSeedOnce";
+import { useProfileDetail } from "./queries";
 import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
 import { ProfilePicture } from "./components/ProfilePicture";
 import { AgentConnectionsCard } from "./components/AgentConnectionsCard";
@@ -35,32 +37,26 @@ export function ProfilePage() {
   // is sent: UpdateProfile reads an absent field as "leave alone", so a name-only save cannot blank the email or the
   // phone a password reset goes to.
   const [saved, setSaved] = useState({ name: "", email: "", phone: "" });
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  // ProfileDetail is the caller's OWN row, email and phone included — what UserByIDs' PublicUser never carries.
-  useEffect(() => {
-    if (!identity) {
-      return;
-    }
+  // ProfileDetail is the caller's OWN row, email and phone included — what UserByIDs' PublicUser never carries. A query
+  // hook (#122); the form takes its answer ONCE for this person, from the answer given since the page opened, so a
+  // re-read never overwrites what is being typed (useSeedOnce).
+  const profile = useProfileDetail({ identityId: identity?.identityId });
+  const seeded = useSeedOnce(identity?.identityId.toString() ?? "", profile.isFetchedAfterMount, () => {
+    // Non-fatal: the form starts empty, and a save still sends only what was typed.
+    if (profile.isError) return;
 
-    void (async () => {
-      try {
-        const me = (await userClient.profileDetail({})).user;
-        const stored = { name: me?.name ?? "", email: me?.email ?? "", phone: me?.phoneNumber ?? "" };
+    const me = profile.data;
+    const stored = { name: me?.name ?? "", email: me?.email ?? "", phone: me?.phoneNumber ?? "" };
 
-        setSaved(stored);
-        setName(stored.name);
-        setEmail(stored.email);
-        setPhone(stored.phone);
-        setAvatarUrl(me?.avatarUrl ?? "");
-      } catch {
-        // Non-fatal: the form starts empty, and a save still sends only what was typed.
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [identity]);
+    setSaved(stored);
+    setName(stored.name);
+    setEmail(stored.email);
+    setPhone(stored.phone);
+    setAvatarUrl(me?.avatarUrl ?? "");
+  });
+  const loading = !seeded;
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -96,7 +92,7 @@ export function ProfilePage() {
   }
 
   return (
-    <Stack gap="section" maxW="md">
+    <Stack gap="section" maxW="md" data-testid="profile-page">
       <Heading size="md">{t("account.myProfile")}</Heading>
 
       <Card.Root>

@@ -53,6 +53,11 @@ export interface OrderFilters {
    * the-reprint-label-prototype-is-accepted): the warehouse list's filter. Absent or false = no filter.
    */
   reprintLabel?: boolean;
+  /**
+   * Only orders carrying ANY of these order tags (`OrderListFilter.tag_ids`, the-order-tags-prototype-is-accepted) — both
+   * lists' Tag filter. Absent or empty = any tag or none.
+   */
+  tagIds?: bigint[];
 }
 
 export const NO_ORDER_FILTERS: OrderFilters = {
@@ -77,6 +82,7 @@ const filterKey = (f: OrderFilters) => ({
   dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
   settlementNotOpened: f.settlementNotOpened ?? false,
   reprintLabel: f.reprintLabel ?? false,
+  tagIds: (f.tagIds ?? []).join(","),
 });
 
 const filterMsg = (f: OrderFilters) => orderListFilterMsg(f);
@@ -95,6 +101,7 @@ export const orderListFilterMsg = (f: OrderFilters) => ({
   dateField: f.dateField ?? OrderDateField.UNSPECIFIED,
   settlementNotOpened: f.settlementNotOpened ?? false,
   reprintLabel: f.reprintLabel ?? false,
+  tagIds: f.tagIds ?? [],
 });
 
 export function useOrders(args: {

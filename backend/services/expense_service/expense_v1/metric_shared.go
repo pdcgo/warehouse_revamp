@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -276,21 +277,120 @@ func metricPeriodStart(group analytic_basev1.GroupType, day time.Time) time.Time
 	}
 }
 
-// metricSums is the five sums every grouped read selects: one per typed kind and their total. Ads expense's `amount`
-// is the `ads` sum. Exact doubles, never rounded (the-backend-never-rounds-money).
-const metricSums = "COALESCE(SUM(r.amount) FILTER (WHERE r.kind = 1), 0)::float8 AS ads, " +
-	"COALESCE(SUM(r.amount) FILTER (WHERE r.kind = 2), 0)::float8 AS payroll, " +
-	"COALESCE(SUM(r.amount) FILTER (WHERE r.kind = 3), 0)::float8 AS operational, " +
-	"COALESCE(SUM(r.amount) FILTER (WHERE r.kind = 4), 0)::float8 AS other, " +
-	"COALESCE(SUM(r.amount), 0)::float8 AS total"
+// metricSums is the sums every grouped read selects (ExpensesMetric's fields, by their proto names): each typed kind's
+// SPENDING (flow 0); THE MONTH TOTAL as Biaya's moves — spending − money in + capital out − capital in
+// (the-expense-types-prototype-is-accepted, acceptance analytic/expense_metric.md givens 6–22); money in, capital out
+// and capital in, positive; then ONE FIELD PER EXPENSE TYPE, its rows' net signed by the type's direction (signOf —
+// money in minus), as Biaya's month card reads each type. Rows of type 0 (from before the types) are in their group and
+// the total only. Ads expense's `amount` is the `ads` sum. Exact doubles, never rounded (the-backend-never-rounds-money);
+// a minus is written `0 - sum`, so an empty or netted figure is +0, never −0.
+var metricSums = buildMetricSums()
 
-// MetricSums is one key's figures as read.
+func buildMetricSums() string {
+	parts := []string{
+		"COALESCE(SUM(r.amount) FILTER (WHERE r.kind = 1 AND r.flow = 0), 0)::float8 AS ads",
+		"COALESCE(SUM(r.amount) FILTER (WHERE r.kind = 2 AND r.flow = 0), 0)::float8 AS payroll",
+		"COALESCE(SUM(r.amount) FILTER (WHERE r.kind = 3 AND r.flow = 0), 0)::float8 AS operational",
+		"COALESCE(SUM(r.amount) FILTER (WHERE r.kind = 4 AND r.flow = 0), 0)::float8 AS other",
+		fmt.Sprintf("(COALESCE(SUM(r.amount) FILTER (WHERE r.flow IN (%d, %d)), 0) - "+
+			"COALESCE(SUM(r.amount) FILTER (WHERE r.flow IN (%d, %d)), 0))::float8 AS total",
+			flowSpending, flowCapitalOut, flowMoneyIn, flowCapitalIn),
+		fmt.Sprintf("COALESCE(SUM(r.amount) FILTER (WHERE r.flow = %d), 0)::float8 AS money_in", flowMoneyIn),
+		fmt.Sprintf("COALESCE(SUM(r.amount) FILTER (WHERE r.flow = %d), 0)::float8 AS capital_out", flowCapitalOut),
+		fmt.Sprintf("COALESCE(SUM(r.amount) FILTER (WHERE r.flow = %d), 0)::float8 AS capital_in", flowCapitalIn),
+	}
+
+	for _, t := range expenseTypeList() {
+		sum := fmt.Sprintf("COALESCE(SUM(r.amount) FILTER (WHERE r.type = %d), 0)", int32(t))
+		if signOf(t) < 0 {
+			sum = "0 - " + sum
+		}
+
+		parts = append(parts, fmt.Sprintf("(%s)::float8 AS %s", sum, typeField(t)))
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// metricGrouped is the report's figures per key — keySQL empty for the one headline row. Summed in TWO steps: first one
+// SUM per key, kind, flow and type over the filtered report rows, then metricSums over those partial sums — equal to
+// metricSums over the rows themselves (its every FILTER reads kind, flow and type alone), while its twenty-six FILTERed
+// sums run over a few dozen partial rows per key instead of every report row. Root's year headline (~110 000 rows) read
+// 45 ms with eight sums and 63–94 ms with the twenty-six on every row (TestPerf_ExpenseMetric, backlog #107).
+func metricGrouped(rows *gorm.DB, keySQL string) *gorm.DB {
+	const cols = "r.kind, r.flow, r.type"
+
+	outer := rows.Session(&gorm.Session{NewDB: true})
+
+	if keySQL == "" {
+		partial := rows.
+			Select(cols + ", SUM(r.amount) AS amount").
+			Group(cols)
+
+		return outer.
+			Table("(?) AS r", partial).
+			Select(metricSums)
+	}
+
+	partial := rows.
+		Select(keySQL + " AS key, " + cols + ", SUM(r.amount) AS amount").
+		Group(keySQL + ", " + cols)
+
+	return outer.
+		Table("(?) AS r", partial).
+		Select("r.key AS key, " + metricSums).
+		Group("r.key")
+}
+
+// expenseTypeList is every type of the fixed table (expense_types.go), in ExpenseType's order — the order of their
+// fields in ExpensesMetric.
+func expenseTypeList() []expensev1.ExpenseType {
+	list := make([]expensev1.ExpenseType, 0, len(expenseTypes))
+	for t := range expenseTypes {
+		list = append(list, t)
+	}
+
+	slices.Sort(list)
+
+	return list
+}
+
+// typeField is a type's field of ExpensesMetric — its enum name without the prefix, lower case: EXPENSE_TYPE_BANK_FEE is
+// `bank_fee` (expense_analytic.proto, field 8 + the type's number). Also its column in metricSums and its sort name.
+func typeField(t expensev1.ExpenseType) string {
+	return strings.ToLower(strings.TrimPrefix(t.String(), "EXPENSE_TYPE_"))
+}
+
+// MetricSums is one key's figures as read — each a column of metricSums, by name.
 type MetricSums struct {
 	Ads         float64
 	Payroll     float64
 	Operational float64
 	Other       float64
 	Total       float64
+	MoneyIn     float64
+	CapitalOut  float64
+	CapitalIn   float64
+
+	// One per expense type, signed by its direction.
+	AdsMarketplace            float64
+	ContentEndorse            float64
+	BasicSalary               float64
+	Bonus                     float64
+	Contributions             float64
+	Electricity               float64
+	Internet                  float64
+	Kitchen                   float64
+	Tools                     float64
+	Equipment                 float64
+	BankFee                   float64
+	Discrepancy               float64
+	OutsideDebtPaid           float64
+	OutsideReceivableReceived float64
+	Prive                     float64
+	CapitalDeposit            float64
+	OtherOut                  float64
+	OtherIn                   float64
 }
 
 func (s MetricSums) adsMessage() *expensev1.AdsExpenseMetric {
@@ -300,5 +400,13 @@ func (s MetricSums) adsMessage() *expensev1.AdsExpenseMetric {
 func (s MetricSums) expensesMessage() *expensev1.ExpensesMetric {
 	return &expensev1.ExpensesMetric{
 		Ads: s.Ads, Payroll: s.Payroll, Operational: s.Operational, Other: s.Other, Total: s.Total,
+		MoneyIn: s.MoneyIn, CapitalOut: s.CapitalOut, CapitalIn: s.CapitalIn,
+
+		AdsMarketplace: s.AdsMarketplace, ContentEndorse: s.ContentEndorse,
+		BasicSalary: s.BasicSalary, Bonus: s.Bonus, Contributions: s.Contributions,
+		Electricity: s.Electricity, Internet: s.Internet, Kitchen: s.Kitchen, Tools: s.Tools, Equipment: s.Equipment,
+		BankFee: s.BankFee, Discrepancy: s.Discrepancy,
+		OutsideDebtPaid: s.OutsideDebtPaid, OutsideReceivableReceived: s.OutsideReceivableReceived, Prive: s.Prive,
+		CapitalDeposit: s.CapitalDeposit, OtherOut: s.OtherOut, OtherIn: s.OtherIn,
 	}
 }

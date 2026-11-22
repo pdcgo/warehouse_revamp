@@ -984,8 +984,9 @@ test("Orders: clicking a row opens that order's detail", async ({ page }) => {
 
   // The CREATED cell, deliberately — not the id one. The id text was once the only live target on the
   // row, so a click there would pass with the rest of the row dead. (Not the tracking-number cell
-  // either: that one is a copy control, and a click there copies instead of opening.)
-  await page.getByTestId(/^order-row-/).first().getByRole("cell").nth(3).click();
+  // either: that one is a copy control, and a click there copies instead of opening.) It is the FIFTH cell since
+  // the Tag column sits after Toko (the-order-tags-prototype-is-accepted) — order ref, resi, shop, tags, created.
+  await page.getByTestId(/^order-row-/).first().getByRole("cell").nth(4).click();
 
   await expect(page).toHaveURL(/\/orders\/\d+$/);
   await expect(page.getByTestId("order-detail-page")).toBeVisible();

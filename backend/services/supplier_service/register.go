@@ -26,6 +26,7 @@ const CountCorrectedSubscription = "supplier-count-corrected"
 // SalesPlacedSubscription and SalesCancelledSubscription feed PENJUALAN — `OrderPlaced` and `OrderCancelled`, folded by
 // the sales fold (sales_fold.go, penjualan-is-the-selling-value-on-the-order-day). Two, because a subscription reads one
 // topic; one handler, dispatching on the variant. Declared beside the routes, mirrored in tools/san's `pubsub ensure`.
+// The fold's replay seeks both too — it clears Penjualan with the restock figures.
 const (
 	SalesPlacedSubscription    = "supplier-order-placed"
 	SalesCancelledSubscription = "supplier-order-cancelled"

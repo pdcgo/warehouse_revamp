@@ -16,7 +16,15 @@ type CustomShipmentItem struct {
 	// A reship's restock line (nil on a sample) and that line's broken note, copied at create.
 	RestockItemID *uint64
 	BrokenNote    string
-	CreatedAt     time.Time
+	// INBOUND only (00060): the seller's price per unit — it values the stock-in and moves no money; editable until
+	// Terima. 0 on an outbound line.
+	PriceUnit float64
+	// INBOUND, written by Terima: what was in the box (broken included), how many broken, and the rack the good units
+	// went on (0 = none). NULL until counted.
+	Received  *int64
+	Broken    *int64
+	RackID    uint64
+	CreatedAt time.Time
 }
 
 func (CustomShipmentItem) TableName() string {

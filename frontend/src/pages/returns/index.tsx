@@ -1,207 +1,190 @@
 import { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
-import {
-  Badge,
-  Box,
-  Button,
-  Flex,
-  Heading,
-  Icon,
-  Input,
-  SimpleGrid,
-  Spacer,
-  Stack,
-  Stat,
-  Table,
-  Tabs,
-  Text,
-} from "@chakra-ui/react";
-import { Undo2 } from "lucide-react";
-import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
-import { canWrite, useTeam } from "../../features/team/TeamContext";
+import { Badge, Box, Button, Flex, Heading, Icon, Spacer, Stack, Table, Tabs, Text } from "@chakra-ui/react";
+import { PackageOpen, SearchX, Undo2 } from "lucide-react";
+
+import { CompactActions } from "../../components/chrome/CompactActions";
+import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
+import { GrowingPager } from "../../components/chrome/GrowingPager";
+import { ALL_DATES, DateRangePicker, isAllDates, resolveRange } from "../../components/datetime/DateRangePicker";
 import { TeamItem } from "../../components/entity/TeamItem";
+import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ListSkeleton } from "../../components/feedback/ListSkeleton";
+import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
+import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
+import { ShipmentChannelSelect } from "../../components/pickers/ShipmentChannelSelect";
 import { TeamSelect } from "../../components/teams/TeamSelect";
-import { ShopSelect } from "../../components/pickers/ShopSelect";
-import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
-import { Pagination } from "../../components/chrome/Pagination";
-import {
-  ALL_DATES,
-  DateRangePicker,
-  isAllDates,
-  resolveRange,
-} from "../../components/datetime/DateRangePicker";
-import { formatRupiah } from "../../lib/money";
-import { dateRangeCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
+import { AwbCell, DateAgoCell, ShopRefCell } from "../../features/orders/OrderRowCells";
+import type { OrderFilters } from "../../features/orders/queries";
+import { useOrders, useOrderStat } from "../../features/orders/queries";
+import { ReceiveReturnDialog } from "../../features/orders/ReceiveReturnDialog";
+import { useOpenReturnAccept } from "../../features/orders/returnAccept";
+import { summariseOrderStat } from "../../features/orders/stat";
+import { NO_SHOPS, useShopsByIds } from "../../features/shops/queries";
+import { canWrite, useTeam } from "../../features/team/TeamContext";
+import { useTeamsByIds } from "../../features/teams/queries";
+import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
+import type { Order } from "../../gen/warehouse/selling/v1/order_pb";
+import { OrderDateField, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
+import { useIsMobile } from "../../layouts/shell";
+import { fromHere } from "../../lib/cameFrom";
+import { useDebounced } from "../../lib/useDebounced";
+import { dateRangeCodec, enumCodec, idCodec, oneOfCodec, textCodec, useUrlState } from "../../lib/urlState";
+import { ReturnAcceptButton, ReturnBlock, ReturnStateCell } from "./components/ReturnRow";
 
-const PAGE_SIZE = 20;
+// INVENTARIS › RETUR — THE WAREHOUSE'S REAL LIST OF RETURNS (the-retur-menu-is-the-warehouses-return-list, accepted as
+// drawn in the-retur-list-prototype-is-accepted, docs/business/inventory/return_decision.md). Built on the order reads
+// the warehouse list already makes — `OrderList` / `OrderStat`, no new request:
+//
+//   OrderList(team_id = this warehouse,
+//             filter { statuses: [RETURN] | [RETURN_COMPLETED] | both      ← the tab
+//                      date_field: ORDER_DATE_FIELD_ENTERED_RETURN         ← always: fills the row's `date_entered_at_unix`
+//                                                                            (when the return was ASKED); the window reads it
+//                      created_from/to_unix, search, seller_team_id, marketplace, shipment_channel_id },
+//             page)
+//   OrderStat(team_id, the same filter)                                    → the tabs' counts (return, return_completed)
+//
+// THE SCOPE IS THE SERVER'S (`orderReaders`, selling_v1/order_list.go): the orders this warehouse SHIPS and — for a return
+// only — those of the selling teams whose configured return warehouse it is (a-return-may-land-in-another-warehouse).
+// With the two return statuses that is exactly *shipped from here or returning here*. A return that never arrives goes
+// `lost` (a-return-that-never-arrives-goes-lost) and leaves this list. No money (a-warehouse-sees-no-seller-money).
+//
+// WHERE A ROW GOES:
+//   waiting  → the accept page (the-return-accept-page-is-accepted), carrying the list's address so its Back and its
+//              Accept come back to the same narrowed list; a return addressed elsewhere opens it too, and the page says
+//              where it goes
+//   accepted → the order's page (`/warehouse-orders/:id`), where the accept's note names what was broken or missing
+//   a monitor (no writes) → the order's page always: the accept page is a write, turned away at its door
 
-// A return's lifecycle, mirroring the restock request (#163): created before its goods arrive
-// (ONGOING — the in-flight state #144 asks about), then counted and inspected on RECEIVED, or
-// CANCELLED if it never came. Whether "arrived, awaiting count" is a state distinct from ONGOING is
-// an open fork (brainstorming §4.3) — until it is settled this list keeps the two-state model.
-type ReturnStatus = "ongoing" | "received" | "cancelled" | "lost";
+type StateTab = "waiting" | "accepted" | "all";
 
-// The status filter is a row of TABS, not a dropdown (#130's pattern): "All" leads, then one tab per
-// status in lifecycle order. The tab IS the filter — its `status` (""=every status) is the only thing
-// that changes between tabs — so the tab string is the single source of truth and nothing can drift.
-const STATUS_TABS: { value: string; labelKey: string; status: ReturnStatus | "" }[] = [
-  { value: "all", labelKey: "returns.statusAll", status: "" },
-  { value: "ongoing", labelKey: "returns.status.ongoing", status: "ongoing" },
-  { value: "received", labelKey: "returns.status.received", status: "received" },
-  { value: "cancelled", labelKey: "returns.status.cancelled", status: "cancelled" },
-  { value: "lost", labelKey: "returns.status.lost", status: "lost" },
+const STATE_TABS: { id: StateTab; labelKey: string; statuses: OrderStatus[] }[] = [
+  { id: "waiting", labelKey: "returnList.tab.waiting", statuses: [OrderStatus.RETURN] },
+  { id: "accepted", labelKey: "returnList.tab.accepted", statuses: [OrderStatus.RETURN_COMPLETED] },
+  { id: "all", labelKey: "returnList.tab.all", statuses: [OrderStatus.RETURN, OrderStatus.RETURN_COMPLETED] },
 ];
 
-interface ReturnRow {
-  id: string;
-  code: string;
-  createdUnix: number;
-  // The order these goods were sold on. OPTIONAL (brainstorming §5.2) — a walk-in parcel can be
-  // logged with none, and then there is no revenue to reduce.
-  orderId?: number;
-  // When that order was placed — a distinct date from the return's own timeline, so the date filter
-  // can range on "order created" as well as "return created" / "accepted".
-  orderCreatedUnix?: number;
-  team: string;
-  // The shop the order was placed on, and its marketplace (shown via the shared MarketplaceBadge).
-  // Absent for a return with no order (a walk-in parcel).
-  shop?: string;
-  marketplace?: Marketplace;
-  customer?: string;
-  // The buyer's address — where the goods went (and, for an RTS, came back from). Shown under the
-  // name so a return can be tied to a shipment without opening it.
-  address?: string;
-  // A free-text note about the return — whatever the person logging it wants to record. Not a fixed
-  // set: the earlier "reason" enum was dropped in favour of a plain note (owner).
-  note?: string;
-  items: number;
-  // The expected refund value in whole rupiah. The FINAL money settles on receipt, because it
-  // depends on the condition of what actually arrived (brainstorming §4.2). Absent when unknown.
-  valueRupiah?: bigint;
-  // When the return was RECEIVED (counted & inspected) and who did it — only a received return has
-  // these; an ongoing or cancelled one has not been accepted yet.
-  acceptedUnix?: number;
-  acceptedBy?: string;
-  status: ReturnStatus;
-}
+const TAB_CODEC = oneOfCodec(STATE_TABS.map((tab) => tab.id));
+const MARKETPLACE_CODEC = enumCodec(MARKETPLACES);
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-// PREVIEW DATA. The return_service does not exist yet — this list is designed mock-first (#163) and
-// wired to hardcoded rows so the screen can be reviewed in the running app. The backend + real query
-// are tracked as a sub-issue of #163; when it lands this array is replaced by a paginated RPC.
-const SAMPLE: ReturnRow[] = [
-  { id: "1", code: "RTN-0142", createdUnix: 1769212800, orderId: 4127, orderCreatedUnix: 1768608000, team: "Selling Alpha", shop: "Alpha Store", marketplace: Marketplace.SHOPEE, customer: "Rina Wijaya", address: "Jl. Kenanga 12, Bandung", note: "Wrong item — ordered blue, got black", items: 1, valueRupiah: 145000n, status: "ongoing" },
-  { id: "2", code: "RTN-0141", createdUnix: 1769212800, orderId: 4098, orderCreatedUnix: 1768608000, team: "Selling Beta", shop: "Beta Official", marketplace: Marketplace.TOKOPEDIA, customer: "Budi Santoso", address: "Jl. Melati 8, Surabaya", note: "Arrived damaged in transit", items: 2, valueRupiah: 90000n, status: "ongoing" },
-  { id: "3", code: "RTN-0140", createdUnix: 1769126400, team: "Selling Alpha", note: "Unlabeled parcel — no order found", items: 1, status: "ongoing" },
-  { id: "4", code: "RTN-0139", createdUnix: 1769126400, orderId: 4103, orderCreatedUnix: 1768521600, team: "Selling Alpha", shop: "Alpha Store", marketplace: Marketplace.SHOPEE, customer: "Sari Dewanti", address: "Jl. Anggrek 45, Jakarta Selatan", note: "Customer changed mind", items: 3, valueRupiah: 375000n, status: "ongoing" },
-  { id: "5", code: "RTN-0138", createdUnix: 1769040000, orderId: 4071, orderCreatedUnix: 1768435200, team: "Selling Beta", shop: "Beta Official", marketplace: Marketplace.TIKTOK, customer: "Andi Pratama", address: "Jl. Cendana 3, Semarang", note: "Courier could not deliver (RTS)", items: 4, valueRupiah: 580000n, acceptedUnix: 1769126400, acceptedBy: "Rudi Hartono", status: "received" },
-  { id: "6", code: "RTN-0137", createdUnix: 1768953600, orderId: 4055, orderCreatedUnix: 1768348800, team: "Selling Alpha", shop: "Alpha Mart", marketplace: Marketplace.TOKOPEDIA, customer: "Maya Lestari", address: "Jl. Mawar 21, Bekasi", note: "Defective — 1 back to shelf, 1 written off", items: 2, valueRupiah: 300000n, acceptedUnix: 1769040000, acceptedBy: "Siti Aminah", status: "received" },
-  { id: "7", code: "RTN-0135", createdUnix: 1768780800, orderId: 4032, orderCreatedUnix: 1768176000, team: "Selling Alpha", shop: "Alpha Store", marketplace: Marketplace.LAZADA, customer: "Dewi Kartika", address: "Jl. Flamboyan 7, Depok", note: "Wrong size", items: 2, valueRupiah: 170000n, acceptedUnix: 1768867200, acceptedBy: "Rudi Hartono", status: "received" },
-  { id: "8", code: "RTN-0136", createdUnix: 1768867200, orderId: 4048, orderCreatedUnix: 1768262400, team: "Selling Beta", shop: "Beta Official", marketplace: Marketplace.TOKOPEDIA, customer: "Tono Hidayat", address: "Jl. Dahlia 19, Sidoarjo", note: "Said would return, never arrived", items: 1, valueRupiah: undefined, status: "cancelled" },
-  { id: "9", code: "RTN-0134", createdUnix: 1768694400, orderId: 4019, orderCreatedUnix: 1768089600, team: "Selling Beta", shop: "Beta Official", marketplace: Marketplace.TOKOPEDIA, customer: "Eka Putra", address: "Jl. Kamboja 5, Malang", note: "Shipped back but never arrived — presumed lost in transit", items: 2, valueRupiah: 240000n, status: "lost" },
-];
-
-const STATUS_PALETTE: Record<ReturnStatus, string> = {
-  ongoing: "orange",
-  received: "green",
-  cancelled: "gray",
-  lost: "red",
-};
-
-// The date range is paired with a FIELD (like the batches screen's Arrived/Expiring): the same
-// window can range on a return's own timeline (created / accepted) or on the order it came from.
-type DateField = "created" | "orderCreated" | "accepted";
-const DATE_FIELDS: { value: DateField; labelKey: string; pick: (r: ReturnRow) => number | undefined }[] = [
-  { value: "created", labelKey: "returns.dateField.created", pick: (r) => r.createdUnix },
-  { value: "orderCreated", labelKey: "returns.dateField.orderCreated", pick: (r) => r.orderCreatedUnix },
-  { value: "accepted", labelKey: "returns.dateField.accepted", pick: (r) => r.acceptedUnix },
-];
-
-const TAB_CODEC = oneOfCodec(STATUS_TABS.map((s) => s.value));
-const DATE_FIELD_CODEC = oneOfCodec(DATE_FIELDS.map((f) => f.value));
-
-function formatDateUnix(unix: number, lang: string): string {
-  return new Date(unix * 1000).toLocaleDateString(lang, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-// ReturnsPage is the warehouse team's queue of goods coming BACK from a buyer (#163/#144) — a
-// restock's mirror image. The job is to find an ONGOING return that has arrived and receive it:
-// count what came, place the sellable, write off the broken. Backed by preview data pending the
-// return_service (sub-issue of #163).
 export function ReturnsPage() {
   const { current } = useTeam();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const mobile = useIsMobile();
+  const openAccept = useOpenReturnAccept();
+
+  // THE STATE TAB AND THE FILTERS LIVE IN THE URL (a-lists-filters-live-in-the-url) — Back from the accept page or an
+  // order, or a reload, opens the same narrowed list. The page does not.
+  const [tab, setTab] = useUrlState<StateTab>("state", "waiting", TAB_CODEC);
+  const [search, setSearch] = useUrlState("q", "", textCodec);
+  const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
+  const [sellerId, setSellerId] = useUrlState("team", 0n, idCodec);
+  const [marketplace, setMarketplace] = useUrlState("marketplace", Marketplace.UNSPECIFIED, MARKETPLACE_CODEC);
+  const [courier, setCourier] = useUrlState("courier", 0n, idCodec);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [receiving, setReceiving] = useState(false);
 
   const isWarehouse = current?.teamType === TeamType.WAREHOUSE;
+  const warehouseId = isWarehouse ? current?.teamId : undefined;
+  // The warehouse's Owner, Admin and Staff accept and receive; a monitoring team reads only (the-admin-team-monitors-read-only).
+  const mayWrite = canWrite(current);
 
-  // THE FILTERS AND THE STATUS TAB LIVE IN THE URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a
-  // return, opens the same narrowed list.
-  const [search, setSearch] = useUrlState("q", "", textCodec);
-  const [tab, setTab] = useUrlState("status", "all", TAB_CODEC);
-  // The shared TeamSelect / ShopSelect emit ids (a shop is scoped to its team). On this preview page
-  // the rows are keyed by name, not id, so these filters are visual until the ReturnList RPC lands
-  // (#229) — the search box still matches team/shop by text meanwhile.
-  const [teamId, setTeamId] = useUrlState("team", 0n, idCodec);
-  const [shopId, setShopId] = useUrlState("shop", 0n, idCodec);
-  const [range, setRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
-  const [dateField, setDateField] = useUrlState<DateField>("date", "created", DATE_FIELD_CODEC);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const debouncedSearch = useDebounced(search.trim());
+  // ONE filter for the list and the counts, so a tab's number describes the rows under it.
+  const filters: OrderFilters = useMemo(() => {
+    const { fromUnix, toUnix } = resolveRange(range);
+    return {
+      search: debouncedSearch,
+      shopId: 0n,
+      fromUnix,
+      toUnix,
+      sellerTeamId: sellerId,
+      marketplace,
+      shipmentChannelId: courier,
+      // ALWAYS when the return was asked: it fills the row's asked date, and the window reads it.
+      dateField: OrderDateField.ENTERED_RETURN,
+    };
+  }, [debouncedSearch, range, sellerId, marketplace, courier]);
+  const filterKey = [debouncedSearch, JSON.stringify(range), sellerId, marketplace, courier].join("|");
+  const filterCount = [search.trim() !== "", !isAllDates(range), sellerId > 0n, marketplace !== Marketplace.UNSPECIFIED, courier > 0n].filter(
+    Boolean,
+  ).length;
+  const filtered = filterCount > 0;
 
-  // The active tab decides the status filter; "" means every status ("All").
-  const status = STATUS_TABS.find((s) => s.value === tab)?.status ?? "";
+  const activeTab = STATE_TABS.find((item) => item.id === tab) ?? STATE_TABS[0]!;
 
-  // Switching tab restarts at page 1 — the page number belongs to the old filter.
-  function selectTab(next: string) {
-    setTab(next);
+  // OrderList — the tab is `statuses`; `status` stays unset (UNSPECIFIED is no filter). Paged (HARD RULE 9).
+  const query = useOrders({
+    teamId: warehouseId,
+    page,
+    pageSize,
+    status: OrderStatus.UNSPECIFIED,
+    statuses: activeTab.statuses,
+    filters,
+  });
+  // OrderStat — the tabs' counts, over the filters but never the tab.
+  const statQuery = useOrderStat({ teamId: warehouseId, filters });
+  const stat = statQuery.data ? summariseOrderStat(statQuery.data) : undefined;
+
+  const orders = query.data?.orders ?? [];
+  const totalItems = query.data?.totalItems ?? 0;
+  const loading = query.isPending && warehouseId !== undefined;
+  const shopNames = useShopsByIds({ shopIds: orders.map((order) => order.shopId) }).data ?? NO_SHOPS;
+  // The sellers and the return warehouses the page names, in one TeamByIds.
+  const names = useTeamsByIds({ ids: orders.flatMap((order) => [order.teamId, order.returnWarehouseId]) }).data;
+  const teamName = (id: bigint) => names?.[id.toString()]?.name ?? (id > 0n ? `#${id}` : "");
+
+  function tabCount(item: (typeof STATE_TABS)[number]): number | undefined {
+    if (!stat) return undefined;
+    return item.statuses.reduce((n, s) => n + stat.count(s), 0);
+  }
+
+  // A WAITING RETURN OPENS THE ACCEPT PAGE (the-retur-menu-is-the-warehouses-return-list); an accepted one, and every row
+  // for a monitor, the order's page (the-retur-list-prototype-is-accepted).
+  function openRow(order: Order) {
+    if (order.status === OrderStatus.RETURN && mayWrite) {
+      openAccept(order.id);
+      return;
+    }
+    navigate(`/warehouse-orders/${order.id}`, { state: fromHere(location) });
+  }
+
+  /** Where a return of this order goes, when it is not here — the team's return warehouse, read now. */
+  function goesTo(order: Order): string | undefined {
+    if (order.returnWarehouseId === warehouseId) return undefined;
+    if (order.returnWarehouseId === 0n) return t("returnList.noReturnWarehouse");
+    return t("returnList.goesTo", { warehouse: teamName(order.returnWarehouseId) });
+  }
+
+  /** The row's Terima — only where this warehouse may accept it (only-the-return-warehouse-accepts-a-return). */
+  const acceptsHere = (order: Order) =>
+    mayWrite && order.status === OrderStatus.RETURN && warehouseId !== undefined && order.returnWarehouseId === warehouseId;
+
+  function refilter(apply: () => void) {
+    apply();
     setPage(1);
   }
 
-  // Header figures are over the WHOLE set (like the batches screen), so they answer "how much is in
-  // flight" regardless of the filters below.
-  const ongoing = SAMPLE.filter((r) => r.status === "ongoing");
-  const ongoingValue = ongoing.reduce((sum, r) => sum + (r.valueRupiah ?? 0n), 0n);
-  const receivedRecent = SAMPLE.filter(
-    (r) => r.status === "received" && r.createdUnix * 1000 >= Date.now() - 30 * 24 * 60 * 60 * 1000,
-  ).length;
-
-  const pickDate = DATE_FIELDS.find((f) => f.value === dateField)?.pick ?? ((r: ReturnRow) => r.createdUnix);
-
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const { fromUnix, toUnix } = resolveRange(range);
-    const from = Number(fromUnix);
-    const to = Number(toUnix);
-    return SAMPLE.filter((r) => {
-      const hay = `${r.code} ${r.orderId ?? ""} ${r.customer ?? ""} ${r.team} ${r.shop ?? ""} ${r.address ?? ""} ${r.acceptedBy ?? ""} ${r.note ?? ""}`.toLowerCase();
-      if (term && !hay.includes(term)) return false;
-      if (status && r.status !== status) return false;
-      // Team/shop come from the shared pickers as ids; the preview rows have no ids to match, so those
-      // filters are inert here (see the state note). They bind for real with the ReturnList RPC.
-      if (!isAllDates(range)) {
-        // The range applies to the chosen field; a row with no such date drops out of an active range.
-        const v = pickDate(r);
-        if (v === undefined) return false;
-        if (from && v < from) return false;
-        if (to && v > to) return false;
-      }
-      return true;
+  function clearFilters() {
+    refilter(() => {
+      setSearch("");
+      setRange(ALL_DATES);
+      setSellerId(0n);
+      setMarketplace(Marketplace.UNSPECIFIED);
+      setCourier(0n);
     });
-  }, [search, status, range, pickDate]);
-
-  const total = filtered.length;
-  const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
+  }
 
   if (!current) {
     return (
       <Stack gap="section">
-        <Heading size="md">{t("returns.title")}</Heading>
+        <Heading size="md">{t("returnList.title")}</Heading>
         <Text color="fg.muted">{t("returns.selectTeam")}</Text>
       </Stack>
     );
@@ -210,7 +193,7 @@ export function ReturnsPage() {
   if (!isWarehouse) {
     return (
       <Stack gap="section">
-        <Heading size="md">{t("returns.title")}</Heading>
+        <Heading size="md">{t("returnList.title")}</Heading>
         <Text color="fg.muted" data-testid="returns-not-warehouse">
           {t("returns.warehouseOnly")}
         </Text>
@@ -218,259 +201,267 @@ export function ReturnsPage() {
     );
   }
 
+  const showAccepted = activeTab.id !== "waiting";
+
   return (
-    <Stack gap="section" data-testid="returns-page">
-      <Flex align="center" gap="card" wrap="wrap">
-        {/* Honest label: the goods here are invented until the return_service lands (#163). */}
-        <Badge colorPalette="gray" variant="surface" data-testid="returns-preview">
-          {t("returns.preview")}
+    <Stack gap="section" animationStyle="enter" data-testid="return-list-page">
+      {/* ONE HEADER ROW (the-phone-header-is-one-row): the title, the team, and Receive a Return — the crew's way in for a
+          parcel at the door (search, force if needed, accept). An icon on a phone (a-phone-header-action-is-an-icon). */}
+      <Flex align="center" gap="card" wrap={mobile ? "nowrap" : "wrap"} data-testid="return-list-header">
+        <Heading size="md" flexShrink={0}>
+          {t("returnList.title")}
+        </Heading>
+        <Badge colorPalette="brand" truncate minW="0">
+          {current.teamName}
         </Badge>
         <Spacer />
-        {/* Force Return — the warehouse starts a return itself (brainstorming §5.3): a parcel turned up,
-            so log it and receive it in one motion rather than waiting for an "ongoing" one to arrive. */}
-        {canWrite(current) && (
-          <Button colorPalette="brand" data-testid="returns-force">
-            <Icon as={Undo2} boxSize="4" />
-            {t("returns.forceReturn")}
-          </Button>
-        )}
-      </Flex>
-
-      <SimpleGrid columns={{ base: 1, sm: 3 }} gap="card">
-        <Stat.Root>
-          <Stat.Label>{t("returns.statOngoing")}</Stat.Label>
-          <Stat.ValueText color={ongoing.length > 0 ? "warning.fg" : undefined}>
-            {ongoing.length}
-          </Stat.ValueText>
-          <Stat.HelpText>{t("returns.statOngoingHint")}</Stat.HelpText>
-        </Stat.Root>
-        <Stat.Root>
-          <Stat.Label>{t("returns.statOngoingValue")}</Stat.Label>
-          <Stat.ValueText>{formatRupiah(ongoingValue)}</Stat.ValueText>
-          <Stat.HelpText>{t("returns.statOngoingValueHint")}</Stat.HelpText>
-        </Stat.Root>
-        <Stat.Root>
-          <Stat.Label>{t("returns.statReceived")}</Stat.Label>
-          <Stat.ValueText>{receivedRecent}</Stat.ValueText>
-          <Stat.HelpText>{t("returns.statReceivedHint")}</Stat.HelpText>
-        </Stat.Root>
-      </SimpleGrid>
-
-      <Flex gap="card" wrap="wrap" align="center">
-        <Input
-          maxW="sm"
-          placeholder={t("returns.searchPlaceholder")}
-          value={search}
-          data-testid="returns-search"
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-        />
-        {/* The shared team picker (searchable, scoped to selling teams — a return's goods belong to a
-            selling team). It emits a team id; on this preview page it does not filter the rows yet. */}
-        <Box maxW="56" w="full">
-          <TeamSelect
-            value={teamId > 0n ? teamId : undefined}
-            teamType={TeamType.SELLING}
-            placeholder={t("returns.teamAll")}
-            onChange={(id) => {
-              setTeamId(id);
-              // A shop belongs to a team, so changing team clears any shop chosen under the old one.
-              setShopId(0n);
-              setPage(1);
-            }}
-          />
-        </Box>
-        {/* The shared shop picker — a shop is team-scoped, so it needs the chosen team and stays
-            disabled until one is picked. */}
-        <Box maxW="52" w="full">
-          <ShopSelect
-            // Closed shops too, after the open ones, badged (report-filters-offer-closed-shops).
-            asFilter
-            teamId={teamId}
-            value={shopId > 0n ? shopId : undefined}
-            disabled={teamId === 0n}
-            placeholder={t("returns.shopAll")}
-            onChange={(id) => {
-              setShopId(id);
-              setPage(1);
-            }}
-          />
-        </Box>
-        {/* The range picker carries the date type itself (#225): its `fields` row, inside the panel, chooses WHICH
-            date the window filters on — return created / order created / accepted. */}
-        <DateRangePicker
-          value={range}
-          onChange={(r) => {
-            setRange(r);
-            setPage(1);
-          }}
-          fields={DATE_FIELDS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
-          field={dateField}
-          onFieldChange={(v) => {
-            setDateField(v);
-            setPage(1);
-          }}
-          testId="returns-date"
-        />
-        <Spacer />
-      </Flex>
-
-      {/* Status is a row of tabs (#130's pattern), not a filter dropdown: All, then one tab per
-          status. The active tab is the only status filter — the table below it is otherwise the same. */}
-      <Tabs.Root value={tab} onValueChange={(e) => selectTab(e.value)}>
-        <Tabs.List>
-          {STATUS_TABS.map((item) => (
-            <Tabs.Trigger key={item.value} value={item.value} data-testid={`returns-tab-${item.value}`}>
-              {t(item.labelKey)}
-            </Tabs.Trigger>
+        {mayWrite &&
+          (mobile ? (
+            <CompactActions
+              menuLabel={t("orders.actions")}
+              menuTestId="return-list-actions"
+              actions={[
+                {
+                  id: "receive",
+                  label: t("picking.action.receiveReturn"),
+                  icon: PackageOpen,
+                  primary: true,
+                  testId: "return-list-receive",
+                  onClick: () => setReceiving(true),
+                },
+              ]}
+            />
+          ) : (
+            <Button size="xs" colorPalette="brand" data-testid="return-list-receive" onClick={() => setReceiving(true)}>
+              <Icon as={PackageOpen} boxSize="4" />
+              {t("picking.action.receiveReturn")}
+            </Button>
           ))}
-        </Tabs.List>
+      </Flex>
 
-        <Tabs.Content value={tab}>
-          <Stack gap="card">
-            <Table.Root size="sm" data-testid="returns-table">
-          <Table.Header>
-            <Table.Row>
-              <Table.ColumnHeader>{t("returns.colReturn")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("returns.colOrder")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("returns.colTeam")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("returns.colShop")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("returns.colCustomer")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("returns.colNote")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("returns.colItems")}</Table.ColumnHeader>
-              <Table.ColumnHeader textAlign="end">{t("returns.colValue")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("returns.colCreated")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("returns.colAccepted")}</Table.ColumnHeader>
-              <Table.ColumnHeader>{t("returns.colStatus")}</Table.ColumnHeader>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {pageRows.map((r) => (
-              <Table.Row
-                key={r.id}
-                data-testid={`returns-row-${r.code}`}
-                cursor="pointer"
-                _hover={{ bg: "bg.muted" }}
-                onClick={() => navigate(`/inventories/returns/${r.id}`)}
+      {/* THE CREW'S FILTERS, as on the warehouse list (the-warehouse-filters-by-team-marketplace-and-courier); the date
+          window reads when the return was asked, and the trigger says so. */}
+      <FilterBar active={filtered} count={filterCount} testId="return-list-filters" onClear={clearFilters}>
+        <FilterSearch
+          value={search}
+          onChange={(value) => refilter(() => setSearch(value))}
+          placeholder={t("returnList.searchPlaceholder")}
+          testId="return-list-search"
+        />
+        <FilterField w="auto">
+          <DateRangePicker
+            value={range}
+            onChange={(r) => refilter(() => setRange(r))}
+            fields={[{ value: "asked", label: t("returnList.col.asked") }]}
+            field="asked"
+            testId="return-list-date"
+          />
+        </FilterField>
+        <FilterField w="15rem" testId="return-list-team-filter">
+          <TeamSelect
+            teamType={TeamType.SELLING}
+            value={sellerId > 0n ? sellerId : undefined}
+            placeholder={t("warehouseOrders.filter.team")}
+            showType={false}
+            onChange={(id) => refilter(() => setSellerId(id))}
+          />
+        </FilterField>
+        <FilterField w="15rem" testId="return-list-marketplace-filter">
+          <MarketplaceSelect
+            value={marketplace}
+            placeholder={t("orders.marketplaceAll")}
+            onChange={(m) => refilter(() => setMarketplace(m))}
+          />
+        </FilterField>
+        <FilterField w="15rem" testId="return-list-courier-filter">
+          <ShipmentChannelSelect
+            value={courier}
+            placeholder={t("warehouseOrders.filter.courier")}
+            onChange={(channelId) => refilter(() => setCourier(channelId))}
+          />
+        </FilterField>
+      </FilterBar>
+
+      {/* THE STATE IS THE TAB — waiting first, the work; each counted over the filters. */}
+      <Tabs.Root
+        value={tab}
+        onValueChange={(e) => {
+          setTab(e.value as StateTab);
+          setPage(1);
+        }}
+      >
+        <Tabs.List overflowX="auto" overflowY="hidden" css={{ scrollbarWidth: "none" }}>
+          {STATE_TABS.map((item) => {
+            const count = tabCount(item);
+
+            return (
+              <Tabs.Trigger
+                key={item.id}
+                value={item.id}
+                flexShrink="0"
+                whiteSpace="nowrap"
+                data-testid={`return-list-tab-${item.id}`}
               >
-                <Table.Cell>
-                  <Text as="span" fontWeight="medium" color={r.status === "cancelled" ? "fg.muted" : "brand.fg"}>
-                    {r.code}
-                  </Text>
-                </Table.Cell>
-                <Table.Cell>
-                  {r.orderId ? (
-                    <Text as="span">#{r.orderId}</Text>
-                  ) : (
-                    <Text as="span" color="fg.subtle">
-                      {t("returns.noOrder")}
-                    </Text>
-                  )}
-                </Table.Cell>
-                <Table.Cell>
-                  {/* The catalogue owner, shown the shared way (TeamItem) — these are selling teams. */}
-                  <TeamItem team={{ teamName: r.team, teamType: TeamType.SELLING }} />
-                </Table.Cell>
-                <Table.Cell>
-                  {r.shop ? (
-                    <Stack gap="0.5" alignItems="flex-start">
-                      <Text as="span">{r.shop}</Text>
-                      {r.marketplace !== undefined && (
-                        <MarketplaceBadge marketplace={r.marketplace} size="sm" />
-                      )}
-                    </Stack>
-                  ) : (
-                    <Text as="span" color="fg.subtle">
-                      —
-                    </Text>
-                  )}
-                </Table.Cell>
-                <Table.Cell>
-                  {r.customer ? (
-                    <Stack gap="0.5">
-                      <Text as="span">{r.customer}</Text>
-                      {r.address && (
-                        <Text as="span" color="fg.subtle" fontSize="xs">
-                          {r.address}
-                        </Text>
-                      )}
-                    </Stack>
-                  ) : (
-                    <Text as="span" color="fg.subtle">
-                      —
-                    </Text>
-                  )}
-                </Table.Cell>
-                <Table.Cell maxW="64" truncate>
-                  {r.note ? (
-                    <Text as="span" color="fg.muted">
-                      {r.note}
-                    </Text>
-                  ) : (
-                    <Text as="span" color="fg.subtle">
-                      —
-                    </Text>
-                  )}
-                </Table.Cell>
-                <Table.Cell textAlign="end">{r.items}</Table.Cell>
-                <Table.Cell textAlign="end">
-                  {r.valueRupiah !== undefined ? (
-                    formatRupiah(r.valueRupiah)
-                  ) : (
-                    <Text as="span" color="fg.subtle">
-                      —
-                    </Text>
-                  )}
-                </Table.Cell>
-                {/* When it was created (the ongoing clock starts here). */}
-                <Table.Cell whiteSpace="nowrap">{formatDateUnix(r.createdUnix, i18n.language)}</Table.Cell>
-                {/* When it was received/inspected, and by whom — only a received return has these. */}
-                <Table.Cell whiteSpace="nowrap">
-                  {r.acceptedUnix !== undefined ? (
-                    <Stack gap="0.5">
-                      <Text as="span">{formatDateUnix(r.acceptedUnix, i18n.language)}</Text>
-                      {r.acceptedBy && (
-                        <Text as="span" color="fg.subtle" fontSize="xs">
-                          {t("returns.acceptedBy", { name: r.acceptedBy })}
-                        </Text>
-                      )}
-                    </Stack>
-                  ) : (
-                    <Text as="span" color="fg.subtle">
-                      —
-                    </Text>
-                  )}
-                </Table.Cell>
-                <Table.Cell>
-                  <Badge colorPalette={STATUS_PALETTE[r.status]}>{t(`returns.status.${r.status}`)}</Badge>
-                </Table.Cell>
-              </Table.Row>
-            ))}
-          </Table.Body>
-        </Table.Root>
-
-        {total === 0 ? (
-          <Text color="fg.muted" data-testid="returns-empty">
-            {t("returns.empty")}
-          </Text>
-        ) : (
-              <Pagination
-                page={page}
-                pageSize={pageSize}
-                count={total}
-                onPageChange={setPage}
-                pageSizeOptions={[10, 20, 50]}
-                onPageSizeChange={(size) => {
-                  setPageSize(size);
-                  setPage(1);
-                }}
-              />
-            )}
-          </Stack>
-        </Tabs.Content>
+                {t(item.labelKey)}
+                {count !== undefined && (
+                  <Badge size="xs" variant="subtle" data-testid={`return-list-tab-count-${item.id}`}>
+                    {count}
+                  </Badge>
+                )}
+              </Tabs.Trigger>
+            );
+          })}
+          <Tabs.Indicator />
+        </Tabs.List>
       </Tabs.Root>
+
+      <Stack gap="card">
+        {loading ? (
+          <ListSkeleton testId="return-list-loading" />
+        ) : (
+          <RefreshOverlay busy={query.isFetching && !query.isPending}>
+            {mobile ? (
+              <Stack gap="2" data-testid="return-list-blocks">
+                {orders.map((order) => (
+                  <ReturnBlock
+                    key={String(order.id)}
+                    order={order}
+                    team={teamName(order.teamId)}
+                    shops={shopNames}
+                    goesTo={goesTo(order)}
+                    accept={acceptsHere(order) ? <ReturnAcceptButton order={order} onAccept={() => openAccept(order.id)} /> : undefined}
+                    onOpen={() => openRow(order)}
+                  />
+                ))}
+              </Stack>
+            ) : (
+              orders.length > 0 && (
+                <Box overflowX="auto" w="full" maxW="full" minW="0">
+                  <Table.Root size="sm" data-testid="return-list-table">
+                    <Table.Header>
+                      <Table.Row>
+                        <Table.ColumnHeader>{t("returnList.col.order")}</Table.ColumnHeader>
+                        <Table.ColumnHeader>{t("returnList.col.seller")}</Table.ColumnHeader>
+                        <Table.ColumnHeader>{t("warehouseOrders.col.shop")}</Table.ColumnHeader>
+                        <Table.ColumnHeader>{t("warehouseOrders.col.awb")}</Table.ColumnHeader>
+                        <Table.ColumnHeader textAlign="end">{t("orders.qty")}</Table.ColumnHeader>
+                        <Table.ColumnHeader>{t("picking.table.status")}</Table.ColumnHeader>
+                        <Table.ColumnHeader>{t("returnList.col.asked")}</Table.ColumnHeader>
+                        {showAccepted && <Table.ColumnHeader>{t("returnList.col.accepted")}</Table.ColumnHeader>}
+                        <Table.ColumnHeader w="1" />
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                      {orders.map((order) => {
+                        const shop = shopNames.get(order.shopId.toString());
+
+                        return (
+                          <Table.Row
+                            key={String(order.id)}
+                            cursor="pointer"
+                            _hover={{ bg: "bg.muted" }}
+                            onClick={() => openRow(order)}
+                            data-testid={`return-list-row-${order.id}`}
+                          >
+                            <Table.Cell>
+                              <Stack gap="0.5" minW="0">
+                                <Text fontWeight="bold" whiteSpace="nowrap" data-testid={`return-list-order-${order.id}`}>
+                                  #{order.id.toString()}
+                                </Text>
+                                <Text fontSize="xs" color="fg.muted" lineClamp={1}>
+                                  {order.customerName || "—"}
+                                </Text>
+                              </Stack>
+                            </Table.Cell>
+                            <Table.Cell data-testid={`return-list-seller-${order.id}`}>
+                              <TeamItem
+                                size="xs"
+                                team={{ teamName: teamName(order.teamId), teamType: TeamType.SELLING, teamId: order.teamId }}
+                              />
+                            </Table.Cell>
+                            <Table.Cell>
+                              <ShopRefCell shop={shop} orderRefId={order.orderExternalRefId} />
+                            </Table.Cell>
+                            <Table.Cell>
+                              <AwbCell channelId={order.shipmentChannelId} code={order.receiptCode} />
+                            </Table.Cell>
+                            <Table.Cell textAlign="end" data-testid={`return-list-qty-${order.id}`}>
+                              {Number(order.itemQuantity)}
+                            </Table.Cell>
+                            <Table.Cell>
+                              <ReturnStateCell order={order} goesTo={goesTo(order)} />
+                            </Table.Cell>
+                            <Table.Cell>
+                              <DateAgoCell unix={order.dateEnteredAtUnix} testId={`return-list-asked-${order.id}`} />
+                            </Table.Cell>
+                            {showAccepted && (
+                              <Table.Cell>
+                                {order.status === OrderStatus.RETURN_COMPLETED ? (
+                                  <DateAgoCell unix={order.statusAtUnix} testId={`return-list-accepted-${order.id}`} />
+                                ) : (
+                                  <Text color="fg.subtle">—</Text>
+                                )}
+                              </Table.Cell>
+                            )}
+                            <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
+                              {acceptsHere(order) && <ReturnAcceptButton order={order} onAccept={() => openAccept(order.id)} />}
+                            </Table.Cell>
+                          </Table.Row>
+                        );
+                      })}
+                    </Table.Body>
+                  </Table.Root>
+                </Box>
+              )
+            )}
+          </RefreshOverlay>
+        )}
+
+        {/* WHICH EMPTINESS (an-empty-list-shows-a-hint): a filter that matches nothing clears from here; an empty tab says
+            what fills it. */}
+        {!loading && orders.length === 0 && (
+          <EmptyHint
+            icon={filtered ? SearchX : Undo2}
+            title={
+              filtered
+                ? t("orders.noOrdersMatching")
+                : activeTab.id === "waiting"
+                  ? t("returnList.empty.waiting")
+                  : activeTab.id === "accepted"
+                    ? t("returnList.empty.accepted")
+                    : t("warehouseOrders.emptyReturns")
+            }
+            description={filtered ? t("emptyHint.noMatch") : t("returnList.empty.hint")}
+            action={
+              filtered ? (
+                <Button size="xs" variant="outline" data-testid="return-list-empty-clear" onClick={clearFilters}>
+                  {t("orders.clearFilters")}
+                </Button>
+              ) : undefined
+            }
+            testId="return-list-empty"
+          />
+        )}
+
+        {/* THE PAGES GROW AS THEY ARE OPENED, and the pager is always on screen (every-list-pages-with-the-growing-pager). */}
+        {!loading && (
+          <GrowingPager
+            page={page}
+            onPageChange={setPage}
+            hasNext={query.isPlaceholderData ? undefined : page * pageSize < totalItems}
+            resetKey={[tab, filterKey, pageSize].join("|")}
+            pageSize={pageSize}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            onPageSizeChange={(n) => {
+              setPageSize(n);
+              setPage(1);
+            }}
+            testId="return-list-pager"
+          />
+        )}
+      </Stack>
+
+      {mayWrite && <ReceiveReturnDialog open={receiving} onOpenChange={setReceiving} warehouseId={current.teamId} />}
     </Stack>
   );
 }

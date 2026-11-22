@@ -128,6 +128,10 @@ func expenseRowItem(c *expense_service_models.ExpenseRecord, adjusted map[uint64
 		FinanceAccountId: c.FinanceAccountID,
 		// The "by Root team" badge beside who recorded it (an-override-shows-a-platform-badge).
 		IsOverride: c.IsOverride,
+		// Group › Type on the row; UNSPECIFIED (*Tanpa jenis*) on a row from before the types.
+		Type: expensev1.ExpenseType(c.Type),
+		// The door: ACCOUNT_PAGE for a Setor / Tarik Modal made on the account page (*Dicatat di halaman akun*).
+		Origin: expensev1.ExpenseOrigin(c.Origin),
 	}
 }
 
@@ -217,11 +221,18 @@ func (s *Service) filtered(ctx context.Context, msg *expensev1.ExpenseListReques
 		query = query.Where("shop_id = ?", shop)
 	}
 
+	// ONE TYPE of a group (expense-types-sit-under-groups) — an adjustment carries its expense's, so the correction
+	// stays with the mistake here too.
+	if t := filter.GetType(); t != expensev1.ExpenseType_EXPENSE_TYPE_UNSPECIFIED {
+		query = query.Where("type = ?", int32(t))
+	}
+
 	return query, nil
 }
 
 type kindTotalRow struct {
 	Kind  int32
+	Type  int32
 	Total float64
 }
 
@@ -240,24 +251,55 @@ func (s *Service) totals(ctx context.Context, msg *expensev1.ExpenseListRequest)
 
 	err = query.
 		// Every row counts: an adjustment's signed amount IS the correction, so the sum is the corrected figure, and the
-		// list above shows each row it is made of.
-		Select("kind, COALESCE(SUM(amount), 0) AS total").
-		Group("kind").
+		// list above shows each row it is made of. One sum per (group, type) — the few cells the card is made of.
+		Select("kind, type, COALESCE(SUM(amount), 0) AS total").
+		Group("kind, type").
 		Scan(&rows).
 		Error
 	if err != nil {
 		return nil, costErr(err)
 	}
 
-	out := expensev1.ExpenseTotals{ByKind: make(map[int32]float64, len(rows))}
+	return foldTotals(rows), nil
+}
+
+// foldTotals turns the (group, type) sums into the month card (the-expense-types-prototype-is-accepted): each figure
+// signed by its type's direction (signOf — money in minus), each flow apart (flowOf), and the month total the checklist's
+// spending − money_in + capital (givens 17–22) — which is every group's net summed.
+func foldTotals(rows []kindTotalRow) *expensev1.ExpenseTotals {
+	out := expensev1.ExpenseTotals{
+		ByKind:        make(map[int32]float64, len(rows)),
+		ByType:        map[int32]float64{},
+		ByKindUntyped: map[int32]float64{},
+	}
 
 	for _, r := range rows {
-		out.ByKind[r.Kind] = r.Total
-		out.Total += r.Total
+		t := expensev1.ExpenseType(r.Type)
+		signed := r.Total * signOf(t)
+
+		out.ByKind[r.Kind] += signed
+		out.Total += signed
+
+		if t == expensev1.ExpenseType_EXPENSE_TYPE_UNSPECIFIED {
+			out.ByKindUntyped[r.Kind] += signed
+		} else {
+			out.ByType[r.Type] += signed
+		}
+
+		switch flowOf(t) {
+		case flowMoneyIn:
+			out.MoneyIn += r.Total
+		case flowCapitalOut:
+			out.Capital += r.Total
+		case flowCapitalIn:
+			out.Capital -= r.Total
+		default:
+			out.Spending += r.Total
+		}
 	}
 
 	// A kind with nothing in the period is ABSENT rather than 0. Absent and zero read identically on a
 	// summary card, and building the empty ones would mean this handler knowing the enum's members —
 	// which would then need editing every time a kind is added.
-	return &out, nil
+	return &out
 }

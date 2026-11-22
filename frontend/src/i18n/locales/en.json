@@ -321,71 +321,35 @@
     "toOnly": "Until {{date}}"
   },
   "returns": {
-    "title": "Returns",
     "selectTeam": "Select a team to view its returns.",
-    "warehouseOnly": "Returns are a warehouse team's queue.",
-    "preview": "Preview data",
-    "forceReturn": "Force Return",
-    "statOngoing": "Ongoing",
-    "statOngoingHint": "in flight — not yet received",
-    "statOngoingValue": "Ongoing value",
-    "statOngoingValueHint": "at expected refund value",
-    "statReceived": "Received · last 30 days",
-    "statReceivedHint": "counted & inspected",
-    "searchPlaceholder": "Search return, order, or customer",
-    "statusAll": "All",
-    "teamAll": "All teams",
-    "shopAll": "All shops",
-    "colReturn": "Return",
-    "colOrder": "Order",
-    "colTeam": "Team",
-    "colShop": "Shop",
-    "colCustomer": "Customer",
-    "colNote": "Note",
-    "colItems": "Items",
-    "colValue": "Value",
-    "colCreated": "Created",
-    "colAccepted": "Accepted",
-    "acceptedBy": "by {{name}}",
-    "colStatus": "Status",
-    "noOrder": "No order",
-    "empty": "No returns match.",
-    "dateField": {
-      "created": "Return created",
-      "orderCreated": "Order created",
+    "warehouseOnly": "Returns are a warehouse team's queue."
+  },
+  "returnList": {
+    "title": "Returns",
+    "searchPlaceholder": "Search order #, ref, resi or customer",
+    "tab": {
+      "waiting": "Awaiting acceptance",
+      "accepted": "Accepted",
+      "all": "All"
+    },
+    "col": {
+      "order": "Order",
+      "seller": "Seller",
+      "asked": "Asked",
       "accepted": "Accepted"
     },
-    "detail": {
-      "back": "Returns",
-      "notFound": "Return not found.",
-      "invalidId": "Invalid return id.",
-      "receive": "Receive & Inspect",
-      "receivePreview": "The receive & inspect flow lands with the return service.",
-      "summary": "Return",
-      "receivedOn": "Received on",
-      "receivedByLabel": "Received by",
-      "lines": "Returned items",
-      "sku": "Product code",
-      "product": "Product",
-      "qty": "Qty",
-      "sellable": "Sellable",
-      "writtenOff": "Written off",
-      "placed": "Placed",
-      "unplaced": "Unplaced",
-      "lineValue": "Refund",
-      "expectedTotal": "Items",
-      "sellableTotal": "Sellable",
-      "writtenOffTotal": "Written off",
-      "valueTotal": "Refund value",
-      "inspectionPending": "Goods not yet arrived — counted & inspected on receipt.",
-      "cancelledNote": "This return was cancelled — the goods never arrived.",
-      "unknownProduct": "Unidentified item"
+    "goesTo": "Returns to {{warehouse}}",
+    "noReturnWarehouse": "No return warehouse set",
+    "accept": "Accept",
+    "acceptLabel": "Accept return #{{id}}",
+    "empty": {
+      "waiting": "No return is waiting to be accepted.",
+      "accepted": "No return has been accepted yet.",
+      "hint": "A return shows here once customer service marks an order returned, or the crew finds it with Receive a Return."
     },
-    "status": {
-      "ongoing": "Ongoing",
-      "received": "Received",
-      "cancelled": "Cancelled",
-      "lost": "Lost"
+    "block": {
+      "asked": "Asked {{when}}",
+      "accepted": "Accepted {{when}}"
     }
   },
   "customerLineItem": {
@@ -531,14 +495,6 @@
       "derived": {
         "label": "Derived products",
         "reason": "sample — goods returned to another team become that team's product; the link is not recorded yet, so the rows are the same ones the owner's product page shows"
-      },
-      "suppliers": {
-        "label": "Suppliers",
-        "reason": "sample — the suppliers, their stores and the stores' links are real; that this product was bought at that store, and the deliveries and units, are invented until an accepted restock records the store"
-      },
-      "daily": {
-        "label": "Daily in and out",
-        "reason": "sample — stock movements are not summed per day yet; the same sample as the owner's product page"
       }
     }
   },
@@ -710,17 +666,9 @@
       "batchTotal": "Ready at known cost: {{value}}",
       "historyEmpty": "Nothing has moved yet.",
       "pending": {
-        "suppliers": {
-          "label": "Suppliers",
-          "reason": "The suppliers, their stores and the stores' links are real. That this product was bought at that store is invented until an accepted restock records the store, and the deliveries, units and last cost need the server to group the batches per supplier."
-        },
         "derived": {
           "label": "Derived products",
           "reason": "Goods returned to a team other than their owner become a product of that team. Nothing records that link yet, and the rows shown — both ways — are samples."
-        },
-        "daily": {
-          "label": "Daily in and out",
-          "reason": "Every movement is listed under Stock History, but nothing sums them per day — what came in, what went out, and the stock at the end of the day. The rows shown are samples."
         }
       },
       "suppliers": {
@@ -732,7 +680,10 @@
         "last": "Last delivery",
         "deliveriesCount_one": "{{count}} delivery",
         "deliveriesCount_other": "{{count}} deliveries",
-        "none": "No supplier is recorded for this product yet."
+        "none": "No supplier is recorded for this product yet.",
+        "unknownSupplier": "Supplier #{{id}}",
+        "unknownStore": "Store #{{id}}",
+        "noStore": "Bought from no store of the supplier"
       },
       "derived": {
         "from": "Derived from",
@@ -1279,7 +1230,45 @@
       "handover": "Reprint the label first",
       "handoverHint": "Order #{{id}}: its label changed after it was printed — print the new one and stick it on.",
       "sellerHint": "The warehouse has already printed this label. Saving a change asks it to print the label again."
-    }
+    },
+    "tags": {
+      "title": "Tags",
+      "column": "Tags",
+      "nav": "Tags",
+      "filterAll": "All tags",
+      "filterSearch": "Search tags",
+      "filterEmpty": "No tags yet",
+      "noMatch": "No tag matches",
+      "none": "No tags on this order yet.",
+      "add": "Add a tag…",
+      "addLabel": "Add a tag",
+      "typeToCreate": "Type a name to make a new tag",
+      "createCustom": "Create tag “{{name}}”",
+      "createSystem": "Create system tag “{{name}}”",
+      "adminOnly": "Admin only",
+      "alreadyOn": "Already on this order",
+      "shared": "The selling team and the warehouse shipping it see the same tags.",
+      "lockedHint": "A system tag (with a lock) is put on by an admin; you cannot change it.",
+      "adminHint": "As an admin you may also make a system tag, put one on or take it off, and rename or delete any order tag.",
+      "saveFailed": "The tags were not saved",
+      "manage": {
+        "open": "Manage tags",
+        "title": "Manage order tags",
+        "hint": "Every team's order tags. A rename or a delete applies to every order that carries the tag.",
+        "usage_one": "{{count}} order",
+        "usage_other": "{{count}} orders",
+        "rename": "Rename {{name}}",
+        "delete": "Delete {{name}}",
+        "save": "Save",
+        "taken": "Another order tag already has this name.",
+        "deleteTitle": "Delete tag “{{name}}”?",
+        "deleteMessage_one": "It comes off the {{count}} order that carries it, for every team. This cannot be undone.",
+        "deleteMessage_other": "It comes off the {{count}} orders that carry it, for every team. This cannot be undone.",
+        "deleteMessageNone": "No order carries it. It leaves the list for every team.",
+        "deleteConfirm": "Delete tag"
+      }
+    },
+    "trackOnCourierSite": "Track on the courier's site"
   },
   "orderDetail": {
     "nav": {
@@ -3001,7 +2990,8 @@
       "batch": "Batch",
       "place": "Place",
       "product": "Product",
-      "warehouse": "Warehouse"
+      "warehouse": "Warehouse",
+      "givenTo": "given to {{name}}"
     },
     "transaction": {
       "restock": "Restock",
@@ -3110,12 +3100,7 @@
       "productsColumn": "Products",
       "productCount_one": "{{count}} product",
       "productCount_other": "{{count}} products",
-      "pending": {
-        "productCount": {
-          "label": "Product count",
-          "reason": "sample figures — nothing counts the products filed under a category yet: the product list cannot be narrowed by category."
-        }
-      }
+      "productTotal": "{{count}} total"
     },
     "categorySelect": {
       "placeholder": "Select category…",
@@ -4070,7 +4055,12 @@
       "placeholder": "Select a courier",
       "unavailable": "Couriers unavailable",
       "empty": "No couriers found"
-    }
+    },
+    "trackingUrl": "Tracking link",
+    "trackingUrlHelp": "Optional. The courier's tracking page, with {resi} where the tracking number goes (e.g. https://…/track?awb={resi}). Its orders then open their resi there; without a link, the resi stays copy-only.",
+    "trackingUrlNotHttps": "The link must start with https://",
+    "trackingUrlNoResi": "The link must contain {resi}, where the tracking number goes",
+    "trackingUrlNotAUrl": "This is not a web address"
   },
   "warehouseOrders": {
     "col": {
@@ -4415,7 +4405,8 @@
       "openingBalance": "Opening balance",
       "transfer": "Transfer",
       "teamPayment": "Team payment",
-      "capital": "Capital"
+      "capital": "Capital",
+      "moneyIn": "Money in"
     },
     "select": {
       "placeholder": "Choose an account",
@@ -5475,6 +5466,7 @@
         "transfer": "Transfer",
         "team_payment": "Team payment",
         "capital": "Capital",
+        "money_in": "Money in",
         "change": "Net change",
         "closing_balance": "Closing balance"
       },
@@ -5493,7 +5485,10 @@
         "payroll": "Payroll",
         "operational": "Operational",
         "other": "Other",
-        "total": "Total expenses"
+        "total": "Total expenses",
+        "money_in": "Money in",
+        "capital_out": "Prive",
+        "capital_in": "Capital deposit"
       },
       "inventoryRestock": {
         "ordered_count": "Units ordered",
@@ -6224,6 +6219,163 @@
         "warehouseTitle": "Goods missing recorded · {{when}}",
         "warehouse": "Waiting for {{team}} to decide — cancel, or wait. Found after all? Scan it as usual."
       }
+    }
+  },
+  "restockResolution": {
+    "title": "Resolutions",
+    "type": {
+      "refund": "Refund",
+      "return": "Return",
+      "reshipping": "Reshipping"
+    },
+    "record": "Record Resolution",
+    "settle": "Mark Settled",
+    "save": "Save",
+    "menu": {
+      "refund": "Refund",
+      "refundHint": "The money comes back into an account",
+      "return": "Return to Supplier",
+      "returnHint": "The broken units go back — a back-to-supplier parcel",
+      "returnNone": "No broken units to send back",
+      "reshipping": "Reshipping",
+      "reshippingHint": "The supplier sends the goods again — an incoming parcel"
+    },
+    "settled": {
+      "title": "Settled",
+      "body": "Marked settled by {{name}} · {{when}}. Barang kurang and Barang rusak came off; the resolutions stay.",
+      "bodyLost": "Marked settled by {{name}} · {{when}}. It has left the Lost tab; the resolutions stay."
+    },
+    "empty": "No resolution yet. Record the supplier's refund, a return or a reshipping — then mark it settled.",
+    "emptyLost": "No resolution yet. Record the refund or a reshipping — then mark it settled.",
+    "settleDialog": {
+      "title": "Mark Restock #{{id}} Settled?",
+      "message": "Barang kurang and Barang rusak come off this restock and it leaves the problem list. Its resolutions stay; a later one can still be recorded, and it stays settled.",
+      "messageLost": "It leaves the Lost tab. Its resolutions stay; a later one can still be recorded, and it stays settled.",
+      "none": "No resolution is recorded — it is settled with none.",
+      "onTheWay_one": "{{count}} reshipping is still on its way — the warehouse still counts it in when it arrives.",
+      "onTheWay_other": "{{count}} reshippings are still on their way — the warehouse still counts them in when they arrive."
+    },
+    "toast": {
+      "settled": "Restock marked settled",
+      "recorded": "Resolution recorded",
+      "reshipping": "Reshipping recorded — the incoming parcel is on the warehouse's list",
+      "resiSaved": "Tracking number saved",
+      "lost": "Parcel marked lost",
+      "received": "Parcel counted in",
+      "pricesSaved": "Prices saved",
+      "failed": "The change was not saved"
+    },
+    "row": {
+      "refund": "{{amount}} into {{account}}",
+      "returnParcel": "Parcel #{{id}}",
+      "inboundParcel": "Reshipping #{{id}}",
+      "pcs": "{{count}} pcs",
+      "outcome": "Counted in: {{good}} good · {{broken}} broken · {{short}} short"
+    },
+    "refund": {
+      "title": "Record Refund — Restock #{{id}}",
+      "message": "The money the supplier or the platform paid back.",
+      "confirm": "Record Refund",
+      "amount": "Amount",
+      "account": "Into account",
+      "accountHint": "Opens on the account that paid for the restock. Its balance rises by the refund and its history shows it."
+    },
+    "note": "Note",
+    "notePlaceholder": "e.g. agreed with the supplier on WhatsApp, 18 Nov",
+    "settledBadge": "Settled",
+    "countBadge_one": "{{count}} resolution",
+    "countBadge_other": "{{count}} resolutions",
+    "trail": {
+      "recorded": "Resolution recorded · {{type}}",
+      "settled": "Marked settled",
+      "settledDetail": "Barang kurang and Barang rusak came off.",
+      "settledDetailLost": "It left the Lost tab.",
+      "recordedTitle": "Resolution recorded",
+      "reopened": "Reopened",
+      "reopenedDetail": "Reshipping #{{id}} was counted in short or broken — the restock is open again.",
+      "short": "{{name}}: {{count}} short",
+      "broken": "{{name}}: {{count}} broken"
+    },
+    "returnForm": {
+      "title": "Return for restock #{{id}}",
+      "hint": "Creating this parcel records it as the restock's return resolution, then takes you back to the restock."
+    },
+    "inbound": {
+      "kind": "Reshipping from supplier",
+      "title": "Reshipping #{{id}}",
+      "editResi": "Edit Tracking Number",
+      "markLost": "Mark Lost",
+      "receive": "Count In",
+      "resiTitle": "Tracking Number — Reshipping #{{id}}",
+      "resiMessage": "Editable until the warehouse signs for the parcel.",
+      "lostTitle": "Mark Reshipping #{{id}} Lost?",
+      "lostMessage": "The parcel never came. The restock stays open until you mark it settled.",
+      "signTitle": "Sign for Reshipping #{{id}}",
+      "signMessage": "The parcel is at the door. A charge the courier asks for is noted now and final at count-in.",
+      "receiveTitle": "Count In Reshipping #{{id}}",
+      "receiveMessage": "Type what is in the box and how many are broken. Good units go on a rack; broken and short ones are written down and stay open on the restock.",
+      "sent": "Sent {{count}} pcs",
+      "received": "In the box",
+      "broken": "Broken",
+      "over": "More than was sent",
+      "rack": "Rack for {{count}} good",
+      "countLine": "{{good}} good to the rack · {{short}} short",
+      "forRestock": "for restock #{{id}} · {{team}}",
+      "forRestockShort": "for restock #{{id}}",
+      "fromSupplier": "From {{name}}",
+      "noResi": "No tracking number yet",
+      "from": "From",
+      "to": "To",
+      "owner": "Owner",
+      "forLabel": "Settles",
+      "restockRef": "Restock #{{id}}",
+      "noCharge": "None",
+      "chargeNoted": "noted at Tiba — final at count-in",
+      "chargeOwedSelling": "paid by {{warehouse}} at the door; your team owes it back",
+      "chargeOwedWarehouse": "paid by this warehouse at the door; {{team}} owes it back",
+      "lines": "Goods",
+      "priceHint": "Your price values the stock — no money moves.",
+      "sentHeader": "Sent",
+      "goodHeader": "Good",
+      "shortHeader": "Short",
+      "rackHeader": "Rack",
+      "value": "Value",
+      "trail": {
+        "created": "Recorded",
+        "arrived": "Arrived",
+        "received": "Counted in",
+        "lost": "Lost"
+      },
+      "supplierUnknown": "Supplier",
+      "editPrices": "Edit Prices",
+      "pricesTitle": "Prices — Reshipping #{{id}}",
+      "pricesMessage": "Editable until the warehouse counts the parcel in. The price values the stock — no money moves."
+    },
+    "form": {
+      "back": "Back to Restock #{{id}}",
+      "title": "Reshipping from Supplier",
+      "subtitle": "Restock #{{id}} · {{supplier}} sends the goods again. Saving records the resolution and creates the incoming parcel.",
+      "subtitleLost": "Lost restock #{{id}} · {{supplier}} sends the goods again. Saving records the resolution and creates the incoming parcel.",
+      "lines": "Goods sent again",
+      "linesHint": "Opened on the restock's problem at its unit price. Any product, count or price may change — the price values the stock, no money moves.",
+      "count": "Count",
+      "price": "Price per unit",
+      "removeLine": "Remove line",
+      "addLine": "Add Line",
+      "shipping": "Shipping",
+      "warehouse": "To warehouse",
+      "warehouseHint": "Opens on the restock's warehouse.",
+      "resiHint": "May follow — editable until the parcel arrives.",
+      "ready": "Ready to record",
+      "save": "Record Reshipping",
+      "missing": {
+        "product": "a product on every line",
+        "count": "a count",
+        "price": "a price",
+        "warehouse": "warehouse",
+        "courier": "courier"
+      },
+      "pickProduct": "Search a product by name or code"
     }
   }
 }

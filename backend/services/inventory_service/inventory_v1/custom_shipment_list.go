@@ -64,10 +64,23 @@ func (s *Service) CustomShipmentList(
 		return nil, customShipmentErr(err)
 	}
 
+	// THE PAGE'S RESOLUTION LINKS (backlog #101) — a return's and an inbound parcel's row, and an inbound one's stock-in —
+	// in ONE statement on the link's parcel key.
+	ids := make([]uint64, 0, len(rows))
+	for i := range rows {
+		ids = append(ids, rows[i].ID)
+	}
+
+	links, err := parcelLinks(s.db.WithContext(ctx), ids)
+	if err != nil {
+		return nil, customShipmentErr(err)
+	}
+
 	out := make([]*inventoryv1.CustomShipment, 0, len(rows))
 	for i := range rows {
 		wire := customShipmentToProto(&rows[i], customShipmentReadsMoney(&rows[i], teamID), false, nil)
 		wire.GoodsMissing = notes[rows[i].ID]
+		withParcelLink(wire, links)
 		out = append(out, wire)
 	}
 
@@ -99,6 +112,21 @@ func customShipmentListScope(db *gorm.DB, teamID uint64, filter *inventoryv1.Cus
 	// One kind or both.
 	if kind := customShipmentKindFromProto(filter.GetKind()); kind != "" {
 		query = query.Where("custom_shipments.kind = ?", kind)
+	}
+
+	// WHICH WAY (backlog #101): asked, that direction; unasked, both for the selling team and the root team (its Kirim
+	// Paket lists the inbound parcels under Semua) and OUTBOUND for a warehouse — its queue is what it ships, and it reads
+	// the parcels coming in through INBOUND (its incoming list), so the queue it had reads as before.
+	switch filter.GetDirection() {
+	case inventoryv1.CustomShipmentDirection_CUSTOM_SHIPMENT_DIRECTION_INBOUND:
+		query = query.Where("custom_shipments.kind = ?", models.CustomShipmentSupplierReshipping)
+	case inventoryv1.CustomShipmentDirection_CUSTOM_SHIPMENT_DIRECTION_OUTBOUND:
+		query = query.Where("custom_shipments.kind <> ?", models.CustomShipmentSupplierReshipping)
+	default:
+		if teamID != san_auth.RootTeamID {
+			query = query.Where("(custom_shipments.team_id = ? OR custom_shipments.kind <> ?)", teamID,
+				models.CustomShipmentSupplierReshipping)
+		}
 	}
 
 	// The warehouse it ships from — the selling side's lens; it narrows the scope, never widens it.

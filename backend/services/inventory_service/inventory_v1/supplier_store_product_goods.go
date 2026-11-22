@@ -87,10 +87,12 @@ func SupplierStoreProductGoods(
 		LastOrder *time.Time
 	}
 
-	// The page's batches first, looked up PAIR BY PAIR through batches_supplier_idx (supplier, store) — the LATERAL's
-	// OFFSET 0 keeps it a lookup per pair, never a hash of the whole supplier's batches — and MATERIALIZED, read once for
-	// both figures; then the order rows of exactly those batches, through batch_logs' (batch_id, id) index one batch at a
-	// time (SupplierGoods' sold). Ready and sold meet in ONE aggregate over a UNION ALL, never a join of the two: the
+	// The page's batches first, looked up PAIR BY PAIR through batches_supplier_product_idx (supplier, store, product,
+	// warehouse — 00063; under a chip the cached generic plan still picks batches_supplier_idx: SupplierGoods.md Finding 3
+	// in audits/services/inventory_service/performances) — the LATERAL's OFFSET 0 keeps it a lookup per pair, never a
+	// hash of the whole supplier's batches — and MATERIALIZED, read once for both figures; then the order rows of exactly
+	// those batches, through batch_logs' (batch_id, id) index one batch at a time (SupplierGoods' sold). Ready and sold
+	// meet in ONE aggregate over a UNION ALL, never a join of the two: the
 	// planner reads the materialized page as one row, and a join of two such aggregates became a nested loop re-reading
 	// the sold side once per row — quadratic in the page (200 pairs 78 ms, against 48 ms now).
 	err := db.

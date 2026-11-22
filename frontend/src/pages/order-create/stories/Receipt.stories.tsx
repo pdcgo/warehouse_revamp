@@ -88,6 +88,29 @@ export const ALabelNeverOverwritesWhatWasTyped: Story = {
   },
 };
 
+// A LABEL FILLS ONCE — and what is typed after it stays (formState.ts `scanned`, once per attached file). The person
+// clears the tracking number the label filled and types their own order id over the other: nothing is read again, so
+// the empty box stays empty and the typed one stays typed.
+export const WhatIsTypedAfterALabelStays: Story = {
+  name: "Typed after the label stays",
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await attachReceipt(canvasElement, receiptLabelFile(), "read");
+    await expect(canvas.getByTestId("order-receipt-code")).toHaveValue(receiptLabel.receipt);
+
+    await userEvent.clear(canvas.getByTestId("order-receipt-code"));
+    const ref = canvas.getByTestId("order-external-ref-id");
+    await userEvent.clear(ref);
+    await userEvent.type(ref, "260101CCCC0003", { delay: 10 });
+    // Time for a second read to land, were one asked.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    await expect(canvas.getByTestId("order-receipt-code")).toHaveValue("");
+    await expect(canvas.getByTestId("order-external-ref-id")).toHaveValue("260101CCCC0003");
+  },
+};
+
 // A file that is not a courier's label SAYS so — a warning, never a refusal: the file stays attached,
 // and nothing is filled from it (a-label-outcome-is-a-result-not-an-error).
 export const AFileThatIsNotALabelSaysSo: Story = {

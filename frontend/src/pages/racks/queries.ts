@@ -1,17 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { productClient, rackClient } from "../../api/clients";
+import { rackClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
-import type { Product } from "../../gen/warehouse/product/v1/product_pb";
-import { productByIdsRowData, productsFromByIds } from "../../features/products/adapt";
-import {
-  racksFromList,
-  rackListPageRowData,
-  rackStockFromList,
-  rackStockRowData,
-  rackStockTotalsFromList,
-} from "../../features/racks/adapt";
+import { racksFromList, rackListPageRowData, rackStockTotalsFromList } from "../../features/racks/adapt";
 
-// The rack screens' reads (#176).
+// The rack screens' reads (#176). The one rack's page reads through features/racks/queries.ts (#120) — its header,
+// shelf and history; the old per-rack hooks here (useRack, useRackStock) had no caller and are gone (#122).
 
 export function useRacks(args: {
   teamId: bigint | undefined;
@@ -62,85 +55,6 @@ export function useRackStat(args: { teamId: bigint | undefined; q: string }) {
         filled: Number(res.preview?.filledCount ?? 0n),
         empty: Number(res.preview?.emptyCount ?? 0n),
         pieces: Number(res.preview?.stockCount ?? 0n),
-      };
-    },
-  });
-}
-
-export function useRack(args: { teamId: bigint | undefined; rackId: bigint }) {
-  const { teamId, rackId } = args;
-
-  return useQuery({
-    queryKey: key.racks(teamId, { rackId: rackId.toString() }),
-    enabled: teamId !== undefined && rackId > 0n,
-    queryFn: async () => {
-      const res = await rackClient.rackDetail({ teamId: teamId!, rackId });
-
-      return res.rack ?? null;
-    },
-  });
-}
-
-// What is on one shelf, and what each thing IS.
-//
-// The two calls stay SERIALISED inside one query function and are returned together, exactly as the
-// old effect committed them together. "Unknown product" is a claim — that the catalogue no longer
-// lists it — and showing it down the column while the lookup is merely in flight would assert
-// something false. One query means the rows and their names arrive as one value or not at all.
-//
-// The inner failure is still swallowed: the goods are on the shelf whether or not the catalogue can
-// be read, so every row falls back to its unresolved label and KEEPS ITS COUNT, which is the number
-// somebody standing at the rack came for.
-export function useRackStock(args: {
-  teamId: bigint | undefined;
-  rackId: bigint;
-  page: number;
-  pageSize: number;
-}) {
-  const { teamId, rackId, page, pageSize } = args;
-
-  return useQuery({
-    queryKey: key.racks(teamId, { rackId: rackId.toString(), stock: true, page, pageSize }),
-    enabled: teamId !== undefined && rackId > 0n,
-    queryFn: async () => {
-      const res = await rackClient.rackStock({
-        teamId: teamId!,
-        filter: { rackId },
-        dataRequest: rackStockRowData(),
-        page: { page, limit: pageSize },
-      });
-
-      const stockLines = rackStockFromList(res.items, res.ids);
-
-      // Unique and non-zero: ProductByIds demands min_items:1, unique ids, each > 0 — so a duplicate
-      // or an empty set must never become a call. The cap is 200 and a page is at most 50, so a
-      // page's ids always fit in ONE call.
-      const ids = [...new Set(stockLines.map((line) => line.productId).filter((id) => id > 0n))];
-
-      const products = new Map<string, Product>();
-
-      if (ids.length > 0) {
-        try {
-          // `teamId` here is the team the CALLER holds a role in — this warehouse — not the team
-          // whose products come back. That is what lets it resolve a selling team's product.
-          const productRes = await productClient.productByIds({
-            teamId: teamId!,
-            filter: { ids },
-            dataRequest: productByIdsRowData(),
-          });
-
-          for (const product of productsFromByIds(productRes)) {
-            products.set(product.id.toString(), product);
-          }
-        } catch {
-          // See the note above: names are best-effort, counts are not.
-        }
-      }
-
-      return {
-        lines: stockLines,
-        products,
-        totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
   });

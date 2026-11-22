@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Button,
@@ -17,9 +18,12 @@ import {
 } from "@chakra-ui/react";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { rpcError, teamClient, warehouseInfoClient } from "../../api/clients";
+import { rpcError } from "../../api/clients";
 import { toaster } from "../../components/feedback/Toaster";
-import { useSaveWarehouse } from "./queries";
+import { useTeamDetail } from "../../features/teams/queries";
+import { useWarehouseInfo } from "../../features/warehouse/queries";
+import { useSeedOnce } from "../../lib/useSeedOnce";
+import { SAVE_WAREHOUSE, useSaveWarehouse } from "./queries";
 import { ClosuresEditor } from "./components/ClosuresEditor";
 import { WeeklyHoursEditor, dayHoursFromWeek, weekFromDayHours } from "./components/WeeklyHoursEditor";
 import type { WeekHours } from "./components/WeeklyHoursEditor";
@@ -34,7 +38,6 @@ export function WarehouseEditPage() {
 
   const id = teamId ? BigInt(teamId) : 0n;
 
-  const [loading, setLoading] = useState(true);
   // The write, and the team-list invalidation it owes, declared together (#177).
   const saveWarehouse = useSaveWarehouse();
   const saving = saveWarehouse.isPending;
@@ -46,45 +49,35 @@ export function WarehouseEditPage() {
   const [operating, setOperating] = useState<WeekHours>(weekFromDayHours(undefined));
   const [receiving, setReceiving] = useState<WeekHours>(weekFromDayHours(undefined));
 
-  useEffect(() => {
-    if (id === 0n) {
+  // THE TWO READS — team basics (TeamDetail) and the warehouse's profile (WarehouseInfoDetail), asked together. Query
+  // hooks (no-global-store-every-read-is-a-query-hook): the profile is the SAME cache entry the closures list below
+  // draws from and the team page's Gudang section reads, so this page asks for it ONCE a load — it used to ask twice.
+  //
+  // ⚠ THEY SIT STILL WHILE THE SAVE RUNS. The save invalidates the teams and this warehouse's profile, and then leaves
+  // for the team's page, which reads both afresh; re-read here first, they would be asked twice for one save — and
+  // under a form that is about to go. `enabled` as a FUNCTION is evaluated at the invalidation itself, never a render
+  // late (features/racks/queries.ts, the rack dialogs' reads).
+  const client = useQueryClient();
+  const notSaving = () => client.isMutating({ mutationKey: SAVE_WAREHOUSE }) === 0;
+  const team = useTeamDetail({ teamId: id, enabled: notSaving });
+  const info = useWarehouseInfo({ warehouseId: id, enabled: notSaving });
+
+  // THE FORM IS SEEDED ONCE PER WAREHOUSE, from the answers given since this page opened — a closure added below
+  // re-reads the profile, and that answer must never overwrite a name or hours somebody is halfway through typing.
+  // Either read failing says so above an empty form, as the one-shot read did.
+  const seeded = useSeedOnce(id.toString(), team.isFetchedAfterMount && info.isFetchedAfterMount, () => {
+    if (team.isError || info.isError) {
+      setError(rpcError(team.error ?? info.error));
       return;
     }
 
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        // Team basics and warehouse hours come from two RPCs; load them together.
-        const [detail, hours] = await Promise.all([
-          teamClient.teamDetail({ teamId: id }),
-          warehouseInfoClient.warehouseInfoDetail({ teamId: id }),
-        ]);
-
-        if (cancelled) {
-          return;
-        }
-
-        setName(detail.team?.name ?? "");
-        setDescription(detail.team?.description ?? "");
-        setLocation(hours.info?.location ?? "");
-        setOperating(weekFromDayHours(hours.info?.operatingHours));
-        setReceiving(weekFromDayHours(hours.info?.receivingHours));
-      } catch (err) {
-        if (!cancelled) {
-          setError(rpcError(err));
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+    setName(team.data?.name ?? "");
+    setDescription(team.data?.description ?? "");
+    setLocation(info.data?.location ?? "");
+    setOperating(weekFromDayHours(info.data?.operatingHours));
+    setReceiving(weekFromDayHours(info.data?.receivingHours));
+  });
+  const loading = !seeded;
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -199,8 +192,9 @@ export function WarehouseEditPage() {
         </Stack>
       </form>
 
-      {/* One-off closures, saved one at a time — outside the hours form (a-warehouse-records-its-holidays). */}
-      {id !== 0n && <ClosuresEditor warehouseId={id} />}
+      {/* One-off closures, saved one at a time — outside the hours form (a-warehouse-records-its-holidays). Drawn from
+          the page's own read of the profile: one WarehouseInfoDetail for the form and the list. */}
+      {id !== 0n && <ClosuresEditor warehouseId={id} closures={info.data?.closures ?? []} />}
     </Stack>
   );
 }

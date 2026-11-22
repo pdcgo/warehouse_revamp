@@ -2,9 +2,18 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { expenseMetricCalls, expensePersonCalls } from "../../../.storybook/expenseAnalyticStub";
-import { asTeam, routedPage } from "../../../.storybook/pageStory";
+import { asTeam, besideTheOpenSidebar, routedPage } from "../../../.storybook/pageStory";
 import { asPlatformOnly, asRole } from "../../../.storybook/sessionScenario";
-import { EXPENSE_KIND_FIELDS, EXPENSE_METRICS, METRICS, catalogueMetrics, metricById } from "../../features/analytic/catalogue";
+import {
+  EXPENSES_AS_SERVED,
+  EXPENSE_KIND_FIELDS,
+  EXPENSE_METRICS,
+  EXPENSE_TYPE_FIELDS,
+  METRICS,
+  catalogueMetrics,
+  metricById,
+} from "../../features/analytic/catalogue";
+import { addSampleFactsForStory } from "../../features/analytic/sample";
 import { ROOT_TEAM_ID } from "../../features/team/TeamContext";
 import { GroupType } from "../../gen/warehouse/analytic_base/v1/analytic_pb";
 import { AdsExpenseMetricSchema, ExpensesMetricSchema } from "../../gen/warehouse/expense/v1/expense_analytic_pb";
@@ -19,9 +28,13 @@ import { AnalyticPage } from "./index";
 //
 //   Ads expense   `amount`; filters team, shop, user, date range; groups seller, warehouse, created by, time, and shop
 //                 (expense-has-ads-and-expenses, the-expense-metrics-follow-the-decisions-already-made).
-//   Expenses      one field per TYPED kind — Ads, Payroll, Operational, Other — and their total; NO Stock loss
-//                 (stock-loss-stays-out-of-analytic-expenses). The same filters and groups without shop. A warehouse
-//                 team's expense sits under Warehouse.
+//   Expenses      one field per TYPED kind — Ads, Payroll, Operational, Other — the total, and one field per expense
+//                 TYPE in Biaya's words (backlog #107) — 23 figures; NO Stock loss
+//                 (stock-loss-stays-out-of-analytic-expenses), and not the three #99 summaries money in, Prive and
+//                 Setoran modal, which the answer still carries (the-expense-metric-shows-each-type-not-the-three-
+//                 summaries). The same filters and groups without shop. A warehouse team's expense sits under
+//                 Warehouse. The total moves as Biaya's month total: Prive raises it, Setoran modal and money in lower
+//                 it (acceptance analytic/expense_metric.md givens 6–22).
 //
 // A correction counts ON THE DAY IT IS MADE (an-expense-correction-counts-on-the-day-it-is-made) and for THE PERSON WHO
 // MADE IT (an-expense-correction-counts-for-who-made-it): Toko Sinar's Rp 500.000 ad of 14 Oct, typed by Budi, is
@@ -55,6 +68,7 @@ const AdsAndExpensesMonthly = at(`?g=monthly&m=${ADS},${EXPENSES}&${QUARTER}`);
 const AdsForSinar = at(`?g=daily&m=${ADS}&shop=16&r=2026-10-13..2026-10-20`);
 const ExpensesOctoberMonthly = at(`?g=monthly&m=${EXPENSES}&${OCTOBER}`);
 const BothByCreator = at(`?g=user&m=${ADS},${EXPENSES}&${OCTOBER}&s=${EXPENSES}:total:desc`);
+const ExpensesOnThe15th = at(`?g=daily&m=${EXPENSES}&r=2026-10-15..2026-10-15`);
 
 const meta = {
   title: "Pages/Analytic/Expense",
@@ -101,6 +115,9 @@ const rowKeys = (canvas: ReturnType<typeof within>) =>
   canvas.getAllByTestId(/^analytic-row-/).map((r: HTMLElement) => r.getAttribute("data-testid")!.replace("analytic-row-", ""));
 
 const sum = (values: number[]) => values.reduce((s, a) => s + a, 0);
+
+/** A heading's words as written — the table holds some of their spaces unbreakable (inTwoLines, headings.stories.tsx). */
+const headingText = (h: HTMLElement) => (h.textContent ?? "").replace(/\s+/g, " ").trim();
 
 /** No Stock loss anywhere — no column, no cell, no headline card (stock-loss-stays-out-of-analytic-expenses). */
 async function noStockLoss(canvas: ReturnType<typeof within>) {
@@ -149,7 +166,9 @@ export const ExpenseHoldsAdsAndExpenses: Story = {
     await noStockLoss(canvas);
     // Read off the served messages — one of each id in the catalogue.
     await expect(metricById(ADS)?.fields.map((f) => f.name)).toEqual(["amount"]);
-    await expect(metricById(EXPENSES)?.fields.map((f) => f.name)).toEqual(["ads", "payroll", "operational", "other", "total"]);
+    // The four kinds and the total — then one field per expense type (backlog #107); not the three #99 summaries.
+    const names = metricById(EXPENSES)?.fields.map((f) => f.name).join(",");
+    await expect(names).toBe(["ads", "payroll", "operational", "other", "total", ...EXPENSE_TYPE_FIELDS].join(","));
     await expect(catalogueMetrics().filter((m) => m.metricId === ADS)).toHaveLength(1);
   },
 };
@@ -400,6 +419,225 @@ export const ExpensesByDay: Story = {
   },
 };
 
+// EACH EXPENSE TYPE IS A COLUMN, IN BIAYA'S WORDS (backlog #107; acceptance analytic/expense_metric.md givens 6–22 —
+// *<type> shown*) — after the total, the eighteen types in Biaya's order, each headed with the words Biaya's
+// month card uses. Toko Melati's utilities on the 10th sit under Electricity and its ads under Marketplace ads; the rent
+// on the 1st reads as a row from before the types: Operational and the total hold it, no type does.
+const TYPE_WORDS = [
+  "Marketplace ads",
+  "Content · endorsement",
+  "Basic salary",
+  "Bonus",
+  "Contributions (BPJS)",
+  "Electricity",
+  "Internet · data package",
+  "Kitchen · team meals",
+  "Tools",
+  "Equipment",
+  "Bank fee",
+  "Discrepancy · unrecorded transaction",
+  "Outside debt paid",
+  "Outside receivable received",
+  "Prive · owner takes capital",
+  "Deposit · owner adds capital",
+  "Other money out",
+  "Other money in",
+];
+
+const OPERATIONAL_TYPES = ["electricity", "internet", "kitchen", "tools", "equipment", "bank_fee", "discrepancy"];
+
+export const EachTypeIsAColumnInBiayasWords: Story = {
+  render: () => <ExpensesDaily />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    // The headings, in order: period, the kinds and total, then the types in Biaya's words.
+    const headings = within(canvas.getByTestId("analytic-table")).getAllByRole("columnheader").map(headingText);
+    await expect(headings.slice(-EXPENSE_TYPE_FIELDS.length).join("|")).toBe(TYPE_WORDS.join("|"));
+    await expect(headings).toHaveLength(1 + EXPENSE_KIND_FIELDS.length + 1 + TYPE_WORDS.length);
+    for (const [i, field] of EXPENSE_TYPE_FIELDS.entries()) {
+      await expect(canvas.getByTestId(`analytic-sort-${field}`)).toHaveTextContent(TYPE_WORDS[i]!);
+      await expect(headline(canvas, field)).toBe(sum(column(canvas, field)));
+    }
+
+    // The 10th: the utilities are Electricity's, the ads Marketplace ads'.
+    await expect(cell(canvas, "2026-10-10", "electricity")).toBe(cell(canvas, "2026-10-10", "operational"));
+    await expect(cell(canvas, "2026-10-10", "electricity")).toBeGreaterThan(450_000 - 1);
+    for (const day of rowKeys(canvas)) {
+      await expect(cell(canvas, day, "ads_marketplace")).toBe(cell(canvas, day, "ads"));
+    }
+
+    // The 1st: the rent is Operational's and the total's, no type's.
+    await expect(cell(canvas, "2026-10-01", "operational")).toBe(2_500_000);
+    for (const field of OPERATIONAL_TYPES) await expect(cell(canvas, "2026-10-01", field)).toBe(0);
+    const typed = sum(EXPENSE_TYPE_FIELDS.map((f) => cell(canvas, "2026-10-01", f)));
+    await expect(cell(canvas, "2026-10-01", "total")).toBe(typed + 2_500_000);
+    await noStockLoss(canvas);
+  },
+};
+
+// THE TOTAL MOVES AS BIAYA'S MONTH TOTAL (givens 17–22) — on 15 Oct Toko Melati also pays an outside debt of 1.000.000,
+// takes a prive of 2.000.000, deposits 1.000.000, receives an outside receivable of 500.000 and other money of 100.000.
+// Each type shows in its own column, money in and Setoran modal minus as on Biaya; the total is the spending − money in
+// + Prive − Setoran modal: up by the debt and the prive, down by the deposit and the money in. The kinds stay spending.
+// The answer also carries the three #99 summaries (money in 600.000, Prive 2.000.000, Setoran modal 1.000.000); the
+// screen shows none of them (the-expense-metric-shows-each-type-not-the-three-summaries).
+const THE_15TH = "2026-10-15";
+
+/** The three #99 summaries the answer carries and the screen does not offer — written out, never read off the catalogue. */
+const THE_THREE = ["money_in", "capital_out", "capital_in"];
+
+const capitalAndMoneyIn = () =>
+  addSampleFactsForStory(
+    EXPENSES,
+    ...([
+      { other: 1_000_000, outside_debt_paid: 1_000_000, total: 1_000_000 },
+      { capital_out: 2_000_000, prive: 2_000_000, total: 2_000_000 },
+      { capital_in: 1_000_000, capital_deposit: -1_000_000, total: -1_000_000 },
+      { money_in: 500_000, outside_receivable_received: -500_000, total: -500_000 },
+      { money_in: 100_000, other_in: -100_000, total: -100_000 },
+    ] as Record<string, number>[]).map((values) => ({ day: THE_15TH, team: "12", user: "61", owner: "12", values })),
+  );
+
+export const TheTotalMovesAsBiayasMonthTotal: Story = {
+  render: () => <ExpensesOnThe15th />,
+  beforeEach: [capitalAndMoneyIn],
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(rowKeys(canvas)).toEqual([THE_15TH]);
+    const at15 = (field: string) => cell(canvas, THE_15TH, field);
+
+    // Each type shown, signed as Biaya shows it.
+    await expect(at15("outside_debt_paid")).toBe(1_000_000);
+    await expect(at15("prive")).toBe(2_000_000);
+    await expect(at15("capital_deposit")).toBe(-1_000_000);
+    await expect(at15("outside_receivable_received")).toBe(-500_000);
+    await expect(at15("other_in")).toBe(-100_000);
+    await expect(canvas.getByTestId(`analytic-cell-${THE_15TH}-capital_deposit`)).toHaveTextContent(/^−Rp/);
+
+    // No cell of the three summaries; the kinds stay spending (the debt is Other's).
+    for (const f of THE_THREE) await expect(canvas.queryByTestId(`analytic-cell-${THE_15TH}-${f}`)).toBeNull();
+    const spending = sum(EXPENSE_KIND_FIELDS.map(at15));
+    await expect(at15("other")).toBeGreaterThan(1_000_000 - 1);
+
+    // THE TOTAL: spending − money in + Prive − Setoran modal — the type columns summed.
+    await expect(at15("total")).toBe(spending - 600_000 + 2_000_000 - 1_000_000);
+    await expect(at15("total")).toBe(sum(EXPENSE_TYPE_FIELDS.map(at15)));
+    await expect(headline(canvas, "total")).toBe(at15("total"));
+  },
+};
+
+// NOT THE THREE #99 SUMMARIES (the-expense-metric-shows-each-type-not-the-three-summaries) — on the 15th the answer still
+// carries money in, Prive and Setoran modal (the proto keeps them; the stub answers them as expense_service does, from
+// EXPENSES_AS_SERVED), but the screen offers the four groups, the total and the eighteen types — 23 figures: 23 headline
+// cards, 23 columns after the period, 23 sorts, and no card, column, cell or sort of the three. Each is read through its
+// type instead. Beside the open sidebar at 1440, as the app draws it: the table may scroll in its own box, the page not.
+const SHOWN_FIELDS = [...EXPENSE_KIND_FIELDS, "total", ...EXPENSE_TYPE_FIELDS];
+
+const AT_1440 = { viewport: { value: "desktop1440" } };
+
+/** The id words of the Expenses columns — the kinds and the total, then the types as Biaya words them. */
+const KIND_LABELS_ID = ["Iklan", "Gaji", "Operasional", "Lainnya", "Total biaya"];
+const TYPE_WORDS_ID = [
+  "Iklan marketplace",
+  "Konten · endorse",
+  "Gaji pokok",
+  "Bonus",
+  "Iuran (BPJS)",
+  "Listrik",
+  "Internet · paket data",
+  "Dapur · makan tim",
+  "Alat",
+  "Perlengkapan",
+  "Biaya bank",
+  "Selisih · transaksi tak tercatat",
+  "Utang luar dibayar",
+  "Piutang luar diterima",
+  "Prive · ambil modal",
+  "Setoran modal",
+  "Uang keluar lain",
+  "Uang masuk lain",
+];
+
+const testIdsOf = (els: HTMLElement[], strip: RegExp) => els.map((e) => e.getAttribute("data-testid")!.replace(strip, ""));
+
+/** The 23 and only the 23 — headline, columns in `words`, sorts — and the page fits beside the sidebar. */
+async function onlyTheTwentyThree(canvasElement: HTMLElement, words: string[]) {
+  const canvas = await loaded(canvasElement);
+  await expect(window.innerWidth).toBe(1440);
+
+  // The catalogue offers the 23; the served message still has the three.
+  await expect(SHOWN_FIELDS).toHaveLength(23);
+  await expect(metricById(EXPENSES)?.fields.map((f) => f.name).join(",")).toBe(SHOWN_FIELDS.join(","));
+  const served = EXPENSES_AS_SERVED.fields.map((f) => f.name);
+  for (const f of THE_THREE) await expect(served).toContain(f);
+
+  // A headline card per figure, in order.
+  const cards = testIdsOf(canvas.getAllByTestId(/^analytic-headline-[a-z_]+-value$/), /^analytic-headline-|-value$/g);
+  await expect(cards.join(",")).toBe(SHOWN_FIELDS.join(","));
+
+  // The period, then the 23 headed in the screen's words — a sort on each.
+  const table = within(canvas.getByTestId("analytic-table"));
+  const headings = table.getAllByRole("columnheader").map(headingText);
+  await expect(headings.slice(1).join("|")).toBe(words.join("|"));
+  const sorts = testIdsOf(table.getAllByTestId(/^analytic-sort-/), /^analytic-sort-/).filter((k) => k !== "key");
+  await expect(sorts.join(",")).toBe(SHOWN_FIELDS.join(","));
+
+  // None of the three anywhere: no card, column, cell or sort.
+  for (const f of THE_THREE) {
+    await expect(canvas.queryAllByTestId(new RegExp(`-${f}(-value|-note)?$`))).toHaveLength(0);
+  }
+
+  // The page fits at 1440 beside the open sidebar; only the table's own box may scroll.
+  const page = canvas.getByTestId("analytic-page");
+  await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+
+  return headings;
+}
+
+export const NotTheThreeSummaries: Story = {
+  name: "Not the three summaries · English",
+  render: () => <ExpensesOnThe15th />,
+  decorators: [besideTheOpenSidebar],
+  globals: AT_1440,
+  beforeEach: [capitalAndMoneyIn],
+  play: async ({ canvasElement }) => {
+    const headings = await onlyTheTwentyThree(canvasElement, [...KIND_LABELS, ...TYPE_WORDS]);
+    for (const word of ["Money in", "Prive", "Capital deposit"]) await expect(headings).not.toContain(word);
+  },
+};
+
+// IN INDONESIAN — the duplicate goes: *Setoran modal* heads ONE column, the type's; no *Uang masuk*, no bare *Prive*.
+export const NotTheThreeSummariesInIndonesian: Story = {
+  name: "Not the three summaries · Indonesian",
+  render: () => <ExpensesOnThe15th />,
+  decorators: [besideTheOpenSidebar],
+  globals: { ...AT_1440, locale: "id" },
+  beforeEach: [capitalAndMoneyIn],
+  play: async ({ canvasElement }) => {
+    const headings = await onlyTheTwentyThree(canvasElement, [...KIND_LABELS_ID, ...TYPE_WORDS_ID]);
+    await expect(headings.filter((h) => h === "Setoran modal")).toHaveLength(1);
+    for (const word of ["Uang masuk", "Prive"]) await expect(headings).not.toContain(word);
+  },
+};
+
+// A LINK SORTED BY ONE OF THE THREE opens on the default sort — Expenses' first figure, Ads, largest first — never an
+// error and never the summary's column (parseSort finds no such field in the catalogue).
+const SortedByASummary = at(`?g=team&m=${EXPENSES}&${OCTOBER}&s=${EXPENSES}:capital_in:desc`);
+
+export const ALinkSortedByASummaryOpensOnTheDefault: Story = {
+  name: "A link sorted by a summary opens on the default sort",
+  render: () => <SortedByASummary />,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await expect(rowKeys(canvas)).toEqual(["12"]);
+    await expect(canvas.getByTestId("analytic-sort-ads")).toHaveAttribute("data-sort", "desc");
+    await expect(canvas.queryByTestId("analytic-sort-capital_in")).toBeNull();
+  },
+};
+
 // ADS EXPENSE AND EXPENSES AGREE — one table, by month: Ads expense's Ads spend is Expenses' Ads, month by month
 // (October's nets Sinar's correction in both).
 export const AdsExpenseIsExpensesAds: Story = {
@@ -534,7 +772,7 @@ export const Mobile: Story = {
   },
 };
 
-// ON A PHONE — Expenses by month: each month a block of its five figures, no Stock loss.
+// ON A PHONE — Expenses by month: each month a block of its figures — the kinds, the total, every type — no Stock loss.
 export const MobileExpensesByKind: Story = {
   render: () => <ExpensesMonthly />,
   globals: { viewport: { value: "mobile2" } },
@@ -544,6 +782,8 @@ export const MobileExpensesByKind: Story = {
     await expect(within(canvas.getByTestId("analytic-table")).queryAllByRole("columnheader")).toHaveLength(0);
     const october = canvas.getByTestId("analytic-row-2026-10-01");
     for (const label of KIND_LABELS) await expect(october).toHaveTextContent(label);
+    // …and every type in Biaya's words, each a line of the block (backlog #107).
+    for (const label of TYPE_WORDS) await expect(october).toHaveTextContent(label);
     await expect(october).not.toHaveTextContent("Stock loss");
   },
 };

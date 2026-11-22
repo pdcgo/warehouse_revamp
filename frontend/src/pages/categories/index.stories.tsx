@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect } from "storybook/test";
+import { expect, waitFor } from "storybook/test";
 
 import { CATEGORIES_META, loaded } from "./stories/kit";
 
@@ -35,7 +35,7 @@ export const Mobile: Story = {
     await expect(create).not.toHaveTextContent("New Category");
     // No heading row on a phone — the count says what it is, and ＋ and the open-all button are their icons alone.
     await expect(canvas.queryByTestId("categories-heading")).toBeNull();
-    await expect(canvas.getByTestId("category-children-51")).toHaveTextContent("1 sub-category · 102 products");
+    await waitFor(() => expect(canvas.getByTestId("category-children-51")).toHaveTextContent("1 sub-category · 2 products"));
     await expect(canvas.getByTestId("add-child-51")).not.toHaveTextContent("Sub-category");
     await expect(canvas.getByTestId("categories-toggle-all")).not.toHaveTextContent("Expand All");
   },

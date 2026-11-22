@@ -12,6 +12,7 @@ import {
   orderOf,
   rp,
   sellingGround,
+  settled,
   shopEntries,
   shopOf,
 } from "./settlement_import_helpers";
@@ -41,6 +42,8 @@ import { SHOPEE_INCOME, SHOPEE_WITHDRAWAL, shopeeStatement, today, yesterday } f
 // - `report recorded by shop and period` — Penyelesaian › Report by shop, today's period: the shop's row carries the two
 //   sales and the two payouts; a period the statement is not in (yesterday) has no row for it. The refs case runs in a
 //   selling team of its own (three shops), so its rows are never paged off by the other cases' shops.
+// - `recorded in settlement analytic metric` — Analytic › Settlement grouped by shop and narrowed to it (7 days): the
+//   shop's Received cell reads the two payouts, its Gap the two sales less them.
 // - `row posted to the shop` — the dialog's closing summary names the ref as posted to the shop, and Penyelesaian › Shop
 //   entries, narrowed to the shop, lists that one Payout from Import.
 // - `nothing posted twice` — the same file uploaded again: the dialog posts 0, both lines already there; the order's
@@ -207,6 +210,20 @@ test.describe("selling:all wants to record the platform's payouts — import set
         await page.goto(`/settlement/report?grain=day&range=${yesterday()}..${yesterday()}`);
         await expect(page.getByTestId("report-summary")).toBeVisible({ timeout: 5_000 });
         await expect.soft(page.getByTestId(`report-group-row-${shop}`)).toHaveCount(0);
+        await settled(page);
+      });
+
+      await test.step("then: recorded in settlement analytic metric", async () => {
+        // Analytic › Settlement by shop, narrowed to the shop: Received carries the two payouts (Rp 175.000), and the
+        // Gap is the two sales less them (Rp 25.000) — the import's rows folded into the metric.
+        await expect
+          .soft(async () => {
+            await page.goto(`/analytic?g=shop&m=metrics/settlement&r=7d&shop=${shop}`);
+            await settled(page);
+            await expect(page.getByTestId(`analytic-cell-${shop}-received`)).toHaveText(rp(PAYOUT_A + PAYOUT_B), { timeout: 3_000 });
+            await expect(page.getByTestId(`analytic-cell-${shop}-gap`)).toHaveText(rp(200_000 - PAYOUT_A - PAYOUT_B));
+          })
+          .toPass({ timeout: 45_000 });
       });
     });
   }

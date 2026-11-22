@@ -68,6 +68,26 @@ service CustomShipmentService {
   // parcel STAYS requested — no status move, no stock write, nothing posts; the owning team decides (cancel, or wait).
   // May be recorded again while requested; each note is its own row, the latest is the open one.
   rpc CustomShipmentMissingReport(CustomShipmentMissingReportRequest) returns (CustomShipmentMissingReportResponse);
+
+  // THE INBOUND PARCEL (backlog #101 — a-suppliers-reshipping-comes-in-as-a-custom-shipment): a SUPPLIER_RESHIPPING is
+  // created by RestockResolutionCreate (RESHIPPING) and arrives as a restock box does — ON_THE_WAY → ARRIVED (Tiba) →
+  // RECEIVED (Terima), or LOST (lost-is-set-only-before-the-box-arrives; a late lost box is signed for,
+  // a-late-lost-box-is-signed-for-as-arrived). None of these act on an outbound parcel.
+  //
+  // The owning selling team edits the resi until Tiba.
+  rpc CustomShipmentResiSet(CustomShipmentResiSetRequest) returns (CustomShipmentResiSetResponse);
+  // The owning selling team edits the lines' prices until Terima — they value the stock and move NO money.
+  rpc CustomShipmentPricesSet(CustomShipmentPricesSetRequest) returns (CustomShipmentPricesSetResponse);
+  // The owning selling team gives it up while ON_THE_WAY — nothing moves.
+  rpc CustomShipmentMarkLost(CustomShipmentMarkLostRequest) returns (CustomShipmentMarkLostResponse);
+  // Tiba — the warehouse it comes to signs for it (from ON_THE_WAY or LOST); the courier's charge at the door may be
+  // noted, kept and shown, final at Terima (the-courier-charge-is-noted-at-tiba-and-final-at-terima). No money here.
+  rpc CustomShipmentArrive(CustomShipmentArriveRequest) returns (CustomShipmentArriveResponse);
+  // Terima — the warehouse counts it in (from ON_THE_WAY or ARRIVED): good units on a rack become stock at the seller's
+  // price, linked as the resolution's stock-in; broken and short are written down, and either REOPENS the restock (its
+  // matching tag back on, the settled mark lifted). The door charge is final here and owed through Team Balance, posted
+  // from CustomShipmentReceived.
+  rpc CustomShipmentReceive(CustomShipmentReceiveRequest) returns (CustomShipmentReceiveResponse);
 }
 
 // What a parcel is (a-custom-shipment-is-a-parcel-that-is-not-an-order). APPEND ONLY.
@@ -77,6 +97,17 @@ enum CustomShipmentKind {
   CUSTOM_SHIPMENT_KIND_SAMPLE = 1;
   // A received restock's broken units sent back to its supplier — no stock moves.
   CUSTOM_SHIPMENT_KIND_RESTOCK_RESHIP = 2;
+  // INBOUND (backlog #101): the restock's supplier sending goods again — a RESHIPPING resolution's parcel, from the
+  // supplier to the warehouse chosen; its lines (product, count, the seller's price) may differ from the restock's.
+  CUSTOM_SHIPMENT_KIND_SUPPLIER_RESHIPPING = 3;
+}
+
+// Which way a parcel goes — read from its kind: SAMPLE and RESTOCK_RESHIP go OUT from the warehouse,
+// SUPPLIER_RESHIPPING comes IN to it. APPEND ONLY.
+enum CustomShipmentDirection {
+  CUSTOM_SHIPMENT_DIRECTION_UNSPECIFIED = 0;
+  CUSTOM_SHIPMENT_DIRECTION_OUTBOUND = 1;
+  CUSTOM_SHIPMENT_DIRECTION_INBOUND = 2;
 }
 
 // Where a parcel is. APPEND ONLY.
@@ -90,6 +121,15 @@ enum CustomShipmentStatus {
   CUSTOM_SHIPMENT_STATUS_HANDED_OVER = 3;
   // Called off by the selling team while requested.
   CUSTOM_SHIPMENT_STATUS_CANCELLED = 4;
+  // INBOUND only (a restock box's steps): on its way from the supplier — the seller edits the resi and the prices, or
+  // marks it lost.
+  CUSTOM_SHIPMENT_STATUS_ON_THE_WAY = 5;
+  // INBOUND: signed for at the door (Tiba) — the prices still editable.
+  CUSTOM_SHIPMENT_STATUS_ARRIVED = 6;
+  // INBOUND: counted in (Terima). Final.
+  CUSTOM_SHIPMENT_STATUS_RECEIVED = 7;
+  // INBOUND: never came — a lost one that turns up is signed for (ARRIVED).
+  CUSTOM_SHIPMENT_STATUS_LOST = 8;
 }
 
 // Who pays the courier (the-courier-is-paid-by-the-team-or-by-the-warehouse). APPEND ONLY.
@@ -132,6 +172,15 @@ message CustomShipmentItem {
   uint64 restock_item_id = 7;
   // A reship line's broken note, as the warehouse wrote it at Terima; "" on a sample.
   string broken_note = 8;
+  // INBOUND: the seller's price per unit — values the stock, moves no money. UNSET on an outbound line and for a
+  // warehouse reader (a-warehouse-sees-no-seller-money).
+  optional double price_unit = 9;
+  // INBOUND, after Terima: what was in the box (broken included) and how many were broken; the short units are
+  // quantity − received. UNSET until counted.
+  optional uint64 received = 10;
+  optional uint64 broken = 11;
+  // INBOUND, after Terima: the rack the good units went on; 0 = none (no good unit) or not yet.
+  uint64 rack_id = 12;
 }
 
 // What a trail row is (P6 — a goods-missing note is from = to = REQUESTED, so from and to alone no longer say it).
@@ -145,6 +194,10 @@ enum CustomShipmentLogKind {
   // *Barang tidak ketemu* — the warehouse's goods-missing note (missing-goods-leave-a-note-on-the-custom-shipment): from =
   // to = REQUESTED, its lines in `missing`, its note the description. No money: both sides read it whole.
   CUSTOM_SHIPMENT_LOG_KIND_GOODS_MISSING = 3;
+  // INBOUND: the seller's *Ubah Resi* — from = to; its description is the old and new resi (no money: both sides read it).
+  CUSTOM_SHIPMENT_LOG_KIND_RESI_EDIT = 4;
+  // INBOUND: the seller's price edit — from = to; its description names the seller's prices, EMPTY for a warehouse reader.
+  CUSTOM_SHIPMENT_LOG_KIND_PRICE_EDIT = 5;
 }
 
 // One line of a goods-missing note: a sample's line on one rack its take drew from, or a reship's line (no rack).
@@ -239,6 +292,23 @@ message CustomShipment {
   // picked, handed over or cancelled (the trail keeps the row). On LIST rows too, which carry no trail: the badge on both
   // lists (the-goods-missing-badge-is-on-both-lists). No money in it — the warehouse and the team are sent the same.
   CustomShipmentGoodsMissing goods_missing = 27;
+
+  // Backlog #101 — which way it goes (from its kind) and, for a parcel that is a restock's resolution, that row
+  // (`restock_custom_shipments`): a RESTOCK_RESHIP linked as a `return`, every SUPPLIER_RESHIPPING. 0 = none.
+  CustomShipmentDirection direction = 28;
+  uint64 resolution_id = 29;
+  // INBOUND: the courier's charge at the door is `shipping_cost` (the warehouse pays it, so both sides read it —
+  // the-warehouse-sees-the-ongkir-it-paid) and this its note; noted at Tiba, final at Terima.
+  string charge_note = 30;
+  // INBOUND: who signed for it, counted it in, gave it up — user_service ids, 0 = not yet; unix seconds, 0 = not yet.
+  uint64 arrived_by_user_id = 31;
+  int64 arrived_at_unix = 32;
+  uint64 received_by_user_id = 33;
+  int64 received_at_unix = 34;
+  uint64 lost_by_user_id = 35;
+  int64 lost_at_unix = 36;
+  // INBOUND: why the seller gave it up; "" when none.
+  string lost_reason = 37;
 }
 
 // ── Create ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -307,6 +377,15 @@ message CustomShipmentCreateRequest {
     min_len: 1
     max_len: 128
   }];
+  // Backlog #101 — a RESTOCK_RESHIP sent as the restock's `return` resolution (*Retur ke Supplier* opens this form): the
+  // row and its link are written WITH the parcel, in its transaction. Refused on a sample, and on a restock that takes no
+  // resolution (Diterima with no problem tag and not settled).
+  CustomShipmentReturnResolution resolution = 13;
+}
+
+// The `return` resolution a reship is created as — its note.
+message CustomShipmentReturnResolution {
+  string note = 1 [(buf.validate.field).string.max_len = 1000];
 }
 
 message CustomShipmentCreateResponse {
@@ -348,6 +427,10 @@ message CustomShipmentListFilter {
   string q = 3 [(buf.validate.field).string.max_len = 100];
   // Selling side only: the warehouse it ships from; 0 = any.
   uint64 warehouse_id = 4;
+  // Backlog #101 — which way. UNSPECIFIED reads BOTH for the selling team and the root team (its Kirim Paket lists the
+  // inbound parcels under Semua) and OUTBOUND for a warehouse (its queue is what it ships; it reads the parcels coming
+  // in with INBOUND, its incoming list).
+  CustomShipmentDirection direction = 5 [(buf.validate.field).enum.defined_only = true];
 }
 
 message CustomShipmentListResponse {
@@ -596,5 +679,174 @@ message CustomShipmentMissingReportRequest {
 
 message CustomShipmentMissingReportResponse {
   // As the warehouse reads it — no seller money.
+  CustomShipment custom_shipment = 1;
+}
+
+// ── The inbound parcel (backlog #101) ───────────────────────────────────────────────────────────────────────────────
+
+message CustomShipmentResiSetRequest {
+  // The owning SELLING team, an INBOUND parcel, only while ON_THE_WAY (the resi until Tiba, as a restock's).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The courier's receipt number; "" clears it.
+  string resi = 3 [(buf.validate.field).string.max_len = 100];
+}
+
+message CustomShipmentResiSetResponse {
+  CustomShipment custom_shipment = 1;
+}
+
+// One line's new price.
+message CustomShipmentLinePrice {
+  // A line of THIS parcel (CustomShipmentItem.id).
+  uint64 item_id = 1 [(buf.validate.field).uint64.gt = 0];
+  double price_unit = 2 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+}
+
+message CustomShipmentPricesSetRequest {
+  // The owning SELLING team, an INBOUND parcel, until Terima (ON_THE_WAY or ARRIVED).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The lines whose price changes — each once; a line not named keeps its price.
+  repeated CustomShipmentLinePrice lines = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+}
+
+message CustomShipmentPricesSetResponse {
+  CustomShipment custom_shipment = 1;
+}
+
+message CustomShipmentMarkLostRequest {
+  // The owning SELLING team gives the parcel up, only while ON_THE_WAY (lost-is-set-only-before-the-box-arrives).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
+  // Why — optional.
+  string reason = 3 [(buf.validate.field).string.max_len = 200];
+}
+
+message CustomShipmentMarkLostResponse {
+  CustomShipment custom_shipment = 1;
+}
+
+message CustomShipmentArriveRequest {
+  // The warehouse it comes to signs for it — any member, as a restock box (the-warehouse-signs-and-accepts-the-team-does-the-rest).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  // The warehouse — must be the parcel's; the owning team and any other warehouse read NotFound.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
+  // The courier's charge at the door, noted — optional, 0 = none; its note REQUIRED above 0, as a restock's. Kept and
+  // shown; Terima's figure is final and replaces it. No money here.
+  double door_charge = 3 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  string door_charge_note = 4 [(buf.validate.field).string.max_len = 200];
+}
+
+message CustomShipmentArriveResponse {
+  CustomShipment custom_shipment = 1;
+}
+
+// One line counted in.
+message CustomShipmentReceivedLine {
+  // A line of THIS parcel — every line once.
+  uint64 item_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // What was in the box, broken included — at most the line's quantity (accept-refuses-more-than-the-line-says).
+  uint64 received = 2 [(buf.validate.field).uint64.lte = 1000000];
+  // Of those, broken — at most received.
+  uint64 broken = 3 [(buf.validate.field).uint64.lte = 1000000];
+  // The rack the good units (received − broken) go on — required when there is one, a rack of this warehouse; 0 when
+  // none.
+  uint64 rack_id = 4;
+}
+
+message CustomShipmentReceiveRequest {
+  // The warehouse it comes to counts it in — any member (any-warehouse-member-counts-what-arrived).
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
+  repeated CustomShipmentReceivedLine lines = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+  }];
+  // The courier's charge at the door, FINAL — it replaces Tiba's, never adds to it; its note required above 0. The
+  // selling team owes it to the warehouse through Team Balance (custom_shipment_fee, keyed by the parcel).
+  double door_charge = 4 [(buf.validate.field).double = {
+    gte: 0
+    finite: true
+  }];
+  string door_charge_note = 5 [(buf.validate.field).string.max_len = 200];
+}
+
+message CustomShipmentReceiveResponse {
+  // As the warehouse reads it — no seller price.
   CustomShipment custom_shipment = 1;
 }

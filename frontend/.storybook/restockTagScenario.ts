@@ -286,3 +286,13 @@ export function putProblemTags(restockId: bigint, missingUnits: boolean, brokenU
   if (brokenUnits && !ids.includes(TAG.broken)) ids.push(TAG.broken);
   carried.set(key, ids);
 }
+
+/**
+ * Backlog #101 — the seller marked the restock SETTLED: the app takes *Barang kurang* / *Barang rusak* off
+ * (a-restock-problem-is-settled-by-resolution-rows, 🔄 B). Called by the stub's RestockRequestSettle (restockStub.ts) and
+ * by the story kit for a seed's settled restock; nothing else takes an app tag off.
+ */
+export function takeProblemTagsOff(restockId: bigint) {
+  const key = restockId.toString();
+  carried.set(key, (carried.get(key) ?? []).filter((id) => id !== TAG.missing && id !== TAG.broken));
+}

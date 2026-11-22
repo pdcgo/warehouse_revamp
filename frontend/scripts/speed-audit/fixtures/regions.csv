@@ -1,0 +1,6 @@
+code,parent_code,level,name,kode_pos
+31,,1,DKI Jakarta,
+31.71,31,2,Kota Administrasi Jakarta Pusat,
+31.71.01,31.71,3,Gambir,
+31.71.01.1001,31.71.01,4,Gambir,10110
+31.71.01.1002,31.71.01,4,Kebon Kelapa,10120

@@ -70,6 +70,10 @@ func NewServer(cfg *Config, mux *http.ServeMux) *http.Server {
 	}
 }
 
+// corsMaxAgeSecs is the dev server's (backend/cmd/app_development/service_api.go, backlog #127): a browser keeps a
+// pre-check's answer for 7200 s — Chromium's own cap — instead of the 5 s it keeps one without Access-Control-Max-Age.
+const corsMaxAgeSecs = 7200
+
 // withCORS is the dev server's, less the agent paths this binary does not serve.
 //
 // Authorization is added to connect's own header list: without it every signed-in call is killed by the browser
@@ -82,6 +86,7 @@ func withCORS(cfg *Config, handler http.Handler) http.Handler {
 		AllowedMethods: connectcors.AllowedMethods(),
 		AllowedHeaders: allowedHeaders,
 		ExposedHeaders: connectcors.ExposedHeaders(),
+		MaxAge:         corsMaxAgeSecs,
 	})
 
 	return middleware.Handler(handler)
