@@ -138,3 +138,10 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:cs` · `warehouse:staff` wants to move money between accounts · [transfer](financial_account/transfer.md) (13 thens: ⬜ 13)
 - `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants the books to match the bank · [match balance](financial_account/reconcile.md) (16 thens: ⬜ 16)
 - `selling:cs` · `warehouse:staff` wants the books to match the bank · [match balance](financial_account/reconcile.md) (16 thens: ⬜ 16)
+
+## 2026-11-23
+
+- `selling:owner` · `selling:admin` · `warehouse:owner` wants to record the owner's capital · [add capital](financial_account/capital.md#add) (16 thens: ⬜ 16)
+- `warehouse:admin` wants to record the owner's capital · [add capital](financial_account/capital.md#add) (16 thens: ⬜ 16)
+- `selling:cs` · `warehouse:staff` wants to record the owner's capital · [add capital](financial_account/capital.md#add) (16 thens: ⬜ 16)
+- `selling:owner` · `selling:admin` · `warehouse:owner` wants to record the owner's capital · [withdraw capital](financial_account/capital.md#withdraw) (12 thens: ⬜ 12)
