@@ -166,3 +166,4 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:all` wants to receive a transfer · [arrive transfer](inventory/warehouse_transfer.md#receive) (4 thens: ⬜ 4)
 - `warehouse:all` wants to count a transfer in · [accept transfer](inventory/warehouse_transfer.md#receive) (13 thens: ⬜ 13)
 - `warehouse:owner` · `warehouse:admin` wants to correct a received count · [correct received count transfer](inventory/warehouse_transfer.md#receive) (4 thens: ⬜ 4)
+- `warehouse:owner` · `warehouse:admin` wants to check the shelves against the system · [create opname](inventory/opname.md#create) (12 thens: ⬜ 12)
