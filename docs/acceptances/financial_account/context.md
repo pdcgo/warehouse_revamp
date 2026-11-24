@@ -10,6 +10,7 @@ the acceptances split it by what a person does. Rules: [guide.md](../guide.md).
 | [capital](capital.md) | | | | 28 |
 | [expense](expense.md) | 79 | | | |
 | [reconcile](reconcile.md) | | | | 16 |
+| [report](report.md) | | | | 26 |
 | [transfer](transfer.md) | | | | 15 |
 
 An empty row has not been discussed yet.
