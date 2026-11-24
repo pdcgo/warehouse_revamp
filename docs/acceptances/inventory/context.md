@@ -10,7 +10,7 @@ The first big feature. The focus is **restock**. Inventory needs products, but p
 | [batch](batch.md) | | | | 21 |
 | [transaction](transaction.md) | | | | |
 | [opname](opname.md) | | | | |
-| [warehouse_transfer](warehouse_transfer.md) | | | | |
+| [warehouse_transfer](warehouse_transfer.md) | | | | 57 |
 | [order](order.md) | 251 | | 1 | 1 |
 | [adjustment](adjustment.md) | | | | |
 | [return](return.md) — the same givens as [order](order.md#return) | 41 | | 1 | |

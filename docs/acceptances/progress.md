@@ -157,3 +157,12 @@ Every action, under the day it was discussed. The counts are the statuses today 
 ## 2026-11-24
 
 - `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to choose which accounts pay · [unmark operational](financial_account/account.md#set-up) (2 thens: ⬜ 2)
+- `selling:all` wants to move stock to another warehouse · [create transfer](inventory/warehouse_transfer.md#create) (12 thens: ⬜ 12)
+- `selling:all` wants to record the shipping cost · [edit transfer cost](inventory/warehouse_transfer.md#create) (8 thens: ⬜ 8)
+- `selling:all` wants to call a transfer off · [cancel transfer](inventory/warehouse_transfer.md#create) (5 thens: ⬜ 5)
+- `selling:all` wants to give a box up · [mark lost transfer](inventory/warehouse_transfer.md#create) (4 thens: ⬜ 4)
+- `warehouse:all` wants to send a transfer · [process transfer](inventory/warehouse_transfer.md#send) (3 thens: ⬜ 3)
+- `warehouse:all` wants to send a transfer · [ship transfer](inventory/warehouse_transfer.md#send) (4 thens: ⬜ 4)
+- `warehouse:all` wants to receive a transfer · [arrive transfer](inventory/warehouse_transfer.md#receive) (4 thens: ⬜ 4)
+- `warehouse:all` wants to count a transfer in · [accept transfer](inventory/warehouse_transfer.md#receive) (13 thens: ⬜ 13)
+- `warehouse:owner` · `warehouse:admin` wants to correct a received count · [correct received count transfer](inventory/warehouse_transfer.md#receive) (4 thens: ⬜ 4)
