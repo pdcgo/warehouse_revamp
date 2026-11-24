@@ -145,7 +145,7 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:admin` wants to record the owner's capital · [add capital](financial_account/capital.md#add) (16 thens: ⬜ 16)
 - `selling:cs` · `warehouse:staff` wants to record the owner's capital · [add capital](financial_account/capital.md#add) (16 thens: ⬜ 16)
 - `selling:owner` · `selling:admin` · `warehouse:owner` wants to record the owner's capital · [withdraw capital](financial_account/capital.md#withdraw) (12 thens: ⬜ 12)
-- `selling:all` · `warehouse:all` wants to know what moved the money · [open account report](financial_account/report.md#open) (12 thens: ⬜ 12)
+- `selling:all` · `warehouse:all` wants to know what moved the money · [open account report](financial_account/report.md#open) (25 thens: ⬜ 25)
 - `selling:all` · `warehouse:all` wants to compare periods · [change report period](financial_account/report.md#periods) (2 thens: ⬜ 2)
 - `selling:all` · `warehouse:all` wants to compare periods · [group report by month](financial_account/report.md#periods) (1 then: ⬜ 1)
 - `selling:all` · `warehouse:all` wants to see one account's money · [filter report by account](financial_account/report.md#account) (3 thens: ⬜ 3)
