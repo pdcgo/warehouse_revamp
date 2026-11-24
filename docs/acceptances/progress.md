@@ -120,20 +120,20 @@ Every action, under the day it was discussed. The counts are the statuses today 
 
 ## 2026-11-21
 
-- `selling:all` · `warehouse:all` wants to know where the money is · [open accounts](financial_account/account.md#accounts) (4 thens: ⬜ 4)
-- `selling:all` · `warehouse:all` wants to know where the money is · [filter accounts](financial_account/account.md#accounts) (3 thens: ⬜ 3)
-- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to add an account · [create account](financial_account/account.md#set-up) (7 thens: ⬜ 7)
+- `selling:all` · `warehouse:all` wants to know where the money is · [open accounts](financial_account/account.md#accounts) (6 thens: ⬜ 6)
+- `selling:all` · `warehouse:all` wants to know where the money is · [filter accounts](financial_account/account.md#accounts) (5 thens: ⬜ 5)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to add an account · [create account](financial_account/account.md#set-up) (9 thens: ⬜ 9)
 - `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to fix an account's details · [edit account](financial_account/account.md#set-up) (1 then: ⬜ 1)
 - `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to close an account · [archive account](financial_account/account.md#set-up) (2 thens: ⬜ 2)
 - `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to use a closed account again · [restore account](financial_account/account.md#set-up) (1 then: ⬜ 1)
 - `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to choose which accounts pay · [mark operational](financial_account/account.md#set-up) (2 thens: ⬜ 2)
 - `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to name where a withdrawal landed · [set account](financial_account/account.md#set-up) (4 thens: ⬜ 4)
-- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to a shop's withdrawals to land in an account · [point a shop here](financial_account/account.md#set-up) (1 then: ⬜ 1)
-- `selling:cs` · `warehouse:staff` wants to add an account · [create account](financial_account/account.md#set-up) (7 thens: ⬜ 7)
-- `selling:all` · `warehouse:all` wants to read an account's rows · [open account](financial_account/account.md#account) (1 then: ⬜ 1)
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants a shop's withdrawals to land in an account · [point a shop here](financial_account/account.md#set-up) (4 thens: ⬜ 4)
+- `selling:cs` · `warehouse:staff` wants to add an account · [create account](financial_account/account.md#set-up) (9 thens: ⬜ 9)
+- `selling:all` · `warehouse:all` wants to read an account's rows · [open account](financial_account/account.md#account) (4 thens: ⬜ 4)
 - `selling:all` · `warehouse:all` wants to read an account's rows · [filter account rows](financial_account/account.md#account) (1 then: ⬜ 1)
 - `selling:owner` · `selling:admin` · `warehouse:owner` wants to move money between accounts · [transfer](financial_account/transfer.md) (13 thens: ⬜ 13)
-- `selling:owner` · `selling:admin` · `warehouse:owner` wants to move money between accounts · [transfer out](financial_account/transfer.md) (2 thens: ⬜ 2)
+- `selling:owner` · `selling:admin` · `warehouse:owner` wants to move a withdrawal into its real account · [transfer out](financial_account/transfer.md) (2 thens: ⬜ 2)
 - `warehouse:admin` wants to move money between accounts · [transfer](financial_account/transfer.md) (13 thens: ⬜ 13)
 - `selling:cs` · `warehouse:staff` wants to move money between accounts · [transfer](financial_account/transfer.md) (13 thens: ⬜ 13)
 - `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants the books to match the bank · [match balance](financial_account/reconcile.md) (16 thens: ⬜ 16)
@@ -153,3 +153,7 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` · `warehouse:all` wants to see what the change is made of · [open account movers](financial_account/report.md#detail) (2 thens: ⬜ 2)
 - `selling:all` · `warehouse:all` wants to see what the change is made of · [open report breakdown](financial_account/report.md#detail) (2 thens: ⬜ 2)
 - `selling:all` · `warehouse:all` wants to keep the report as a file · [export account report](financial_account/report.md#export) (2 thens: ⬜ 2)
+
+## 2026-11-24
+
+- `selling:owner` · `selling:admin` · `warehouse:owner` · `warehouse:admin` wants to choose which accounts pay · [unmark operational](financial_account/account.md#set-up) (2 thens: ⬜ 2)
