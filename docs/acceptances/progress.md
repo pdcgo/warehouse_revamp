@@ -172,3 +172,5 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:all` wants to count a rack · [mark row counted](inventory/opname.md#count) (7 thens: ⬜ 7)
 - `warehouse:all` wants to count a rack · [add found product](inventory/opname.md#count) (3 thens: ⬜ 3)
 - `warehouse:owner` · `warehouse:admin` wants a row counted again · [send back row](inventory/opname.md#count) (5 thens: ⬜ 5)
+- `warehouse:owner` · `warehouse:admin` wants to settle a count · [finalize opname](inventory/opname.md#finalize) (19 thens: ⬜ 19)
+- `warehouse:owner` · `warehouse:admin` wants to call a count off · [cancel opname](inventory/opname.md#cancel) (3 thens: ⬜ 3)

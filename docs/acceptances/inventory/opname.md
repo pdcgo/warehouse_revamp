@@ -56,3 +56,47 @@ becomes a draft that needs its reason, and the owner or admin can send a counted
 <tr><td rowspan="2" valign="top">18</td><td rowspan="2" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants a row counted again<br>(rack A · product X counted 3 · recounted 4 · no third count left · marked counted)</td><td rowspan="2" valign="top">send back row</td><td>row back to not counted</td><td>⬜ untested</td></tr>
 <tr><td>product X needs to be counted again, with one recount</td><td>⬜ untested</td></tr>
 </table>
+
+## finalize
+
+An owner or admin who counted nothing in the count settles it: broken and lost are posted at their batch price and the
+warehouse owes the selling team for them, a surplus first claims an old loss back, a −1 and a +1 of one product is a move.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="3" valign="top">19</td><td rowspan="3" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(every row counted · all match the system)</td><td rowspan="3" valign="top">finalize opname</td><td>count finalized, status finished</td><td>⬜ untested</td></tr>
+<tr><td>says it only releases the racks, nothing posted</td><td>⬜ untested</td></tr>
+<tr><td>the counted products can be ordered again</td><td>⬜ untested</td></tr>
+<tr><td rowspan="6" valign="top">20</td><td rowspan="6" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(product X 5 in system · counted 3 · 1 broken · 1 lost · reasons written)</td><td rowspan="6" valign="top">finalize opname</td><td>preview shows what posts and what the warehouse owes, before confirming</td><td>⬜ untested</td></tr>
+<tr><td>ready stock of X decreases by 2</td><td>⬜ untested</td></tr>
+<tr><td>broken 1 and lost 1 posted at their batch price</td><td>⬜ untested</td></tr>
+<tr><td>the warehouse owes the selling team for broken and lost</td><td>⬜ untested</td></tr>
+<tr><td>stock loss on the warehouse's daily statement</td><td>⬜ untested</td></tr>
+<tr><td>recorded in lost stock analytic metric</td><td>⬜ untested</td></tr>
+<tr><td rowspan="3" valign="top">21</td><td rowspan="3" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(product X · rack A 1 under · rack B 1 over)</td><td rowspan="3" valign="top">finalize opname</td><td>posted as a move between racks, no money</td><td>⬜ untested</td></tr>
+<tr><td>ready stock of X unchanged</td><td>⬜ untested</td></tr>
+<tr><td>rack A and rack B corrected</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top">22</td><td rowspan="2" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(product X 1 over · an old lost of X not found yet)</td><td rowspan="2" valign="top">finalize opname</td><td>the surplus claims the old loss, back into its batch at its price</td><td>⬜ untested</td></tr>
+<tr><td>the warehouse's debt to the selling team decreases</td><td>⬜ untested</td></tr>
+<tr><td rowspan="3" valign="top">23</td><td rowspan="3" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(product X 1 over · no old loss · X's newest batch here at Rp 10.000)</td><td rowspan="3" valign="top">finalize opname</td><td>a new batch at Rp 10.000</td><td>⬜ untested</td></tr>
+<tr><td>ready stock of X increases by 1</td><td>⬜ untested</td></tr>
+<tr><td>no money moves</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top">24</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(a row not counted yet)</td><td rowspan="1" valign="top">finalize opname</td><td>finalize not offered, says how many rows are left</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top">25</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(this owner or admin counted a row in this count)</td><td rowspan="1" valign="top">finalize opname</td><td>cannot finalize, says another owner or admin finalizes</td><td>⬜ untested</td></tr>
+</table>
+
+> 📝 **An order created but not yet picked** — its units left the system when the order was created, but they are still
+> on the rack until they are picked. A count that runs before the pick finds them as a **surplus**, and finalizing would
+> post it. Nothing in the system checks for this: the rule is to start a count once order processing is done
+> ([a-count-starts-when-order-processing-is-done](../../business/inventory/opname_decision.md#a-count-starts-when-order-processing-is-done)).
+> Orders already created keep being confirmed, picked and handed over during a count; only a new order and a cancel are
+> refused.
+
+## cancel
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="3" valign="top">26</td><td rowspan="3" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to call a count off<br>(count active · some rows counted)</td><td rowspan="3" valign="top">cancel opname</td><td>status cancelled</td><td>⬜ untested</td></tr>
+<tr><td>nothing posted, the counts dropped</td><td>⬜ untested</td></tr>
+<tr><td>the counted products can be ordered again</td><td>⬜ untested</td></tr>
+</table>
