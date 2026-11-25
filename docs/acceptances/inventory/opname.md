@@ -20,7 +20,7 @@ The owner or admin plans a count; its rows are taken from what the system record
 <tr><td rowspan="2" valign="top">2</td><td rowspan="2" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to check the shelves against the system<br>(plan: one team · selling team Melati · another team's product on the same rack)</td><td rowspan="2" valign="top">create opname</td><td>only team Melati's products in the rows</td><td>⬜ untested</td></tr>
 <tr><td>the other team's product not locked</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">3</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to check the shelves against the system<br>(plan: one product · on 2 racks)</td><td rowspan="1" valign="top">create opname</td><td>both racks listed with the product</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">4</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to check the shelves against the system<br>(plan: one rack · rack A holds product X · X also on rack B)</td><td rowspan="1" valign="top">create opname</td><td>X counted on rack B too</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top">4</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to check the shelves against the system<br>(plan: one rack · rack A holds product X · product X also on rack B)</td><td rowspan="1" valign="top">create opname</td><td>product X counted on rack B too</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">5</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to check the shelves against the system<br>(plan: one rack · the rack is empty)</td><td rowspan="1" valign="top">create opname</td><td>cannot start, nothing to count</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">6</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to check the shelves against the system<br>(an earlier count in this warehouse not yet finalized or cancelled)</td><td rowspan="1" valign="top">create opname</td><td>cannot start, names the earlier count</td><td>⬜ untested</td></tr>
 </table>
@@ -47,9 +47,9 @@ becomes a draft that needs its reason, and the owner or admin can send a counted
 <tr><td rowspan="1" valign="top">12</td><td rowspan="1" valign="top"><code>warehouse:all</code> wants to count a rack<br>(rack A · product X 5 in system · counted 3 · no reason for lost)</td><td rowspan="1" valign="top">mark row counted</td><td>cannot mark counted, says every draft needs a reason</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">13</td><td rowspan="1" valign="top"><code>warehouse:all</code> wants to count a rack<br>(rack A · product X 5 in system · counted 7 · reason for surplus)</td><td rowspan="1" valign="top">mark row counted</td><td>surplus draft 2 with its reason</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">14</td><td rowspan="1" valign="top"><code>warehouse:all</code> wants to count a rack<br>(rack A · product X 5 in system · counted 5)</td><td rowspan="1" valign="top">mark row counted</td><td>row counted, no drafts</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top">15</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to count a rack<br>(rack A · product Y not in rack A's list · Y on rack B in system)</td><td rowspan="2" valign="top">add found product</td><td>Y added on rack A at 0 in system</td><td>⬜ untested</td></tr>
-<tr><td>Y on rack B joins the count</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">16</td><td rowspan="1" valign="top"><code>warehouse:all</code> wants to count a rack<br>(rack A · product Z · its team never had it in this warehouse)</td><td rowspan="1" valign="top">add found product</td><td>Z not offered to pick, only products this warehouse has held</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top">15</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to count a rack<br>(rack A · product Y not in rack A's list · product Y on rack B in system)</td><td rowspan="2" valign="top">add found product</td><td>product Y added on rack A at 0 in system</td><td>⬜ untested</td></tr>
+<tr><td>product Y on rack B joins the count</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top">16</td><td rowspan="1" valign="top"><code>warehouse:all</code> wants to count a rack<br>(rack A · product Z · its team never had it in this warehouse)</td><td rowspan="1" valign="top">add found product</td><td>product Z not offered to pick, only products this warehouse has held</td><td>⬜ untested</td></tr>
 <tr><td rowspan="3" valign="top">17</td><td rowspan="3" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants a row counted again<br>(rack A · product X counted · drafts written)</td><td rowspan="3" valign="top">send back row</td><td>row back to not counted</td><td>⬜ untested</td></tr>
 <tr><td>its count and drafts cleared</td><td>⬜ untested</td></tr>
 <tr><td>product X needs to be counted again</td><td>⬜ untested</td></tr>
@@ -59,7 +59,7 @@ becomes a draft that needs its reason, and the owner or admin can send a counted
 
 ## finalize
 
-An owner or admin who counted nothing in the count settles it: broken and lost are posted at their batch price and the
+An owner or admin who counted nothing in the count settles it: broken and lost are recorded at their batch price and the
 warehouse owes the selling team for them, a surplus first claims an old loss back, a −1 and a +1 of one product is a move.
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
@@ -68,18 +68,18 @@ warehouse owes the selling team for them, a surplus first claims an old loss bac
 <tr><td>says it only releases the racks, no stock or debt changes</td><td>⬜ untested</td></tr>
 <tr><td>the counted products can be ordered again</td><td>⬜ untested</td></tr>
 <tr><td rowspan="6" valign="top">20</td><td rowspan="6" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(product X 5 in system · counted 3 · 1 broken · 1 lost · reasons written)</td><td rowspan="6" valign="top">finalize opname</td><td>preview shows what posts and what the warehouse owes, before confirming</td><td>⬜ untested</td></tr>
-<tr><td>ready stock of X decreases by 2</td><td>⬜ untested</td></tr>
-<tr><td>broken 1 and lost 1 posted at their batch price</td><td>⬜ untested</td></tr>
+<tr><td>ready stock of product X decreases by 2</td><td>⬜ untested</td></tr>
+<tr><td>broken 1 and lost 1 recorded at their batch price</td><td>⬜ untested</td></tr>
 <tr><td>the warehouse owes the selling team for broken and lost</td><td>⬜ untested</td></tr>
 <tr><td>stock loss on the warehouse's daily statement</td><td>⬜ untested</td></tr>
 <tr><td>recorded in lost stock analytic metric</td><td>⬜ untested</td></tr>
-<tr><td rowspan="3" valign="top">21</td><td rowspan="3" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(product X · rack A 1 under · rack B 1 over)</td><td rowspan="3" valign="top">finalize opname</td><td>posted as a move between racks, no money</td><td>⬜ untested</td></tr>
-<tr><td>ready stock of X unchanged</td><td>⬜ untested</td></tr>
+<tr><td rowspan="3" valign="top">21</td><td rowspan="3" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(product X · rack A 1 under · rack B 1 over)</td><td rowspan="3" valign="top">finalize opname</td><td>recorded as a move between racks, no debt changes</td><td>⬜ untested</td></tr>
+<tr><td>ready stock of product X unchanged</td><td>⬜ untested</td></tr>
 <tr><td>rack A and rack B corrected</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top">22</td><td rowspan="2" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(product X 1 over · an old lost of X not found yet · the warehouse owes the selling team)</td><td rowspan="2" valign="top">finalize opname</td><td>the surplus claims the old loss, back into its batch at its price</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top">22</td><td rowspan="2" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(product X 1 over · an old lost of product X not found yet · the warehouse owes the selling team)</td><td rowspan="2" valign="top">finalize opname</td><td>the surplus claims the old loss, back into its batch at its price</td><td>⬜ untested</td></tr>
 <tr><td>the warehouse's debt to the selling team decreases</td><td>⬜ untested</td></tr>
 <tr><td rowspan="3" valign="top">23</td><td rowspan="3" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(product X 1 over · no old loss · product X's newest batch here at Rp 10.000)</td><td rowspan="3" valign="top">finalize opname</td><td>a new batch at Rp 10.000</td><td>⬜ untested</td></tr>
-<tr><td>ready stock of X increases by 1</td><td>⬜ untested</td></tr>
+<tr><td>ready stock of product X increases by 1</td><td>⬜ untested</td></tr>
 <tr><td>no debt between the warehouse and the selling team changes</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">24</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(a row not counted yet)</td><td rowspan="1" valign="top">finalize opname</td><td>finalize not offered, says how many rows are left</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">25</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to settle a count<br>(this owner or admin counted a row in this count)</td><td rowspan="1" valign="top">finalize opname</td><td>cannot finalize, says another owner or admin finalizes</td><td>⬜ untested</td></tr>
@@ -111,17 +111,17 @@ back is [order's report found](order.md#problem-and-lost).
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
 <tr><td rowspan="3" valign="top">27</td><td rowspan="3" valign="top"><code>warehouse:all</code> wants to put found units back in stock<br>(rack A · product X · 2 found · note)</td><td rowspan="3" valign="top">report found</td><td>found report waiting, with its note</td><td>⬜ untested</td></tr>
-<tr><td>ready stock of X unchanged until approved</td><td>⬜ untested</td></tr>
+<tr><td>ready stock of product X unchanged until approved</td><td>⬜ untested</td></tr>
 <tr><td>shows on Found Stock for the owner and admin to decide</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top">28</td><td rowspan="2" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to put found units back in stock<br>(product X · rack A · 2 found · note)</td><td rowspan="2" valign="top">adjust found</td><td>the found units are sent for approval, and ready stock of X stays the same until they are approved</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top">28</td><td rowspan="2" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to put found units back in stock<br>(product X · rack A · 2 found · note)</td><td rowspan="2" valign="top">adjust found</td><td>the found units are sent for approval, and ready stock of product X stays the same until they are approved</td><td>⬜ untested</td></tr>
 <tr><td>waits to be approved by another owner or admin, not the one who sent it</td><td>⬜ untested</td></tr>
-<tr><td rowspan="4" valign="top">29</td><td rowspan="4" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to decide on a found report<br>(2 of product X found on rack A · an old lost of 2 X not found yet · the warehouse owes the selling team)</td><td rowspan="4" valign="top">approve found</td><td>status approved</td><td>⬜ untested</td></tr>
-<tr><td>ready stock of X on rack A increases by 2</td><td>⬜ untested</td></tr>
+<tr><td rowspan="4" valign="top">29</td><td rowspan="4" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to decide on a found report<br>(2 of product X found on rack A · an old lost of 2 product X not found yet · the warehouse owes the selling team)</td><td rowspan="4" valign="top">approve found</td><td>status approved</td><td>⬜ untested</td></tr>
+<tr><td>ready stock of product X on rack A increases by 2</td><td>⬜ untested</td></tr>
 <tr><td>the units claim the old loss, back into its batch at its price</td><td>⬜ untested</td></tr>
 <tr><td>the warehouse's debt to the selling team decreases</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">30</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to decide on a found report<br>(2 of product X found on rack A · an old lost of 2 X not found yet · the warehouse's debt for the 2 lost X already paid)</td><td rowspan="1" valign="top">approve found</td><td>the selling team owes the warehouse the value of the 2 units</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top">30</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to decide on a found report<br>(2 of product X found on rack A · an old lost of 2 product X not found yet · the warehouse's debt for the 2 lost product X already paid)</td><td rowspan="1" valign="top">approve found</td><td>the selling team owes the warehouse the value of the 2 units</td><td>⬜ untested</td></tr>
 <tr><td rowspan="3" valign="top">31</td><td rowspan="3" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to decide on a found report<br>(2 of product X found on rack A · no old loss · product X's newest batch here at Rp 10.000)</td><td rowspan="3" valign="top">approve found</td><td>a new batch at Rp 10.000</td><td>⬜ untested</td></tr>
-<tr><td>ready stock of X increases by 2</td><td>⬜ untested</td></tr>
+<tr><td>ready stock of product X increases by 2</td><td>⬜ untested</td></tr>
 <tr><td>no debt between the warehouse and the selling team changes</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">32</td><td rowspan="1" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to decide on a found report<br>(this owner or admin reported it)</td><td rowspan="1" valign="top">approve found</td><td>cannot approve their own report</td><td>⬜ untested</td></tr>
 <tr><td rowspan="2" valign="top">33</td><td rowspan="2" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to decide on a found report<br>(found report waiting · reason)</td><td rowspan="2" valign="top">reject found</td><td>status rejected, the reason shown to the reporter</td><td>⬜ untested</td></tr>
