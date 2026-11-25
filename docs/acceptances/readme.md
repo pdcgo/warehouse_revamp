@@ -10,6 +10,6 @@ Every big feature with an acceptance, and its small features. The statuses are c
 | [settlement](settlement/context.md) | [settlement_importer](settlement/settlement_importer.md) · [order_settlement](settlement/order_settlement.md) · [shop_entry](settlement/shop_entry.md) · [report](settlement/report.md) |
 | [financial_account](financial_account/context.md) | [account](financial_account/account.md) · [capital](financial_account/capital.md) · [expense](financial_account/expense.md) · [reconcile](financial_account/reconcile.md) · [report](financial_account/report.md) · [transfer](financial_account/transfer.md) |
 | [analytic](analytic/context.md) | [report](analytic/report.md) · [order_metric](analytic/order_metric.md) · [settlement_metric](analytic/settlement_metric.md) · [inventory_metric](analytic/inventory_metric.md) · [expense_metric](analytic/expense_metric.md) · [finance_metric](analytic/finance_metric.md) |
-| [product](product/context.md) | — not split yet |
+| [product](product/context.md) | [catalogue](product/catalogue.md) |
 
 A new big feature or small feature gets its row here in the same change that creates its file.

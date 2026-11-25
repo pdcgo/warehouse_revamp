@@ -189,3 +189,4 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:all` wants to know what happened to a product's stock · [filter stock history](inventory/transaction.md) (1 then: ⬜ 1)
 - `warehouse:all` wants to know what happened to a product's stock · [open placement history](inventory/transaction.md) (3 thens: ⬜ 3)
 - `warehouse:all` wants to know what happened to a product's stock · [filter placement history](inventory/transaction.md) (1 then: ⬜ 1)
+- `selling:owner` · `selling:admin` wants to sell a new product · [create product](product/catalogue.md#create) (9 thens: ⬜ 9)
