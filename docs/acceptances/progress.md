@@ -185,3 +185,7 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:owner` · `warehouse:admin` wants to correct the stock on a rack · [adjust recount](inventory/adjustment.md) (10 thens: ⬜ 10)
 - `warehouse:owner` · `warehouse:admin` wants to correct the stock on a rack · [adjust damaged](inventory/adjustment.md) (5 thens: ⬜ 5)
 - `warehouse:owner` · `warehouse:admin` wants to correct the stock on a rack · [adjust lost](inventory/adjustment.md) (5 thens: ⬜ 5)
+- `warehouse:all` wants to know what happened to a product's stock · [open stock history](inventory/transaction.md) (5 thens: ⬜ 5)
+- `warehouse:all` wants to know what happened to a product's stock · [filter stock history](inventory/transaction.md) (1 then: ⬜ 1)
+- `warehouse:all` wants to know what happened to a product's stock · [open placement history](inventory/transaction.md) (3 thens: ⬜ 3)
+- `warehouse:all` wants to know what happened to a product's stock · [filter placement history](inventory/transaction.md) (1 then: ⬜ 1)
