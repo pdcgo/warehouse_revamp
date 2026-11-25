@@ -179,3 +179,9 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:owner` · `warehouse:admin` wants to decide on a found report · [approve found](inventory/opname.md#found) (9 thens: ⬜ 9)
 - `warehouse:owner` · `warehouse:admin` wants to decide on a found report · [reject found](inventory/opname.md#found) (2 thens: ⬜ 2)
 - `warehouse:all` wants to take back a found report · [cancel own found report](inventory/opname.md#found) (2 thens: ⬜ 2)
+
+## 2026-11-25
+
+- `warehouse:owner` · `warehouse:admin` wants to correct the stock on a rack · [adjust recount](inventory/adjustment.md) (10 thens: ⬜ 10)
+- `warehouse:owner` · `warehouse:admin` wants to correct the stock on a rack · [adjust damaged](inventory/adjustment.md) (5 thens: ⬜ 5)
+- `warehouse:owner` · `warehouse:admin` wants to correct the stock on a rack · [adjust lost](inventory/adjustment.md) (5 thens: ⬜ 5)
