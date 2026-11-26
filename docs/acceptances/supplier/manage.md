@@ -16,3 +16,13 @@ other selling team on **Discover Supplier** and can be named on any team's resto
 <tr><td rowspan="1" valign="top">2</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to buy from a new supplier<br>(a name only · no contact, address or description)</td><td rowspan="1" valign="top">create supplier</td><td>created, shown in My Supplier with its name only</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">3</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to buy from a new supplier<br>(no store yet)</td><td rowspan="1" valign="top">create supplier</td><td>on a restock it can be chosen with "no store, bought offline" already picked</td><td>⬜ untested</td></tr>
 </table>
+
+## edit
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="3" valign="top">4</td><td rowspan="3" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to keep a supplier's details right<br>(name changed from "PT Sumber Makmur" to "PT Sumber Makmur Jaya" · already named on restocks)</td><td rowspan="3" valign="top">edit supplier</td><td>the new name shown in My Supplier and on its page</td><td>⬜ untested</td></tr>
+<tr><td>other teams see the new name on Discover Supplier</td><td>⬜ untested</td></tr>
+<tr><td>past restocks show the new name</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top">5</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to keep a supplier's details right<br>(contact and address changed)</td><td rowspan="1" valign="top">edit supplier</td><td>the new contact and address on its page and on Discover Supplier</td><td>⬜ untested</td></tr>
+</table>

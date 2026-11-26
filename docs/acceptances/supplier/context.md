@@ -7,6 +7,6 @@ and what was bought from each (the Statistics tab and the Supplier Report). Busi
 
 | small feature | ✅ ok | ❌ error | 🚧 unimplemented | ⬜ untested |
 | --- | --- | --- | --- | --- |
-| [manage](manage.md) | | | | 5 |
+| [manage](manage.md) | | | | 9 |
 
 Planned, not discussed yet: discover (Discover Supplier), figures (Statistics tab and Supplier Report).
