@@ -199,3 +199,5 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:owner` · `selling:admin` wants to stop using a product · [archive product](product/catalogue.md#archive-and-delete) (3 thens: ⬜ 3)
 - `selling:owner` · `selling:admin` wants to use a product again · [restore product](product/catalogue.md#archive-and-delete) (1 then: ⬜ 1)
 - `selling:owner` · `selling:admin` wants to remove a product made by mistake · [delete product](product/catalogue.md#archive-and-delete) (3 thens: ⬜ 3)
+- `warehouse:all` wants to accept a restock · [accept restock](product/pricing.md) (3 thens: ⬜ 3)
+- `selling:all` wants to create an order · [create order](product/pricing.md) (2 thens: ⬜ 2)
