@@ -196,3 +196,6 @@ Every action, under the day it was discussed. The counts are the statuses today 
 
 - `selling:all` wants to find products to sell · [open discover](product/cross.md#division) (2 thens: 🚧 2)
 - `selling:all` wants to find products to sell · [filter discover](product/cross.md#division) (2 thens: 🚧 2)
+- `selling:owner` · `selling:admin` wants to stop using a product · [archive product](product/catalogue.md#archive-and-delete) (3 thens: ⬜ 3)
+- `selling:owner` · `selling:admin` wants to use a product again · [restore product](product/catalogue.md#archive-and-delete) (1 then: ⬜ 1)
+- `selling:owner` · `selling:admin` wants to remove a product made by mistake · [delete product](product/catalogue.md#archive-and-delete) (3 thens: ⬜ 3)

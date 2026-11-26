@@ -44,3 +44,19 @@ another team finds and sells it belongs to cross. Business: [context.md](../../b
 <tr><td>other teams cannot order it</td><td>⬜ untested</td></tr>
 <tr><td>the team's own orders still go through</td><td>⬜ untested</td></tr>
 </table>
+
+## archive and delete
+
+A product in use is archived, never deleted: it leaves the list and the pickers and can come back. Only a product never
+used is deleted, and its code is free again.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="3" valign="top">16</td><td rowspan="3" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to stop using a product<br>(the product still has stock on a rack)</td><td rowspan="3" valign="top">archive product</td><td>gone from the product list, and cannot be chosen for a restock, an order or a bundle</td><td>⬜ untested</td></tr>
+<tr><td>its stock on the rack and its history stay as they are</td><td>⬜ untested</td></tr>
+<tr><td>a warehouse holding it still sees it, labelled archived</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top">17</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to use a product again<br>(an archived product)</td><td rowspan="1" valign="top">restore product</td><td>back in the product list and can be chosen again, with the same code</td><td>⬜ untested</td></tr>
+<tr><td rowspan="2" valign="top">18</td><td rowspan="2" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to remove a product made by mistake<br>(the product never used)</td><td rowspan="2" valign="top">delete product</td><td>product deleted</td><td>⬜ untested</td></tr>
+<tr><td>its code can be used again</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top">19</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to remove a product made by mistake<br>(the product already in a restock, an order or stock)</td><td rowspan="1" valign="top">delete product</td><td>cannot delete, says to archive it instead</td><td>⬜ untested</td></tr>
+</table>
