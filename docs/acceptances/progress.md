@@ -201,3 +201,8 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:owner` · `selling:admin` wants to remove a product made by mistake · [delete product](product/catalogue.md#archive-and-delete) (3 thens: ⬜ 3)
 - `warehouse:all` wants to accept a restock · [accept restock](product/pricing.md) (3 thens: ⬜ 3)
 - `selling:all` wants to create an order · [create order](product/pricing.md) (2 thens: ⬜ 2)
+- `selling:all` wants to sell products as a package · [create bundle](product/bundle.md#set-up) (5 thens: ⬜ 5)
+- `selling:owner` · `selling:admin` wants to fix a bundle · [edit bundle](product/bundle.md#set-up) (5 thens: ⬜ 5)
+- `selling:cs` wants to fix a bundle · [edit bundle](product/bundle.md#set-up) (5 thens: ⬜ 5)
+- `selling:owner` · `selling:admin` wants to remove a bundle · [delete bundle](product/bundle.md#set-up) (2 thens: ⬜ 2)
+- `selling:all` wants to create an order · [add bundle to order](product/bundle.md#order) (4 thens: ⬜ 4)

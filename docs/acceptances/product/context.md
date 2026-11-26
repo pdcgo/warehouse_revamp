@@ -9,5 +9,6 @@ categories and the bundles. Business: [context.md](../../business/product/contex
 | [catalogue](catalogue.md) | | | | 32 |
 | [cross](cross.md) — the division only, so far | | | 4 | |
 | [pricing](pricing.md) | | | | 5 |
+| [bundle](bundle.md) | | | | 16 |
 
-Planned, not discussed yet: the rest of cross, category, bundle.
+Planned, not discussed yet: the rest of cross, category.
