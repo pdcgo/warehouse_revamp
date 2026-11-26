@@ -6,8 +6,8 @@ categories and the bundles. Business: [context.md](../../business/product/contex
 
 | small feature | ✅ ok | ❌ error | 🚧 unimplemented | ⬜ untested |
 | --- | --- | --- | --- | --- |
-| [catalogue](catalogue.md) | | | | 32 |
-| [cross](cross.md) — the division only, so far | | | 4 | |
+| [catalogue](catalogue.md) | | | | 35 |
+| [cross](cross.md) | | | 4 | 17 |
 | [pricing](pricing.md) | | | | 5 |
 | [bundle](bundle.md) | | | | 16 |
 

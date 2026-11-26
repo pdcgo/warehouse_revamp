@@ -189,13 +189,14 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `warehouse:all` wants to know what happened to a product's stock · [filter stock history](inventory/transaction.md) (1 then: ⬜ 1)
 - `warehouse:all` wants to know what happened to a product's stock · [open placement history](inventory/transaction.md) (3 thens: ⬜ 3)
 - `warehouse:all` wants to know what happened to a product's stock · [filter placement history](inventory/transaction.md) (1 then: ⬜ 1)
-- `selling:owner` · `selling:admin` wants to sell a new product · [create product](product/catalogue.md#create) (12 thens: ⬜ 12)
-- `selling:owner` · `selling:admin` wants to fix a product's details · [edit product](product/catalogue.md#edit) (13 thens: ⬜ 13)
+- `selling:owner` · `selling:admin` wants to sell a new product · [create product](product/catalogue.md#create) (13 thens: ⬜ 13)
+- `selling:owner` · `selling:admin` wants to fix a product's details · [edit product](product/catalogue.md#edit) (15 thens: ⬜ 15)
 
 ## 2026-11-26
 
-- `selling:all` wants to find products to sell · [open discover](product/cross.md#division) (2 thens: 🚧 2)
-- `selling:all` wants to find products to sell · [filter discover](product/cross.md#division) (2 thens: 🚧 2)
+- `selling:all` wants to find products to sell · [open discover product](product/cross.md) (5 thens: 🚧 2, ⬜ 3)
+- `selling:all` wants to find products to sell · [filter discover product](product/cross.md) (11 thens: 🚧 2, ⬜ 9)
+- `selling:all` wants to find products to sell · [open discover product detail](product/cross.md#discover-product) (5 thens: ⬜ 5)
 - `selling:owner` · `selling:admin` wants to stop using a product · [archive product](product/catalogue.md#archive-and-delete) (3 thens: ⬜ 3)
 - `selling:owner` · `selling:admin` wants to use a product again · [restore product](product/catalogue.md#archive-and-delete) (1 then: ⬜ 1)
 - `selling:owner` · `selling:admin` wants to remove a product made by mistake · [delete product](product/catalogue.md#archive-and-delete) (3 thens: ⬜ 3)
