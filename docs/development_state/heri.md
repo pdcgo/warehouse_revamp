@@ -7,6 +7,19 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
+## 2026-11-26 · supplier statistics year limit, order create typing
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **The supplier Statistics tab says *a year at most*** | picking more than a year on a supplier's Statistics tab (or opening such a link) says so and shows no figures, as the other reports already do — before, it asked the server and got an error |
+| **Typing on the new-order form does less work** | each key now redraws only the box being typed in (about 480 parts of the page instead of 3,800–4,200), so the form stays quicker on slower phones; nothing on the screen changed |
+
+## 2026-11-22 · a range over a year
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **A range longer than a year shows no stale figures** | on the Settlement report, Analytic, the account report and the Supplier Report, picking more than a year says *a year at most* and clears the figures, instead of leaving the previous range's numbers on screen |
+
 ## 2026-11-21 · tracking link, phone order page, expense types, racks
 
 | What shipped | What it means for a person |

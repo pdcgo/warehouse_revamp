@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { dayKey, teams } from "../../../.storybook/fixtures";
 import { settlementWindowCalls } from "../../../.storybook/settlementAnalyticStub";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { formatRupiah } from "../../lib/money";
 import { SettlementReportPage } from "./index";
 
@@ -229,4 +230,82 @@ export const SaysAsOfWhen: Story = {
 
     await expect(await canvas.findByTestId("report-as-of")).toHaveTextContent("14:04 WIB");
   },
+};
+
+// A RANGE OVER A YEAR IS NOT LOADED (a-metric-reads-at-most-a-year; backlog #130). Today and the 400 days before it — 401
+// days — picked on the calendar AFTER a loaded report: the line under the picker says a year at most, nothing is asked of
+// the server for it, and NOTHING of the last window stays on screen — every tile `—`, no Over time row, no as-of, the
+// ranking empty, no refusal. (TanStack kept a DISABLED query's last answer as its placeholder, so the last month's figures
+// stood under a picker naming the 401-day window, as if they were its.) A valid range again loads as before.
+const TODAY = dayKey(0);
+const OVER_A_YEAR_FROM = dayKey(400);
+const TILES = ["sales", "received", "withdrawn", "gap", "take-rate", "position"] as const;
+
+/** Pick `from`–`to` on the page's range calendar, as a person does: the end day, back month by month to the start day, Apply. */
+async function pickRange(canvas: ReturnType<typeof within>, from: string, to: string) {
+  await userEvent.click(canvas.getByTestId("report-range"));
+  // The panel portals — it is on `screen`, not in the canvas — and animates in before it takes a click.
+  const end = await screen.findByTestId(`report-range-day-${to}`);
+  await waitFor(() => expect(end).toBeVisible());
+  await userEvent.click(end);
+  for (let i = 0; i < 24 && screen.queryByTestId(`report-range-day-${from}`) === null; i++) {
+    await userEvent.click(screen.getByTestId("report-range-prev"));
+  }
+  await userEvent.click(screen.getByTestId(`report-range-day-${from}`));
+  await userEvent.click(screen.getByTestId("report-range-apply"));
+}
+
+async function aRangeOverAYearIsNotLoaded(canvasElement: HTMLElement, message: string) {
+  const canvas = await loaded(canvasElement);
+  // The loaded report the longer range must not keep showing.
+  await waitFor(() => expect(canvas.getByTestId("report-as-of")).toBeVisible(), { timeout: 3000 });
+  await waitFor(() => expect(canvas.getByTestId(`report-series-row-${TODAY}`)).toBeVisible(), { timeout: 3000 });
+  await waitFor(() => expect(canvas.getByTestId("report-groups-table")).toBeVisible());
+  settlementWindowCalls.splice(0);
+
+  await pickRange(canvas, OVER_A_YEAR_FROM, TODAY);
+
+  await expect(await canvas.findByTestId("report-range-invalid")).toHaveTextContent(message);
+  for (const tile of TILES) {
+    await waitFor(() => expect(canvas.getByTestId(`report-${tile}-value`)).toHaveTextContent("—"));
+  }
+  await expect(canvas.queryByTestId(`report-series-row-${TODAY}`)).toBeNull();
+  await expect(canvas.queryByTestId("report-series-table")).toBeNull();
+  await expect(canvas.getByTestId("report-series-empty")).toBeVisible();
+  await expect(canvas.queryByTestId("report-groups-table")).toBeNull();
+  await expect(canvas.getByTestId("report-groups-empty")).toBeVisible();
+  await expect(canvas.queryByTestId("report-as-of")).toBeNull();
+  await expect(canvas.queryByTestId("report-error")).toBeNull();
+  // Not loaded: nothing was asked of the server for that window.
+  await expect(settlementWindowCalls.filter((call) => call.from === OVER_A_YEAR_FROM)).toEqual([]);
+
+  // A valid range again — the last 3 months, a window not read before — loads as before.
+  const three = jakartaWindowOf({ kind: "relative", months: 3 });
+  await userEvent.click(canvas.getByTestId("report-range"));
+  const quick = await screen.findByTestId("report-range-quick-3m");
+  await waitFor(() => expect(quick).toBeVisible());
+  await userEvent.click(quick);
+
+  await waitFor(() => expect(canvas.getByTestId("report-sales-value")).toHaveTextContent(rp(300_000n)), { timeout: 3000 });
+  await expect(canvas.getByTestId("report-position-value")).toHaveTextContent(rp(260_000n));
+  await expect(canvas.queryByTestId("report-range-invalid")).toBeNull();
+  await waitFor(() => expect(canvas.getByTestId(`report-series-row-${TODAY}`)).toBeVisible(), { timeout: 3000 });
+  await waitFor(() => expect(canvas.getByTestId("report-as-of")).toBeVisible(), { timeout: 3000 });
+  await expect(settlementWindowCalls).toContainEqual({ from: three.from, to: three.to });
+}
+
+export const ARangeOverAYearIsNotLoaded: Story = {
+  name: "A Range over a Year Is Not Loaded",
+  play: async ({ canvasElement }) =>
+    aRangeOverAYearIsNotLoaded(canvasElement, "That range covers 401 days. A report reads at most 366 — pick a year at most."),
+};
+
+export const ARangeOverAYearIsNotLoadedIndonesian: Story = {
+  name: "A Range over a Year Is Not Loaded (Indonesian)",
+  globals: { locale: "id" },
+  play: async ({ canvasElement }) =>
+    aRangeOverAYearIsNotLoaded(
+      canvasElement,
+      "Rentang itu mencakup 401 hari. Laporan membaca maksimal 366 hari — pilih paling lama setahun.",
+    ),
 };

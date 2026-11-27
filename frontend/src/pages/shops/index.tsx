@@ -23,7 +23,7 @@ import { rpcError } from "../../api/clients";
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import type { Shop } from "../../gen/warehouse/selling/v1/selling_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
-import { useActors } from "../../features/users/queries";
+import { idsOnceRead, useNamedPeople, useScreenPeople } from "../../features/users/queries";
 import { useIsMobile } from "../../layouts/shell";
 import { useDebounced } from "../../lib/useDebounced";
 import { PRESSABLE } from "../../lib/motion";
@@ -48,7 +48,7 @@ import { SortableHeader, type SortState } from "../../components/chrome/Sortable
 import { MarketplaceBadge } from "../../components/badges/MarketplaceBadge";
 import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/MarketplaceSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
-import { type ShopSortKey, useReopenShop, useShopPrimaries, useShops } from "../../features/shops/queries";
+import { type ShopSortKey, useReopenShop, useShopPrimaryIds, useShops } from "../../features/shops/queries";
 import { ShopFormDialog } from "../../features/shops/ShopFormDialog";
 import { PrimaryCsDialog } from "./components/PrimaryCsDialog";
 import { ShopOptionsFilter } from "./components/ShopOptionsFilter";
@@ -153,11 +153,18 @@ export function ShopsPage() {
 
   const shops = query.data?.shops ?? [];
   const totalItems = query.data?.totalItems ?? 0;
-  // The rows carry their primary CS as an id; one UserByIDs names the page's.
-  const primaries = useActors(shops.map((shop) => shop.primaryUserId));
   // The CS filter's people — those who are a primary CS on one of this team's shops.
-  const primaryPeople = useShopPrimaries({ teamId });
-  const loading = query.isPending;
+  const primaryIds = useShopPrimaryIds({ teamId });
+  // THE PAGE'S PEOPLE, ONE UserByIDs (#133): the rows carry their primary CS as an id, the CS filter the team's; one read
+  // of both names them, each picking its own (useScreenPeople).
+  const primaries = useScreenPeople([
+    idsOnceRead(primaryIds, (ids) => ids),
+    idsOnceRead(query, (data) => data.shops.map((shop) => shop.primaryUserId)),
+  ]);
+  const primaryPeople = useNamedPeople(primaryIds.data, primaries, "byName");
+  // The first rows wait for their people, so the rows, their CS and the CS filter's people arrive together — one read
+  // names all three (a cell skeleton and a filter still loading under drawn rows otherwise).
+  const loading = query.isPending || (!primaries.settled && primaries.byId === undefined);
   const error = query.isError ? rpcError(query.error) : "";
 
   // A search, a filter or a sort is a new question, so it starts again at page one.
@@ -325,12 +332,13 @@ export function ShopsPage() {
       );
     }
 
-    const person = primaries.data?.get(shop.primaryUserId.toString());
+    const person = primaries.byId?.get(shop.primaryUserId.toString());
     if (person) {
       return <Text>{personName(person)}</Text>;
     }
 
-    return primaries.isPending ? <Skeleton h="3" w="20" /> : <Text>#{shop.primaryUserId.toString()}</Text>;
+    // Still being named — the first read, or a new union read behind the kept answer.
+    return !primaries.settled || primaries.kept ? <Skeleton h="3" w="20" /> : <Text>#{shop.primaryUserId.toString()}</Text>;
   }
 
   function list() {
@@ -510,8 +518,8 @@ export function ShopsPage() {
             (a-who-filter-lists-the-people-on-its-rows). Picking one lifts "No primary CS". */}
         <FilterField w="15rem" testId="shops-primary-filter">
           <PersonFilterSelect
-            people={primaryPeople.data}
-            error={primaryPeople.isError}
+            people={primaryPeople}
+            error={primaryIds.isError}
             value={primaryCsId}
             placeholder={t("shops.filter.primaryAll")}
             onChange={(id) =>

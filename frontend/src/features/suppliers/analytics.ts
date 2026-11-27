@@ -2,7 +2,7 @@ import { type MessageInitShape, getOption } from "@bufbuild/protobuf";
 import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { productClient, supplierAnalyticClient, supplierClient } from "../../api/clients";
-import { key, listQuery } from "../../api/queryClient";
+import { key, listQueryWhile } from "../../api/queryClient";
 import {
   type FilterItemSchema,
   GroupType,
@@ -38,7 +38,9 @@ import { type SupplierFigures, figuresOf } from "./figures";
 // ⚠ A FIGURE LAGS THE ACCEPT by the broker's delivery — the figures are folded, never summed from the restocks live.
 //
 // All three are `listQuery`: a window, a grain, a team, a search or a page REFINES the same question, so the previous
-// figures stay on screen while the next ones load (HARD RULE 10). Pair with RefreshOverlay.
+// figures stay on screen while the next ones load (HARD RULE 10). Pair with RefreshOverlay. ⚠ Not while the window is
+// refused (`listQueryWhile(valid)`, backlog #130) — unbounded, backwards or over a year: nothing is sent, and the last
+// window's figures kept under it would read as that window's, so the report is not loaded.
 
 /** The metric's id, read off the proto — never typed by hand (the-pattern-replaces-the-shipped-analytics). */
 const SUPPLIERS = getOption(SupplierMetricSchema, metric).metricId;
@@ -251,7 +253,7 @@ export function useSupplierHeadline(args: Window & { supplierId?: bigint }) {
   const { teamId, from, to, valid, restockTeamId, supplierId = 0n, q = "", warehouseId = 0n } = args;
 
   return useQuery({
-    ...listQuery,
+    ...listQueryWhile(valid),
     queryKey: key.suppliers(teamId, {
       figures: "headline",
       supplierId: supplierId.toString(),
@@ -282,7 +284,7 @@ export function useSupplierFigureSeries(args: Window & Paged & { supplierId: big
   const { teamId, supplierId, from, to, valid, restockTeamId, grain, page, pageSize, warehouseId = 0n } = args;
 
   return useQuery({
-    ...listQuery,
+    ...listQueryWhile(valid),
     queryKey: key.suppliers(teamId, {
       figures: "series",
       supplierId: supplierId.toString(),
@@ -327,7 +329,7 @@ export function useSupplierFiguresByProduct(args: Window & Paged & { supplierId:
   const client = useQueryClient();
 
   return useQuery({
-    ...listQuery,
+    ...listQueryWhile(valid),
     queryKey: key.suppliers(teamId, {
       figures: "byProduct",
       supplierId: supplierId.toString(),
@@ -414,7 +416,7 @@ export function useSupplierRanking(args: Window & Paged & { rankBy: SupplierRank
   const client = useQueryClient();
 
   return useQuery({
-    ...listQuery,
+    ...listQueryWhile(valid),
     queryKey: key.suppliers(teamId, {
       figures: "ranking",
       from,

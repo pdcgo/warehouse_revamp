@@ -5,7 +5,7 @@ import { Box, Flex, HStack, Heading, Icon, Stack, Tabs, Tag, Text } from "@chakr
 import { ChartLine, Info, Table2 } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
-import { key, listQuery } from "../../api/queryClient";
+import { key, listQueryWhile } from "../../api/queryClient";
 import { FilterBar, FilterField } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { DateRangePicker } from "../../components/datetime/DateRangePicker";
@@ -123,8 +123,10 @@ export function AnalyticPage() {
 
   // THE REPORT — asked of every service that serves a chosen metric. `listQuery`: a page, a sort or a filter REFINES the
   // same table, so the previous rows stay on screen behind the overlay while the next ones load (HARD RULE 10).
+  // ⚠ Not while the range is refused (`listQueryWhile(valid)`, backlog #130): over a year nothing is sent, and the last
+  // window's headline, rows and as-of kept under it would read as that window's — the report is not loaded.
   const query = useQuery({
-    ...listQuery,
+    ...listQueryWhile(valid),
     // The URL is the state: one string covers every input, and `from`/`to` move with the clock on a relative range.
     queryKey: key.analytic(teamId, { report: params.toString(), from, to }),
     enabled: valid && sort !== null && teamId !== undefined,

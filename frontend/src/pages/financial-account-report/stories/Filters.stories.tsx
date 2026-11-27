@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { dayKey } from "../../../../.storybook/fixtures";
 import { LocationProbe, routedPage } from "../../../../.storybook/pageStory";
 import { FinancialAccountChangeType as T } from "../../../gen/warehouse/financial_account/v1/financial_account_pb";
 import { FinancialAccountReportPage } from "../index";
@@ -128,5 +129,50 @@ export const FiltersLiveInTheUrl: Story = {
     await userEvent.click(canvas.getByTestId("account-report-view-breakdown"));
     await waitFor(() => expect(canvas.getByTestId("account-report-view-breakdown")).toHaveAttribute("aria-selected", "true"));
     await expect(location).not.toHaveTextContent("view");
+  },
+};
+
+// A RANGE OVER A YEAR IS NOT LOADED (a-metric-reads-at-most-a-year; backlog #130) — the Finance metrics refuse it, so it
+// is not sent. Picked AFTER a loaded report — today and the 400 days before it, 401 days — the line says a year at most
+// and NOTHING of the last window stays on screen: the cards `—`, no period row. (TanStack kept a DISABLED query's last
+// answer as its placeholder, so last month's figures stood under the 401-day window.) A valid range again loads.
+export const ARangeOverAYearShowsNoFigures: Story = {
+  name: "A Range over a Year Shows No Figures",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const today = dayKey(0);
+    const from = dayKey(400);
+    await waitFor(() => expect(canvas.getByTestId(`account-report-series-row-${today}`)).toBeVisible(), { timeout: 3000 });
+
+    await userEvent.click(canvas.getByTestId("account-report-range"));
+    const end = await screen.findByTestId(`account-report-range-day-${today}`);
+    await waitFor(() => expect(end).toBeVisible());
+    await userEvent.click(end);
+    for (let i = 0; i < 24 && screen.queryByTestId(`account-report-range-day-${from}`) === null; i++) {
+      await userEvent.click(screen.getByTestId("account-report-range-prev"));
+    }
+    await userEvent.click(screen.getByTestId(`account-report-range-day-${from}`));
+    await userEvent.click(screen.getByTestId("account-report-range-apply"));
+
+    await expect(await canvas.findByTestId("account-report-range-invalid")).toHaveTextContent(
+      "That range covers 401 days. A report reads at most 366 — pick a year at most.",
+    );
+    for (const card of ["open", "change", "close"]) {
+      await waitFor(() => expect(canvas.getByTestId(`account-report-${card}-value`)).toHaveTextContent("—"));
+    }
+    await expect(canvas.queryByTestId(`account-report-series-row-${today}`)).toBeNull();
+    await expect(canvas.getByTestId("account-report-series-empty")).toBeVisible();
+    await expect(canvas.queryByTestId("account-report-error")).toBeNull();
+
+    // The last 14 days — a valid window — loads: the close is today's balance, whatever the window's start.
+    await userEvent.click(canvas.getByTestId("account-report-range"));
+    const quick = await screen.findByTestId("account-report-range-quick-14");
+    await waitFor(() => expect(quick).toBeVisible());
+    await userEvent.click(quick);
+    await waitFor(() => expect(canvas.getByTestId("account-report-close-value")).toHaveTextContent(rp(16_443_500)), {
+      timeout: 3000,
+    });
+    await expect(canvas.queryByTestId("account-report-range-invalid")).toBeNull();
+    await waitFor(() => expect(canvas.getByTestId(`account-report-series-row-${today}`)).toBeVisible(), { timeout: 3000 });
   },
 };

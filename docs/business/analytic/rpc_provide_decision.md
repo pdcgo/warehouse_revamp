@@ -1729,6 +1729,8 @@ flowchart LR
 | ⚠ my build detail — the picker | the date picker itself still lets a person pick a longer range by hand; its quick ranges stop at *Last 1 year* (365 or 366 days), and a longer hand-picked one is answered by the line above, never sent |
 | tests | `range_test.go` (a leap year fits, 367 does not), one 367-day refusal per service, the `ARangeOverAYearIsNotSent` story |
 
+✅ Built 2026-11-26 (#131) — the supplier **Statistics** tab (both supplier details, `features/suppliers/SupplierStatistics.tsx`) no longer sends a range over 366 days, at any grain: one picked by hand on the calendar or a hand-edited `stat.range` is kept and answered by the line under the picker — *That range covers 401 days. A report reads at most 366 — pick a year at most.* (`supplierFigures.rangeTooLong`, the Supplier Report's line) — nothing is asked, the Export is off, and through #130's `listQueryWhile(valid)` none of the last window's figures stay on screen. Stories `ARangeOverAYearIsNotSent`, `ARangeOverAYearInTheUrlIsNotSent`.
+
 ## a-money-metric-says-as-of-when
 
 > Owner, in chat (2026-10-31): *"tell more"*, then *"i follow your recomendation"* — to

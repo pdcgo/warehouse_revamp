@@ -270,8 +270,8 @@ var auditFirstScreens = []auditScreenDef{
 			{Name: "quantity", TestID: "order-line-qty-0", Keys: auditQtyKeys,
 				Setup: append(append([]auditStep(nil), orderPickWarehouse...), orderPickProduct...)},
 		},
-		Note: "The form's state is one useReducer (pages/order-create/formState.ts, #123); a keystroke still re-renders the " +
-			"whole page. Its save " +
+		Note: "The form's state is one useReducer (pages/order-create/formState.ts, #123); its cards are memoised " +
+			"(components/memoCards.ts, #135), so a keystroke re-renders the card typed in, not the whole page. Its save " +
 			"(P2) is the whole OrderCreate a person types — the warehouse, a shop, a courier, one product, today, a " +
 			"price, the ref, a receipt file — and opens the order it made, so the requests after it are the order " +
 			"page's load. The product picker opens only once a warehouse is picked: its probe picks one first, uncounted.",

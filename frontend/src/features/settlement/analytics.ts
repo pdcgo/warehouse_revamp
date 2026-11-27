@@ -2,7 +2,7 @@ import { type MessageInitShape, getOption } from "@bufbuild/protobuf";
 import { useQuery } from "@tanstack/react-query";
 
 import { settlementAnalyticClient } from "../../api/clients";
-import { key, listQuery } from "../../api/queryClient";
+import { key, listQueryWhile } from "../../api/queryClient";
 import {
   type FilterItemSchema,
   GroupType,
@@ -26,6 +26,10 @@ import { measureOf, type SettlementMeasure } from "./measure";
 //
 // All three are `listQuery`: a window, a grain or a page change REFINES the same question about the same team, so the
 // previous figures stay on screen while the next ones load (HARD RULE 10). Pair with RefreshOverlay.
+//
+// ⚠ BUT NOT WHILE THE WINDOW IS REFUSED (`listQueryWhile(valid)`, backlog #130): a range over a year is never sent
+// (a-metric-reads-at-most-a-year), and the last window's figures kept under it would read as that window's — the
+// report is not loaded instead.
 
 /** The metric's id, read off the proto — never typed by hand. */
 const SETTLEMENT = getOption(SettlementMetricSchema, metric).metricId;
@@ -97,7 +101,7 @@ function firstDay(label: string, grain: PeriodGrain): string {
  */
 export function useSettlementSummary({ teamId, from, to, valid }: Window) {
   return useQuery({
-    ...listQuery,
+    ...listQueryWhile(valid),
     queryKey: key.settlement(teamId, { report: "summary", from, to }),
     enabled: teamId !== undefined && valid,
     // With the service's AS OF (a-money-metric-says-as-of-when): when its fold last claimed an event — the screen says it.
@@ -122,7 +126,7 @@ export function useSettlementSeries(args: Window & { grain: PeriodGrain; page: n
   const { teamId, from, to, valid, grain, page, pageSize } = args;
 
   return useQuery({
-    ...listQuery,
+    ...listQueryWhile(valid),
     queryKey: key.settlement(teamId, { report: "series", grain, from, to, page, pageSize }),
     enabled: teamId !== undefined && valid,
     queryFn: async () => {
@@ -163,7 +167,7 @@ export function useSettlementGroups(args: Window & { groupBy: SettlementGroupBy;
   const { teamId, from, to, valid, groupBy, page, pageSize } = args;
 
   return useQuery({
-    ...listQuery,
+    ...listQueryWhile(valid),
     queryKey: key.settlement(teamId, { report: "groups", groupBy, from, to, page, pageSize }),
     enabled: teamId !== undefined && valid,
     queryFn: async () => {

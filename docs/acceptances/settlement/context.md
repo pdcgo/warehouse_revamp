@@ -10,6 +10,6 @@ at cancel, is checked in [order](../inventory/order.md). Rules: [guide.md](../gu
 | [settlement_importer](settlement_importer.md) | 18 | | | |
 | [order_settlement](order_settlement.md) | 25 | | | |
 | [shop_entry](shop_entry.md) | 14 | | | |
-| [report](report.md) | 10 | 1 | | 1 |
+| [report](report.md) | 11 | | | 1 |
 
 An empty row has not been discussed yet.

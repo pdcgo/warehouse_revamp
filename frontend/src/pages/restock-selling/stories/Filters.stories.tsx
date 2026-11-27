@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, routedPage } from "../../../../.storybook/pageStory";
 import { holdRestockExport, restockExportScenario } from "../../../../.storybook/restockExportScenario";
 import { asAdminTeam } from "../../../../.storybook/sessionScenario";
+import { restockClient, userClient } from "../../../api/clients";
 import { toaster } from "../../../components/feedback/Toaster";
-import { RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
+import { RestockActorRole, RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import { RestockSellingPage } from "../index";
 import { SELLING_META, loaded } from "./kit";
 
@@ -271,5 +272,74 @@ export const NothingMatchesNamesTheCourier: Story = {
     await canvas.findByTestId("restock-row-501", {}, { timeout: 4000 });
     await waitFor(() => expect(canvas.getByTestId("location-search")).not.toHaveTextContent("courier="));
     await expect(canvas.getByTestId("restock-tab-ongoing")).toHaveAttribute("aria-selected", "true");
+  },
+};
+
+// THE PAGE'S PEOPLE ARE NAMED ONCE (#133, the-speed-audits-old-findings-are-fixed-smallest-first) — the rows' (who raised,
+// signed for, accepted each) and both who filters' people come from ONE UserByIDs of the three id sets, sent once every
+// set is in; a read each was three UserByIDs a load. Opened on Ongoing, so the rows accept nothing and the accepted-by
+// filter's people are named only through its own set; its RestockActorList answers last.
+const AtOngoing = routedPage(
+  [{ path: "/inventories/restock", element: <RestockSellingPage /> }],
+  "/inventories/restock?status=ongoing",
+);
+
+export const ThePeopleAreNamedOnce: Story = {
+  name: "People named once",
+  render: () => <AtOngoing />,
+  beforeEach: () => {
+    const named = spyOn(userClient, "userByIDs");
+    const actorList = restockClient.restockActorList.bind(restockClient);
+    const actors = spyOn(restockClient, "restockActorList").mockImplementation((async (
+      ...args: Parameters<typeof actorList>
+    ) => {
+      if (args[0].filter?.role === RestockActorRole.ACCEPTED) await new Promise((resolve) => setTimeout(resolve, 300));
+
+      return actorList(...args);
+    }) as typeof actorList);
+
+    return () => {
+      named.mockRestore();
+      actors.mockRestore();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("restock-created-by-501")).toHaveTextContent("Ani"));
+
+    // On a phone the who filters are in the sheet.
+    const open = canvas.queryByTestId("restock-filter-open");
+    let controls = canvas;
+    if (open) {
+      await userEvent.click(open);
+      const sheet = await screen.findByTestId("restock-filter-sheet");
+      await waitFor(() => expect(sheet).toBeVisible());
+      controls = within(sheet);
+    }
+
+    for (const field of ["restock-created-by-filter", "restock-accepted-by-filter"]) {
+      const input = within(controls.getByTestId(field)).getByRole("combobox");
+      await userEvent.click(input);
+      // Its own listbox — the other picker's options stay in the document, hidden.
+      await waitFor(
+        () => {
+          const listbox = document.getElementById(input.getAttribute("aria-controls") ?? "");
+          expect(listbox).not.toBeNull();
+          expect(within(listbox!).getAllByTestId(/^person-filter-option-/)[0]).toBeVisible();
+        },
+        { timeout: 5000 },
+      );
+      // Named, every one — "#66" would be an id the one read never asked for.
+      const listbox = document.getElementById(input.getAttribute("aria-controls") ?? "")!;
+      for (const option of within(listbox).getAllByTestId(/^person-filter-option-/)) {
+        await expect(option).not.toHaveTextContent(/^#\d/);
+      }
+      await userEvent.keyboard("{Escape}");
+    }
+
+    await expect(
+      (userClient.userByIDs as unknown as { mock: { calls: unknown[] } }).mock.calls,
+    ).toHaveLength(1);
   },
 };

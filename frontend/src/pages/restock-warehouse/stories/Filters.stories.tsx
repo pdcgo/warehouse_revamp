@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, routedPage } from "../../../../.storybook/pageStory";
+import { userClient } from "../../../api/clients";
 import { RestockWarehousePage } from "../index";
 import { WAREHOUSE_META, loaded } from "./kit";
 
@@ -76,5 +77,52 @@ export const FiltersLiveInTheUrl: Story = {
     await waitFor(() => expect(location).toHaveTextContent("status=ongoing"));
     await expect(location).toHaveTextContent("role=accepted");
     await expect(location).not.toHaveTextContent("range=");
+  },
+};
+
+// THE PAGE'S PEOPLE ARE NAMED ONCE (#133, the-speed-audits-old-findings-are-fixed-smallest-first) — the rows' (who raised,
+// signed for, accepted each) and the person filter's people come from ONE UserByIDs of both id sets; a read each was
+// UserByIDs twice a load.
+export const ThePeopleAreNamedOnce: Story = {
+  name: "People named once",
+  beforeEach: () => {
+    const spy = spyOn(userClient, "userByIDs");
+
+    return () => spy.mockRestore();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("restock-created-by-501")).toHaveTextContent(/^by /));
+
+    // On a phone the person filter is in the sheet.
+    const open = canvas.queryByTestId("restock-inbound-filter-open");
+    let controls = canvas;
+    if (open) {
+      await userEvent.click(open);
+      const sheet = await screen.findByTestId("restock-inbound-filter-sheet");
+      await waitFor(() => expect(sheet).toBeVisible());
+      controls = within(sheet);
+    }
+
+    const input = within(controls.getByTestId("restock-inbound-person")).getByRole("combobox");
+    await userEvent.click(input);
+    await waitFor(
+      () => {
+        const listbox = document.getElementById(input.getAttribute("aria-controls") ?? "");
+        expect(listbox).not.toBeNull();
+        expect(within(listbox!).getAllByTestId(/^person-filter-option-/)[0]).toBeVisible();
+      },
+      { timeout: 5000 },
+    );
+    // Named, every one — "#66" would be an id the one read never asked for.
+    const listbox = document.getElementById(input.getAttribute("aria-controls") ?? "")!;
+    for (const option of within(listbox).getAllByTestId(/^person-filter-option-/)) {
+      await expect(option).not.toHaveTextContent(/^#\d/);
+    }
+
+    await expect(
+      (userClient.userByIDs as unknown as { mock: { calls: unknown[] } }).mock.calls,
+    ).toHaveLength(1);
   },
 };

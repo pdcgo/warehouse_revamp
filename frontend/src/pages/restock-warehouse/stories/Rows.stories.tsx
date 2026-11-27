@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, spyOn, waitFor, within } from "storybook/test";
 
 import { restockLogByForStory, restockRaisedByForStory, restockStepByForStory } from "../../../../.storybook/restockStub";
+import { userClient } from "../../../api/clients";
 import { WAREHOUSE_META, loaded } from "./kit";
 
 // RESTOCK WAREHOUSE — the screen's own rules and what a row shows — who and when, the courier, its products.
@@ -169,5 +170,29 @@ export const MobileArrivedByRootFromOutside: Story = {
     await expect(arrived).toHaveTextContent("Arrived");
     await expect(arrived).not.toHaveTextContent("Fajar");
     await expect(within(canvas.getByTestId("restock-inbound-table")).queryAllByTestId("root-team-badge")).toHaveLength(0);
+  },
+};
+
+// THE FIRST ROWS ARRIVE NAMED (#133) — the list reads no people of its own any more (the page names them in one read with
+// its person filter's), and its first rows wait for that read: never a beat of "User #61" before the name.
+export const TheFirstRowsArriveNamed: Story = {
+  name: "First rows arrive named",
+  // The people answer late — a row drawn before them would say "User #61" for that long.
+  beforeEach: () => {
+    const named = userClient.userByIDs.bind(userClient);
+    const spy = spyOn(userClient, "userByIDs").mockImplementation((async (...args: Parameters<typeof named>) => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      return named(...args);
+    }) as typeof named);
+
+    return () => spy.mockRestore();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    // As the row is drawn — no wait.
+    await expect(canvas.getByTestId("restock-created-by-501")).toHaveTextContent("by Ani Rahayu");
+    await expect(canvas.getByTestId("restock-arrived-502-by")).toHaveTextContent("by Budi Santoso");
   },
 };

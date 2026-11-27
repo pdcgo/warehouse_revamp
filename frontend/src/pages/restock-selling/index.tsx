@@ -32,7 +32,13 @@ import { personName } from "../../lib/users";
 import { RootTeamBadge } from "../../components/entity/ActorName";
 import { useTeams } from "../../features/teams/queries";
 import { useShipmentChannelsByIds } from "../../features/shipment/queries";
-import { useRestockPeople, useRestockRequests, useRestockSellingStat } from "../../features/restock/queries";
+import {
+  restockRowPeople,
+  useRestockPeopleIds,
+  useRestockRequests,
+  useRestockSellingStat,
+} from "../../features/restock/queries";
+import { idsOnceRead, useNamedPeople, useScreenPeople } from "../../features/users/queries";
 import { useRestockExport } from "../../features/restock/exports";
 import type { RestockPile, RestockSummaryData } from "../../features/restock/sellingStat";
 import { useFinancialAccountsByIds } from "../../features/financialAccount/queries";
@@ -217,8 +223,17 @@ export function RestockSellingPage() {
   });
 
   // The two "who" filters' people — everyone on this team's restocks who raised one, and who accepted one.
-  const createdBy = useRestockPeople({ teamId, role: RestockActorRole.CREATED });
-  const acceptedBy = useRestockPeople({ teamId, role: RestockActorRole.ACCEPTED });
+  const createdByIds = useRestockPeopleIds({ teamId, role: RestockActorRole.CREATED });
+  const acceptedByIds = useRestockPeopleIds({ teamId, role: RestockActorRole.ACCEPTED });
+  // THE PAGE'S PEOPLE, ONE UserByIDs (#133): the rows' (who raised, signed for, accepted each) and both filters' — three
+  // id sets, named by one read of all three, each picking its own (useScreenPeople).
+  const people = useScreenPeople([
+    idsOnceRead(query, (data) => restockRowPeople(data.requests)),
+    idsOnceRead(createdByIds, (ids) => ids),
+    idsOnceRead(acceptedByIds, (ids) => ids),
+  ]);
+  const createdBy = useNamedPeople(createdByIds.data, people);
+  const acceptedBy = useNamedPeople(acceptedByIds.data, people);
 
   // The two id → name lookups this screen's columns need: the list RPC's GENERAL slice carries the
   // RESTOCK's own name, not its supplier's or its destination's. The warehouses are an ordinary paged list
@@ -247,11 +262,12 @@ export function RestockSellingPage() {
   }, [warehouses.data]);
 
   const requests = query.data?.requests ?? [];
-  const actors = query.data?.actors;
+  const actors = people.byId;
   const totalItems = query.data?.totalItems ?? 0;
   // The Tag filter's options — the app-wide list, every team's (custom-tags-are-shared-system-tags-are-the-admins-and-the-apps).
   const tagCatalogue = useRestockTagCatalogue(teamId);
-  const loading = query.isPending;
+  // The first rows wait for their people, as when the list read them itself: never a beat of "User #7" before the name.
+  const loading = query.isPending || (!people.settled && actors === undefined);
   // Always-fresh means every tab, page and filter change refetches; `listQuery` keeps the rows that
   // are already up while it does, and RefreshOverlay is what says so. `isPending` is excluded — a
   // first load has nothing to keep and shows the skeleton instead.
@@ -847,8 +863,8 @@ export function RestockSellingPage() {
             (whoever-reads-a-list-may-filter-it). */}
         <FilterField w="15rem" testId="restock-created-by-filter">
           <PersonFilterSelect
-            people={createdBy.data}
-            error={createdBy.isError}
+            people={createdBy}
+            error={createdByIds.isError}
             value={createdByFilter > 0n ? createdByFilter : undefined}
             placeholder={t("restock.createdByAll")}
             // A cleared picker emits undefined → 0n, "everyone" — the filter is removed, not stuck.
@@ -857,8 +873,8 @@ export function RestockSellingPage() {
         </FilterField>
         <FilterField w="15rem" testId="restock-accepted-by-filter">
           <PersonFilterSelect
-            people={acceptedBy.data}
-            error={acceptedBy.isError}
+            people={acceptedBy}
+            error={acceptedByIds.isError}
             value={acceptedByFilter > 0n ? acceptedByFilter : undefined}
             placeholder={t("restock.acceptedByAll")}
             onChange={(id) => refilter(() => setAcceptedByFilter(id ?? 0n))}

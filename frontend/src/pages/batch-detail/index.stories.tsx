@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Text } from "@chakra-ui/react";
 import { useLocation, useParams } from "react-router-dom";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
-import { productLeftItsRacksForStory } from "../../../.storybook/batchStub";
+import { productLeftItsRacksForStory, productPlacesForStory } from "../../../.storybook/batchStub";
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
+import { inventoryClient } from "../../api/clients";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { cameFrom } from "../../lib/cameFrom";
 import { BatchDetailPage } from "./index";
@@ -298,5 +299,38 @@ export const NotFound: Story = {
     await expect(await canvas.findByTestId("batch-detail-error", {}, { timeout: 4000 })).toHaveTextContent("batch not found");
     await userEvent.click(canvas.getByTestId("batch-detail-back"));
     await canvas.findByTestId("at-batch-list");
+  },
+};
+
+// THE PRODUCT'S RACKS ARE READ ONCE (#133, the-speed-audits-old-findings-are-fixed-smallest-first) — the page's own
+// ProductPlaces names its shelves and gives the Adjust dialog each rack's figure; the dialog, mounted closed beside the
+// page, read the same ProductPlaces again on every load.
+export const TheRacksAreReadOnce: Story = {
+  name: "Racks read once",
+  beforeEach: () => {
+    // Beras (74) holds 5 on A-01-1 and 2 on B-02-1 now.
+    productPlacesForStory({ "74": [[41n, 5n], [43n, 2n]] });
+    const spy = spyOn(inventoryClient, "productPlaces");
+
+    return () => spy.mockRestore();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId("batch-detail-shelf-41")).toHaveTextContent("A-01-1"));
+
+    await userEvent.click(canvas.getByTestId("batch-detail-adjust"));
+    await waitFor(() => expect(screen.getByTestId("adjust-dialog")).toBeVisible());
+
+    // A-01-1 reads the page's figure: a recount to 3 is 5 → 3.
+    const trigger = screen.getByTestId("rack-select");
+    const root = trigger.closest<HTMLElement>('[data-scope="select"][data-part="root"]')!;
+    await userEvent.click(trigger);
+    await waitFor(() => expect(within(root).getByTestId("rack-select-option-41")).toBeVisible(), { timeout: 5000 });
+    await userEvent.click(within(root).getByTestId("rack-select-option-41"));
+    await userEvent.clear(screen.getByTestId("adjust-amount"));
+    await userEvent.type(screen.getByTestId("adjust-amount"), "3", { delay: 40 });
+    await waitFor(() => expect(screen.getByTestId("adjust-delta")).toHaveTextContent("5 → 3"));
+
+    await expect((inventoryClient.productPlaces as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(1);
   },
 };

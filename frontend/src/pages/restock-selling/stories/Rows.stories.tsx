@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { FORMER_USER_ID } from "../../../../.storybook/fixtures";
 import { restockLogByForStory, restockRaisedByForStory, restockStepByForStory } from "../../../../.storybook/restockStub";
+import { userClient } from "../../../api/clients";
 import { SELLING_META, loaded } from "./kit";
 
 // RESTOCK SELLING — the screen's own rules and what a row shows — its columns, its references, its value, its badges, and who raised it. The page's stories are grouped by the part of the screen they are about
@@ -246,5 +247,28 @@ export const MobileAcceptedByRootFromOutside: Story = {
     await expect(table.tagName).not.toBe("TABLE");
     await expect(canvas.queryByTestId("restock-accepted-by-503")).toBeNull();
     await expect(within(table).queryAllByTestId("root-team-badge")).toHaveLength(0);
+  },
+};
+
+// THE FIRST ROWS ARRIVE NAMED (#133) — the list reads no people of its own any more (the page names them in one read with
+// its two who filters'), and its first rows wait for that read: never a beat of "User #61" before the name.
+export const TheFirstRowsArriveNamed: Story = {
+  name: "First rows arrive named",
+  // The people answer late — a row drawn before them would say "User #61" for that long.
+  beforeEach: () => {
+    const named = userClient.userByIDs.bind(userClient);
+    const spy = spyOn(userClient, "userByIDs").mockImplementation((async (...args: Parameters<typeof named>) => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      return named(...args);
+    }) as typeof named);
+
+    return () => spy.mockRestore();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    // As the row is drawn — no wait.
+    await expect(canvas.getByTestId("restock-created-by-501")).toHaveTextContent("by Ani Rahayu");
   },
 };

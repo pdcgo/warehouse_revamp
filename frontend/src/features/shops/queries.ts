@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { personName } from "../../lib/users";
 import { shopClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
@@ -140,11 +139,14 @@ export function useShop(args: { teamId: bigint | undefined; shopId: bigint }) {
   });
 }
 
-// THE PRIMARY CS FILTER'S PEOPLE — the people who are a primary CS on one of this team's shops, named, A to Z
+// THE PRIMARY CS FILTER'S PEOPLE — the people who are a primary CS on one of this team's shops
 // (a-who-filter-lists-the-people-on-its-rows: the list's own service answers, never the team's member list). There is
 // no ShopList answer for "the primaries on my rows", so it reads every shop — the one page of 100 the shop picker
 // reads — and gathers theirs. Under `shops`, so moving a primary re-reads it.
-export function useShopPrimaries(args: { teamId: bigint | undefined }) {
+//
+// Their IDS (#133): the shop list names them, A to Z, in its ONE read of the screen's people together with the rows'
+// primaries (useScreenPeople, useNamedPeople "byName") — a read of its own here was the page's second UserByIDs.
+export function useShopPrimaryIds(args: { teamId: bigint | undefined }) {
   const { teamId } = args;
 
   return useQuery({
@@ -159,12 +161,8 @@ export function useShopPrimaries(args: { teamId: bigint | undefined }) {
         dataRequest: shopListRowData(),
         page: { page: 1, limit: 100 },
       });
-      const ids = [...new Set(shopsFromList(res.items, res.ids).map((shop) => shop.primaryUserId))].filter(
-        (id) => id > 0n,
-      );
-      const people = await peopleFor(ids);
 
-      return people.sort((a, b) => personName(a).localeCompare(personName(b)));
+      return [...new Set(shopsFromList(res.items, res.ids).map((shop) => shop.primaryUserId))].filter((id) => id > 0n);
     },
   });
 }

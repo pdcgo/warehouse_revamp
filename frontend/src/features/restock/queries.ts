@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { restockClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { useInvalidateStock } from "../inventory/queries";
-import { fetchActors, peopleFor, useActors, WHO_FILTER_SIZE } from "../users/queries";
+import { useActors, WHO_FILTER_SIZE } from "../users/queries";
 import type { RestockActorRole, RestockRequest } from "../../gen/warehouse/inventory/v1/restock_request_pb";
 import {
   RestockDateField,
@@ -121,17 +121,11 @@ export function useRestockRequests(args: RestockListArgs) {
         page: { page, limit: pageSize },
       });
 
-      const requests = restocksFromList(res.items, res.ids);
-
-      // WHO RAISED IT, WHO SIGNED FOR THE BOX AND WHO ACCEPTED IT, resolved in the same query rather than by each row —
-      // one call for the whole page. Every column comes from the same map: the same person often does two.
-      const actors = await fetchActors(
-        requests.flatMap((r) => [r.createdByUserId, r.arrivedByUserId, r.acceptedByUserId]),
-      );
-
+      // WHO RAISED IT, WHO SIGNED FOR THE BOX AND WHO ACCEPTED IT are named by the PAGE, in its one read of every person
+      // it shows — the rows' and its who filters' (useScreenPeople, #133): one call for the whole page, every column from
+      // the same map. A read of the rows' people here was the page's second UserByIDs.
       return {
-        requests,
-        actors,
+        requests: restocksFromList(res.items, res.ids),
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -266,28 +260,35 @@ export function withRefusal(check: RefCheck, refusal: RefRefusal | undefined, va
 }
 
 // WHO A RESTOCK LIST'S "WHO" FILTER OFFERS (a-who-filter-lists-the-people-on-its-rows): everyone who raised — or
-// accepted — a restock this team may list, the latest first, named with one UserByIDs. Never a team's member list:
-// the people who counted a selling team's deliveries work at the warehouse, whose members it cannot read. Anyone who
-// may read the list may ask (whoever-reads-a-list-may-filter-it), Staff and Customer Service included.
+// accepted — a restock this team may list, the latest first. Never a team's member list: the people who counted a
+// selling team's deliveries work at the warehouse, whose members it cannot read. Anyone who may read the list may ask
+// (whoever-reads-a-list-may-filter-it), Staff and Customer Service included.
 //
-// `referenceQuery`: it LABELS a picker, and is re-read whenever one mounts.
-export function useRestockPeople(args: { teamId: bigint | undefined; role: RestockActorRole }) {
+// Their IDS (#133): the list names them in its ONE read of the screen's people together with its rows' (useScreenPeople,
+// useNamedPeople) — a UserByIDs of their own here was a second one a load, a third on the selling list's two filters.
+//
+// `referenceQuery`: it feeds a picker, and is re-read whenever one mounts.
+export function useRestockPeopleIds(args: { teamId: bigint | undefined; role: RestockActorRole }) {
   const { teamId, role } = args;
 
   return useQuery({
     queryKey: key.restock(teamId, { people: role }),
     ...referenceQuery,
     enabled: teamId !== undefined,
-    queryFn: async () => {
-      const res = await restockClient.restockActorList({
-        teamId: teamId!,
-        filter: { role },
-        page: { page: 1, limit: WHO_FILTER_SIZE },
-      });
-
-      return peopleFor(res.ids);
-    },
+    queryFn: async () =>
+      (
+        await restockClient.restockActorList({
+          teamId: teamId!,
+          filter: { role },
+          page: { page: 1, limit: WHO_FILTER_SIZE },
+        })
+      ).ids,
   });
+}
+
+/** Every person a page of restocks names: who raised each, who signed for its box, who accepted it. */
+export function restockRowPeople(requests: readonly RestockRequest[]): bigint[] {
+  return requests.flatMap((r) => [r.createdByUserId, r.arrivedByUserId, r.acceptedByUserId]);
 }
 
 // THE INBOUND HEADLINE (owner) — the warehouse side's in-flight figures (the selling list's were OwnerStockStat): what is

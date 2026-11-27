@@ -523,3 +523,115 @@ test("Supplier goods: Statistik under B's chip reads B's restock and leaves out 
   // No chip: the sum over every warehouse — what the tab read before the reports carried the warehouse.
   await expectStatisticsUnderChip(page, "", /^Rp\s?90\.000$/, /^9 units$/, ["Kain Katun", "Benang Katun"]);
 });
+
+// STATISTIK READS A YEAR AT MOST (`a-metric-reads-at-most-a-year`, docs/business/analytic/rpc_provide_decision.md;
+// backlog #131, as #130's report pages): a range over 366 days — picked on the calendar, or typed into the address as
+// `stat.range` — is never sent (supplier_service refuses it). The line under the picker says why, the last window's
+// figures go (every tile `—`, no period or product row), Export is disabled, and the range is kept as picked, never
+// trimmed. 366 days still reads. The supplier page's tab and its Discover detail's are one component — both are read.
+const jakartaToday = () => new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10);
+const addDays = (iso: string, n: number) =>
+  new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+const yearLine = (days: number) => `That range covers ${days} days. A report reads at most 366 — pick a year at most.`;
+const STAT_TILES = ["total", "restocked", "sales", "lost", "broken"];
+
+// Picks a range on the tab's calendar: `to`, then `from` (paging back or forth until the day is drawn), Apply.
+async function pickStatisticsRange(page: Page, from: string, to: string) {
+  await page.getByTestId("statistics-range").click();
+  await expect(page.getByTestId("statistics-range-panel")).toBeVisible();
+  for (const day of [to, from]) {
+    const cell = page.getByTestId(`statistics-range-day-${day}`);
+    for (const step of ["prev", "next"] as const) {
+      for (let i = 0; i < 24 && (await cell.count()) === 0; i++) {
+        await page.getByTestId(`statistics-range-${step}`).click();
+      }
+    }
+    await cell.click();
+  }
+  await page.getByTestId("statistics-range-apply").click();
+  await expect(page.getByTestId("statistics-range-panel")).toBeHidden();
+}
+
+// The refused state: the line, nothing asked of supplier_service since `reads` was emptied, no figure kept on screen.
+async function expectYearRefused(page: Page, days: number, reads: string[]) {
+  await expect(page.getByTestId("statistics-range-invalid")).toHaveText(yearLine(days));
+  await page.waitForLoadState("networkidle");
+  expect(reads, "no Supplier analytic read for a range over a year").toEqual([]);
+  // Soft, so a run names every part still drawn.
+  for (const tile of STAT_TILES) {
+    await expect.soft(page.getByTestId(`statistics-summary-${tile}-value`)).toHaveText("—", { timeout: 3_000 });
+  }
+  await expect.soft(page.getByTestId("statistics-summary-restocked-units")).toHaveCount(0);
+  await expect.soft(page.locator('[data-testid^="statistics-series-row-"]')).toHaveCount(0);
+  await expect(page.getByTestId("statistics-export")).toBeDisabled();
+}
+
+test("Supplier goods: Statistik reads a year at most — over a year sends nothing, clears the figures, disables Export", async ({
+  page,
+}) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await useTeam(page, state.seller);
+  const day = jakartaToday();
+
+  // Every Supplier analytic read the page sends (MetricSearch ranks, MetricData fills).
+  const reads: string[] = [];
+  page.on("request", (req) => {
+    if (/SupplierAnalyticService\/Metric(Search|Data)$/.test(req.url())) reads.push(req.url());
+  });
+
+  await test.step("a loaded window first — the default last month: 9 units restocked for Rp 90.000", async () => {
+    await page.goto(`/inventories/suppliers/${state.supplier}`);
+    await page.getByTestId("supplier-tab-statistics").click();
+    await expect(page.getByTestId("statistics-summary-restocked-value")).toHaveText(/^Rp\s?90\.000$/, { timeout: 10_000 });
+    await expect(page.locator('[data-testid^="statistics-series-row-"]').first()).toBeVisible();
+    await expect(page.getByTestId("statistics-range-invalid")).toHaveCount(0);
+    await expect(page.getByTestId("statistics-export")).toBeEnabled();
+  });
+
+  await test.step("on the calendar: today and the 400 days before — 401 days, refused and kept as picked", async () => {
+    await page.waitForLoadState("networkidle");
+    reads.length = 0;
+    const from = addDays(day, -400);
+    await pickStatisticsRange(page, from, day);
+    await expect(page).toHaveURL(new RegExp(`[?&]stat\\.range=${from}\\.\\.${day}(&|$)`));
+    await expectYearRefused(page, 401, reads);
+
+    // Per Produk under the same range: no product row, still nothing sent.
+    await page.getByTestId("statistics-view-product").click();
+    await expect(page.getByTestId("statistics-range-invalid")).toHaveText(yearLine(401));
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator('[data-testid^="statistics-product-row-"]')).toHaveCount(0);
+    expect(reads).toEqual([]);
+  });
+
+  await test.step("in the address: 366 days reads — the year itself is allowed", async () => {
+    await page.goto(`/inventories/suppliers/${state.supplier}?stat.range=${addDays(day, -365)}..${day}`);
+    await page.getByTestId("supplier-tab-statistics").click();
+    await expect(page.getByTestId("statistics-summary-restocked-value")).toHaveText(/^Rp\s?90\.000$/, { timeout: 10_000 });
+    await expect(page.getByTestId("statistics-range-invalid")).toHaveCount(0);
+    await expect(page.getByTestId("statistics-export")).toBeEnabled();
+  });
+
+  await test.step("in the address: 367 days, and two whole years, are refused and kept as typed", async () => {
+    await page.waitForLoadState("networkidle");
+    reads.length = 0;
+    const from = addDays(day, -366);
+    await page.goto(`/inventories/suppliers/${state.supplier}?stat.range=${from}..${day}`);
+    await page.getByTestId("supplier-tab-statistics").click();
+    await expectYearRefused(page, 367, reads);
+
+    await page.goto(`/inventories/suppliers/${state.supplier}?stat.range=2024-01-01..2025-12-31`);
+    await page.getByTestId("supplier-tab-statistics").click();
+    await expectYearRefused(page, 731, reads);
+    await expect(page).toHaveURL(/[?&]stat\.range=2024-01-01\.\.2025-12-31(&|$)/);
+  });
+
+  await test.step("the Discover detail's Statistik refuses the same address", async () => {
+    reads.length = 0;
+    await page.goto(`/inventories/suppliers/discover/${state.supplier}?stat.range=2024-01-01..2025-12-31`);
+    await expect(page.getByTestId("discover-detail-page")).toBeVisible({ timeout: 10_000 });
+    await page.getByTestId("supplier-tab-statistics").click();
+    await expectYearRefused(page, 731, reads);
+    await expect(page).toHaveURL(/[?&]stat\.range=2024-01-01\.\.2025-12-31(&|$)/);
+  });
+});

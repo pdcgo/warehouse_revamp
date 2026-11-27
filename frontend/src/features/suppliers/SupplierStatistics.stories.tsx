@@ -1,11 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, pickTeam, routedPage } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
 import { dayAgo } from "../../../.storybook/supplierFigureFixtures";
 import { supplierExportScenario } from "../../../.storybook/supplierExportScenario";
+import { supplierAnalyticClient } from "../../api/clients";
 import { GroupType } from "../../gen/warehouse/analytic_base/v1/analytic_pb";
+import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { formatRupiah } from "../../lib/money";
 import { SupplierStatistics, description } from "./SupplierStatistics";
 
@@ -561,5 +563,130 @@ export const ExportsTheViewOnScreen: Story = {
     await userEvent.click(canvas.getByTestId("statistics-export"));
     await waitFor(() => expect(supplierExportScenario.figures).toHaveLength(2));
     await expect(supplierExportScenario.figures[1]!.groupBy).toBe(GroupType.PRODUCT);
+  },
+};
+
+// ── A year at most (a-metric-reads-at-most-a-year; backlog #131) ──────────────────────────────────────────────────
+
+// Each figures read is watched — MetricData and MetricSearch, passed through to the stub — so a story can say which
+// windows the tab asked supplier_service for.
+function watchTheReads() {
+  const data = spyOn(supplierAnalyticClient, "metricData");
+  const search = spyOn(supplierAnalyticClient, "metricSearch");
+
+  return () => {
+    data.mockRestore();
+    search.mockRestore();
+  };
+}
+
+type WatchedRead = { mock: { calls: [{ filters?: { f: { case?: string; value?: { dateMin?: string } } }[] }][] } };
+
+/** The first day of every window the tab asked for, one per read — MetricData's, then MetricSearch's. */
+function windowsAsked(): string[] {
+  return [supplierAnalyticClient.metricData, supplierAnalyticClient.metricSearch]
+    .flatMap((read) => (read as unknown as WatchedRead).mock.calls)
+    .map(([req]) => req.filters?.find((item) => item.f.case === "dateRangeFilter")?.f.value?.dateMin ?? "");
+}
+
+const HEADLINE_CARDS = ["total", "restocked", "sales", "lost", "broken"] as const;
+
+/** Nothing of a window on screen: every headline card `—`, not one period row. */
+async function nothingOfAWindowIsShown(canvas: ReturnType<typeof within>) {
+  for (const card of HEADLINE_CARDS) {
+    await waitFor(() => expect(canvas.getByTestId(`statistics-summary-${card}-value`)).toHaveTextContent("—"));
+  }
+  await expect(canvas.queryAllByTestId(/^statistics-series-row-/)).toHaveLength(0);
+}
+
+// A RANGE OVER A YEAR IS NOT SENT — supplier_service refuses it at every grain, so the tab does not ask, as the Supplier
+// Report does not. Today and the 400 days before it — 401 days — picked on the calendar AFTER a loaded window: the line
+// under the picker says a year at most, nothing is asked for that window, and NOTHING of the last window stays on
+// screen — the headline `—`, no period row (a disabled read kept its last answer as its placeholder, so last month's
+// figures would stand under a picker naming the 401-day window); the Export is off. A valid range loads again.
+const TODAY = dayAgo(0);
+const OVER_A_YEAR_FROM = dayAgo(400);
+
+export const ARangeOverAYearIsNotSent: Story = {
+  name: "A Range over a Year Is Not Sent",
+  beforeEach: watchTheReads,
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    // The loaded window the longer range must not keep showing.
+    await waitFor(() => expect(canvas.getByTestId(`statistics-series-row-${dayAgo(2)}`)).toBeVisible(), { timeout: 3000 });
+
+    await userEvent.click(canvas.getByTestId("statistics-range"));
+    // The panel portals — it is on `screen`, not in the canvas — and animates in before it takes a click.
+    const end = await screen.findByTestId(`statistics-range-day-${TODAY}`);
+    await waitFor(() => expect(end).toBeVisible());
+    await userEvent.click(end);
+    for (let i = 0; i < 24 && screen.queryByTestId(`statistics-range-day-${OVER_A_YEAR_FROM}`) === null; i++) {
+      await userEvent.click(screen.getByTestId("statistics-range-prev"));
+    }
+    await userEvent.click(screen.getByTestId(`statistics-range-day-${OVER_A_YEAR_FROM}`));
+    await userEvent.click(screen.getByTestId("statistics-range-apply"));
+
+    await waitFor(() =>
+      expect(canvas.getByTestId("statistics-range-invalid")).toHaveTextContent(
+        "That range covers 401 days. A report reads at most 366 — pick a year at most.",
+      ),
+    );
+    await nothingOfAWindowIsShown(canvas);
+    await expect(canvas.getByTestId("statistics-export")).toBeDisabled();
+    // Not sent: no read named that window.
+    await expect(windowsAsked().filter((from) => from === OVER_A_YEAR_FROM)).toEqual([]);
+
+    // The last year — a valid window — loads again, and is asked for.
+    const lastYear = jakartaWindowOf({ kind: "relative", months: 12 });
+    await userEvent.click(canvas.getByTestId("statistics-range"));
+    const quick = await screen.findByTestId("statistics-range-quick-12m");
+    await waitFor(() => expect(quick).toBeVisible());
+    await userEvent.click(quick);
+
+    await waitFor(() => expect(canvas.getByTestId("statistics-summary-restocked-value")).not.toHaveTextContent("—"), {
+      timeout: 3000,
+    });
+    await expect(canvas.queryByTestId("statistics-range-invalid")).toBeNull();
+    await waitFor(() => expect(canvas.getByTestId(`statistics-series-row-${dayAgo(2)}`)).toBeVisible(), { timeout: 3000 });
+    await expect(canvas.getByTestId("statistics-export")).toBeEnabled();
+    await expect(windowsAsked()).toContain(lastYear.from);
+  },
+};
+
+// …AND A HAND-EDITED URL IS THE SAME: `stat.range` naming 2024 and 2025 — 731 days — opens on the line and asks
+// nothing. The range is kept as the URL has it, never trimmed to a year.
+const AtAUrlOverAYear = routedPage(
+  [
+    {
+      path: "/inventories/suppliers/:supplierId",
+      element: (
+        <>
+          <SupplierStatistics supplierId={31n} />
+          <LocationProbe />
+        </>
+      ),
+    },
+  ],
+  "/inventories/suppliers/31?stat.range=2024-01-01..2025-12-31",
+);
+
+export const ARangeOverAYearInTheUrlIsNotSent: Story = {
+  name: "A Range over a Year in the URL Is Not Sent",
+  parameters: { dataRouter: true },
+  beforeEach: watchTheReads,
+  render: () => <AtAUrlOverAYear />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(
+      () =>
+        expect(canvas.getByTestId("statistics-range-invalid")).toHaveTextContent(
+          "That range covers 731 days. A report reads at most 366 — pick a year at most.",
+        ),
+      { timeout: 3000 },
+    );
+    await nothingOfAWindowIsShown(canvas);
+    await expect(canvas.getByTestId("location-search")).toHaveTextContent("stat.range=2024-01-01..2025-12-31");
+    await expect(windowsAsked()).toEqual([]);
   },
 };

@@ -266,12 +266,15 @@ export function WarehouseProductPage() {
 
       {warehouseId !== undefined && (
         <>
+          {/* Both get the page's own ProductPlaces answer (`places`) — mounted closed, their read of their own was the
+              same one again on every load (#133). */}
           <MoveStockDialog
             warehouseId={warehouseId}
             product={product}
             currentOnHand={onHand}
             open={moving}
             onOpenChange={setMoving}
+            places={places}
           />
           <AdjustStockDialog
             warehouseId={warehouseId}
@@ -279,6 +282,7 @@ export function WarehouseProductPage() {
             currentOnHand={onHand}
             open={adjusting}
             onOpenChange={setAdjusting}
+            places={places}
           />
         </>
       )}

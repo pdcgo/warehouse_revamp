@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
+import { userClient } from "../../../api/clients";
 import { SHOPS_META, loaded } from "./kit";
 
 // SHOPS — the primary CS — its own column, and Change Primary CS from the row's ⋯.
@@ -103,5 +104,29 @@ export const NobodyToChooseOpensTheShop: Story = {
 
     await userEvent.click(screen.getByTestId("primary-cs-open-shop"));
     await waitFor(() => expect(canvas.getByTestId("at-shop-detail")).toBeInTheDocument());
+  },
+};
+
+// THE FIRST ROWS ARRIVE NAMED (#133) — the rows, their primary CS and the CS filter's people are named by one read, and
+// the first rows wait for it: never a row whose CS is still a skeleton.
+export const TheFirstRowsArriveNamed: Story = {
+  name: "First rows arrive named",
+  // The people answer late — a row drawn before them would say "User #61" for that long.
+  beforeEach: () => {
+    const named = userClient.userByIDs.bind(userClient);
+    const spy = spyOn(userClient, "userByIDs").mockImplementation((async (...args: Parameters<typeof named>) => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      return named(...args);
+    }) as typeof named);
+
+    return () => spy.mockRestore();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    // As the row is drawn — no wait.
+    await expect(canvas.getByTestId("shop-primary-MEL-SHP")).toHaveTextContent("Ani Rahayu");
+    await expect(canvas.getByTestId("shop-primary-MEL-LAZ")).toHaveTextContent("Eko Prasetyo");
   },
 };

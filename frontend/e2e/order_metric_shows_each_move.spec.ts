@@ -66,14 +66,14 @@ const GIVENS: {
 }[] = [
   {
     id: 7,
-    case: "group daily · order status moves · 1 order confirmed today",
+    case: "group: daily · add type: order status moves · 1 order confirmed today",
     path: [["W", "PROCESSED"]],
     field: "confirmed_count",
     then: "then: confirmed 1 on today's row",
   },
   {
     id: 8,
-    case: "group daily · order status moves · 1 order handed back to pending today",
+    case: "group: daily · add type: order status moves · 1 order handed back to pending today",
     path: [
       ["W", "PROCESSED"],
       ["W", "PENDING"],
@@ -84,7 +84,7 @@ const GIVENS: {
   },
   {
     id: 9,
-    case: "group daily · order status moves · 1 order picked today",
+    case: "group: daily · add type: order status moves · 1 order picked today",
     path: [
       ["W", "PROCESSED"],
       ["W", "PICKED"],
@@ -95,7 +95,7 @@ const GIVENS: {
   },
   {
     id: 10,
-    case: "group daily · order status moves · 1 order handed over today",
+    case: "group: daily · add type: order status moves · 1 order handed over today",
     path: TO_SHIPPING,
     field: "handed_over_count",
     then: "then: handed over 1",
@@ -103,7 +103,7 @@ const GIVENS: {
   },
   {
     id: 11,
-    case: "group daily · order status moves · 1 order marked shipped today",
+    case: "group: daily · add type: order status moves · 1 order marked shipped today",
     path: [...TO_SHIPPING, ["S", "SHIPPED"]],
     field: "shipped_count",
     then: "then: shipped 1",
@@ -111,7 +111,7 @@ const GIVENS: {
   },
   {
     id: 12,
-    case: "group daily · order status moves · 1 order completed today",
+    case: "group: daily · add type: order status moves · 1 order completed today",
     path: [...TO_SHIPPING, ["S", "SHIPPED"], ["S", "COMPLETED"]],
     field: "completed_count",
     then: "then: completed 1",
@@ -119,7 +119,7 @@ const GIVENS: {
   },
   {
     id: 13,
-    case: "group daily · order status moves · 1 order marked problem today",
+    case: "group: daily · add type: order status moves · 1 order marked problem today",
     path: [...TO_SHIPPING, ["S", "SHIPPED"], ["S", "PROBLEM"]],
     field: "problem_count",
     then: "then: problem 1",
@@ -127,7 +127,7 @@ const GIVENS: {
   },
   {
     id: 14,
-    case: "group daily · order status moves · 1 dispute resolved today",
+    case: "group: daily · add type: order status moves · 1 dispute resolved today",
     path: [...TO_SHIPPING, ["S", "SHIPPED"], ["S", "PROBLEM"], ["S", "COMPLETED"]],
     field: "completed_count",
     then: "then: completed 1",

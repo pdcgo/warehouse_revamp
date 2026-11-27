@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, routedPage } from "../../../../.storybook/pageStory";
+import { userClient } from "../../../api/clients";
 import { Marketplace } from "../../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { ShopsPage } from "../index";
 import { SHOPS_META, loaded } from "./kit";
@@ -225,5 +226,29 @@ export const TheNewFiltersComeBackFromTheUrl: Story = {
     await expect(canvas.getByTestId("shops-marketplace-select")).not.toHaveTextContent("Lazada");
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent(/^$/));
     await waitFor(() => expect(canvas.getByTestId("shop-row-MEL-SHP")).toBeVisible(), { timeout: 4000 });
+  },
+};
+
+// THE PAGE'S PEOPLE ARE NAMED ONCE (#133, the-speed-audits-old-findings-are-fixed-smallest-first) — the rows' primary CS
+// and the CS filter's people come from ONE UserByIDs of both id sets; a read each was UserByIDs twice a load.
+export const ThePeopleAreNamedOnce: Story = {
+  name: "People named once",
+  beforeEach: () => {
+    const spy = spyOn(userClient, "userByIDs");
+
+    return () => spy.mockRestore();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("shop-primary-MEL-SHP")).toHaveTextContent("Ani Rahayu"));
+    await expect(canvas.getByTestId("shop-primary-MEL-LAZ")).toHaveTextContent("Eko Prasetyo");
+    await userEvent.click(within(canvas.getByTestId("shops-primary-filter")).getByRole("combobox"));
+    await waitFor(() => expect(screen.getByTestId("person-filter-option-65")).toBeVisible(), { timeout: 5000 });
+    await expect(screen.getByTestId("person-filter-option-65")).toHaveTextContent("Eko Prasetyo");
+
+    const calls = (userClient.userByIDs as unknown as { mock: { calls: [{ filter?: { ids?: bigint[] } }][] } }).mock.calls;
+    await expect(calls).toHaveLength(1);
+    await expect((calls[0]![0].filter?.ids ?? []).map(String).sort()).toEqual(["61", "65"]);
   },
 };

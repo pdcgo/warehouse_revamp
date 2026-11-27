@@ -1345,6 +1345,7 @@ nothing here changes that.
 
 ✅ **Built 2026-10-06** (verified in code 2026-11-05) — the four money policies no longer name `ROLE_WAREHOUSE_ADMIN`: `user_service/access_interceptors/warehouse_admin_money_test.go`.
 
+🔄 *(2026-11-26)* **Confirmed in chat** — owner (Heri), `revamp_dev`'s desktop chat: *"A"*, as recommended — to the tester's conflict on [reconcile.md](../../acceptances/financial_account/reconcile.md) given 8 (*an unknown account shows only Set Account, Transfer Out and Archive* for every role, the warehouse admin included): **keep this decision** — a warehouse admin moves no money, so the warehouse admin gets Set Account and Archive on an unknown account, no Transfer Out (as transfer.md's given 9 already says); the row is revised in the owner's acceptance discussion. Nothing to build (`e2e_report/tester/20261123-062700-acceptance-match-balance.md`).
 
 ## the-history-is-a-tab-beside-the-members
 

@@ -633,6 +633,8 @@ export function BatchDetailPage() {
           currentOnHand={batch.ready}
           open={adjusting}
           onOpenChange={setAdjusting}
+          // The page's own ProductPlaces answer — mounted closed, the dialog's read of its own was the same one again (#133).
+          places={data?.places}
         />
       )}
 

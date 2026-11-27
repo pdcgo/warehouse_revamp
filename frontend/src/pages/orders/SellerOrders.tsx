@@ -24,7 +24,7 @@ import { OrderDateField, OrderStatus } from "../../gen/warehouse/selling/v1/orde
 import { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { rpcError } from "../../api/clients";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
-import { useOrderCreators, useOrders, useOrderStat } from "../../features/orders/queries";
+import { useOrderCreatorIds, useOrders, useOrderStat } from "../../features/orders/queries";
 import { OrderExportView, useOrderExport } from "../../features/orders/useOrderExport";
 import type { OrderFilters } from "../../features/orders/queries";
 import { orderSummaryRows, orderSummaryTotal } from "../../features/orders/stat";
@@ -59,6 +59,7 @@ import { MARKETPLACES, MarketplaceSelect } from "../../components/pickers/Market
 import { ShopSelect } from "../../components/pickers/ShopSelect";
 import { PersonFilterSelect } from "../../components/pickers/PersonFilterSelect";
 import { useTypists } from "../../features/orders/typists";
+import { idsOnceRead, useNamedPeople, useScreenPeople } from "../../features/users/queries";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import {
   ALL_DATES,
@@ -223,8 +224,9 @@ export function SellerOrdersPage() {
   }, [debouncedSearch, shopId, canFilterByShop, range, dateType, creatorId, marketplace, warehouseId, notOpened, tagIds]);
 
   // The "created by" filter's people: everyone who typed in an order this team may list
-  // (a-who-filter-lists-the-people-on-its-rows) — Customer Service asks it too.
-  const creators = useOrderCreators({ teamId });
+  // (a-who-filter-lists-the-people-on-its-rows) — Customer Service asks it too. Their ids here; their names below, in the
+  // page's one read of its people.
+  const creatorIds = useOrderCreatorIds({ teamId });
 
   const stage = orderStage(tab);
 
@@ -390,8 +392,14 @@ export function SellerOrdersPage() {
   const orders = query.data?.orders ?? [];
   const totalItems = query.data?.totalItems ?? 0;
 
-  // WHO TYPED EACH ROW IN — one UserByIDs for the page.
-  const typistOf = useTypists(orders);
+  // THE PAGE'S PEOPLE, ONE UserByIDs (#133): the "created by" filter's and whoever typed each row in — two id sets, named
+  // by one read of both, each picking its own (useScreenPeople).
+  const people = useScreenPeople([
+    idsOnceRead(creatorIds, (ids) => ids),
+    idsOnceRead(query, (data) => data.orders.map((o) => o.createdByUserId)),
+  ]);
+  const creators = useNamedPeople(creatorIds.data, people);
+  const typistOf = useTypists(orders, people);
   const loading = query.isPending;
   const error = query.isError ? rpcError(query.error) : "";
 
@@ -552,8 +560,8 @@ export function SellerOrdersPage() {
           <Flex align="center" gap="1">
             <Box flex="1" minW="0">
               <PersonFilterSelect
-                people={creators.data}
-                error={creators.isError}
+                people={creators}
+                error={creatorIds.isError}
                 value={creatorId}
                 placeholder={t("orders.creatorAll")}
                 onChange={(id) => refilter(() => setCreatorId(id))}

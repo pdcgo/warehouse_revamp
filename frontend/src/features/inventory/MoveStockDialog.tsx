@@ -13,6 +13,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { rpcError } from "../../api/clients";
+import type { ProductPlace } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../../components/feedback/Toaster";
 import { RackSelect } from "../../components/pickers/RackSelect";
@@ -35,12 +36,19 @@ export function MoveStockDialog({
   currentOnHand,
   open,
   onOpenChange,
+  places: placesRead,
 }: {
   warehouseId: bigint;
   product: Product;
   currentOnHand: bigint;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Where the product sits now, when the page holding the dialog has read it already (the product page, #133) — the
+   * dialog then reads nothing of its own: mounted closed beside that page, its own read was the page's ProductPlaces
+   * again on every load.
+   */
+  places?: ProductPlace[];
 }) {
   const { t } = useTranslation();
   // Both ends start unanswered. A default would be a guess about where the goods are, and a move
@@ -55,8 +63,8 @@ export function MoveStockDialog({
 
   // The shelves this product sits on, with each shelf's TOTAL on-hand — so the dialog can show what a
   // move does to both ends before it commits (#210).
-  const placesQuery = useProductPlaces({ warehouseId, productIds: [product.id] });
-  const places = placesQuery.data ?? [];
+  const placesQuery = useProductPlaces({ warehouseId: placesRead ? undefined : warehouseId, productIds: [product.id] });
+  const places = placesRead ?? placesQuery.data ?? [];
 
   // A RackSelect value → that rack's current on-hand. "" is unanswered.
   function shelfOnHand(place: string): bigint {

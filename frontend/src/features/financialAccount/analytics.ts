@@ -2,7 +2,7 @@ import type { MessageInitShape } from "@bufbuild/protobuf";
 import { useQuery } from "@tanstack/react-query";
 
 import { financialAccountAnalyticClient } from "../../api/clients";
-import { key, listQuery } from "../../api/queryClient";
+import { key, listQueryWhile } from "../../api/queryClient";
 import { type FilterItemSchema, GroupType, SortType } from "../../gen/warehouse/analytic_base/v1/analytic_pb";
 import type { AccountChangeMetric } from "../../gen/warehouse/financial_account/v1/financial_account_analytic_pb";
 import type {
@@ -21,7 +21,9 @@ import { timeSpine } from "../analytic/provider";
 // the accounts page. A balance is one running sum (the-balance-series-is-a-running-sum).
 //
 // All `listQuery`: a window, a grain, a grouping or a page change refines the same question about the same team, so the
-// previous figures stay on screen while the next ones load. Pair with RefreshOverlay.
+// previous figures stay on screen while the next ones load. Pair with RefreshOverlay. ⚠ Not while the window is refused
+// (`listQueryWhile(valid)`, backlog #130): a range over a year is never sent, and the report is not loaded — the last
+// window's figures kept under it would read as that window's.
 
 /** One key's figures as this screen reads them — the ten change types, their net, and the balance at the two edges. */
 export interface Metric {
@@ -124,7 +126,7 @@ export function filtersOf(from: string, to: string, accountId?: bigint): Filter[
 /** The WHOLE window as one metric — the team's, or one account's: the metric grouped by SUMMARY. */
 export function useAccountReportSummary({ teamId, from, to, valid, accountId }: Window & { accountId: bigint }) {
   return useQuery({
-    ...listQuery,
+    ...listQueryWhile(valid),
     queryKey: key.financialAccounts(teamId, { report: "summary", from, to, account: accountId.toString() }),
     enabled: teamId !== undefined && valid,
     queryFn: async (): Promise<Metric> => {
@@ -157,7 +159,7 @@ export function useAccountReportSeries(
   const { teamId, from, to, valid, grain, accountId, page, pageSize, dir = "desc" } = args;
 
   return useQuery({
-    ...listQuery,
+    ...listQueryWhile(valid),
     queryKey: key.financialAccounts(teamId, {
       report: "series",
       grain,
@@ -222,7 +224,7 @@ export function useAccountReportGroups(
   const { teamId, from, to, valid, groupBy, page, pageSize, sort = { by: "change", dir: "desc" } } = args;
 
   return useQuery({
-    ...listQuery,
+    ...listQueryWhile(valid),
     queryKey: key.financialAccounts(teamId, { report: "groups", groupBy, from, to, page, pageSize, sort: `${sort.by}:${sort.dir}` }),
     enabled: teamId !== undefined && valid,
     queryFn: async () => {

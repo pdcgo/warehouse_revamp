@@ -12,7 +12,7 @@ import type { DateRange } from "../../components/datetime/DateRangePicker";
 import { PERIOD_GRAINS, PeriodGrainPicker } from "../../components/datetime/PeriodGrainPicker";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { useIsMobile } from "../../layouts/shell";
-import type { PeriodGrain } from "../../lib/period";
+import { MAX_PERIOD_DAYS, type PeriodGrain, spanDays } from "../../lib/period";
 import { dateRangeCodec, idCodec, oneOfCodec, useUrlState } from "../../lib/urlState";
 import { jakartaWindowOf } from "../../lib/jakartaDay";
 import { formatPeriod } from "../../lib/datetime";
@@ -120,7 +120,13 @@ export function SupplierStatistics({ supplierId, warehouseId = 0n }: SupplierSta
   };
 
   const { from, to } = jakartaWindowOf(range);
-  const valid = from !== "" && to !== "" && from <= to;
+  // A YEAR AT MOST, at every grain (a-metric-reads-at-most-a-year; backlog #131): a range over 366 days — picked by hand
+  // on the calendar, or a hand-edited `stat.range` — is never sent, since supplier_service refuses it
+  // (`san_metric.CheckRange`); the line under the picker says so, as on the Supplier Report. Kept as picked, never
+  // trimmed. Every read is `listQueryWhile(valid)` (analytics.ts), so the last window's figures do not stay under it.
+  const span = spanDays(from, to);
+  const tooLong = span > MAX_PERIOD_DAYS;
+  const valid = from !== "" && to !== "" && from <= to && !tooLong;
 
   const teamId = current?.teamId;
 
@@ -230,7 +236,9 @@ export function SupplierStatistics({ supplierId, warehouseId = 0n }: SupplierSta
 
         {!valid && (
           <Text fontSize="sm" color="error.fg" data-testid="statistics-range-invalid">
-            {t("supplierFigures.rangeInvalid")}
+            {tooLong
+              ? t("supplierFigures.rangeTooLong", { days: span, max: MAX_PERIOD_DAYS })
+              : t("supplierFigures.rangeInvalid")}
           </Text>
         )}
 

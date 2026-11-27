@@ -39,6 +39,7 @@ import {
   warehouseStockListRowData,
 } from "./adapt";
 import type {
+  ProductPlace,
   StockBatch,
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { type Product, ProductSchema } from "../../gen/warehouse/product/v1/product_pb";
@@ -643,6 +644,9 @@ export interface BatchDetail {
   rackCodes: Map<string, string>;
   // NB: the placements themselves are their OWN paged read (useBatchPlacements, #218), so they can page
   // independently of this aggregate — rackCodes still lives here to resolve their labels.
+  // The same ProductPlaces answer whole — where the PRODUCT sits now, each rack's total — for the header's Adjust
+  // dialog, which would otherwise read it again (#133).
+  places: ProductPlace[];
 
   // Restock/return info (#218). Supplier + actor NAMES resolved best-effort (an unknown id leaves ""),
   // the return summary comes from the server aggregate on the response.
@@ -678,6 +682,7 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
           ownerName: "",
           owner: null,
           rackCodes: new Map(),
+          places: [],
           supplierName: "",
           acceptedByName: "",
           returnedQty: 0n,
@@ -696,8 +701,9 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
         dataRequest: productPlacesRowData(),
       });
 
+      const places = productPlacesFlat(placesRes);
       const rackCodes = new Map<string, string>();
-      for (const p of productPlacesFlat(placesRes)) {
+      for (const p of places) {
         rackCodes.set(p.rackId.toString(), p.rackCode);
       }
 
@@ -772,6 +778,7 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
         ownerName,
         owner,
         rackCodes,
+        places,
         supplierName,
         acceptedByName,
         returnedQty: detail.returnedQty,

@@ -31,11 +31,13 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
 import {
+  restockRowPeople,
   useRestockCodPaid,
   useRestockInbound,
-  useRestockPeople,
+  useRestockPeopleIds,
   useRestockRequests,
 } from "../../features/restock/queries";
+import { idsOnceRead, useNamedPeople, useScreenPeople } from "../../features/users/queries";
 import { useShipmentChannelsByIds } from "../../features/shipment/queries";
 import { RestockItemsCell } from "../../features/restock/RestockItemsCell";
 import { RESTOCK_STATUS_TABS, restockTab } from "../../features/restock/statusTabs";
@@ -177,7 +179,7 @@ export function RestockWarehousePage() {
   const [actorId, setActorId] = useUrlState("person", 0n, idCodec);
 
   // The people the role's question can be answered by — everyone who did that on a restock to this warehouse.
-  const actorPeople = useRestockPeople({
+  const actorPeopleIds = useRestockPeopleIds({
     teamId: current?.teamId,
     role: actorRole === "created" ? RestockActorRole.CREATED : RestockActorRole.ACCEPTED,
   });
@@ -228,11 +230,20 @@ export function RestockWarehousePage() {
     return out;
   }, [teams.data]);
 
+  // THE PAGE'S PEOPLE, ONE UserByIDs (#133): the rows' (who raised, signed for, accepted each) and the person filter's —
+  // two id sets, named by one read of both, each picking its own (useScreenPeople).
+  const people = useScreenPeople([
+    idsOnceRead(query, (data) => restockRowPeople(data.requests)),
+    idsOnceRead(actorPeopleIds, (ids) => ids),
+  ]);
+  const actorPeople = useNamedPeople(actorPeopleIds.data, people);
+
   const requests = query.data?.requests ?? [];
   // The couriers — a restock names a shipment channel by id; one read for the page.
   const couriers = useShipmentChannelsByIds(requests.map((r) => r.shipmentId));
   const totalItems = query.data?.totalItems ?? 0;
-  const loading = query.isPending;
+  // The first rows wait for their people, as when the list read them itself: never a beat of "User #7" before the name.
+  const loading = query.isPending || (!people.settled && people.byId === undefined);
   // Always-fresh means every tab, page and filter change refetches; `listQuery` keeps the rows that are already up while
   // it does, and RefreshOverlay is what says so. `isPending` is excluded — a first load shows the skeleton instead.
   const refreshing = query.isFetching && !query.isPending;
@@ -298,7 +309,7 @@ export function RestockWarehousePage() {
   // Who did it — a NAME, a cell has room for nothing more. 0 is "not recorded", and the honest answer there is nothing.
   function actorLabel(id: bigint): string {
     if (id === 0n) return "";
-    const user = query.data?.actors?.get(id.toString());
+    const user = people.byId?.get(id.toString());
 
     return user ? user.name || user.username : t("restock.table.userRef", { id: id.toString() });
   }
@@ -862,8 +873,8 @@ export function RestockWarehousePage() {
                 // Remounted per role so the combobox drops the previous role's people.
                 key={actorRole}
                 flush
-                people={actorPeople.data}
-                error={actorPeople.isError}
+                people={actorPeople}
+                error={actorPeopleIds.isError}
                 value={actorId > 0n ? actorId : undefined}
                 placeholder={t("restock.inbound.actorAll")}
                 // A cleared picker emits undefined → 0n, "anyone" — the filter is removed, not stuck.

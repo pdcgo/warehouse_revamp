@@ -62,6 +62,17 @@ export const listQuery = {
   placeholderData: keepPreviousData,
 } as const;
 
+// `listQueryWhile(sent)` — `listQuery` for a read the SCREEN may refuse to send: a report over a range longer than a
+// year (a-metric-reads-at-most-a-year), which the page answers with a line under the picker instead of a request.
+//
+// ⚠ WHILE REFUSED, NOTHING IS KEPT. TanStack keeps the previous answer as a DISABLED query's placeholder too, so
+// `enabled: false` alone leaves the last window's figures on screen — with no overlay, since nothing is fetching —
+// under a picker that already names the refused window, where they read as that window's (backlog #130). The report
+// is then NOT LOADED: the page draws what it draws on a refused range opened straight from the URL — `—` figures, no
+// rows, no as-of. Allowed again, it is `listQuery`, unchanged.
+export const listQueryWhile = (sent: boolean): { placeholderData: typeof keepPreviousData | undefined } =>
+  sent ? listQuery : { placeholderData: undefined };
+
 // `referenceQuery` — for a PICKER FEED or a name lookup.
 //
 // Reference data (the teams in a dropdown, a debounced product search, a team's shops) is read to

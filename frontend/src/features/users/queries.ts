@@ -1,9 +1,11 @@
-import { create } from "@bufbuild/protobuf";
+import { useMemo } from "react";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import type { Role } from "../../gen/warehouse/role_base/v1/role_pb";
-import { PublicUserSchema, type PublicUser } from "../../gen/warehouse/user/v1/user_pb";
+import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
+import { namedPeople, type ScreenPeople, unnamed } from "./screenPeople";
 import {
   logEntriesFromList,
   memberListRowData,
@@ -68,9 +70,7 @@ export async function fetchActors(ids: bigint[]): Promise<Map<string, PublicUser
 export async function peopleFor(ids: bigint[]): Promise<PublicUser[]> {
   const actors = await fetchActors(ids);
 
-  return ids.map(
-    (id) => actors.get(id.toString()) ?? create(PublicUserSchema, { id, username: id.toString(), name: `#${id}` }),
-  );
+  return ids.map((id) => actors.get(id.toString()) ?? unnamed(id));
 }
 
 /** How many people a who filter asks for: the contract's largest page. The set grows only with staff turnover. */
@@ -94,6 +94,45 @@ export function usersByIdsQuery(ids: bigint[]) {
         ),
       ),
   };
+}
+
+// ONE SCREEN'S PEOPLE, NAMED BY ONE READ (#133, the-speed-audits-old-findings-are-fixed-smallest-first). A list screen
+// names people in two places — its who filter's (the ids the list's own service answers) and its rows' (the ids on the
+// page) — and they are DIFFERENT id sets of one RPC: a read per set was two UserByIDs a load, the speed audit's "one read
+// twice" wherever the seed made the sets agree. One read of the UNION names them instead, each part picking its own out
+// of the answer: a who filter through `useNamedPeople`, the rows from `byId`.
+//
+// Each part says which ids it names — `undefined` while its own read is still out, `[]` when that read failed — and the
+// read waits for every part, so it is sent once. A name lookup (`usersByIdsQuery`: referenceQuery, keyed by the id set),
+// so a page turn whose people the union already holds reads nothing. A page that brings someone new reads the new union
+// with the last answer kept up (`listQuery`'s keepPreviousData — the same people asked about once more, never another
+// subject), so a who filter never blanks on a page turn. It never retries, as fetchActors never did: a failed lookup
+// leaves every part on its own fallback label at once. The pure rules are features/users/screenPeople.ts.
+export { idsOnceRead, type ScreenPeople } from "./screenPeople";
+
+export function useScreenPeople(parts: (readonly bigint[] | undefined)[]): ScreenPeople {
+  const known = parts.every((part) => part !== undefined);
+  const ids = known ? parts.flatMap((part) => [...(part ?? [])]) : [];
+  const anyone = ids.some((id) => id > 0n);
+  const query = useQuery({ ...usersByIdsQuery(ids), ...listQuery, retry: false, enabled: known && anyone });
+
+  return {
+    byId: query.data,
+    settled: known && (!anyone || query.isSuccess || query.isError),
+    kept: query.isPlaceholderData,
+  };
+}
+
+// A who filter's people out of the screen's one read (`namedPeople`, screenPeople.ts). Memoised: the picker refills its
+// options on every new array (PersonFilterSelect's NOBODY note).
+export function useNamedPeople(
+  ids: readonly bigint[] | undefined,
+  people: ScreenPeople,
+  order?: "byName",
+): PublicUser[] | undefined {
+  const { byId, settled, kept } = people;
+
+  return useMemo(() => namedPeople(ids, { byId, settled, kept }, order), [ids, byId, settled, kept, order]);
 }
 
 // The hook form: one history's people, resolved once.
@@ -171,6 +210,10 @@ export function useUserTeams(args: { userId: bigint; page: number; pageSize: num
   return useQuery({
     queryKey: key.users(undefined, { userId: userId.toString(), page, pageSize }),
     enabled: userId > 0n,
+    // A REFUSAL IS ANSWERED ONCE (#133). UserTeams is a root/admin read, and the shared `retry: 1` sent a refused seat's
+    // body again a second later — the speed audit's one read twice — holding the refusal back that second. A refusal is
+    // an answer, not a blip (useAgentClientDetail); a dropped connection is still asked once more.
+    retry: (failures, err) => failures < 1 && !refused(err),
     queryFn: async () => {
       const res = await userClient.userTeams({
         filter: { userId },
@@ -185,6 +228,13 @@ export function useUserTeams(args: { userId: bigint; page: number; pageSize: num
       };
     },
   });
+}
+
+/** The server said no — the seat, the token, the id or the question — rather than failing to answer. */
+function refused(err: unknown): boolean {
+  if (!(err instanceof ConnectError)) return false;
+
+  return [Code.PermissionDenied, Code.Unauthenticated, Code.NotFound, Code.InvalidArgument].includes(err.code);
 }
 
 // Deliberately BROAD — every user list, every team's members, and every person's memberships at

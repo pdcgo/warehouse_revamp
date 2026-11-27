@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { ROOT_USER_ID } from "./global-setup";
 import { addMetric, asRoot, rupiah, signInAs, today } from "./metric_ground";
 
-// ── add analytic metric, Restock before the accept — the checks behind docs/acceptances/analytic/inventory_metric.md givens 9–14 ──
+// ── add analytic metric, Restock before the accept — the checks behind docs/acceptances/analytic/inventory_metric.md givens 9–15 ──
 //
 // add analytic metric's checks for RESTOCK's figures before the accept on Analytic › Inventory (metrics/inventory/restock,
 // #85). An acceptance has no test file of its own (docs/acceptances/guide.md): one test.describe per given + when (named
@@ -57,12 +57,13 @@ const WAREHOUSE = [
 type Role = (typeof SELLING)[number] | (typeof WAREHOUSE)[number];
 
 // The givens' cases, VERBATIM (· is U+00B7), and their thens (− is U+2212, as the file writes it).
-const G9 = { id: 9, case: "group daily · restock · restock of 10 units created today", then: "then: ordered 10 with its value" };
-const G10 = { id: 10, case: "group daily · restock · 2 units removed from a restock today", then: "then: ordered −2 with its value" };
-const G11 = { id: 11, case: "group daily · restock · restock with COD Rp 15.000 accepted today", then: "then: COD Rp 15.000" };
-const G12 = { id: 12, case: "group daily · restock · restock of 10 units marked lost today", then: "then: lost 10 with its value" };
-const G13 = { id: 13, case: "group daily · restock · restock of 10 units cancelled today", then: "then: ordered −10 with its value" };
-const G14 = { id: 14, case: "group daily · restock · lost restock of 10 units arrives today", then: "then: lost −10 with its value" };
+const G9 = { id: 9, case: "group: daily · add type: restock · restock of 10 units created today", then: "then: ordered 10 with its value" };
+const G10 = { id: 10, case: "group: daily · add type: restock · 2 units removed from a restock today", then: "then: ordered −2 with its value" };
+const G11 = { id: 11, case: "group: daily · add type: restock · restock with COD Rp 15.000 accepted today", then: "then: COD Rp 15.000" };
+const G12 = { id: 12, case: "group: daily · add type: restock · restock of 10 units marked lost today", then: "then: lost 10 with its value" };
+const G13 = { id: 13, case: "group: daily · add type: restock · restock of 10 units cancelled today", then: "then: ordered −10 with its value" };
+const G14 = { id: 14, case: "group: daily · add type: restock · lost restock of 10 units arrives today", then: "then: lost −10 with its value" };
+const G15 = { id: 15, case: "group: daily · add type: restock · restock of 10 units created today", then: "then: ordered 10, value not shown" };
 
 const username = (key: string) => `e2eur${key}${SUFFIX}`;
 
@@ -394,6 +395,38 @@ test.describe(`selling:all wants to see statistics (${G14.case})`, () => {
       });
       await test.step("regression: the ordered 10 stay — an arrival is no cancel", async () => {
         await expect.soft(page.getByTestId(`analytic-cell-${today()}-ordered_count`)).toHaveText(String(UNITS));
+      });
+    });
+  }
+});
+
+// ── 15 · a restock of 10 created today, read by its warehouse ───────────────────────────────────────────────────────
+//
+// The same restock as given 9 (raised today to this warehouse, not yet accepted). A warehouse reads the units ordered
+// and never a value (a-warehouse-reads-the-newest-counts-as-accepted): no Value ordered cell, column or headline card —
+// proven beside the Units ordered column and card that ARE drawn, so the absence is not an empty page.
+
+test.describe(`warehouse:all wants to see statistics (${G15.case})`, () => {
+  for (const r of WAREHOUSE) {
+    test(`${r.given} add analytic metric`, async ({ page }) => {
+      const raised = ground.restocks["9"]!;
+      await sign(page, r);
+      await when(page, r, raised.product);
+
+      await test.step(G15.then, async () => {
+        await todayReads(page, "ordered_count", String(UNITS));
+        await expect(page.getByTestId("analytic-sort-ordered_count")).toBeVisible();
+        await expect(page.getByTestId("analytic-headline-ordered_count-value")).toHaveText(String(UNITS));
+        // value not shown — no cell, no column, no headline card, and no "Value ordered" label on the table or the strip
+        await expect(page.getByTestId(`analytic-cell-${today()}-ordered_value`)).toHaveCount(0);
+        await expect(page.getByTestId("analytic-sort-ordered_value")).toHaveCount(0);
+        await expect(page.locator('[data-testid^="analytic-headline-ordered_value"]')).toHaveCount(0);
+        await expect(page.getByTestId("analytic-table")).not.toContainText("Value ordered");
+        await expect(page.getByTestId("analytic-headline")).not.toContainText("Value ordered");
+      });
+      await test.step("regression: the warehouse reads no restock value of any kind", async () => {
+        await expect.soft(page.locator('[data-testid^="analytic-cell-"][data-testid$="_value"]')).toHaveCount(0);
+        await expect.soft(page.locator('[data-testid^="analytic-sort-"][data-testid$="_value"]')).toHaveCount(0);
       });
     });
   }

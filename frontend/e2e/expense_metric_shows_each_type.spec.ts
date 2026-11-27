@@ -59,7 +59,7 @@ type Role = (typeof ROLES)[number];
 const GIVENS = [
   {
     id: 6,
-    case: "group daily · expenses · adjustment Rp 50.000 today",
+    case: "group: daily · add type: expenses · adjustment Rp 50.000 today",
     type: "EXPENSE_TYPE_DISCREPANCY",
     field: "discrepancy",
     label: "Discrepancy · unrecorded transaction",
@@ -72,7 +72,7 @@ const GIVENS = [
   },
   {
     id: 7,
-    case: "group daily · expenses · bank fee Rp 6.500 today",
+    case: "group: daily · add type: expenses · bank fee Rp 6.500 today",
     type: "EXPENSE_TYPE_BANK_FEE",
     field: "bank_fee",
     label: "Bank fee",
@@ -85,7 +85,7 @@ const GIVENS = [
   },
   {
     id: 8,
-    case: "group daily · expenses · content Rp 500.000 today",
+    case: "group: daily · add type: expenses · content Rp 500.000 today",
     type: "EXPENSE_TYPE_CONTENT_ENDORSE",
     field: "content_endorse",
     label: "Content · endorsement",
@@ -98,7 +98,7 @@ const GIVENS = [
   },
   {
     id: 9,
-    case: "group daily · expenses · tools Rp 2.000.000 today",
+    case: "group: daily · add type: expenses · tools Rp 2.000.000 today",
     type: "EXPENSE_TYPE_TOOLS",
     field: "tools",
     label: "Tools",
@@ -111,7 +111,7 @@ const GIVENS = [
   },
   {
     id: 10,
-    case: "group daily · expenses · equipment Rp 1.500.000 today",
+    case: "group: daily · add type: expenses · equipment Rp 1.500.000 today",
     type: "EXPENSE_TYPE_EQUIPMENT",
     field: "equipment",
     label: "Equipment",
@@ -124,7 +124,7 @@ const GIVENS = [
   },
   {
     id: 11,
-    case: "group daily · expenses · electricity Rp 300.000 today",
+    case: "group: daily · add type: expenses · electricity Rp 300.000 today",
     type: "EXPENSE_TYPE_ELECTRICITY",
     field: "electricity",
     label: "Electricity",
@@ -137,7 +137,7 @@ const GIVENS = [
   },
   {
     id: 12,
-    case: "group daily · expenses · kitchen Rp 200.000 today",
+    case: "group: daily · add type: expenses · kitchen Rp 200.000 today",
     type: "EXPENSE_TYPE_KITCHEN",
     field: "kitchen",
     label: "Kitchen · team meals",
@@ -150,7 +150,7 @@ const GIVENS = [
   },
   {
     id: 13,
-    case: "group daily · expenses · internet Rp 350.000 today",
+    case: "group: daily · add type: expenses · internet Rp 350.000 today",
     type: "EXPENSE_TYPE_INTERNET",
     field: "internet",
     label: "Internet · data package",
@@ -163,7 +163,7 @@ const GIVENS = [
   },
   {
     id: 14,
-    case: "group daily · expenses · basic salary Rp 4.000.000 today",
+    case: "group: daily · add type: expenses · basic salary Rp 4.000.000 today",
     type: "EXPENSE_TYPE_BASIC_SALARY",
     field: "basic_salary",
     label: "Basic salary",
@@ -176,7 +176,7 @@ const GIVENS = [
   },
   {
     id: 15,
-    case: "group daily · expenses · bonus Rp 1.000.000 today",
+    case: "group: daily · add type: expenses · bonus Rp 1.000.000 today",
     type: "EXPENSE_TYPE_BONUS",
     field: "bonus",
     label: "Bonus",
@@ -189,7 +189,7 @@ const GIVENS = [
   },
   {
     id: 16,
-    case: "group daily · expenses · contributions Rp 150.000 today",
+    case: "group: daily · add type: expenses · contributions Rp 150.000 today",
     type: "EXPENSE_TYPE_CONTRIBUTIONS",
     field: "contributions",
     label: "Contributions (BPJS)",
@@ -202,7 +202,7 @@ const GIVENS = [
   },
   {
     id: 17,
-    case: "group daily · expenses · outside debt paid Rp 1.000.000 today",
+    case: "group: daily · add type: expenses · outside debt paid Rp 1.000.000 today",
     type: "EXPENSE_TYPE_OUTSIDE_DEBT_PAID",
     field: "outside_debt_paid",
     label: "Outside debt paid",
@@ -215,7 +215,7 @@ const GIVENS = [
   },
   {
     id: 18,
-    case: "group daily · expenses · prive Rp 2.000.000 today",
+    case: "group: daily · add type: expenses · prive Rp 2.000.000 today",
     type: "EXPENSE_TYPE_PRIVE",
     field: "prive",
     label: "Prive · owner takes capital",
@@ -228,7 +228,7 @@ const GIVENS = [
   },
   {
     id: 19,
-    case: "group daily · expenses · deposit Rp 1.000.000 today",
+    case: "group: daily · add type: expenses · deposit Rp 1.000.000 today",
     type: "EXPENSE_TYPE_CAPITAL_DEPOSIT",
     field: "capital_deposit",
     label: "Deposit · owner adds capital",
@@ -241,7 +241,7 @@ const GIVENS = [
   },
   {
     id: 20,
-    case: "group daily · expenses · other money out Rp 100.000 today",
+    case: "group: daily · add type: expenses · other money out Rp 100.000 today",
     type: "EXPENSE_TYPE_OTHER_OUT",
     field: "other_out",
     label: "Other money out",
@@ -254,7 +254,7 @@ const GIVENS = [
   },
   {
     id: 21,
-    case: "group daily · expenses · other money in Rp 100.000 today",
+    case: "group: daily · add type: expenses · other money in Rp 100.000 today",
     type: "EXPENSE_TYPE_OTHER_IN",
     field: "other_in",
     label: "Other money in",
@@ -267,7 +267,7 @@ const GIVENS = [
   },
   {
     id: 22,
-    case: "group daily · expenses · outside receivable received Rp 500.000 today",
+    case: "group: daily · add type: expenses · outside receivable received Rp 500.000 today",
     type: "EXPENSE_TYPE_OUTSIDE_RECEIVABLE_RECEIVED",
     field: "outside_receivable_received",
     label: "Outside receivable received",

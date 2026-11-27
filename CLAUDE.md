@@ -479,6 +479,14 @@ product pickers on `ProductPickerShell` and the courier catalogue (`useShipmentC
 the stocked pickers' pages are stock, and stay always fresh
 ([features/products/pickerQueries.ts](frontend/src/features/products/pickerQueries.ts)).
 
+No page reads from its own `useEffect` either (#122) — what still calls a client directly is an ACTION (a download link
+minted on click, an upload, an import stream, a password change). ⚠ **A form seeded from a read takes it ONCE per
+record** ([lib/useSeedOnce.ts](frontend/src/lib/useSeedOnce.ts)), from the answer given since the screen mounted
+(`isFetchedAfterMount`, never a cached one): always-fresh means the read answers again under the open form — an
+invalidation, a closure saved beside it — and copying each answer into the fields would throw away what the person
+typed. An edit form's reads also sit still while its own save runs (`enabled` as a function over
+`isMutating({ mutationKey })`), so the save's invalidation does not re-read a form that is about to leave.
+
 `refetchOnWindowFocus: false` **survives** this change and is not an inconsistency — it answers a
 third question. The app is used with a scanner and a spreadsheet beside it, so focus is lost and
 regained constantly; a refetch per alt-tab is a request storm, and staleness is already handled by

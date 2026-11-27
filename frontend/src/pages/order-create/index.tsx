@@ -1,27 +1,8 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useBlocker, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import {
-  Alert,
-  Badge,
-  Box,
-  Button,
-  Card,
-  Field,
-  Fieldset,
-  Flex,
-  Grid,
-  GridItem,
-  Heading,
-  Icon,
-  IconButton,
-  SimpleGrid,
-  Spinner,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
-import { ArrowLeft, ChevronsDownUp, ChevronsUpDown, Trash2 } from "lucide-react";
+import { Alert, Box, Grid, GridItem, Heading, Spinner, Stack, Text } from "@chakra-ui/react";
 import { type orderClient, rpcError } from "../../api/clients";
 import { awaitAnswer } from "../../features/orders/createAnswer";
 import { NoAnswerPanel } from "./components/NoAnswerPanel";
@@ -30,19 +11,12 @@ import { useAuth } from "../../features/auth/AuthContext";
 import { useCreateOrder } from "../../features/orders/queries";
 import { useShopOptions } from "../../features/shops/queries";
 import { useDeleteOrderDrafts, useOrderDraft } from "../../features/orderDrafts/queries";
-import { DraftProductHints } from "./components/DraftProductHints";
 import { DraftAddressText } from "./components/DraftAddressText";
 import { addressTouched, initialOrderForm, isDirty, orderFormActions, orderFormReducer } from "./formState";
 import type { OrderRequest } from "./formState";
-import { CompactActions } from "../../components/chrome/CompactActions";
+import { useStableHandler } from "./stableHandler";
 import { useIsMobile } from "../../layouts/shell";
 import { useStockTakeQuote } from "../../features/inventory/queries";
-import { MarketplaceInfoForm } from "../../components/orders/MarketplaceInfoForm";
-import { OrderItemCard } from "../../components/orders/OrderItemCard";
-import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
-import { RadioPills } from "../../components/inputs/RadioPills";
-import { CurrencyInput } from "../../components/inputs/CurrencyInput";
-import { DatePicker } from "../../components/datetime/DatePicker";
 import { dateTimeInputToUnix, todayDateInput } from "../../lib/datetime";
 import { useProductsByIds } from "../../features/products/queries";
 import { usePresetProduct } from "../../features/products/presetProduct";
@@ -51,33 +25,45 @@ import { useTeams } from "../../features/teams/queries";
 import { bundleLines } from "../../features/orders/form/bundles";
 import { useWarehouseFeeQuote } from "../../features/warehouse/queries";
 import { useTeamDetail } from "../../features/teams/queries";
-import { BundleCard } from "../../features/orders/form/BundleCard";
-import { CreditLimitPanel } from "../../features/orders/form/CreditLimitPanel";
 import type { CreditRow } from "../../features/orders/form/CreditLimitPanel";
 import { creditReadOf, creditRows, creditorIds, goodsCostOf, invoiceRows } from "../../features/orders/form/money";
 import { useLiabilityCredit } from "../../features/liability/queries";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { ORDER_FORM_PENDING } from "../../features/orders/form/pending";
-import { NoteAndSubmitCard } from "../../features/orders/form/NoteAndSubmitCard";
-import { ProfitEstimatePanel } from "../../features/orders/form/ProfitEstimatePanel";
-import { ReturnMappingCard } from "../../features/orders/form/ReturnMappingCard";
 import type { CrossLine } from "../../features/orders/form/ReturnMappingCard";
 import { useReturnMapping } from "../../features/orders/form/returnMapping";
-import { ShippingReceiptCard } from "../../features/orders/form/ShippingReceiptCard";
-import { WarehouseBand } from "../../features/orders/form/WarehouseBand";
-import { OrderChecksDialog } from "../../features/orders/form/OrderChecksDialog";
-import { DuplicateRefDialog } from "../../features/orders/form/DuplicateRefDialog";
 import { findDuplicateRef, warns } from "../../features/orders/form/duplicateRef";
-import { runOrderChecks, scanReceipt, suggestMarketplace } from "../../features/orders/form/checks";
-import { MarketplaceBadge, marketplaceLabel } from "../../components/badges/MarketplaceBadge";
-import { ExtraInfoCard } from "../../features/orders/form/ExtraInfoCard";
-import { TotalsInvoicePanel } from "../../features/orders/form/TotalsInvoicePanel";
+import { runOrderChecks, scanReceipt } from "../../features/orders/form/checks";
 import type { InvoiceRow } from "../../features/orders/form/TotalsInvoicePanel";
 import { toaster } from "../../components/feedback/Toaster";
-import { CustomerInfoForm } from "../../components/customers/CustomerInfoForm";
 import { hasReceipt } from "../../components/orders/ReceiptUpload";
-import { TakeRefusalAlert } from "../../features/orders/TakeRefusalAlert";
 import { takeRefusalOf } from "../../features/orders/takeRefusal";
+// EVERY CARD, PANEL AND DIALOG BELOW IS ITS `React.memo` (#135, components/memoCards.ts) — under the name it always had,
+// so a key renders the card it is typed in and not the rest. The page keeps their props the same between keys: the
+// reducer's stable setters (`act`), a `useMemo` per derived value, a `useCallback` / `useStableHandler` per handler.
+import {
+  BundleCard,
+  ConfirmDialog,
+  CreditLimitPanel,
+  CustomerInfoForm,
+  DraftProductHints,
+  DuplicateRefDialog,
+  ExtraInfoCard,
+  NoteAndSubmitCard,
+  NotImplementedSummary,
+  OrderChecksDialog,
+  OrderContentsField,
+  OrderCreateHeader,
+  OrderInfoCard,
+  OrderItemCard,
+  ProfitEstimatePanel,
+  RailHeader,
+  ReturnMappingCard,
+  ShippingReceiptCard,
+  TakeRefusalAlert,
+  TotalsInvoicePanel,
+  WarehouseBand,
+} from "./components/memoCards";
+import { LockFieldset } from "./components/LockFieldset";
 import { availabilityOf, byProduct, canSubmit, lineStock, toQty, toRupiah } from "../../features/orders/lines";
 
 // `?draft=` comes from a URL, so it is whatever somebody typed. Anything that is not a positive whole
@@ -212,7 +198,11 @@ export function OrderCreatePage() {
   }, [locked]);
 
   // THE LOCKED LOOK — the cards fade with their controls; Create (with its spinner) and the panels above stay bright.
-  const lockFade = locked ? { opacity: 0.55, transition: "opacity 0.15s" } : { transition: "opacity 0.15s" };
+  // One object per lock state (#135): the rail's header is memoised and takes it as a prop.
+  const lockFade = useMemo(
+    () => (locked ? { opacity: 0.55, transition: "opacity 0.15s" } : { transition: "opacity 0.15s" }),
+    [locked],
+  );
 
   // Closing the TAB while locked is guarded too — the in-app links are the blocker's (below).
   useEffect(() => {
@@ -306,13 +296,8 @@ export function OrderCreatePage() {
     };
   }, [receiptFile]);
 
-  // WHICH STOREFRONT THE REFERENCE LOOKS LIKE (owner, rule 4) — offered only when the format names
-  // exactly one and it is not the one already chosen. A suggestion that agrees with the field is
-  // noise; one that cannot decide is a guess.
-  const suggestedMarketplace = useMemo(() => {
-    const hit = suggestMarketplace(marketplace.orderExternalRefId);
-    return hit !== undefined && hit !== marketplace.marketplace ? hit : undefined;
-  }, [marketplace.orderExternalRefId, marketplace.marketplace]);
+  // (WHICH STOREFRONT THE REFERENCE LOOKS LIKE — its suggestion is the order information card's own,
+  // components/OrderInfoCard.tsx, the one card that reads it.)
 
   const productIds = useMemo(() => allLines.map((l) => l.productId), [allLines]);
 
@@ -355,6 +340,11 @@ export function OrderCreatePage() {
   // One entry per OTHER team with goods on this order, with what those goods are worth at HPP.
   // Deduplicated by product, because the same product can arrive twice — once by hand and once
   // inside a bundle — and it is still one product belonging to one team.
+  //
+  // Re-derived when WHICH products are on the order changes, never on a quantity (#135): a key typed into a line's
+  // quantity leaves the return-mapping card, and the mapping read from these lines, exactly as they were. `crossKey` is
+  // everything of a line this list reads.
+  const crossKey = allLines.map((l) => `${l.productId}\u0000${l.productCode}\u0000${l.name}`).join("\u0001");
   const crossLines: CrossLine[] = useMemo(() => {
     const seen = new Map<string, CrossLine>();
 
@@ -373,7 +363,7 @@ export function OrderCreatePage() {
 
     return [...seen.values()];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allLines, owners, teamId, teamNames]);
+  }, [crossKey, owners, teamId, teamNames]);
 
   // THE GOODS' COST — the order's `goods_cost` as it will be frozen: per PRODUCT, not per line (`productLines`: the
   // same product on two lines is one draw, priced once), each at what it costs the seller — a borrowed product WITH its
@@ -440,6 +430,8 @@ export function OrderCreatePage() {
   // order is ever placed, and Create only ever checks. The draft page reads the same hook.
   const returnMapping = useReturnMapping(teamId, crossLines);
   const unmappedReturns = returnMapping.unmapped;
+  // The hook's `onMap` is a new function every render; the memoised card takes one that is not (#135).
+  const onMapReturn = useStableHandler(returnMapping.onMap);
 
   // The marketplace's order date is required to place (platform-created-at-is-required-at-finalize) — marked on its
   // field like the customer's name, so a disabled Create always has a red asterisk to point at. So is the SELL PRICE,
@@ -674,15 +666,19 @@ export function OrderCreatePage() {
 
   // GO BACK from Try Again's warning: the form is the person's again — as it was sent — and the next Create is a new
   // submit like any other (its own duplicate check, its own key).
-  function goBackFromRetry() {
+  const goBackFromRetry = useCallback(() => {
     dispatch({ type: "goBackFromRetry" });
-  }
+  }, []);
 
-  // What a refused line is called on THIS form — the name the person picked it by, else its id.
-  function productLabel(productId: bigint): string {
-    const line = allLines.find((l) => l.productId === productId);
-    return line?.name || line?.productCode || `#${productId.toString()}`;
-  }
+  // What a refused line is called on THIS form — the name the person picked it by, else its id. A `useCallback` over
+  // the lines (#135): the refusal's alert renders its labels with it, so it changes exactly when they do.
+  const productLabel = useCallback(
+    (productId: bigint): string => {
+      const line = allLines.find((l) => l.productId === productId);
+      return line?.name || line?.productCode || `#${productId.toString()}`;
+    },
+    [allLines],
+  );
 
   // DELETE THE DRAFT — the app's work dropped, from its own page. Confirmed first: it is not undone.
   async function removeDraft() {
@@ -697,6 +693,40 @@ export function OrderCreatePage() {
       toaster.create({ type: "error", title: t("orderForm.draft.deleteFailed"), description: rpcError(err) });
     }
   }
+
+  // ── THE HANDLERS THE MEMOISED CARDS AND DIALOGS TAKE (#135) ─────────────────────────────────────────────────────────
+  //
+  // Each the same function on every render, so a key typed anywhere does not render the dialogs (closed, they are still
+  // mounted) or the header. The ones that read the form as it stands — Create Anyway, Place Anyway, Try Again's resend,
+  // the draft's delete, the leave guard's answers — forward to THIS render's function (`useStableHandler`), so what
+  // they do is unchanged; the ones that only dispatch are a `useCallback` over the stable `dispatch`.
+  const onCreateAnyway = useStableHandler(runChecks);
+  const onResendAnyway = useStableHandler(() => {
+    if (sent) void send(sent.request);
+  });
+  const onPlaceAnyway = useStableHandler(() => void place());
+  const onDuplicateGoBack = useCallback(() => dispatch({ type: "set", field: "duplicate", value: null }), []);
+  const onRetryDismiss = useCallback(() => dispatch({ type: "set", field: "retry", value: null }), []);
+  const onChecksClose = useCallback(() => dispatch({ type: "set", field: "gate", value: [] }), []);
+  const onSwitchOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) act.cancelSwitch();
+    },
+    [act],
+  );
+  const onDeleteDraft = useCallback(() => setConfirmDeleteDraft(true), []);
+  const onRemoveDraft = useStableHandler(removeDraft);
+  const onLeaveConfirm = useStableHandler(async () => blocker.proceed?.());
+  const onLeaveOpenChange = useStableHandler((open: boolean) => {
+    if (!open) blocker.reset?.();
+  });
+  const onToggleCompact = useCallback(() => setCompact((on) => !on), []);
+  // The draft's address as the marketplace wrote it — one element per draft, so the customer card is not handed a new
+  // one on every key.
+  const addressHint = useMemo(() => (draft ? <DraftAddressText address={draft.address} /> : undefined), [draft]);
+  // Today, read on every render as the calendars always read it — equal all day, so it renders nothing; the first
+  // render after midnight hands the two calendars the new day (components/memoCards.ts, ExtraInfoCard).
+  const today = todayDateInput();
 
   if (!current) {
     return (
@@ -714,57 +744,13 @@ export function OrderCreatePage() {
     // the room — the wider the window, the more of it the lines get.
     // It arrives — a fade and a short rise (motion-is-small-quick-and-shared).
     <Stack gap="section" animationStyle="enter" data-testid="order-create-page">
-      <Flex align="center" gap="card">
-        <IconButton
-          size="xs"
-          variant="ghost"
-          aria-label="Back"
-          data-testid="order-create-back"
-          onClick={() => navigate(openedFrom ?? "/orders")}
-        >
-          <Icon as={ArrowLeft} boxSize="4" />
-        </IconButton>
-        <Heading size="md" truncate={isMobile} minW="0">
-          {t("orders.newOrderTitle")}
-        </Heading>
-        {/* FROM A DRAFT — which one, and the way to drop it (the-draft-opens-in-the-order-form). */}
-        {draft && (
-          <>
-            <Badge colorPalette="gray" flexShrink={0} data-testid="order-create-draft-ref">
-              {t("orderForm.draft.badge", { ref: draft.externalId })}
-            </Badge>
-            <Box flex="1" />
-            {isMobile ? (
-              <CompactActions
-                menuLabel={t("common.actions")}
-                actions={[
-                  {
-                    id: "delete",
-                    label: t("orderForm.draft.delete"),
-                    icon: Trash2,
-                    danger: true,
-                    disabled: locked,
-                    testId: "order-create-delete-draft",
-                    onClick: () => setConfirmDeleteDraft(true),
-                  },
-                ]}
-              />
-            ) : (
-              <Button
-                size="xs"
-                variant="outline"
-                colorPalette="error"
-                disabled={locked}
-                data-testid="order-create-delete-draft"
-                onClick={() => setConfirmDeleteDraft(true)}
-              >
-                <Icon as={Trash2} boxSize="4" />
-                {t("orderForm.draft.delete")}
-              </Button>
-            )}
-          </>
-        )}
-      </Flex>
+      <OrderCreateHeader
+        draft={draft}
+        isMobile={isMobile}
+        locked={locked}
+        openedFrom={openedFrom}
+        onDelete={onDeleteDraft}
+      />
 
       {error && (
         <Text color="error.fg" data-testid="order-create-error">
@@ -813,14 +799,10 @@ export function OrderCreatePage() {
 
       <form onSubmit={(event) => void save(event)} noValidate>
         {/* THE LOCK — one native fieldset around the whole form: `disabled` reaches every input, button and picker
-            trigger inside it (and Chakra's fields read it through the fieldset context), `inert` the rest. */}
-        <Fieldset.Root
-          ref={lockRef}
-          disabled={locked}
-          minW="0"
-          data-testid="order-create-lock"
-          data-locked={locked ? "" : undefined}
-        >
+            trigger inside it (and Chakra's fields read it through the fieldset context), `inert` the rest.
+            Rendered only when the lock changes, the body reaching it through a context of its own — a fieldset
+            rendered on every key re-rendered every field of every card (#135, components/LockFieldset.tsx). */}
+        <LockFieldset locked={locked} lockRef={lockRef}>
         <Stack gap="section">
           {/* WHAT THIS SCREEN CANNOT DO, BEFORE ANYTHING ELSE. It is read once, at the top, and
               repeated as a badge on each card that is affected — so somebody who scrolled straight to
@@ -876,113 +858,14 @@ export function OrderCreatePage() {
 
             {/* WHICH SHOP, WHICH WAREHOUSE — the warehouse decides what every stock figure below it
                 means. */}
-            <Card.Root>
-              {/* ORDER INFORMATION (owner) — the live form calls this card "Shop & Warehouse",
-                  which named its two controls. It now also carries the storefront's reference, what
-                  the storefront took and WHEN the order happened, and those are not a shop or a
-                  warehouse: they are what identifies this order. The live page keeps its own title
-                  (its key is untouched); this one is named for what it holds. */}
-              <Card.Header>
-                <Card.Title>{t("orderForm.source.title")}</Card.Title>
-                <Card.Description>{t("orderForm.source.help")}</Card.Description>
-              </Card.Header>
-              <Card.Body>
-                <SimpleGrid columns={{ base: 1, md: 2 }} gap="card" alignItems="start">
-                  <Stack gap="card">
-                    {/* ⚠ WITHOUT ITS MONEY FIELD. The same number is collected below under the name
-                        the rest of this screen uses for it — see the note there. */}
-                    <MarketplaceInfoForm
-                      teamId={cardTeamId}
-                      value={marketplace}
-                      onChange={act.marketplace}
-                      required
-                      hideTotal
-                      hideOrderRef
-                    />
-
-                    {/* ⚠ WHAT THE REFERENCE LOOKS LIKE (owner, rule 4). One click applies it; it
-                        never applies itself, because a storefront chosen by a pattern is still a
-                        guess and the shop list below is scoped by this field. */}
-                    {suggestedMarketplace !== undefined && (
-                      <Flex align="center" gap="2" wrap="wrap" data-testid="order-marketplace-suggestion">
-                        <Text fontSize="xs" color="fg.muted">
-                          {t("orderForm.source.looksLike")}
-                        </Text>
-                        <MarketplaceBadge marketplace={suggestedMarketplace} size="sm" />
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="outline"
-                          data-testid="order-marketplace-suggestion-apply"
-                          onClick={() =>
-                            dispatch({ type: "marketplacePatch", patch: { marketplace: suggestedMarketplace } })
-                          }
-                        >
-                          {t("orderForm.source.useIt", { name: marketplaceLabel(suggestedMarketplace) })}
-                        </Button>
-                      </Flex>
-                    )}
-
-                    {/* ONE NAME FOR ONE NUMBER: HARGA JUAL / SELL PRICE (owner).
-                        The live form calls this "Marketplace order total" while the profit panel
-                        calls the same figure the sell price — two words for one thing on one screen,
-                        and the person has to work out they are the same. The sell price wins: it is
-                        what the customer paid, which is what the margin is measured against. */}
-                    {/* REQUIRED (platform-total-is-required-at-finalize) — read off the storefront like the order
-                        date, and Create stays off until it is there. */}
-                    <Field.Root required>
-                      <Field.Label>
-                        {t("orderForm.source.sellPrice")}
-                        <Field.RequiredIndicator />
-                      </Field.Label>
-                      <CurrencyInput
-                        fraction
-                        value={marketplace.platformTotal}
-                        data-testid="order-marketplace-total"
-                        onChange={act.sellPrice}
-                      />
-                      <Field.HelperText>{t("orderForm.source.sellPriceHelp")}</Field.HelperText>
-                    </Field.Root>
-                  </Stack>
-
-                  <Stack gap="card">
-                    {/* ⚠ THE WAREHOUSE IS NOT HERE ANY MORE (owner). It was the odd one out: every
-                        other field on this card is a fact ABOUT the order, while the building is what
-                        the whole screen is measured against. It leads the page now — see
-                        WarehouseBand. */}
-
-                    {/* WHEN THE CUSTOMER BOUGHT IT (owner) — part of the order's own information,
-                        so it sits with the shop and the storefront's reference rather than with the
-                        delivery deadline further down. The two dates answer opposite questions: this
-                        one is when it happened, that one is when it must arrive. */}
-                    {/* REQUIRED (platform-created-at-is-required-at-finalize): every order comes from a platform,
-                        and the person reads this off the same storefront page as the ref. */}
-                    <Field.Root required>
-                      <Field.Label>
-                        {t("orderForm.source.orderDate")}
-                        <Field.RequiredIndicator />
-                      </Field.Label>
-                      {/* WITH THE CLOCK (owner). A marketplace stamps an order to the minute, and
-                          two orders on one morning are told apart by nothing else — so the field
-                          that records WHEN IT HAPPENED carries a time. */}
-                      {/* ⚠ NEVER IN THE FUTURE (owner). An order is typed in AFTER it happened —
-                          at best a minute later, at worst two days — so a date past today is a typo
-                          every time, and one that would file the order under a day it has not
-                          reached yet. */}
-                      <DatePicker
-                        value={orderDate}
-                        onChange={act.orderDate}
-                        withTime
-                        clearable
-                        max={todayDateInput()}
-                        testId="order-create-order-date"
-                      />
-                      <Field.HelperText>{t("orderForm.source.orderDateHelp")}</Field.HelperText>
-                    </Field.Root>
-                  </Stack>
-                </SimpleGrid>
-              </Card.Body>
-            </Card.Root>
+            <OrderInfoCard
+              teamId={cardTeamId}
+              marketplace={marketplace}
+              orderDate={orderDate}
+              today={today}
+              act={act}
+              dispatch={dispatch}
+            />
 
             {/* ── WHAT THE DRAFT SAYS MUST BE SENT ── ABOVE the products, as a list of text (owner,
                 the-draft-opens-in-the-order-form). The marketplace's own words first, our catalogue second —
@@ -991,21 +874,7 @@ export function OrderCreatePage() {
 
             {/* WHAT IS BEING SOLD — as ITEMS or as BUNDLES, never both (an-order-holds-items-or-bundles): one radio
                 pill picks the card, and only that card shows. */}
-            <Stack gap="1.5" data-testid="order-contents-field">
-              <Text fontSize="xs" fontWeight="bold" color="fg.label">
-                {t("orderForm.contents.label")}
-              </Text>
-              <RadioPills
-                value={contents}
-                onChange={act.chooseContents}
-                ariaLabel={t("orderForm.contents.label")}
-                testId="order-contents"
-                options={[
-                  { value: "items", label: t("orderForm.contents.items"), testId: "order-contents-items" },
-                  { value: "bundles", label: t("orderForm.contents.bundles"), testId: "order-contents-bundles" },
-                ]}
-              />
-            </Stack>
+            <OrderContentsField contents={contents} act={act} />
 
             {contents === "items" ? (
               <OrderItemCard
@@ -1042,7 +911,7 @@ export function OrderCreatePage() {
               teamId={cardTeamId}
               lines={crossLines}
               mapping={returnMapping.mapping}
-              onMap={returnMapping.onMap}
+              onMap={onMapReturn}
               checking={returnMapping.checking}
             />
 
@@ -1061,7 +930,7 @@ export function OrderCreatePage() {
               onAddressChange={act.address}
               // A DRAFT'S ADDRESS AS THE MARKETPLACE WROTE IT (the-cs-edits-the-whole-address-before-create), read beside
               // the editable picker — every part of which the person may change before Create.
-              addressHint={draft ? <DraftAddressText address={draft.address} /> : undefined}
+              addressHint={addressHint}
               teamId={cardTeamId}
               // THE SECOND WAY INTO AN ADDRESS (owner): search the kecamatan by name, which fills
               // everything above it and the postcode when that kecamatan has only one.
@@ -1073,6 +942,7 @@ export function OrderCreatePage() {
               onDeadlineChange={act.deadline}
               buyerUsername={buyerUsername}
               onBuyerUsernameChange={act.buyerUsername}
+              today={today}
             />
           </Stack>
         </GridItem>
@@ -1092,21 +962,7 @@ export function OrderCreatePage() {
 
                 ONE TOGGLE FOR ALL THREE, not a collapse per card: they are read together, and three
                 separate chevrons would be three states to keep in your head. */}
-            <Flex justify="space-between" align="center" gap="2" {...lockFade}>
-              <Text fontSize="sm" fontWeight="bold" color="fg.muted">
-                {t("orderForm.rail.title")}
-              </Text>
-              <Button
-                type="button"
-                size="xs"
-                variant="outline"
-                data-testid="order-create-rail-compact"
-                onClick={() => setCompact((on) => !on)}
-              >
-                <Icon as={compact ? ChevronsUpDown : ChevronsDownUp} boxSize="4" />
-                {t(compact ? "orderForm.rail.expand" : "orderForm.rail.collapse")}
-              </Button>
-            </Flex>
+            <RailHeader compact={compact} onToggle={onToggleCompact} fade={lockFade} />
 
             <Stack gap={compact ? "card" : "section"} {...lockFade}>
               <CreditLimitPanel rows={creditRowsList} compact={compact} />
@@ -1143,7 +999,7 @@ export function OrderCreatePage() {
         </GridItem>
       </Grid>
         </Stack>
-        </Fieldset.Root>
+        </LockFieldset>
       </form>
 
       {/* THIS SHOP + REF IS ALREADY RECORDED — asked before the checks below; Go Back keeps the form as typed. */}
@@ -1151,8 +1007,8 @@ export function OrderCreatePage() {
         finding={duplicate}
         selfUserId={identity?.identityId}
         placing={saving}
-        onGoBack={() => dispatch({ type: "set", field: "duplicate", value: null })}
-        onCreateAnyway={runChecks}
+        onGoBack={onDuplicateGoBack}
+        onCreateAnyway={onCreateAnyway}
       />
 
       {/* TRY AGAIN'S WARNING (a-try-again-always-warns) — the same dialog, always opened: Create Anyway / Send Again
@@ -1163,26 +1019,22 @@ export function OrderCreatePage() {
         selfUserId={identity?.identityId}
         placing={saving}
         onGoBack={goBackFromRetry}
-        onDismiss={() => dispatch({ type: "set", field: "retry", value: null })}
-        onCreateAnyway={() => {
-          if (sent) void send(sent.request);
-        }}
+        onDismiss={onRetryDismiss}
+        onCreateAnyway={onResendAnyway}
       />
 
       {/* WHAT THE CHECKS FOUND — the last thing between Create and the write. */}
       <OrderChecksDialog
         findings={gate}
         placing={saving}
-        onClose={() => dispatch({ type: "set", field: "gate", value: [] })}
-        onPlaceAnyway={() => void place()}
+        onClose={onChecksClose}
+        onPlaceAnyway={onPlaceAnyway}
       />
 
       {/* Leaving a card that holds something empties it — asked first (an-order-holds-items-or-bundles). */}
       <ConfirmDialog
         open={switchingTo !== null}
-        onOpenChange={(open) => {
-          if (!open) act.cancelSwitch();
-        }}
+        onOpenChange={onSwitchOpenChange}
         title={t(switchingTo === "bundles" ? "orderForm.contents.toBundlesTitle" : "orderForm.contents.toItemsTitle")}
         message={
           contents === "items"
@@ -1199,7 +1051,7 @@ export function OrderCreatePage() {
         title={t("orderForm.draft.deleteTitle")}
         message={t("orderForm.draft.deleteConfirm", { ref: draft?.externalId ?? "" })}
         confirmLabel={t("orderForm.draft.delete")}
-        onConfirm={removeDraft}
+        onConfirm={onRemoveDraft}
       />
 
       <ConfirmDialog
@@ -1215,13 +1067,11 @@ export function OrderCreatePage() {
               : t("orders.discardMessage")
         }
         confirmLabel={t(locked ? "orderForm.lock.leaveConfirm" : "orders.discardConfirm")}
-        onConfirm={async () => blocker.proceed?.()}
+        onConfirm={onLeaveConfirm}
         // Closing the dialog ANY other way — Cancel, the X, the backdrop, Escape — means "stay", so
         // the navigation is reset rather than left hanging. `reset` is only defined while the blocker
         // is blocked, so the close that follows a confirmed proceed is a no-op rather than a fight.
-        onOpenChange={(open) => {
-          if (!open) blocker.reset?.();
-        }}
+        onOpenChange={onLeaveOpenChange}
       />
     </Stack>
   );

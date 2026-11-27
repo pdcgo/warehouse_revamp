@@ -16,7 +16,7 @@ import {
 } from "@chakra-ui/react";
 import { Hourglass, Send } from "lucide-react";
 import { rpcError } from "../../api/clients";
-import type { StockAdjustRequest } from "../../gen/warehouse/inventory/v1/inventory_pb";
+import type { ProductPlace, StockAdjustRequest } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { StockAdjustReason } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import { toaster } from "../../components/feedback/Toaster";
@@ -72,12 +72,19 @@ export function AdjustStockDialog({
   currentOnHand,
   open,
   onOpenChange,
+  places: placesRead,
 }: {
   warehouseId: bigint;
   product: Product;
   currentOnHand: bigint;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Where the product sits now, when the page holding the dialog has read it already (the product page, a batch's,
+   * #133) — the dialog then reads nothing of its own: mounted closed beside that page, its own read was the page's
+   * ProductPlaces again on every load.
+   */
+  places?: ProductPlace[];
 }) {
   const { t } = useTranslation();
   const [reasonType, setReasonType] = useState<Reason>("recount");
@@ -99,8 +106,8 @@ export function AdjustStockDialog({
   const needsBatch = isBatch && !awaitsApproval;
 
   // The shelves this product sits on, for the delta preview's current figure.
-  const placesQuery = useProductPlaces({ warehouseId, productIds: [product.id] });
-  const places = placesQuery.data ?? [];
+  const placesQuery = useProductPlaces({ warehouseId: placesRead ? undefined : warehouseId, productIds: [product.id] });
+  const places = placesRead ?? placesQuery.data ?? [];
 
   function shelfOnHand(p: string): bigint {
     if (p === "") return 0n;

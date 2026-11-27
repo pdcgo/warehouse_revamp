@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { orders, shops, teams, users } from "../../../.storybook/fixtures";
 import { asAdminTeam, orderExportScenario, orderStatScenario } from "../../../.storybook/sessionScenario";
 import { closeShopForStory } from "../../../.storybook/shopStub";
+import { userClient } from "../../api/clients";
 import { OrderExportView, OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { OrdersPage } from "./index";
 
@@ -664,5 +665,35 @@ export const MonitoringOffersNoWrite: Story = {
     await expect(canvas.queryByTestId("orders-import")).toBeNull();
     await expect(canvas.queryByTestId("orders-export")).toBeNull();
     await expect(canvas.queryByTestId("orders-actions")).toBeNull();
+  },
+};
+
+// THE PAGE'S PEOPLE ARE NAMED ONCE (#133, the-speed-audits-old-findings-are-fixed-smallest-first) — whoever typed each row
+// in and the "created by" filter's people come from ONE UserByIDs of both id sets; a read each was UserByIDs twice a load.
+export const ThePeopleAreNamedOnce: Story = {
+  name: "People named once",
+  beforeEach: () => {
+    const spy = spyOn(userClient, "userByIDs");
+
+    return () => spy.mockRestore();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const eko = users[4]!;
+    const ekos = OWN.find((o) => o.createdByUserId === eko.id)!;
+
+    const row = await canvas.findByTestId(`order-row-${ekos.id}`, {}, { timeout: 4000 });
+    await waitFor(() => expect(within(row).getByTestId("order-placed-by")).toHaveTextContent(eko.name));
+
+    const controls = await filterControls(canvasElement);
+    await userEvent.click(within(controls.getByTestId("orders-creator-filter")).getByRole("combobox"));
+    await waitFor(() => expect(screen.getByTestId(`person-filter-option-${eko.id}`)).toBeVisible(), { timeout: 5000 });
+    await expect(screen.getByTestId(`person-filter-option-${eko.id}`)).toHaveTextContent(eko.name);
+
+    const calls = (userClient.userByIDs as unknown as { mock: { calls: [{ filter?: { ids?: bigint[] } }][] } }).mock.calls;
+    await expect(calls).toHaveLength(1);
+    // Both sets in the one read: everyone who typed this team's orders in, the rows' typists among them.
+    const typists = [...new Set(OWN.map((o) => o.createdByUserId).filter((id) => id > 0n))].map(String).sort();
+    await expect((calls[0]![0].filter?.ids ?? []).map(String).sort()).toEqual(typists);
   },
 };

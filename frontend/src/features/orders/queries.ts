@@ -195,6 +195,21 @@ export function useOrderCreators(args: { teamId: bigint | undefined; enabled?: b
   });
 }
 
+// The same people as IDS, in the list service's order (#133) — for the order list, which names them in its ONE read of
+// the screen's people together with its rows' typists (useScreenPeople). `useOrderCreators` above stays for a screen that
+// names nobody else (the analytic composer).
+export function useOrderCreatorIds(args: { teamId: bigint | undefined }) {
+  const { teamId } = args;
+
+  return useQuery({
+    queryKey: key.orders(teamId, { creatorIds: 1 }),
+    ...referenceQuery,
+    enabled: teamId !== undefined,
+    queryFn: async () =>
+      (await orderClient.orderCreatorList({ teamId: teamId!, page: { page: 1, limit: WHO_FILTER_SIZE } })).ids,
+  });
+}
+
 export function useOrder(args: { teamId: bigint | undefined; orderId: bigint }) {
   const { teamId, orderId } = args;
 
