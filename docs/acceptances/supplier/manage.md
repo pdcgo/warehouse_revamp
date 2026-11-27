@@ -26,3 +26,17 @@ other selling team on **Discover Supplier** and can be named on any team's resto
 <tr><td>past restocks show the new name</td><td>⬜ untested</td></tr>
 <tr><td rowspan="1" valign="top">5</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to keep a supplier's details right<br>(contact and address changed)</td><td rowspan="1" valign="top">edit supplier</td><td>the new contact and address on its page and on Discover Supplier</td><td>⬜ untested</td></tr>
 </table>
+
+## delete
+
+A delete hides the supplier, it does not erase it: whatever named it before keeps its name.
+
+<table style="border-collapse: collapse; text-align: left;" border="1">
+<tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
+<tr><td rowspan="5" valign="top">6</td><td rowspan="5" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to stop buying from a supplier<br>(PT Sumber Makmur · 2 stores · named on restocks of this team and of other teams)</td><td rowspan="5" valign="top">delete supplier</td><td>asks first</td><td>⬜ untested</td></tr>
+<tr><td>gone from My Supplier, Discover Supplier and the supplier picker on create restock</td><td>⬜ untested</td></tr>
+<tr><td>its 2 stores can no longer be chosen on create restock either</td><td>⬜ untested</td></tr>
+<tr><td>past restocks of every team still show its name</td><td>⬜ untested</td></tr>
+<tr><td>its figures still shown under its name on the Supplier Report</td><td>⬜ untested</td></tr>
+<tr><td rowspan="1" valign="top">7</td><td rowspan="1" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to stop buying from a supplier<br>(PT Sumber Makmur · named on a restock still ongoing)</td><td rowspan="1" valign="top">delete supplier</td><td>the ongoing restock keeps it and can still be edited and accepted</td><td>⬜ untested</td></tr>
+</table>
