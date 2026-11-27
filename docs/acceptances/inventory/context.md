@@ -8,11 +8,11 @@ The first big feature. The focus is **restock**. Inventory needs products, but p
 | [restock](restock.md) | 181 | | 5 | |
 | [placement](placement.md) | 25 | | | |
 | [batch](batch.md) | 21 | | | |
-| [transaction](transaction.md) | | | | |
-| [opname](opname.md) | | | | |
-| [warehouse_transfer](warehouse_transfer.md) | | | | |
+| [transaction](transaction.md) | | | | 11 |
+| [opname](opname.md) | | | | 77 |
+| [warehouse_transfer](warehouse_transfer.md) | | | | 57 |
 | [order](order.md) | 251 | | 1 | 1 |
-| [adjustment](adjustment.md) | | | | |
+| [adjustment](adjustment.md) | | | | 20 |
 | [return](return.md) — the same givens as [order](order.md#return) | 41 | | 1 | |
 
 An empty row has not been discussed yet.
