@@ -90,7 +90,7 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`dev run`](#dev-run) | Start the containers, the API and the UI in one terminal — Ctrl-C stops all of it |
 | [`test measure`](#test-measure) | Fingerprint the source files against the last green full run (`e2e_report/last_green.json`): the areas changed, their risk, whether the full run is **due** or **overdue**, and the one-line ask |
 | [`test affected`](#test-affected) | The e2e specs that call a changed RPC, open a changed page or use a changed component, and the smoke set. `--run` runs them |
-| [`test smoke`](#test-smoke) | Run the smoke set — five key flows from `frontend/e2e/smoke.txt`, under 5 minutes. `--dry-run` checks every entry still names one test |
+| [`test smoke`](#test-smoke) | Run the smoke set — five key flows from `frontend/e2e/smoke.txt`, under 5 minutes. `--dry-run` checks every entry still names one test. With `development.yaml` `type: ssh` it runs wholly on another PC ([`test` on another PC](#test-on-another-pc)) |
 | [`test full`](#test-full) | The full go test, Storybook and e2e on a **frozen copy** of the folder; `last_green.json` moves only when all of it is green. The e2e runs on **ONE worker** by default (`--workers N` for more, on request) — its own database, ports and events project, so the live tree's Go DB tests, smoke and Storybook go on beside it. Run it when measured due and the owner said yes. `--dry-run` prints the plan. A story or spec file that only failed to **load** is re-run once, by itself, in the same run |
 | [`test accept-run`](#test-accept-run) | Make an ENDED full run the green baseline when its only failures were load failures: re-run each such file once now, in this tree; `last_green.json` moves to **that run's** fingerprint. Refuses while any failed check remains |
 | [`test report` · `test slice`](#test-report--test-slice) | Print `e2e_report/latest.md` and the recent runs · log the files a slice changed |
@@ -703,6 +703,9 @@ those are listed too. `--dry-run` asks Playwright to `--list` the selection (no 
 when a line matches no test or more than one — a renamed test cannot silently drop a flow.
 
 ```
+With `development.yaml` saying `e2e_test.type: ssh` the same command runs on another PC, on a commit — [`test` on
+another PC](#test-on-another-pc).
+
 → b1 auth.spec.ts restock.spec.ts the_order_keeps_exact_figures.spec.ts the_return_goes_back_on_the_shelf.spec.ts transfers.spec.ts
 [1/11] [chromium] › e2e\auth.spec.ts:58:1 › root logs in, lands in the app, and sees the root team
 …
@@ -759,6 +762,138 @@ go run ./tools/san test smoke --isolated --dry-run                        # the 
 **Level 3**: the full `go test -count=1 ./...`, the full Storybook run and the full e2e — on a **frozen
 copy** of the folder, so the files tested are exactly the files fingerprinted and work goes on in the real
 folder while it runs. Run it when [`test measure`](#test-measure) says due **and the owner said yes**.
+
+## `test` on another PC
+
+`san test smoke` runs its e2e **on this machine** (as above) or **wholly on another PC** — its server, its database and
+its browsers there, inside Docker Compose, so the run takes none of this machine's CPU
+([e2e-runs-locally-or-on-another-pc](../technical/development/workflow_decision.md#e2e-runs-locally-or-on-another-pc)).
+Which one is set by `development.yaml` at the root of the checkout san runs in — **gitignored, never committed**
+(it holds the other PC's password); every checkout, the tester's included, has its own:
+
+```yaml
+e2e_test:
+  type: ssh          # 'ssh' or 'local' — names the section used below
+  headless: false    # false: the browsers show on the screen of the machine that runs them
+  ssh:
+    worker_test: 4   # san test full's --workers on that PC (phase 2)
+    host: 192.168.1.100
+    user: pdc
+    password: …      # read by san for the SSH login only
+    # port: 22         optional
+    # display: ":0"    optional — the other PC's X display for headless: false
+    # dir: warehouse_revamp_e2e   optional — the folder in that user's home
+  local:
+    worker_test: 1
+```
+
+| `development.yaml` | the run |
+| --- | --- |
+| no file, or `type: local` | here, exactly as always (`local.worker_test`, default 1); `headless: false` adds Playwright's `--headed` |
+| `type: ssh` | `smoke` and `affected --run` (with or without `--isolated`) run on the other PC; `full` and `accept-run` **refuse** until phase 2 of #154 (*set type: local to run it here*) rather than run here against the file |
+| a missing `host`/`user`/`password`, another `type` | refused, naming the key — a YAML error never quotes the file (its line may be the password) |
+
+```sh
+go run ./tools/san test smoke                      # type: ssh → on the other PC, testing HEAD
+go run ./tools/san test smoke --commit <rev>       # another commit (a snapshot)
+go run ./tools/san test smoke --dry-run            # still local: lists the flows, says where a real run goes
+go run ./tools/san test affected --run             # the change measured HERE (last_green.json), traced and run there
+```
+
+`affected --run` measures the change in THIS checkout (its `last_green.json`, or `--files` / `--since`) and sends it as
+`--files a,b,…` — the other PC traces those files to specs on the commit and runs them with the smoke set (no changed
+file → `--files ,`, the smoke set alone).
+
+**The run tests a COMMIT** (`--commit`, default `HEAD`) — never uncommitted files: san warns when tracked files here
+differ from it. What travels, all over the one SSH connection (password auth with the file's password — never on a
+command line; the host key must match `~/.ssh/known_hosts` or `.san/known_hosts`, an unknown host is trusted once and
+written to `.san/known_hosts`, a CHANGED key is refused):
+
+| what | how | after the first run |
+| --- | --- | --- |
+| the commit | a git bundle with ONE ref named by its SHA (`refs/san-send/<sha>`, a temporary local ref) | only what the other PC lacks: the bundle leaves out every commit it already holds; nothing when it has the commit |
+| the submodules | `git archive` of each gitlink the commit pins (`backend/pkgs/san_receipt_readers`, `san_pgpartition`) | one tar per pinned commit, kept |
+| san itself | THIS checkout's `tools/san`, built for linux/amd64 | kept by content hash |
+| the runner | this checkout's `docker-compose.yaml` + `docker/e2e-runner/Dockerfile` | per run (small) |
+
+On the other PC, under `~/warehouse_revamp_e2e/`:
+
+```
+repo/            one git checkout, detached at the commit of the run in progress
+runs/<run id>/   run.sh, inner.sh, info.json, run.log, exit, e2e_report/ (this run's own report), runner/
+bundles/  subs/  bin/  cache/ (the runner's Go, npm and home folders, kept between runs)
+run.lock         flock — one run at a time; run.lock.json names the holder
+```
+
+`<run id>` = `<stamp>-<kind>-<machine>-<checkout folder>`. The job starts **detached** (`setsid`), so a dropped
+connection does not stop it (san reconnects and goes on following its log); Ctrl-C here stops it there.
+
+```mermaid
+sequenceDiagram
+    participant S as san (this machine)
+    participant P as the other PC
+    participant D as Docker there
+    S->>S: git rev-parse the commit, build san for Linux
+    S->>P: SSH (password), what commits do you hold?
+    S->>P: the bundle, the submodule tars, san, the runner files, run.sh
+    S->>P: setsid run.sh
+    P->>P: flock run.lock (a second run waits and says so)
+    P->>P: fetch the bundle to refs/san/commits/sha, checkout --detach sha
+    P->>D: compose up postgres, redis, pubsub (the commit's compose file)
+    P->>D: build the runner image once per Dockerfile and versions
+    P->>D: compose run e2e-runner, npm ci when the lock file changed, san test smoke
+    S->>P: poll run.log until the exit file appears
+    S->>P: tar of runs/id/e2e_report/level2
+    S->>S: e2e_report/level2/stamp-smoke/, the verdict line
+```
+
+**Two checkouts, one PC** (owner, 2026-11-27 — the builder's and the tester's both send runs there):
+
+| | |
+| --- | --- |
+| one at a time | the job holds `flock` on `run.lock` for its whole life — fetch, checkout, compose, run, collect. A second run's job waits and prints `⏳ waiting: another e2e run holds this PC — {"run":…,"sender":…,"kind":…,"commit":…,"started":…}` (again every 5 min); san shows it |
+| a stale lock | flock goes with the processes holding it — the job and the children it started — so a lock with no live run never blocks (proved 2026-11-27: a holder's process group killed with `kill -9`, the waiting run started at once); the next holder overwrites `run.lock.json` and removes any `san-e2e-*` container a dead run left. A job whose shell alone died while its `docker compose run` goes on still holds it: that run is still live |
+| commits never mix | the job fetches the bundle's one ref to `refs/san/commits/<sha>`, checks that ref IS the SHA and checks out `--detach <sha>` — no branch name is ever fetched or checked out, so one sender can never move what another runs |
+| reports never mix | the runner gets `runs/<run id>/e2e_report` mounted over the checkout's `e2e_report/`; traces and videos (`frontend/test-results/`) are copied beside the report there; only that run's `level2/<stamp>-<kind>/` comes back |
+
+**The report comes back** to the same path a local run writes — `e2e_report/level2/<stamp>-smoke/` (`summary.md`,
+`run.json`, the batch logs, `test-results/` with each failed test's trace and video, `failures/` for `--isolated`) — plus
+`remote.json` (where, which commit, headed, how long, the exit) and `remote-run.log` (the job's log); the same two also
+in `e2e_report/remote/<run id>/`, which is all that comes back when the job stops before san could report. The verdict
+line and exit code are a local run's: red → exit 1.
+
+**The runner** is `docker-compose.yaml`'s `e2e-runner` service, under its OWN profile `e2e-remote` — `docker compose up`
+here never starts or builds it, and the three existing services are unchanged. Its image
+(`docker/e2e-runner/Dockerfile`): `mcr.microsoft.com/playwright:v<the commit's @playwright/test>-noble` (its browsers
+match the npm package exactly) + Go `<the commit's go.mod>` + git and lsof; tagged by those versions and the
+Dockerfile's hash, so it is built once and again only when one changes. `network_mode: host` — the e2e reaches Postgres
+:5433, Redis :6380 and Pub/Sub :8085 at `localhost` as it does here, and the API binds `0.0.0.0` (`E2E_API_ADDR`,
+`SAN_E2E_BIND_HOST` for a worker) because on Linux the emulator's container pushes events to the host's bridge address,
+which a loopback-bound API never answers. It runs as the other PC's user (its files stay that user's), with
+`SAN_E2E_IN_RUNNER=1` so a san there never sends the run on again.
+
+**`headless: false` on the other PC**: the browsers show on its own screen — the job mounts the desktop's X socket
+(`/tmp/.X11-unix`) and its cookie (`/run/user/<uid>/.mutter-Xwaylandauth.*` on GNOME/Wayland — its name changes every
+login, so it is found per run — or `~/.Xauthority`) into the runner as `XAUTHORITY`, with `DISPLAY=:0`; no `xhost`
+change is needed. With nobody logged in to that desktop the run goes **headless** and says so in its log and
+`remote.json`. Nothing is streamed back here.
+
+**What the other PC needs, once**: Linux with Docker and the compose plugin, git, flock/setsid (util-linux), an SSH login
+for the file's user — and that user in the `docker` group (`sudo usermod -aG docker <user>`; a new SSH login has it).
+Everything else (Go, Node, the browsers, npm packages, Go modules) lives in the runner image and its cache. The first
+run is slow — the images (Postgres, Redis, the Pub/Sub emulator, Playwright) are pulled, the runner built, `npm ci` and
+the Go modules fetched; later runs reuse all of it.
+
+| Error | Means |
+| --- | --- |
+| `… cannot reach docker here … sudo usermod -aG docker <user>` | the user is not in the `docker` group (exit 3 of the job) |
+| `the host key of … CHANGED` | the other PC's SSH key differs from the one recorded — reinstalled, or not that PC |
+| `the commit is not here and no bundle came` / `git fetch from the bundle failed` | the commit did not arrive (exit 4) |
+| `does not run on the other PC yet (backlog #154 phase 2 …)` | `full` or `accept-run` under `type: ssh` |
+| `--commit names what the other PC tests` | `--commit` without `type: ssh` (on `affected`, also without `--run`) |
+| `the run on the other PC stopped before san reported` | the job ended before a report — its log is in `e2e_report/remote/<run id>/run.log` |
+
+---
 
 ```sh
 go run ./tools/san test full --dry-run     # the plan: the copy, every step, each worker's batches and the estimate

@@ -167,6 +167,8 @@ func testAffectedCommand() *cli.Command {
 			&cli.BoolFlag{Name: "run", Usage: "run the affected specs and the smoke set here, in batches (orders alone, the restock family together)"},
 			&cli.BoolFlag{Name: "dry-run", Usage: "with --run: print the Playwright batches, run nothing"},
 			isolatedFlag(),
+			&cli.StringFlag{Name: "commit", Usage: "with --run and development.yaml e2e_test.type ssh: the commit the " +
+				"other PC tests (default HEAD)"},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			root, err := testRoot()
@@ -190,6 +192,27 @@ func testAffectedCommand() *cli.Command {
 			if isolated && !cmd.Bool("run") {
 				return errors.New("--isolated says where the specs run: add --run")
 			}
+
+			// development.yaml e2e_test.type ssh: the change is measured HERE (this checkout's last_green.json), and
+			// the other PC traces and runs it on the commit (test_remote.go, #154).
+			cfg, remote, err := remoteHere(root)
+			if err != nil {
+				return err
+			}
+
+			if cmd.String("commit") != "" && !(remote && cmd.Bool("run")) {
+				return errors.New("--commit names what the other PC tests — it needs --run and development.yaml " +
+					"e2e_test.type: ssh")
+			}
+
+			if remote && cmd.Bool("run") && !cmd.Bool("dry-run") {
+				fmt.Fprintf(out, "→ %d changed files (%s), traced and run on the other PC\n", len(changed), source)
+
+				return runRemote(ctx, root, cfg, remoteRequest{Kind: "affected", Args: affectedRemoteArgs(changed, isolated),
+					Commit: cmd.String("commit")}, out)
+			}
+
+			applyLocalHeadless(cfg)
 
 			res, err := findAffected(root, changed)
 			if err != nil {
@@ -317,6 +340,8 @@ func testSmokeCommand() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.BoolFlag{Name: "dry-run", Usage: "print the flows and the Playwright command, and check every entry still names one test"},
 			isolatedFlag(),
+			&cli.StringFlag{Name: "commit", Usage: "with development.yaml e2e_test.type ssh: the commit the other PC tests " +
+				"(default HEAD — it never sees uncommitted files)"},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			root, err := testRoot()
@@ -325,6 +350,28 @@ func testSmokeCommand() *cli.Command {
 			}
 
 			out := cmd.Root().Writer
+			isolated := cmd.Bool("isolated")
+
+			// development.yaml e2e_test.type ssh: the whole run happens on the other PC (test_remote.go, #154).
+			cfg, remote, err := remoteHere(root)
+			if err != nil {
+				return err
+			}
+
+			if cmd.String("commit") != "" && !remote {
+				return errors.New("--commit names what the other PC tests — it needs development.yaml e2e_test.type: ssh")
+			}
+
+			if remote && !cmd.Bool("dry-run") {
+				var args []string
+				if isolated {
+					args = append(args, "--isolated")
+				}
+
+				return runRemote(ctx, root, cfg, remoteRequest{Kind: "smoke", Args: args, Commit: cmd.String("commit")}, out)
+			}
+
+			applyLocalHeadless(cfg)
 
 			flows, err := readSmoke(root)
 			if errors.Is(err, fs.ErrNotExist) {
@@ -336,10 +383,14 @@ func testSmokeCommand() *cli.Command {
 			}
 
 			batches := smokeBatches(flows, nil)
-			isolated := cmd.Bool("isolated")
 
 			if cmd.Bool("dry-run") {
 				fmt.Fprintln(out, "smoke — the plan (dry run: nothing runs)")
+
+				if remote {
+					fmt.Fprintf(out, "(development.yaml e2e_test.type ssh: a real run goes to %s, on the commit)\n",
+						cfg.Where())
+				}
 				printSmokePlan(out, root, flows, batches)
 
 				err = printDryRunSeat(out, root, isolated)
@@ -418,6 +469,18 @@ func testFullCommand() *cli.Command {
 			}
 
 			if !opts.DryRun {
+				err = refuseRemoteNotBuilt(root, "full")
+				if err != nil {
+					return err
+				}
+
+				cfg, err := readDevConfig(root)
+				if err != nil {
+					return err
+				}
+
+				applyLocalHeadless(cfg)
+
 				rec, err := runFull(ctx, root, opts, out)
 				if err != nil {
 					return err

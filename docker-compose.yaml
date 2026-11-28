@@ -68,3 +68,42 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+
+  # The e2e RUNNER, for `san test` on another PC (backlog #154, docs/tools/san.md#test-on-another-pc): Go, Node and Playwright's
+  # browsers in one image (docker/e2e-runner/Dockerfile). Behind its OWN profile, so `docker compose up` here never
+  # starts or builds it. san starts it on the other PC (a Linux box with Docker) with:
+  #   docker compose --profile e2e-remote run --rm e2e-runner bash /san-run/inner.sh
+  # and these, all set by san's job there (the defaults let it run from a checkout by hand):
+  #   SAN_E2E_REPO   the checkout mounted at /work          SAN_E2E_CACHE  Go / npm / home folders kept between runs
+  #   SAN_E2E_UID/GID who it runs as (the files it writes stay that user's)
+  #   SAN_E2E_RUNNER_TAG, SAN_E2E_PLAYWRIGHT_VERSION, SAN_E2E_GO_VERSION  the image, from the commit's pins
+  # network_mode host: the e2e reaches postgres :5433, redis :6380 and pubsub :8085 at localhost as it does here, and
+  # the API binds 0.0.0.0 (SAN_E2E_BIND_HOST, E2E_API_ADDR) so the emulator's container can push to it — Linux's
+  # host-gateway does not reach a loopback-bound port. ipc host: Chromium's shared memory. headless: false mounts the
+  # desktop's X socket (below) and its cookie (by san, per run), so the browsers show on that PC's own screen.
+  e2e-runner:
+    profiles: ["e2e-remote"]
+    build:
+      context: ./docker/e2e-runner
+      args:
+        PLAYWRIGHT_VERSION: ${SAN_E2E_PLAYWRIGHT_VERSION:-1.61.1}
+        GO_VERSION: ${SAN_E2E_GO_VERSION:-1.25.8}
+    image: warehouse-revamp-e2e-runner:${SAN_E2E_RUNNER_TAG:-latest}
+    network_mode: host
+    ipc: host
+    user: "${SAN_E2E_UID:-1000}:${SAN_E2E_GID:-1000}"
+    working_dir: /work
+    environment:
+      SAN_E2E_IN_RUNNER: "1"
+      SAN_E2E_BIND_HOST: 0.0.0.0
+      E2E_API_ADDR: 0.0.0.0:8081
+      HOME: /cache/home
+      GOCACHE: /cache/go-build
+      GOMODCACHE: /cache/gomod
+      GOPATH: /cache/gopath
+      npm_config_cache: /cache/npm
+    volumes:
+      - ${SAN_E2E_REPO:-.}:/work
+      - ${SAN_E2E_CACHE:-./development_data/e2e-runner-cache}:/cache
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /etc/localtime:/etc/localtime:ro

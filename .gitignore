@@ -43,3 +43,4 @@ app_development.exe
 
 # san test: the measured-testing record (the-full-e2e-waits-for-a-measured-yes) — fingerprints, runs, logs; local only
 /e2e_report/
+development.yaml

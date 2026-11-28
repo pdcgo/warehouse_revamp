@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -379,6 +380,12 @@ func preflightE2E(foreign []string) error {
 			"Playwright with a temporary config on a free port", strings.Join(foreign, "; "))
 	}
 
+	// In the remote runner there is no docker CLI: the job brought the services up (--wait: healthy) before it
+	// started the runner, so only Postgres answering on its port is checked (backlog #154).
+	if os.Getenv(inRunnerEnv) != "" {
+		return runnerPostgresAnswers(dialPostgres)
+	}
+
 	err := exec.Command("docker", "info").Run()
 	if err != nil {
 		return errors.New("STOP: Docker is not running — start Docker Desktop, wait for warehouse_revamp_postgres to " +
@@ -636,12 +643,7 @@ func runPlaywrightBatch(ctx context.Context, frontend string, b *BatchResult, gr
 	jsonPath := filepath.Join(dir, name+".json")
 	b.Log = filepath.Join(dir, name+".log")
 
-	args := append([]string{}, b.Specs...)
-	if grep != "" {
-		args = append(args, "--grep", grep)
-	}
-
-	args = append(args, "--reporter=line,json")
+	args := playwrightBatchArgs(b.Specs, grep)
 
 	env := append([]string{"PLAYWRIGHT_JSON_OUTPUT_FILE=" + jsonPath, "PLAYWRIGHT_JSON_OUTPUT_NAME=" + jsonPath}, extraEnv...)
 
@@ -677,6 +679,48 @@ func runPlaywrightBatch(ctx context.Context, frontend string, b *BatchResult, gr
 	b.Counts = countsFromLine(string(log))
 
 	return nil
+}
+
+// runnerPostgres is where the e2e's Postgres answers inside the remote runner (host network: e2e/db.ts's localhost:5433).
+const runnerPostgres = "localhost:5433"
+
+// dialPostgres opens a TCP connection to the runner's Postgres — swapped in tests.
+var dialPostgres = func(addr string) error {
+	c, err := net.DialTimeout("tcp", addr, 3*time.Second)
+	if err != nil {
+		return err
+	}
+
+	return c.Close()
+}
+
+// runnerPostgresAnswers is preflightE2E's check inside the runner.
+func runnerPostgresAnswers(dial func(string) error) error {
+	err := dial(runnerPostgres)
+	if err != nil {
+		return fmt.Errorf("STOP: Postgres does not answer on %s in the e2e runner (%v) — the job's docker compose up "+
+			"should have started it", runnerPostgres, err)
+	}
+
+	return nil
+}
+
+// playwrightBatchArgs is a batch's Playwright arguments: its specs, the grep, the reporters — and --headed when
+// development.yaml says headless: false (SAN_E2E_HEADED, set by applyLocalHeadless here or by the remote job in the
+// runner, backlog #154), so the browsers show on the screen of the machine that runs them.
+func playwrightBatchArgs(specs []string, grep string) []string {
+	args := append([]string{}, specs...)
+	if grep != "" {
+		args = append(args, "--grep", grep)
+	}
+
+	args = append(args, "--reporter=line,json")
+
+	if os.Getenv(headedEnv) == "1" {
+		args = append(args, "--headed")
+	}
+
+	return args
 }
 
 // progressFilter passes on only the lines a person follows a run by — the line reporter's progress,

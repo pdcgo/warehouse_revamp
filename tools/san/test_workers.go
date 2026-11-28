@@ -132,10 +132,22 @@ func (w *e2eWorker) env() []string {
 		"E2E_DB_NAME=" + w.DB,
 		"E2E_DB_TEMPLATE=" + templateDB,
 		"E2E_PUBSUB_PROJECT=" + w.Project,
-		// The single run's CI overrides would send every worker to one address: each worker binds its own port.
-		"E2E_API_ADDR=localhost:" + strconv.Itoa(w.APIPort),
+		// The single run's CI overrides would send every worker to one address: each worker binds its own port —
+		// on loopback, except in the remote runner (SAN_E2E_BIND_HOST, backlog #154).
+		"E2E_API_ADDR=" + workerBindHost() + ":" + strconv.Itoa(w.APIPort),
 		"E2E_PUSH_BASE_URL=http://host.docker.internal:" + strconv.Itoa(w.APIPort),
 	}
+}
+
+// workerBindHost is the address a worker's API binds: loopback, or SAN_E2E_BIND_HOST — 0.0.0.0 in the remote runner,
+// where the Pub/Sub emulator's container pushes to the host's bridge address, which Linux never routes to loopback.
+func workerBindHost() string {
+	h := strings.TrimSpace(os.Getenv(bindHostEnv))
+	if h == "" {
+		return "localhost"
+	}
+
+	return h
 }
 
 // ── per-spec times ─────────────────────────────────────────────────────────────────────────────────

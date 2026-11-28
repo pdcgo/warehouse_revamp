@@ -592,6 +592,13 @@ func testAcceptRunCommand() *cli.Command {
 				return err
 			}
 
+			if !cmd.Bool("dry-run") {
+				err = refuseRemoteNotBuilt(root, "accept-run")
+				if err != nil {
+					return err
+				}
+			}
+
 			req := acceptRequest{Stamp: cmd.Args().First(), Named: cmd.StringSlice("rerun"), Reason: cmd.String("reason")}
 
 			command := "san test accept-run " + req.Stamp
