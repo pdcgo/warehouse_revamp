@@ -11,13 +11,14 @@ import { LEDGER_KINDS, MovementKindSelect, description } from "./MovementKindSel
 // the kinds' badges, with an × back to every kind (owner: *"selectnya pakai badge seperti sebelumnya, ada search juga,
 // lalu ada closeable"*).
 
-function Controlled({ onChange }: { onChange: (kind: MovementKind) => void }) {
+function Controlled({ onChange, sheetOnPhone }: { onChange: (kind: MovementKind) => void; sheetOnPhone?: boolean }) {
   const [kind, setKind] = useState<MovementKind>(MovementKind.UNSPECIFIED);
 
   return (
-    <Box w="14rem">
+    <Box w={sheetOnPhone ? "full" : "14rem"}>
       <MovementKindSelect
         value={kind}
+        sheetOnPhone={sheetOnPhone}
         onChange={(next) => {
           setKind(next);
           onChange(next);
@@ -35,7 +36,7 @@ const meta = {
   component: MovementKindSelect,
   parameters: { docs: { description: { component: description } } },
   args: { value: MovementKind.UNSPECIFIED, onChange: fn() },
-  render: (args) => <Controlled onChange={args.onChange} />,
+  render: (args) => <Controlled onChange={args.onChange} sheetOnPhone={args.sheetOnPhone} />,
 } satisfies Meta<typeof MovementKindSelect>;
 
 export default meta;
@@ -95,5 +96,42 @@ export const PicksOneKindAndClears: Story = {
     await waitFor(() => expect(input).toHaveValue(""));
     await expect(args.onChange).toHaveBeenLastCalledWith(MovementKind.UNSPECIFIED);
     await expect(canvas.getByTestId("picked")).toHaveTextContent(String(MovementKind.UNSPECIFIED));
+  },
+};
+
+// ON A PHONE, A DRAWER FROM THE BOTTOM (sheetOnPhone, a-phone-filter-opens-from-the-bottom) — the control is the picked
+// kind's badge; a tap opens the search and the kinds as rows a thumb can hit; a tap on one picks it and closes the drawer;
+// the control's × goes back to every kind.
+export const OnAPhoneASheetFromTheBottom: Story = {
+  name: "On a phone, a sheet from the bottom",
+  globals: { viewport: { value: "mobile1" } },
+  args: { sheetOnPhone: true },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByTestId("movement-kind-select");
+    await expect(trigger).toHaveTextContent("All activities");
+
+    await userEvent.click(trigger);
+    const sheet = await screen.findByTestId("movement-kind-select-sheet");
+    await waitFor(() => expect(sheet).toBeVisible());
+    await expect(Math.round(sheet.getBoundingClientRect().bottom)).toBe(window.innerHeight);
+    // It opens on its close button, never the search — a focused field throws a phone's keyboard up over the list.
+    await waitFor(() => expect(screen.getByTestId("movement-kind-select-close")).toHaveFocus());
+    await expect(screen.getByTestId("movement-kind-select-search")).not.toHaveFocus();
+    // Each kind a row a thumb can hit — 44px — its words a step over a ledger's badge, 14px, to be read on a phone.
+    await expect(Math.round(screen.getByTestId(`movement-kind-select-${MovementKind.RECEIVE}`).getBoundingClientRect().height)).toBe(44);
+    await expect(getComputedStyle(screen.getByTestId(`movement-kind-select-${MovementKind.RECEIVE}-badge`)).fontSize).toBe("14px");
+
+    await userEvent.type(screen.getByTestId("movement-kind-select-search"), "trans", { delay: 30 });
+    await waitFor(() => expect(screen.queryByTestId(`movement-kind-select-${MovementKind.RECEIVE}`)).toBeNull());
+    await userEvent.click(screen.getByTestId(`movement-kind-select-${MovementKind.TRANSFER_IN}`));
+
+    await expect(args.onChange).toHaveBeenLastCalledWith(MovementKind.TRANSFER_IN);
+    await waitFor(() => expect(screen.queryByTestId("movement-kind-select-sheet")).toBeNull());
+    await expect(canvas.getByTestId("movement-kind-select-picked")).toHaveTextContent("Transferred in");
+
+    await userEvent.click(canvas.getByTestId("movement-kind-select-clear"));
+    await expect(args.onChange).toHaveBeenLastCalledWith(MovementKind.UNSPECIFIED);
+    await waitFor(() => expect(trigger).toHaveTextContent("All activities"));
   },
 };

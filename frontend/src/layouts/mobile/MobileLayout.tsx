@@ -46,11 +46,17 @@ export function MobileLayout() {
           workspace bubble rises 28px out of the tab bar, over the end of this scroll region — and a page's last thing
           is often centred under it (the pager). `pb="12"` (48px) is that rise plus a gap, so the end always scrolls
           clear of the bubble.
-          Unpainted, as the desktop's — no page has a canvas of its own (every-page-is-on-one-canvas, shell.ts). */}
-      <Box as="main" flex="1" minH="0" overflow="auto" p="card" pb="12">
-        <Suspense fallback={<Spinner colorPalette="brand" />}>
-          <Outlet />
-        </Suspense>
+          Unpainted, as the desktop's — no page has a canvas of its own (every-page-is-on-one-canvas, shell.ts).
+          ⚠ THE GUTTER IS ON A BOX INSIDE <main>, NEVER ON <main> ITSELF (owner, a batch's title bar on a phone: *"sticky
+          headernya ada jarak atas di mobile"*, a-phone-sticks-at-the-screens-top): <main> is the scroller, and a sticky
+          element sticks at its scroller's PADDING edge — 12px under the screen's top, with the page showing through the
+          gap. With no padding of its own, what sticks sticks at the top. */}
+      <Box as="main" flex="1" minH="0" overflow="auto">
+        <Box p="card" pb="12">
+          <Suspense fallback={<Spinner colorPalette="brand" />}>
+            <Outlet />
+          </Suspense>
+        </Box>
       </Box>
 
       {/* The workspace bubble in the bar's centre, opening its drawer from the bottom

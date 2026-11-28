@@ -9,7 +9,7 @@ when it applies one of these.
 | [a-list-summary-is-the-order-lists-card-strip](#a-list-summary-is-the-order-lists-card-strip) | a list's figures are the order list's `SummaryStrip` of `SummaryCard`s | [settlement](order_settlement_decision.md#the-settlement-list-summary-is-the-order-lists-cards) |
 | [a-date-range-filter-is-the-order-lists-picker](#a-date-range-filter-is-the-order-lists-picker) | a date filter is the order list's `DateRangePicker`, naming which date it filters | [settlement](order_settlement_decision.md#the-settlement-list-filters-what-the-contract-can) |
 | [a-table-sorts-from-its-headings](#a-table-sorts-from-its-headings) | a sortable column sorts from its heading — largest first, then flips; two states | [settlement](order_settlement_decision.md#the-settlement-list-sorts-by-its-headings) |
-| [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) | the pager stays on screen on one page and on none, per page beside it — 🔄 not on a batch's page, where it steps aside while the list fits the smallest page size, [the-batch-page-hides-a-pager-that-fits](batches_decision.md#the-batch-page-hides-a-pager-that-fits) | [settlement](order_settlement_decision.md#the-settlement-list-always-shows-its-pager) |
+| [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) | the pager stays on screen on one page and on none, per page beside it — 🔄 a PAGE's list only since; a section card's list steps aside while it fits, [a-section-cards-pager-steps-aside-when-it-fits](#a-section-cards-pager-steps-aside-when-it-fits) | [settlement](order_settlement_decision.md#the-settlement-list-always-shows-its-pager) |
 | [one-context-per-column-and-never-three-lines](#one-context-per-column-and-never-three-lines) | pairing is only for one fact read twice — it REPLACES the six-paired-cells decision | order screens |
 | [the-phone-header-is-one-row](#the-phone-header-is-one-row) | on a phone the sticky block is the number, the stage and `⋯` — plus the section chips | order screens |
 | [a-phone-reads-each-line-as-a-block](#a-phone-reads-each-line-as-a-block) | the item table becomes one block per line below `md` | order screens |
@@ -109,6 +109,27 @@ when it applies one of these.
 | [every-page-is-on-one-canvas](#every-page-is-on-one-canvas) | no page has a background of its own — both shells leave the content area unpainted; the batch page's grey canvas, chosen by route, is gone | the batch page, 2026-11-27 |
 | [a-small-picture-opens-its-preview](#a-small-picture-opens-its-preview) | from now on a small picture — a product's cover, a team's avatar — opens big on a click, in `ImagePreview`; initials and the placeholder open nothing | a batch's product card, 2026-11-27 |
 | [an-arrival-is-set-arrived](#an-arrival-is-set-arrived) | a delivery's arrival is *Set Arrived* on every screen, never *Sign for Box*; the transfer's Indonesian *Terima Paket* becomes *Tandai Tiba* | owner, as recommended, 2026-11-27 |
+| [a-detail-leads-with-its-subject-card](#a-detail-leads-with-its-subject-card) | a detail page's subject is ONE full-width card under its title — picture, name, code; a second party (its owner) at the same size beside it, a thin line between; under it on a phone | a batch's page, 2026-11-28 |
+| [the-figure-sought-leads-and-each-says-what-it-counts](#the-figure-sought-leads-and-each-says-what-it-counts) | in a detail page's figure strip the figure somebody comes for is the first card, and every card carries a note — what its number counts, up to two lines; its small line one fact | a batch's page, 2026-11-28 |
+| [a-long-section-title-is-one-word-and-a-line](#a-long-section-title-is-one-word-and-a-line) | a section title that runs long becomes ONE word, and what it means a line under it | a batch's page, 2026-11-28 |
+| [a-section-cards-filter-spans-the-card](#a-section-cards-filter-spans-the-card) | a filter INSIDE a section card spans the card; two share the row, the main one wider — never a page's own filter strip | a batch's page, 2026-11-28 |
+| [a-rack-is-its-code-with-its-name-under](#a-rack-is-its-code-with-its-name-under) | wherever a rack is listed it is its code, bold, with its NAME under it when it has one — and a search finds it by either | a batch's page, 2026-11-28 |
+| [last-opname-is-a-badge](#last-opname-is-a-badge) | a rack's *Opname terakhir* is a badge — the date in green within two weeks, amber past them, *Belum pernah* grey | a batch's page, 2026-11-28 |
+| [a-stock-ledgers-kind-is-a-badge](#a-stock-ledgers-kind-is-a-badge) | in every stock ledger the kind is a badge in its colour — in green, out orange, a move blue, a correction grey — to be seen and told apart | a batch's Riwayat, 2026-11-28 |
+| [a-stock-ledger-filters-by-one-kind](#a-stock-ledger-filters-by-one-kind) | a stock ledger filters by ONE kind, from a search select of the kinds' badges; an optional filter that can be cleared has its × — the date range's too | a batch's Riwayat, 2026-11-28 |
+| [a-detail-info-is-label-over-value](#a-detail-info-is-label-over-value) | a detail page's Info is a quiet label over its value in bold, a thin line between facts (`InfoFact`) | a batch's page, 2026-11-28 |
+| [info-is-the-last-section](#info-is-the-last-section) | a detail page's Info — the record's own facts — is the lowest priority: the last section on a narrow screen and in the nav | a batch's page, 2026-11-28 |
+| [time-left-is-a-badge-beside-its-day](#time-left-is-a-badge-beside-its-day) | in a detail's facts, how long is left is a BADGE beside its day — amber soon, red past, grey later — the day at the facts' own size | a batch's Info, 2026-11-28 |
+| [every-page-arrives-in-order](#every-page-arrives-in-order) | EVERY page arrives block by block, 50ms apart, each with the page's own light `enter` (`enterStep`) — the root no longer rises as one | a batch's page, 2026-11-28 |
+| [what-a-thing-is-is-said-on-its-list](#what-a-thing-is-is-said-on-its-list) | *Apa itu X?* — what a kind of record is — is said on its LIST, never on one record's page | a batch's page, 2026-11-28 |
+| [a-button-says-its-dialogs-title](#a-button-says-its-dialogs-title) | an action's button is the word its dialog's title opens with — *Sesuaikan* opens *Sesuaikan Stok*, never *Koreksi* | a batch's page, 2026-11-28 |
+| [a-dialog-from-a-record-is-about-that-record](#a-dialog-from-a-record-is-about-that-record) | a dialog opened from one record takes it — never asks for it again — says it at the top with its figures, and offers only the choices that belong to it | Sesuaikan Stok from a batch, 2026-11-28 |
+| [a-count-change-previews-as-a-receipt](#a-count-change-previews-as-a-receipt) | a dialog that changes a count previews it as a receipt at the form's right — before · the reason's units · the difference with a Berkurang / Bertambah badge · the total; under the form on a phone | Sesuaikan Stok, 2026-11-28 |
+| [a-phone-detail-page-has-no-section-chips](#a-phone-detail-page-has-no-section-chips) | on a phone a detail page has no section chips — its sections are read by scrolling, and only its title bar sticks, at the top | a batch's page, 2026-11-28 |
+| [a-detail-heading-starts-at-the-gutter](#a-detail-heading-starts-at-the-gutter) | a detail page's heading starts at the shell's gutter — no gap over it for a sticky strip that is 0 tall | a batch's page, 2026-11-28 |
+| [a-section-cards-filter-opens-from-the-bottom](#a-section-cards-filter-opens-from-the-bottom) | on a phone a filter inside a section card opens as a drawer from the bottom — a date's panel stacked in it, a kind's badges as 44px rows | a batch's Riwayat, 2026-11-28 |
+| [a-phone-sticks-at-the-screens-top](#a-phone-sticks-at-the-screens-top) | on a phone what sticks sticks at the screen's very top — the shell's gutter is on a box INSIDE the scrolling `<main>`, never on `<main>` | a batch's title bar, 2026-11-28 |
+| [a-section-cards-pager-steps-aside-when-it-fits](#a-section-cards-pager-steps-aside-when-it-fits) | a list inside a section CARD hides its pager on page 1 while it fits the smallest page size, and ends with no line under its last row; a page's own list keeps its pager always | a batch's Penempatan and Riwayat, 2026-11-28 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -2517,3 +2538,372 @@ What it replaces: small pictures that could not be opened, outside the order for
 ⛔ Not built — backlog #146.
 
 ✅ Built 2026-11-27 (#146) — every *sign for* about an arrival says **Set Arrived** / *Tandai Tiba*: 20 English and 8 Indonesian VALUES in `frontend/src/i18n/locales/{en,id}.json` (no key, no test id renamed) — the restock's button, dialog title (*Set Arrived — Restock #503*), failure toast, timeline step and waiting line, the inbound subtitle, the lost message, the two courier-charge lines (*noted when the box was set arrived*), the accept summary (*Set arrived* / *Ditandai tiba*); the reshipping's dialog and resi line; the transfer's button and dialog (*Terima Paket* → *Tandai Tiba*), its lost messages, timeline step and both toasts (*Paket diterima* / *Diterima di gudang penerima* → *ditandai tiba*). The restock trail's stored step text for new rows is *set arrived* (`restockLogArrived`, was *signed for the box* — older rows keep theirs) and the arrival refusals say *set arrived*. Unchanged, not an arrival: the reshipping's count-in toast *Paket diterima* (an accept). Pinned by `SetArrivedNotesTheChargeWithNoNote`, `SetArrivedIsTheArrivalsName`, `TandaiTibaInIndonesian`, `SignForBoxMovesItToArrived`, `SetArrivedWithAChargeAndNoNote`.
+
+> **The batch page's rules, for every detail page** — owner, in chat (2026-11-28): *"keputusan apa saja pada halaman detail
+> batch ini yang belum disimpan? aku ingin menyimpannya untuk detail lainnya kedepannya"*. Each was first decided on a
+> batch's page (its record: [batches_decision.md](batches_decision.md)); the owner's note on each is quoted. Every rule
+> here applies to a screen the day it is next worked on.
+
+## a-detail-leads-with-its-subject-card
+
+> Owner (2026-11-28), agreeing the batch page's [the-batch-product-is-one-full-card](batches_decision.md#the-batch-product-is-one-full-card)
+> and [the-owner-weighs-the-same-as-its-product](batches_decision.md#the-owner-weighs-the-same-as-its-product) for every detail page.
+
+```
+←  Batch #5031  [Restok]                                            [✎ Sesuaikan]
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ [img]  Beras Pandan Wangi 5kg                    │ [TM]  Toko Melati         │
+│        SKU-BERAS-5K ⧉                            │       Pemilik             │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the card | what the page is ABOUT, one card the width of the page's content, under the title row — not a loose line under the title |
+| a second party | the one it belongs to (an owner) at the SAME size, a thin line between the two; on a phone under it, the line above |
+| its picture | opens big ([a-small-picture-opens-its-preview](#a-small-picture-opens-its-preview)) |
+
+What it replaces: a detail page's subject as a small line under its title.
+
+## the-figure-sought-leads-and-each-says-what-it-counts
+
+> Owner (2026-11-28), agreeing the batch page's [ready-leads-and-each-figure-says-what-it-counts](batches_decision.md#ready-leads-and-each-figure-says-what-it-counts)
+> for every detail page.
+
+```
+[Siap 7]                 [Tiba 10]              [Rusak 2]
+ Stok di rak, bisa untuk  Stok yang diterima di  Stok yang mengalami
+ transaksi                batch ini              kerusakan
+ Rp 463.169               Rp 661.670             Rp 132.334
+```
+
+| | |
+| --- | --- |
+| first | the figure somebody opens the page for — the lit card ([a-summary-card-is-grey-with-a-thin-border](#a-summary-card-is-grey-with-a-thin-border)) |
+| the note | every card says what its number counts, in plain words, on up to two lines (`SummaryCard` `noteLines={2}`); a phone drops it ([a-phone-card-shows-no-note](#a-phone-card-shows-no-note)) |
+| the small line | ONE fact — a value; a date that belongs to the record goes to its Info |
+
+What it replaces: a strip of bare titles in the data's own order.
+
+## a-long-section-title-is-one-word-and-a-line
+
+> Owner (2026-11-28), on [placement-is-one-word-its-meaning-a-line](batches_decision.md#placement-is-one-word-its-meaning-a-line): *"untuk judul yang panjang"*.
+
+```
+before                              now
+▤ Ditaruh Saat Diterima             ▤ Penempatan
+                                      Rak tempat batch ini ditaruh saat diterima.
+```
+
+| | |
+| --- | --- |
+| when | a section title that runs long — a short one stays as it is |
+| how | one word on the section AND in the nav; what it means is the section's `description`, a quiet line under the title |
+
+What it replaces: a long section title, the nav's label as long.
+
+## a-section-cards-filter-spans-the-card
+
+> Owner (2026-11-28): *"untuk card semacam itu, tidak untuk filter halaman penuh"*.
+
+```
+┌ Riwayat ──────────────────────────────────────────────────────┐
+│ [📅 7 hari terakhir          × ⌄]  [Semua kegiatan       × ⌄] │   ← the card's width, the main one wider
+```
+
+| | |
+| --- | --- |
+| where | a filter INSIDE a section card on a detail page — its search, its date, its kind |
+| the width | the card's: one filter full width (`FilterSearch` `full`, `DateRangePicker` `full`); two share the row, the main one wider (4 : 3); on a phone one under the other |
+| ✗ not | a page's own filter strip — that stays `FilterBar`, its fields their fixed slots |
+
+What it replaces: a section's filter at its own narrow width, the card's row empty beside it.
+
+## a-rack-is-its-code-with-its-name-under
+
+> Owner (2026-11-28): *"jika ada namanya, lebih bagus begitu"*.
+
+```
+A-01-1          ← the code painted on the shelf, bold
+Aisle A bawah   ← its name, small and quiet — only when it has one
+```
+
+| | |
+| --- | --- |
+| where | every list, table and ledger that names a rack; one line where it is inline (`A-01-1 · Aisle A bawah`) |
+| no name | the code alone |
+| search | finds a rack by its code or its name |
+
+What it replaces: the code alone.
+
+## last-opname-is-a-badge
+
+> Owner (2026-11-28): *"untuk last opname"*.
+
+| | |
+| --- | --- |
+| the badge | a rack's *Opname terakhir* — the day in green within two weeks, in amber past them, *Belum pernah* in grey; the full date on its hover |
+| the component | `LastCountBadge` — it lives under the batch page; the day a second page uses it, it moves to `features/` |
+| ✗ not | every date — only the last count, where how fresh it is IS the information |
+
+What it replaces: the last count as a plain date, or a dash.
+
+## a-stock-ledgers-kind-is-a-badge
+
+> Owner (2026-11-28): *"iyaps, biar lebih kelihatan dan bisa dibedakan"*.
+
+| | |
+| --- | --- |
+| the badge | every stock ledger's kind in a subtle badge of its hue (`MovementTable` `kindBadge`, `kindPalette`) — in green (Diterima, Ditransfer masuk, Dikembalikan, Dibatalkan, Ditemukan), out orange (Diambil, Ditransfer keluar, Sampel, Rusak), a move blue, a count or a price grey. The kinds #143 split out of RETURN and ADJUST (cancel, found, broken) sort by the same rule, and the Kegiatan filter offers them |
+| why | seen at a glance, and told apart without reading the word |
+
+What it replaces: the kind as its plain word, on every ledger but a batch's.
+
+## a-stock-ledger-filters-by-one-kind
+
+> Owner (2026-11-28): *"jika memang opsional dan bisa diclear, lebih bagus ada closeablenya"*.
+
+```
+[📅 7 hari terakhir          × ⌄]  [Semua kegiatan       × ⌄]
+                                    (Diterima) (Diambil) (Dipindahkan) …
+```
+
+| | |
+| --- | --- |
+| the filter | a stock ledger narrows by ONE kind — as StockHistory's filter takes it — from `MovementKindSelect`: a search select whose options are the kinds' badges; empty is every kind |
+| its × | an OPTIONAL filter that can be cleared carries an × that clears it ([every-filter-clears-from-its-own-x](#every-filter-clears-from-its-own-x)) — the date range's too, inside its trigger before the chevron (`DateRangePicker` `clearable`) |
+
+What it replaces: a ledger filtered by date alone, and a date range cleared only from inside its panel.
+
+## a-detail-info-is-label-over-value
+
+> Owner (2026-11-28): *"iyaps"* — the batch page's [the-batch-info-reads-label-over-value](batches_decision.md#the-batch-info-reads-label-over-value), drawn from the owner's picture.
+
+```
+Dari
+Restok #503          (bold)
+─────────────────
+Diterima oleh
+Budi Santoso (budi)  (bold)
+```
+
+| | |
+| --- | --- |
+| a fact | the label `sm` in `fg.muted`, the value under it in bold; an absent value a dash |
+| between | a thin line (`StackSeparator`) |
+| the component | `InfoFact` — under the batch page; the day a second page uses it, it moves to `features/` or `components/` |
+
+What it replaces: Info as `Fact` — a small bold label over a plain value.
+
+## info-is-the-last-section
+
+> Owner (2026-11-28), agreeing the batch page's [info-batch-comes-last](batches_decision.md#info-batch-comes-last) for every detail page.
+
+| | |
+| --- | --- |
+| the order | the record's own facts are the lowest priority — the last section on a narrow screen and last in the nav |
+| a wide screen | Info may stand beside the rest; it is still the nav's last |
+
+What it replaces: Info second, between the sections people work in.
+
+## time-left-is-a-badge-beside-its-day
+
+> Owner (2026-11-28): *"iyaps"*.
+
+```
+Kedaluwarsa
+17 Des  ( 20 hari lagi )
+```
+
+| | |
+| --- | --- |
+| the day | at the size of the facts above it |
+| how long is left | a subtle badge beside it, its band a status role — `error` once past, `warning` within 30 days, `gray` beyond (`ExpiryCell` `leftAsBadge`) |
+| ✗ not | a table's column — there it is the coloured words under the day ([a-day-without-a-time-is-shown-alone](#a-day-without-a-time-is-shown-alone)) |
+
+What it replaces: the day and how long is left as one line of coloured words.
+
+## every-page-arrives-in-order
+
+> Owner (2026-11-28): *"iyaps, selain itu semua halaman harusnya dan setiap halaman akan ada animasi ringan seperti ini"*.
+
+```
+0ms    heading (and the nav)
+50ms     figures
+100ms      first section (a side column with it)
+150ms        next section …     each its own `enter` — a fade and an 8px rise, 180ms
+```
+
+| | |
+| --- | --- |
+| every page | arrives block by block, 50ms apart — `enterStep(n)` from `lib/motion.ts` on each block, in reading order; the page root carries NO `enter` of its own (a rise inside a rise reads as 16px) |
+| light | the theme's own `enter`; played on mount only — a refetch moves nothing; a device asking for less motion gets none ([motion-is-small-quick-and-shared](#motion-is-small-quick-and-shared)) |
+| applied | a batch's page; every other page the day it is next worked on |
+
+What it replaces: one `enter` on a page's root — everything rising at once.
+
+## what-a-thing-is-is-said-on-its-list
+
+> Owner (2026-11-28), agreeing the batch page's [what-a-batch-is-said-on-the-list-only](batches_decision.md#what-a-batch-is-said-on-the-list-only) for every record.
+
+| | |
+| --- | --- |
+| where | *Apa itu X?* lives on X's LIST, where the word is met first |
+| ✗ not | a record's own page — somebody there already opened one |
+
+What it replaces: the explainer repeated on each record's page.
+
+## a-button-says-its-dialogs-title
+
+> Owner (2026-11-28): *"Oke"* — on the batch page's *Koreksi* made *Sesuaikan* ([the-batch-page-adjusts-its-own-batch](batches_decision.md#the-batch-page-adjusts-its-own-batch)).
+
+| | |
+| --- | --- |
+| the rule | the button that opens a dialog says the word its title opens with — *Sesuaikan* → *Sesuaikan Stok*; the same action, one word, on every screen |
+
+What it replaces: *Koreksi* opening *Sesuaikan Stok*.
+
+## a-dialog-from-a-record-is-about-that-record
+
+> Owner (2026-11-28): *"Jika memang bisa, sesuaikan, karena konteksnya sudah tidak untuk semua tapi untuk spesifik detail
+> yang dibuka"* — with the batch page's [the-batch-page-adjusts-its-own-batch](batches_decision.md#the-batch-page-adjusts-its-own-batch) and
+> [the-adjust-dialog-leads-with-what-it-adjusts](batches_decision.md#the-adjust-dialog-leads-with-what-it-adjusts).
+
+```
+from Batch #5031
+┌ Sesuaikan Stok ─────────────────────────────────────────┐
+│ [img] Beras Pandan Wangi 5kg                 Tersedia 7 │
+│ Batch #5031 · Restok #503                     Tersisa 7 │   ← the record it was opened from, with its figures
+│ Tempat yang dihitung  [ A-01-1 · B-02-1 only ⌄ ]       │   ← only its own choices
+```
+
+| | |
+| --- | --- |
+| takes it | a dialog opened from a record acts on THAT record — it never asks for it again |
+| says it | at the top, with its figures, before anything is asked |
+| narrows | where it can, its choices are the record's own (a batch's racks), never the whole warehouse's |
+| where it can't | opened from a broader page (a product's), it asks as before |
+
+What it replaces: a shared dialog that asked for the record it was opened from, and offered everything.
+
+## a-count-change-previews-as-a-receipt
+
+> Owner (2026-11-28): *"oke"* — the batch page's [the-adjust-preview-shows-its-working](batches_decision.md#the-adjust-preview-shows-its-working).
+
+```
+┌ Pratinjau ─────────────────────┐
+│ Stok sebelumnya              5 │
+│ Rusak                       −2 │
+│ Selisih      [↓ Berkurang]  −2 │
+│ Total                        3 │   a found: Total setelah disetujui — its approval line under the box
+└────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| where | at the form's RIGHT; under the form on a phone |
+| the rows | before · the reason and its units · the difference with a status badge (Berkurang `error` ↓, Bertambah `success` ↑, Tetap `gray`) · the total, largest |
+| always | on screen from the start, a dash until it can be worked out |
+
+What it replaces: *5 → 3 (-2)*, shown only once the form could be sent.
+
+## a-section-cards-pager-steps-aside-when-it-fits
+
+> Owner (2026-11-28): *"untuk yang card seperti riwayat dan penempatan di halaman batch ini"* — answering where
+> [the-batch-page-hides-a-pager-that-fits](batches_decision.md#the-batch-page-hides-a-pager-that-fits) applies.
+
+```
+a section card's list, page 1, 2 rows, smallest page size 10       a page's own list
+│ A-01-1          5   (25 Nov) │                                   always its pager
+│ B-02-1          2   (29 Okt) │  ← no line under the last row      (the-pager-is-always-on-screen)
+└──────────────────────────────┘  ← no pager
+```
+
+| | |
+| --- | --- |
+| where | a list inside a section CARD of a detail page (a batch's Penempatan and Riwayat) |
+| when | page 1, and the list's total no more than the smallest per-page option — `GrowingPager` told its `total` |
+| the table | with no pager under it, no line under its last row (`ENDS_BARE`, `MovementTable` `endsBare`) |
+| ✗ not | a page's own list — it keeps [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) |
+
+What it replaces: *‹ [1] ›* and the per-page picker under a section's list of two.
+
+## a-phone-sticks-at-the-screens-top
+
+> Owner, in chat (2026-11-28), with a picture of a batch's title bar stuck on a phone, the page showing through above it:
+> *"sticky headernya ada jarak atas di mobile"*.
+
+```
+before                                    now
+│ Rp 1.980.000      Rp 2.000.000 │  ← 12px of the page showing through
+├────────────────────────────────┤        ┌────────────────────────────────┐
+│ ←  Batch #1                  ✎ │        │ ←  Batch #1                  ✎ │  ← at the screen's very top
+```
+
+| | |
+| --- | --- |
+| why | on a phone `<main>` is the scroller (the tab bar stays put), and a sticky element sticks at its scroller's PADDING edge — the shell's 12px gutter was a gap over every sticky bar, the page scrolling through it. Storybook never showed it: there the document scrolls |
+| the rule | the gutter (`p="card"`, and `pb="12"` that clears the bubble) is on a box INSIDE `<main>`; `<main>` itself carries no padding |
+| every phone page | one change in `MobileLayout`, so every sticky bar, header and strip on a phone sticks at the top |
+| pinned by | `Layouts/Mobile/AppShell` *What sticks, sticks at the top* (a sticky probe, `<main>` scrolled: its top is `<main>`'s — with `<main>` padded 12px it measured 12) · *The phone shell has no top bar* (`<main>` unpadded, the box inside it padded) |
+
+What it replaces: the phone shell's gutter on `<main>`, 12px of page over every sticky bar.
+
+## a-phone-detail-page-has-no-section-chips
+
+> Owner, in chat (2026-11-28): *"simpan … 1. oke"* — the batch page's
+> [the-phone-batch-page-has-no-section-chips](batches_decision.md#the-phone-batch-page-has-no-section-chips) for every detail
+> page.
+
+```
+before — stuck while reading               now
+[Penempatan] [Riwayat] [Info Batch]        ←  Batch #5031                   ✎   ← the title bar alone, at the top
+←  Batch #5031                   ✎
+```
+
+| | |
+| --- | --- |
+| a phone | no section chips — a detail page's few sections are read by scrolling; the chips' row was half of what stuck over the page |
+| what sticks | the title bar alone, once the heading has gone behind it — at the screen's top ([a-phone-sticks-at-the-screens-top](#a-phone-sticks-at-the-screens-top)) |
+| a desktop | keeps its nav column |
+| how | `ProductStickyStrip` without `chips` |
+| applied | a batch's page; the product's, a rack's and a restock's pages the day they are next worked on |
+
+What it replaces: on a phone, the section chips stuck over the page with the title bar under them.
+
+## a-detail-heading-starts-at-the-gutter
+
+> Owner, in chat (2026-11-28): *"simpan … 2. yups"* — the batch page's *"heading yang sekarang ada jarak di atas …
+> hilangkan"*.
+
+| | |
+| --- | --- |
+| the rule | a detail page's heading starts at the shell's own gutter — nothing over it |
+| the cause | the sticky strip is 0 tall where it holds no chips (a desktop's always), and as a child of the page's gapped stack it took a gap after it: 16px of air over the heading |
+| how | the strip outside the gapped stack — a batch's page root is a plain box, the grid under the strip holding the page's own gaps |
+| applied | a batch's page (phone 28 → 12px, desktop 38 → 22px); every other detail page on the strip the day it is next worked on |
+
+What it replaces: 16px of air over every detail page's heading.
+
+## a-section-cards-filter-opens-from-the-bottom
+
+> Owner, in chat (2026-11-28): *"simpan … 5. yups"* — the batch page's
+> [a-phone-filter-opens-from-the-bottom](batches_decision.md#a-phone-filter-opens-from-the-bottom).
+
+```
+[📅 Semua tanggal ⌄]  a tap → ┌ Tanggal   × ┐         [(Diambil)   × ⌄]  a tap → ┌ Kegiatan        × ┐
+                              │ quick ranges │                                     │ [⌕ Cari kegiatan] │
+                              │ calendar     │                                     │ (Diterima)        │  44px rows
+                              │ [Terapkan]   │                                     │ (Diambil)       ✓ │
+```
+
+| | |
+| --- | --- |
+| where | a filter INSIDE a section card, on a phone — `DateRangePicker` and `MovementKindSelect` with `sheetOnPhone` |
+| the date | its panel, stacked, in a drawer from the bottom; a quick range or Apply closes it |
+| a pick from a few | the control is the pick (a kind's badge) with its ×; the drawer a search and the options as 44px rows, the picked one ticked, the words a step larger (14px); a tap picks and closes |
+| no keyboard | the drawer opens on its close button, never the search |
+| ✗ not | a list page's filters — they sit in `FilterBar`'s sheet already ([a-phone-filters-from-a-sheet](#a-phone-filters-from-a-sheet)), and a drawer would open over a drawer |
+| family | [the-phone-opens-its-panels-from-the-bottom](#the-phone-opens-its-panels-from-the-bottom) |
+
+What it replaces: on a phone, a popover and a combobox list under a section card's filters.

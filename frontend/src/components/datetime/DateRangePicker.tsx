@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Box, Button, CloseButton, Flex, Icon, Popover, Portal, Stack, Text, useBreakpointValue } from "@chakra-ui/react";
+import { Box, Button, CloseButton, Drawer, Flex, Icon, Popover, Portal, Stack, Text, useBreakpointValue } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Calendar, ChevronDown, X } from "lucide-react";
 import { parseLocalDate } from "../../lib/datetime";
@@ -77,7 +77,7 @@ export function isAllDates(range: DateRange): boolean {
 }
 
 export const description =
-  "Grafana-style date range picker (#224): a Popover with quick relative ranges (\"Last 7 days\" up to two weeks, then 1, 3 and 6 months and 1 year, counted on the calendar — live/rolling) beside an absolute From–To picked on a month-grid RangeCalendar. Emits a DateRange union — a relative range stays live because it stores the day count, not resolved dates. `resolveRange(value)` turns it into a unix-seconds {fromUnix,toUnix} window. Pass `fields` and the panel opens on a Date row of radio pills (e.g. Created vs Arrived) above the two panes, and the trigger reads \"Arrived · Last 7 days\" — one control, one panel, picks BOTH which timestamp and which window. Picking a date type keeps the panel open. Pass `clearable` and an × on the trigger, once a window is set, empties it back to every date.";
+  "Grafana-style date range picker (#224): a Popover with quick relative ranges (\"Last 7 days\" up to two weeks, then 1, 3 and 6 months and 1 year, counted on the calendar — live/rolling) beside an absolute From–To picked on a month-grid RangeCalendar. Emits a DateRange union — a relative range stays live because it stores the day count, not resolved dates. `resolveRange(value)` turns it into a unix-seconds {fromUnix,toUnix} window. Pass `fields` and the panel opens on a Date row of radio pills (e.g. Created vs Arrived) above the two panes, and the trigger reads \"Arrived · Last 7 days\" — one control, one panel, picks BOTH which timestamp and which window. Picking a date type keeps the panel open. Pass `clearable` and an × on the trigger, once a window is set, empties it back to every date. Pass `sheetOnPhone` and on a phone the panel opens as a drawer from the bottom.";
 
 /** One selectable date type for the panel's Date row — e.g. `{ value: ARRIVED, label: "Arrived" }`. */
 export interface DateField<T extends string | number = string> {
@@ -109,6 +109,13 @@ export interface DateRangePickerProps<T extends string | number = string> {
    * panel's *Hapus*, as on every screen that has not asked.
    */
   clearable?: boolean;
+  /**
+   * ON A PHONE, THE PANEL IN A DRAWER FROM THE BOTTOM — the same quick ranges and calendar, stacked, where a thumb is
+   * (owner, on a batch's Riwayat: *"untuk filter select dan tanggal, di mobile bisa pakai drawer dari bawah?"*,
+   * a-phone-filter-opens-from-the-bottom). Opt-in: a list whose filters already sit in FilterBar's sheet keeps the
+   * popover, or a drawer would open over a drawer.
+   */
+  sheetOnPhone?: boolean;
 }
 
 // DateRangePicker is the shared, Grafana-shaped date filter (#224). The trigger reads back the
@@ -135,6 +142,7 @@ export function DateRangePicker<T extends string | number = string>({
   testId,
   full = false,
   clearable = false,
+  sheetOnPhone = false,
 }: DateRangePickerProps<T>) {
   const { t, i18n } = useTranslation();
   // The trigger's × — only while a window narrows something.
@@ -274,54 +282,157 @@ export function DateRangePicker<T extends string | number = string>({
     </>
   );
 
+  // THE PANEL — the date row, then the quick ranges and the calendar: side by side on a desktop, stacked on a phone. The
+  // popover's body, or the phone's sheet.
+  const panelBody = (
+    <>
+      {chosen && fields ? (
+        // THE DATE ROW — over both panes, answered first. `w="0" minW="full"` keeps the pills from widening the
+        // panel: they wrap inside the width the two panes give it, however many types a screen offers.
+        <Stack gap="2" p="card" w="0" minW="full" borderBottomWidth="1px" borderColor="border">
+          <Text fontWeight="semibold" fontSize="sm">
+            {t("dateRange.field")}
+          </Text>
+          {fields.length > 1 ? (
+            <RadioPills
+              value={String(chosen.value)}
+              onChange={(next) => {
+                const picked = fields.find((f) => String(f.value) === next);
+                if (picked) onFieldChange?.(picked.value);
+              }}
+              options={fields.map((f) => ({
+                value: String(f.value),
+                label: f.label,
+                mark: f.mark,
+                testId: testId ? `${testId}-field-${String(f.value)}` : undefined,
+              }))}
+              ariaLabel={t("dateRange.field")}
+              testId={testId ? `${testId}-field` : undefined}
+            />
+          ) : (
+            // One date is SHOWN, not offered — a single radio is a choice with no alternative.
+            <Text fontSize="sm" data-testid={testId ? `${testId}-field` : undefined}>
+              {chosen.label}
+            </Text>
+          )}
+        </Stack>
+      ) : null}
+      {phone ? (
+        // A PHONE: the quick ranges first — one tap, the common answer — wrapped in a row, the calendar under them.
+        <Stack gap="0">
+          <Stack gap="2" p="card" borderBottomWidth="1px" borderColor="border">
+            <Text fontWeight="semibold" fontSize="sm">
+              {t("dateRange.quick")}
+            </Text>
+            <Flex wrap="wrap" gap="2">
+              {quickButtons}
+            </Flex>
+          </Stack>
+          <Stack gap="card" p="card">
+            {absolutePane}
+          </Stack>
+        </Stack>
+      ) : (
+        <Flex align="stretch">
+          <Stack gap="card" p="card" minW="72" borderRightWidth="1px" borderColor="border">
+            {absolutePane}
+          </Stack>
+          <Stack gap="1" p="card" minW="44">
+            <Text fontWeight="semibold" fontSize="sm" mb="1">
+              {t("dateRange.quick")}
+            </Text>
+            {quickButtons}
+          </Stack>
+        </Flex>
+      )}
+    </>
+  );
+
+  // THE TRIGGER, written once — the popover's, or the sheet's on a phone. `onClick` is the sheet's; the popover's trigger
+  // opens it itself.
+  const trigger = (onClick?: () => void) => (
+    <Button
+      variant="outline"
+      disabled={disabled}
+      data-testid={testId}
+      minW="52"
+      w={full ? "full" : undefined}
+      justifyContent="start"
+      onClick={onClick}
+    >
+      <Icon as={Calendar} boxSize="4" />
+      {/* Room for the × between the label and the chevron — × then ⌄, as a search select's — so the label never
+          runs under it. */}
+      <Text truncate me={showClear ? "8" : undefined}>
+        {chosen ? (
+          <Box as="span" color="fg.muted" data-testid={testId ? `${testId}-field-label` : undefined}>
+            {chosen.label} ·{" "}
+          </Box>
+        ) : null}
+        {triggerLabel()}
+      </Text>
+      <Icon as={ChevronDown} boxSize="4" ml="auto" color="fg.muted" />
+    </Button>
+  );
+
+  // The × sits BESIDE the trigger, over its right end — a button inside the trigger button would be a button in a
+  // button, and a click on it would open the panel too.
+  const clearX = showClear && (
+    <CloseButton
+      size="2xs"
+      variant="ghost"
+      color="fg.muted"
+      position="absolute"
+      top="50%"
+      translate="0 -50%"
+      right="8"
+      // It fades in when a window is set, as every filter's × (`a-filter-answers-as-it-changes`).
+      animationStyle="appear"
+      aria-label={t("dateRange.clear")}
+      data-testid={testId ? `${testId}-reset` : undefined}
+      onClick={() => onChange(ALL_DATES)}
+    />
+  );
+
+  // A PHONE'S SHEET (sheetOnPhone): the same panel, stacked, in a drawer from the bottom — where a thumb is.
+  if (phone && sheetOnPhone) {
+    return (
+      <>
+        <Box position="relative" display={full ? "block" : "inline-block"} w={full ? "full" : undefined}>
+          {trigger(() => openChange(true))}
+          {clearX}
+        </Box>
+        <Drawer.Root open={open} onOpenChange={(e) => openChange(e.open)} placement="bottom">
+          <Portal>
+            <Drawer.Backdrop />
+            <Drawer.Positioner>
+              <Drawer.Content roundedTop="l3" maxH="88dvh" data-testid={testId ? `${testId}-panel` : undefined}>
+                <Drawer.Header>
+                  <Drawer.Title>{t("dateRange.field")}</Drawer.Title>
+                </Drawer.Header>
+                <Drawer.CloseTrigger asChild>
+                  <CloseButton size="sm" />
+                </Drawer.CloseTrigger>
+                <Drawer.Body p="0" overflowY="auto">
+                  {panelBody}
+                </Drawer.Body>
+              </Drawer.Content>
+            </Drawer.Positioner>
+          </Portal>
+        </Drawer.Root>
+      </>
+    );
+  }
+
   return (
     <Popover.Root
       open={open}
       onOpenChange={(e) => openChange(e.open)}
       positioning={{ placement: "bottom-start" }}
     >
-      {/* The × sits BESIDE the trigger, over its right end — a button inside the trigger button would be a button in a
-          button, and a click on it would open the panel too. */}
       <Box position="relative" display={full ? "block" : "inline-block"} w={full ? "full" : undefined}>
-        <Popover.Trigger asChild>
-          <Button
-            variant="outline"
-            disabled={disabled}
-            data-testid={testId}
-            minW="52"
-            w={full ? "full" : undefined}
-            justifyContent="start"
-          >
-            <Icon as={Calendar} boxSize="4" />
-            {/* Room for the × between the label and the chevron — × then ⌄, as a search select's — so the label never
-                runs under it. */}
-            <Text truncate me={showClear ? "8" : undefined}>
-              {chosen ? (
-                <Box as="span" color="fg.muted" data-testid={testId ? `${testId}-field-label` : undefined}>
-                  {chosen.label} ·{" "}
-                </Box>
-              ) : null}
-              {triggerLabel()}
-            </Text>
-            <Icon as={ChevronDown} boxSize="4" ml="auto" color="fg.muted" />
-          </Button>
-        </Popover.Trigger>
-        {showClear && (
-          <CloseButton
-            size="2xs"
-            variant="ghost"
-            color="fg.muted"
-            position="absolute"
-            top="50%"
-            translate="0 -50%"
-            right="8"
-            // It fades in when a window is set, as every filter's × (`a-filter-answers-as-it-changes`).
-            animationStyle="appear"
-            aria-label={t("dateRange.clear")}
-            data-testid={testId ? `${testId}-reset` : undefined}
-            onClick={() => onChange(ALL_DATES)}
-          />
-        )}
+        <Popover.Trigger asChild>{trigger()}</Popover.Trigger>
+        {clearX}
       </Box>
 
       {/* Portalled so the panel escapes any clipping/stacking ancestor — an overflow container or a
@@ -336,70 +447,11 @@ export function DateRangePicker<T extends string | number = string>({
           overflowY={phone ? "auto" : undefined}
           data-testid={testId ? `${testId}-panel` : undefined}
         >
-          <Popover.Body p="0">
-            {chosen && fields ? (
-              // THE DATE ROW — over both panes, answered first. `w="0" minW="full"` keeps the pills from widening the
-              // panel: they wrap inside the width the two panes give it, however many types a screen offers.
-              <Stack gap="2" p="card" w="0" minW="full" borderBottomWidth="1px" borderColor="border">
-                <Text fontWeight="semibold" fontSize="sm">
-                  {t("dateRange.field")}
-                </Text>
-                {fields.length > 1 ? (
-                  <RadioPills
-                    value={String(chosen.value)}
-                    onChange={(next) => {
-                      const picked = fields.find((f) => String(f.value) === next);
-                      if (picked) onFieldChange?.(picked.value);
-                    }}
-                    options={fields.map((f) => ({
-                      value: String(f.value),
-                      label: f.label,
-                      mark: f.mark,
-                      testId: testId ? `${testId}-field-${String(f.value)}` : undefined,
-                    }))}
-                    ariaLabel={t("dateRange.field")}
-                    testId={testId ? `${testId}-field` : undefined}
-                  />
-                ) : (
-                  // One date is SHOWN, not offered — a single radio is a choice with no alternative.
-                  <Text fontSize="sm" data-testid={testId ? `${testId}-field` : undefined}>
-                    {chosen.label}
-                  </Text>
-                )}
-              </Stack>
-            ) : null}
-            {phone ? (
-              // A PHONE: the quick ranges first — one tap, the common answer — wrapped in a row, the calendar under them.
-              <Stack gap="0">
-                <Stack gap="2" p="card" borderBottomWidth="1px" borderColor="border">
-                  <Text fontWeight="semibold" fontSize="sm">
-                    {t("dateRange.quick")}
-                  </Text>
-                  <Flex wrap="wrap" gap="2">
-                    {quickButtons}
-                  </Flex>
-                </Stack>
-                <Stack gap="card" p="card">
-                  {absolutePane}
-                </Stack>
-              </Stack>
-            ) : (
-              <Flex align="stretch">
-                <Stack gap="card" p="card" minW="72" borderRightWidth="1px" borderColor="border">
-                  {absolutePane}
-                </Stack>
-                <Stack gap="1" p="card" minW="44">
-                  <Text fontWeight="semibold" fontSize="sm" mb="1">
-                    {t("dateRange.quick")}
-                  </Text>
-                  {quickButtons}
-                </Stack>
-              </Flex>
-            )}
-          </Popover.Body>
+          <Popover.Body p="0">{panelBody}</Popover.Body>
         </Popover.Content>
       </Popover.Positioner>
       </Portal>
     </Popover.Root>
   );
 }
+

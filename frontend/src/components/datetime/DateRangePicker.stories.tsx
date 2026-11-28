@@ -100,6 +100,28 @@ export const OnAPhoneThePanelFitsTheScreen: Story = {
   },
 };
 
+// ON A PHONE, A DRAWER FROM THE BOTTOM (sheetOnPhone, a-phone-filter-opens-from-the-bottom) — the same panel, stacked, in
+// a drawer at the screen's foot; a quick range picks and closes it. Without the flag a phone keeps the popover above.
+export const OnAPhoneASheetFromTheBottom: Story = {
+  name: "On a phone, a sheet from the bottom",
+  globals: { viewport: { value: "mobile1" } },
+  args: { sheetOnPhone: true },
+  play: async ({ args, canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByTestId("range"));
+    const panel = await screen.findByTestId("range-panel");
+    await waitFor(() => expect(panel).toBeVisible());
+
+    // A drawer: a dialog, its foot on the screen's foot, at the screen's width.
+    await expect(panel).toHaveAttribute("role", "dialog");
+    await expect(Math.round(panel.getBoundingClientRect().bottom)).toBe(window.innerHeight);
+    await expect(Math.round(panel.getBoundingClientRect().width)).toBe(window.innerWidth);
+
+    await userEvent.click(screen.getByTestId("range-quick-7"));
+    await expect(args.onChange).toHaveBeenLastCalledWith({ kind: "relative", days: 7 });
+    await waitFor(() => expect(screen.queryByTestId("range-panel")).toBeNull());
+  },
+};
+
 // One date type is SHOWN, not offered: the trigger and the panel name it, and there is no radio to pick.
 export const WithOneDateType: Story = {
   args: {

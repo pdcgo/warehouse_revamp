@@ -3585,6 +3585,7 @@
     "searchRack": "Cari rak…",
     "noRackMatch": "Tidak ada rak yang cocok.",
     "lastOpname": "Opname terakhir",
+    "lastOpnameShort": "Opname",
     "neverCounted": "Belum pernah",
     "actions": "Aksi batch",
     "noHistoryHint": "Setiap barang batch ini yang ditaruh, diambil, dipindah, atau dihitung muncul di sini."
@@ -3635,7 +3636,9 @@
       "none": "Tidak ada kegiatan yang cocok",
       "cancel": "Dibatalkan",
       "broken": "Rusak",
-      "found": "Ditemukan"
+      "found": "Ditemukan",
+      "title": "Kegiatan",
+      "search": "Cari kegiatan"
     },
     "incoming": "Dalam perjalanan",
     "lastOrder": "Pesanan terakhir",

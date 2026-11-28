@@ -144,8 +144,40 @@ export const Mobile: Story = {
 
     await expect(canvas.getByTestId("batch-detail-adjust")).toHaveAccessibleName("Adjust");
     await expect(canvas.getByTestId("batch-detail-adjust")).toHaveTextContent("");
-    await expect(canvas.getByTestId("section-nav-strip")).toBeVisible();
+    // Penempatan's last count is one word over its badge on a phone.
+    await expect(canvas.getByTestId("batch-detail-opname-header")).toHaveTextContent(/^Opname$/);
+
+    // RIWAYAT'S TWO FILTERS OPEN AS DRAWERS FROM THE BOTTOM on a phone (a-phone-filter-opens-from-the-bottom): Kegiatan is a
+    // button over a sheet, not a field to type into; the date's panel is a dialog at the screen's foot.
+    await expect(canvas.getByTestId("batch-detail-kind").tagName).toBe("BUTTON");
+    await userEvent.click(canvas.getByTestId("batch-detail-date"));
+    const datePanel = await screen.findByTestId("batch-detail-date-panel");
+    await waitFor(() => expect(datePanel).toBeVisible());
+    await expect(datePanel).toHaveAttribute("role", "dialog");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByTestId("batch-detail-date-panel")).toBeNull());
+
+    // RIWAYAT'S BLOCK LEADS WITH THE RACK (riwayat-on-a-phone-leads-with-the-rack) — its code in bold and its name on top,
+    // the kind's badge and the day under them.
+    const block = (
+      await within(canvas.getByTestId("batch-history-panel")).findAllByTestId(/^batch-detail-history-row-\d+$/, {}, { timeout: 4000 })
+    )[0]!;
+    const place = within(block).getByTestId(/-place$/);
+    await expect(place).toHaveTextContent(/^[AB]-0\d-1 · Aisle [AB] bawah$/);
+    await expect(getComputedStyle(place.firstElementChild as HTMLElement).fontWeight).toBe("700");
+    const kind = within(block).getByTestId(/-kind$/);
+    await expect(kind).toHaveTextContent("Received");
+    await expect(kind.getBoundingClientRect().top).toBeGreaterThan(place.getBoundingClientRect().bottom - 1);
+
+    // NO SECTION NAV ON A PHONE — neither chips nor the column; the title bar alone sticks, at the very top
+    // (the-phone-batch-page-has-no-section-chips).
+    await expect(canvas.queryByTestId("section-nav-strip")).toBeNull();
     await expect(canvas.queryByTestId("section-nav")).toBeNull();
+    window.scrollTo(0, 600);
+    const bar = canvas.getByTestId("batch-detail-name-bar");
+    await waitFor(() => expect(bar).toHaveAttribute("data-shown", "true"));
+    await expect(Math.round(bar.getBoundingClientRect().top)).toBe(0);
+    window.scrollTo(0, 0);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
 
     // Info is the lowest priority, so on a narrow screen it is the LAST section, under Riwayat (info-batch-comes-last).
@@ -216,9 +248,13 @@ export const OnePageOfSections: Story = {
       await expect(getComputedStyle(first).borderBottomWidth).not.toBe("0px");
     }
 
-    // A nav click jumps there and lights it (a-nav-jump-blinks-where-it-lands).
+    // A nav click jumps there and lights it (a-nav-jump-blinks-where-it-lands). Given the file's long wait: under a full
+    // run's load the jump and the spy's next frame took past the default second, and the story read red.
     await userEvent.click(canvas.getByTestId("section-nav-history"));
-    await waitFor(() => expect(canvas.getByTestId("section-nav-history")).toHaveAttribute("aria-current", "location"));
+    await waitFor(
+      () => expect(canvas.getByTestId("section-nav-history")).toHaveAttribute("aria-current", "location"),
+      { timeout: 4000 },
+    );
   },
 };
 

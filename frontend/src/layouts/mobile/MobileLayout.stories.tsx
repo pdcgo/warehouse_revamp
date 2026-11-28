@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { RouteObject } from "react-router-dom";
-import { Text } from "@chakra-ui/react";
+import { Box, Text } from "@chakra-ui/react";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
@@ -40,6 +40,18 @@ const SHELL: RouteObject = {
     marker("order-drafts", "at-order-drafts"),
     marker("users", "at-users"),
     marker("inventories/batches/:batchId", "at-batch-detail"),
+    // A page with something that STICKS — a detail page's title bar, in small (a-phone-sticks-at-the-screens-top).
+    {
+      path: "sticky-probe",
+      element: (
+        <Box>
+          <Box position="sticky" top="0" h="12" bg="bg" borderBottomWidth="1px" data-testid="sticky-probe">
+            stuck
+          </Box>
+          <Box h="3000px" />
+        </Box>
+      ),
+    },
     // Every OTHER menu link needs somewhere to land: an <a> to a route the router does not know
     // throws a 404 element in place of the whole shell, which would read as the nav having broken.
     marker("*", "at-elsewhere"),
@@ -62,6 +74,7 @@ const AtHome = at("/");
 const AtDrafts = at("/order-drafts");
 const AtUsers = at("/users");
 const AtBatchDetail = at("/inventories/batches/301");
+const AtStickyProbe = at("/sticky-probe");
 
 const meta = {
   title: "Layouts/Mobile/AppShell",
@@ -177,6 +190,29 @@ export const ThePhoneShellHasNoTopBar: Story = {
     await expect(canvas.queryByTestId("mobile-title")).toBeNull();
     await expect(canvas.queryByTestId("notifications")).toBeNull();
     await expect(Math.round(canvas.getByRole("main").getBoundingClientRect().top)).toBe(0);
+
+    // WHAT STICKS, STICKS AT THE SCREEN'S TOP (a-phone-sticks-at-the-screens-top) — <main> is the scroller and carries no
+    // padding: a sticky element sticks at its scroller's padding edge, so a gutter there was a gap over every sticky bar.
+    // The gutter is on the box inside it.
+    const main = canvas.getByRole("main");
+    await expect(getComputedStyle(main).paddingTop).toBe("0px");
+    await expect(getComputedStyle(main.firstElementChild as HTMLElement).paddingTop).not.toBe("0px");
+  },
+};
+
+// …AND PROVED BY SCROLLING (owner: *"sticky headernya ada jarak atas di mobile"*, a-phone-sticks-at-the-screens-top) — a
+// page's sticky bar, scrolled under, stands at <main>'s very top edge: no gap for the page to show through.
+export const WhatSticksSticksAtTheTop: Story = {
+  name: "What sticks, sticks at the top",
+  render: () => <AtStickyProbe />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const probe = await canvas.findByTestId("sticky-probe", {}, { timeout: 4000 });
+    const main = canvas.getByRole("main");
+
+    main.scrollTop = 600;
+    await waitFor(() => expect(main.scrollTop).toBeGreaterThan(500));
+    await expect(Math.round(probe.getBoundingClientRect().top)).toBe(Math.round(main.getBoundingClientRect().top));
   },
 };
 

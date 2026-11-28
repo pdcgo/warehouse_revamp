@@ -8,6 +8,7 @@ import {
   Button,
   CloseButton,
   Dialog,
+  Drawer,
   Field,
   Grid,
   HStack,
@@ -328,9 +329,234 @@ export function AdjustStockDialog({
     </Box>
   );
 
+  // THE FORM, written once — the dialog's body on a desktop, the drawer's on a phone.
+  const body = (
+    <Stack gap="card">
+      {error && (
+        <Text color="error.fg" data-testid="adjust-error">
+          {error}
+        </Text>
+      )}
+
+      {/* WHAT IS BEING ADJUSTED, FIRST (owner: *"dari atas, kasih aja info produk, tersedia berapa unit
+          keseluruhan; kalau di batch seperti sekarang, tampilkan batchnya dan tersisa berapa unit"*,
+          the-adjust-dialog-leads-with-what-it-adjusts) — the product as every screen draws it, with how many
+          units it has in this warehouse; from a batch's page, that batch under it with its units left:
+
+            [img] Beras Pandan Wangi 5kg          Tersedia
+                  SKU-BERAS-5K                     7 unit
+            ───────────────────────────────────────────────
+            Batch #5031                            Tersisa
+            Restok #503                            7 unit      */}
+      <Box borderWidth="1px" borderColor="border" rounded="l2" data-testid="adjust-subject">
+        <Stack gap="0" separator={<StackSeparator />}>
+          <HStack gap="3" px="3" py="2">
+            <Box flex="1" minW="0">
+              <ProductListItem product={{ ...product, teamId: undefined }} />
+            </Box>
+            <SubjectFigure
+              label={t("inventory.adjustAvailable")}
+              units={currentOnHand}
+              testId="adjust-available"
+            />
+          </HStack>
+          {fixedBatch && (
+            <HStack gap="3" px="3" py="2" data-testid="adjust-batch-fixed">
+              <Stack gap="0" flex="1" minW="0">
+                <Text fontWeight="bold">{t("batchDetail.batchNo", { id: fixedBatch.id.toString() })}</Text>
+                {fixedBatch.source && (
+                  <Text fontSize="xs" color="fg.muted">
+                    {fixedBatch.source}
+                  </Text>
+                )}
+              </Stack>
+              <SubjectFigure label={t("inventory.adjustLeft")} units={fixedBatch.ready} testId="adjust-batch-left" />
+            </HStack>
+          )}
+        </Stack>
+      </Box>
+
+      {/* THE FORM, AND ITS PREVIEW AT ITS RIGHT (owner: *"pratinjau kasih di kanannya"*,
+          the-adjust-preview-shows-its-working) — one grid: two columns where there is room, one on a phone,
+          where the preview comes after the note. The same nodes either way, so nothing is drawn twice. */}
+      <Grid
+        // The form a little narrower than the room it was given (owner: *"form kiri sedikit lebih kecilkan"*)
+        // — the preview's column wider, so the reasons still sit in one row.
+        templateColumns={isMobile ? "minmax(0, 1fr)" : "minmax(0, 1fr) 20rem"}
+        gap={isMobile ? "card" : "section"}
+        alignItems="start"
+        data-testid="adjust-layout"
+        data-layout={isMobile ? "stacked" : "side"}
+      >
+        <Stack gap="card" minW="0">
+          <Field.Root required>
+            <Field.Label>{t("inventory.placeCounted")}</Field.Label>
+            {/* From a batch's page, only the racks the batch was put on. */}
+            <RackSelect
+              warehouseId={warehouseId}
+              value={place}
+              onChange={setPlace}
+              allowUnplaced={false}
+              onlyRackIds={fixedBatch?.rackIds}
+            />
+            <Field.HelperText>{t("inventory.placeCountedHelper")}</Field.HelperText>
+          </Field.Root>
+
+          {/* The reason first — it decides whether a batch and which quantity the rest asks for. RADIO PILLS
+              (owner: *"aku ingin itu jadi pilihan radio kalau masih sedikit"*, the-adjust-reason-is-a-radio-pill):
+              four reasons, all on screen at once — the list is StockAdjustReason's and Found, bounded by the code,
+              since each reason has its own ledger rule; one more is a code change, never data that grows. */}
+          <Field.Root required>
+            <Field.Label>{t("inventory.adjustReasonType")}</Field.Label>
+            <RadioPills<Reason>
+              value={reasonType}
+              onChange={(next) => {
+                setReasonType(next);
+                // A found report starts at one unit, not at the rack's whole on-hand — the figure the field
+                // opens with is a recount's.
+                if (next === "found") setAmount("1");
+              }}
+              options={REASONS.map((r) => ({
+                value: r.value,
+                label: t(r.labelKey),
+                testId: `adjust-reason-option-${r.value}`,
+              }))}
+              ariaLabel={t("inventory.adjustReasonType")}
+              testId="adjust-reason-type"
+            />
+          </Field.Root>
+
+          {/* Which batch's units — only for the batch reasons; a recount is batch-agnostic, and a found that waits
+              is put into batches by its approval. A SEARCH SELECT by the batch's own number (owner: *"batch
+              selectnya"*, a-batch-is-picked-by-its-own-number): a product gains a batch with every restock, and
+              the number is on the box's label.
+
+              FROM A BATCH'S PAGE A REASON OPENS NOTHING BUT FOUND'S LINE (owner: *"alasan sudah tidak buka
+              keterangan apapun, kecuali ditemukan"*) — the batch is said at the top already. */}
+          {needsBatch && !fixedBatch && (
+            <Field.Root required>
+              <Field.Label>{t("inventory.adjustBatch")}</Field.Label>
+              <BatchSelect
+                warehouseId={warehouseId}
+                productId={product.id}
+                value={batch === "" ? 0n : BigInt(batch)}
+                onChange={(id) => setPicked(id > 0n ? id.toString() : "")}
+                testId="adjust-batch"
+              />
+            </Field.Root>
+          )}
+
+          <Field.Root required>
+            <Field.Label>{amountLabel}</Field.Label>
+            <QuantityInput
+              min={isBatch ? 1 : 0}
+              width="full"
+              size="sm"
+              value={amount}
+              testId="adjust-amount"
+              onChange={setAmount}
+            />
+            <Field.HelperText>
+              {awaitsApproval ? t("inventory.adjustFoundHelper") : t("inventory.adjustHelper")}
+            </Field.HelperText>
+          </Field.Root>
+
+          <Field.Root>
+            <Field.Label>{t("inventory.adjustNote")}</Field.Label>
+            {/* A two-row box, as the rack's dialogs' notes (owner: *"catatan textarea"*) — why a count was off is
+                often a sentence. */}
+            <Textarea
+              rows={2}
+              value={note}
+              maxLength={NOTE_MAX}
+              placeholder={
+                awaitsApproval ? t("inventory.adjustFoundNotePlaceholder") : t("inventory.adjustReasonPlaceholder")
+              }
+              data-testid="adjust-reason"
+              onChange={(e) => setNote(e.target.value)}
+            />
+            <CharCount value={note} max={NOTE_MAX} testId="adjust-reason-count" />
+          </Field.Root>
+        </Stack>
+        <Stack gap="card" minW="0">
+          {preview}
+          {/* A FOUND WAITS, SAID UNDER ITS PREVIEW (owner: *"untuk keterangan ditemukan stok berubah ketika
+              disetujui kasih di bawah pratinjau saja"*) — beside the figures it qualifies, so nobody reads
+              the total as a correction that has already happened; the form under the reasons opens nothing.
+              ONE LINE (owner: *"alertnya kepanjangan, ada yang lebih ringkas?"*, a-found-waits-in-one-line) —
+              what it claims back on approval is the hover's, for whoever asks. */}
+          {awaitsApproval && (
+            <Alert.Root
+              status="info"
+              title={t("inventory.adjustFoundWaitsApproval")}
+              data-testid="adjust-found-waits"
+            >
+              <Alert.Indicator>
+                <Icon as={Hourglass} boxSize="4" />
+              </Alert.Indicator>
+              <Alert.Content>
+                <Alert.Title fontWeight="normal">{t("inventory.foundWaits")}</Alert.Title>
+              </Alert.Content>
+            </Alert.Root>
+          )}
+        </Stack>
+      </Grid>
+    </Stack>
+  );
+
+  // Batal and Sesuaikan — on a phone two equal halves of the width, under the thumb, as Koreksi Harga's sheet.
+  const halves = isMobile ? "1" : undefined;
+  const buttons = (
+    <HStack gap="2" justify="end" w={isMobile ? "full" : undefined}>
+      <Button variant="outline" flex={halves} data-testid="adjust-cancel" onClick={() => onOpenChange(false)}>
+        {t("inventory.cancel")}
+      </Button>
+      <Button
+        type="submit"
+        colorPalette="brand"
+        flex={halves}
+        loading={busy}
+        disabled={!canSubmit}
+        data-testid="submit-adjust"
+      >
+        {awaitsApproval && <Icon as={Send} boxSize="4" />}
+        {awaitsApproval ? t("inventory.adjustFoundSend") : t("inventory.adjust")}
+      </Button>
+    </HStack>
+  );
+
+  // A PHONE: A DRAWER FROM THE BOTTOM (owner: *"sesuaikan stok juga pakai drawer di bawah"*,
+  // the-adjust-dialog-is-a-sheet-on-a-phone) — the same form, the preview under the note, the two buttons under the thumb;
+  // as Koreksi Harga's sheet beside it and every panel a phone opens (the-phone-opens-its-panels-from-the-bottom). The
+  // form is `display: contents`, so the drawer's body still scrolls between its header and its footer.
+  if (isMobile) {
+    return (
+      <Drawer.Root open={open} onOpenChange={(e) => onOpenChange(e.open)} placement="bottom">
+        <Portal>
+          <Drawer.Backdrop />
+          <Drawer.Positioner>
+            <Drawer.Content roundedTop="l3" maxH="90dvh" data-testid="adjust-dialog">
+              <Box as="form" display="contents" onSubmit={submit}>
+                <Drawer.Header>
+                  <Drawer.Title>{t("inventory.adjustStockTitle")}</Drawer.Title>
+                </Drawer.Header>
+                <Drawer.Body>{body}</Drawer.Body>
+                <Drawer.Footer>{buttons}</Drawer.Footer>
+                {/* After the body, so the first field takes the focus as the sheet opens, not ×. */}
+                <Drawer.CloseTrigger asChild>
+                  <CloseButton size="sm" />
+                </Drawer.CloseTrigger>
+              </Box>
+            </Drawer.Content>
+          </Drawer.Positioner>
+        </Portal>
+      </Drawer.Root>
+    );
+  }
+
   return (
-    // Wide enough for the preview beside the form; a phone's dialog stays its own size, the preview under the note.
-    <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)} size={isMobile ? "md" : "xl"}>
+    // Wide enough for the preview beside the form (a-count-change-previews-as-a-receipt).
+    <Dialog.Root open={open} onOpenChange={(e) => onOpenChange(e.open)} size="xl">
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
@@ -339,198 +565,8 @@ export function AdjustStockDialog({
               <Dialog.Header>
                 <Dialog.Title>{t("inventory.adjustStockTitle")}</Dialog.Title>
               </Dialog.Header>
-
-              <Dialog.Body>
-                <Stack gap="card">
-                  {error && (
-                    <Text color="error.fg" data-testid="adjust-error">
-                      {error}
-                    </Text>
-                  )}
-
-                  {/* WHAT IS BEING ADJUSTED, FIRST (owner: *"dari atas, kasih aja info produk, tersedia berapa unit
-                      keseluruhan; kalau di batch seperti sekarang, tampilkan batchnya dan tersisa berapa unit"*,
-                      the-adjust-dialog-leads-with-what-it-adjusts) — the product as every screen draws it, with how many
-                      units it has in this warehouse; from a batch's page, that batch under it with its units left:
-
-                        [img] Beras Pandan Wangi 5kg          Tersedia
-                              SKU-BERAS-5K                     7 unit
-                        ───────────────────────────────────────────────
-                        Batch #5031                            Tersisa
-                        Restok #503                            7 unit      */}
-                  <Box borderWidth="1px" borderColor="border" rounded="l2" data-testid="adjust-subject">
-                    <Stack gap="0" separator={<StackSeparator />}>
-                      <HStack gap="3" px="3" py="2">
-                        <Box flex="1" minW="0">
-                          <ProductListItem product={{ ...product, teamId: undefined }} />
-                        </Box>
-                        <SubjectFigure
-                          label={t("inventory.adjustAvailable")}
-                          units={currentOnHand}
-                          testId="adjust-available"
-                        />
-                      </HStack>
-                      {fixedBatch && (
-                        <HStack gap="3" px="3" py="2" data-testid="adjust-batch-fixed">
-                          <Stack gap="0" flex="1" minW="0">
-                            <Text fontWeight="bold">{t("batchDetail.batchNo", { id: fixedBatch.id.toString() })}</Text>
-                            {fixedBatch.source && (
-                              <Text fontSize="xs" color="fg.muted">
-                                {fixedBatch.source}
-                              </Text>
-                            )}
-                          </Stack>
-                          <SubjectFigure label={t("inventory.adjustLeft")} units={fixedBatch.ready} testId="adjust-batch-left" />
-                        </HStack>
-                      )}
-                    </Stack>
-                  </Box>
-
-                  {/* THE FORM, AND ITS PREVIEW AT ITS RIGHT (owner: *"pratinjau kasih di kanannya"*,
-                      the-adjust-preview-shows-its-working) — one grid: two columns where there is room, one on a phone,
-                      where the preview comes after the note. The same nodes either way, so nothing is drawn twice. */}
-                  <Grid
-                    // The form a little narrower than the room it was given (owner: *"form kiri sedikit lebih kecilkan"*)
-                    // — the preview's column wider, so the reasons still sit in one row.
-                    templateColumns={isMobile ? "minmax(0, 1fr)" : "minmax(0, 1fr) 20rem"}
-                    gap={isMobile ? "card" : "section"}
-                    alignItems="start"
-                    data-testid="adjust-layout"
-                    data-layout={isMobile ? "stacked" : "side"}
-                  >
-                    <Stack gap="card" minW="0">
-                      <Field.Root required>
-                        <Field.Label>{t("inventory.placeCounted")}</Field.Label>
-                        {/* From a batch's page, only the racks the batch was put on. */}
-                        <RackSelect
-                          warehouseId={warehouseId}
-                          value={place}
-                          onChange={setPlace}
-                          allowUnplaced={false}
-                          onlyRackIds={fixedBatch?.rackIds}
-                        />
-                        <Field.HelperText>{t("inventory.placeCountedHelper")}</Field.HelperText>
-                      </Field.Root>
-
-                      {/* The reason first — it decides whether a batch and which quantity the rest asks for. RADIO PILLS
-                          (owner: *"aku ingin itu jadi pilihan radio kalau masih sedikit"*, the-adjust-reason-is-a-radio-pill):
-                          four reasons, all on screen at once — the list is StockAdjustReason's and Found, bounded by the code,
-                          since each reason has its own ledger rule; one more is a code change, never data that grows. */}
-                      <Field.Root required>
-                        <Field.Label>{t("inventory.adjustReasonType")}</Field.Label>
-                        <RadioPills<Reason>
-                          value={reasonType}
-                          onChange={(next) => {
-                            setReasonType(next);
-                            // A found report starts at one unit, not at the rack's whole on-hand — the figure the field
-                            // opens with is a recount's.
-                            if (next === "found") setAmount("1");
-                          }}
-                          options={REASONS.map((r) => ({
-                            value: r.value,
-                            label: t(r.labelKey),
-                            testId: `adjust-reason-option-${r.value}`,
-                          }))}
-                          ariaLabel={t("inventory.adjustReasonType")}
-                          testId="adjust-reason-type"
-                        />
-                      </Field.Root>
-
-                      {/* Which batch's units — only for the batch reasons; a recount is batch-agnostic, and a found that waits
-                          is put into batches by its approval. A SEARCH SELECT by the batch's own number (owner: *"batch
-                          selectnya"*, a-batch-is-picked-by-its-own-number): a product gains a batch with every restock, and
-                          the number is on the box's label.
-
-                          FROM A BATCH'S PAGE A REASON OPENS NOTHING BUT FOUND'S LINE (owner: *"alasan sudah tidak buka
-                          keterangan apapun, kecuali ditemukan"*) — the batch is said at the top already. */}
-                      {needsBatch && !fixedBatch && (
-                        <Field.Root required>
-                          <Field.Label>{t("inventory.adjustBatch")}</Field.Label>
-                          <BatchSelect
-                            warehouseId={warehouseId}
-                            productId={product.id}
-                            value={batch === "" ? 0n : BigInt(batch)}
-                            onChange={(id) => setPicked(id > 0n ? id.toString() : "")}
-                            testId="adjust-batch"
-                          />
-                        </Field.Root>
-                      )}
-
-                      <Field.Root required>
-                        <Field.Label>{amountLabel}</Field.Label>
-                        <QuantityInput
-                          min={isBatch ? 1 : 0}
-                          width="full"
-                          size="sm"
-                          value={amount}
-                          testId="adjust-amount"
-                          onChange={setAmount}
-                        />
-                        <Field.HelperText>
-                          {awaitsApproval ? t("inventory.adjustFoundHelper") : t("inventory.adjustHelper")}
-                        </Field.HelperText>
-                      </Field.Root>
-
-                      <Field.Root>
-                        <Field.Label>{t("inventory.adjustNote")}</Field.Label>
-                        {/* A two-row box, as the rack's dialogs' notes (owner: *"catatan textarea"*) — why a count was off is
-                            often a sentence. */}
-                        <Textarea
-                          rows={2}
-                          value={note}
-                          maxLength={NOTE_MAX}
-                          placeholder={
-                            awaitsApproval ? t("inventory.adjustFoundNotePlaceholder") : t("inventory.adjustReasonPlaceholder")
-                          }
-                          data-testid="adjust-reason"
-                          onChange={(e) => setNote(e.target.value)}
-                        />
-                        <CharCount value={note} max={NOTE_MAX} testId="adjust-reason-count" />
-                      </Field.Root>
-                    </Stack>
-                    <Stack gap="card" minW="0">
-                      {preview}
-                      {/* A FOUND WAITS, SAID UNDER ITS PREVIEW (owner: *"untuk keterangan ditemukan stok berubah ketika
-                          disetujui kasih di bawah pratinjau saja"*) — beside the figures it qualifies, so nobody reads
-                          the total as a correction that has already happened; the form under the reasons opens nothing.
-                          ONE LINE (owner: *"alertnya kepanjangan, ada yang lebih ringkas?"*, a-found-waits-in-one-line) —
-                          what it claims back on approval is the hover's, for whoever asks. */}
-                      {awaitsApproval && (
-                        <Alert.Root
-                          status="info"
-                          title={t("inventory.adjustFoundWaitsApproval")}
-                          data-testid="adjust-found-waits"
-                        >
-                          <Alert.Indicator>
-                            <Icon as={Hourglass} boxSize="4" />
-                          </Alert.Indicator>
-                          <Alert.Content>
-                            <Alert.Title fontWeight="normal">{t("inventory.foundWaits")}</Alert.Title>
-                          </Alert.Content>
-                        </Alert.Root>
-                      )}
-                    </Stack>
-                  </Grid>
-                </Stack>
-              </Dialog.Body>
-
-              <Dialog.Footer>
-                <Dialog.ActionTrigger asChild>
-                  <Button variant="outline">{t("inventory.cancel")}</Button>
-                </Dialog.ActionTrigger>
-
-                <Button
-                  type="submit"
-                  colorPalette="brand"
-                  loading={busy}
-                  disabled={!canSubmit}
-                  data-testid="submit-adjust"
-                >
-                  {awaitsApproval && <Icon as={Send} boxSize="4" />}
-                  {awaitsApproval ? t("inventory.adjustFoundSend") : t("inventory.adjust")}
-                </Button>
-              </Dialog.Footer>
-
+              <Dialog.Body>{body}</Dialog.Body>
+              <Dialog.Footer>{buttons}</Dialog.Footer>
               <Dialog.CloseTrigger asChild>
                 <CloseButton size="sm" />
               </Dialog.CloseTrigger>

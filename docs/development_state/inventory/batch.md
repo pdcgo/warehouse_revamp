@@ -66,6 +66,21 @@ The owner: *"inisiasi dan kasih keterangan batch itu apa"*. Both batch screens f
   (`ENDS_BARE`, `MovementTable` `endsBare`) — this page only, which contradicts the-pager-is-always-on-screen: asked;
   the cover and the owner's avatar open big (`ImagePreview`, moved to `components/feedback/`, and
   `TeamItem` `onImageClick` — a rule for every screen from now on, [a-small-picture-opens-its-preview](../../technical/frontend/context_decision.md#a-small-picture-opens-its-preview)).
+- ✅ DONE 2026-11-28 — on a phone Sesuaikan Stok opens as a drawer from the bottom (every screen that opens it); the
+  desktop dialog unchanged.
+- ✅ DONE 2026-11-28 — on a phone Riwayat's date and Kegiatan open as drawers from the bottom (`DateRangePicker` and
+  `MovementKindSelect` `sheetOnPhone`, opt-in; the kind drawer opens on its close button, not the search).
+- ✅ DONE 2026-11-28 — on a phone, Riwayat's block leads with the rack (code bold · name), the kind's badge and the day
+  under it (`MovementTable` `placeFirst`, opt-in); Penempatan's last-count column is headed *Opname*; the phone shell's
+  gutter moved inside `<main>`, so every sticky bar on a phone sticks at the top (a-phone-sticks-at-the-screens-top).
+- ✅ DONE 2026-11-28 — on a phone a batch's page has NO section chips; the title bar alone sticks, at the top (62px, was
+  115px) — `ProductStickyStrip`'s `chips` is optional and the batch page passes none; the other detail pages keep theirs.
+  A (one row with a section menu) and C (the strip sliding away on scroll) were built and reverted.
+- ✅ DONE 2026-11-28 — the batch page's rules were made every detail page's (owner: *"aku ingin menyimpannya untuk detail
+  lainnya kedepannya"*): 17 new rows in [context_decision.md](../../technical/frontend/context_decision.md), from
+  `a-detail-leads-with-its-subject-card` to `a-section-cards-pager-steps-aside-when-it-fits`. Applied on the batch page
+  only; every other screen takes them the day it is next worked on. `LastCountBadge` and `InfoFact` still live under
+  `pages/batch-detail/components/` — they move to `features/` the day a second page uses them.
 - ⚠ The acceptance spec `e2e/batch_warehouse_wants_to_see_a_batch.spec.ts` (given 9) looks for *"Put Away at Accept"* (now
   *Placement*) and an exact rack code in Penempatan's first cell (now code + name) — reported to the owner, not edited: the
   acceptance loop owns it.

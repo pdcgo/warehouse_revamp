@@ -84,10 +84,15 @@ export function kindPalette(kind: MovementKind): "green" | "orange" | "blue" | "
     case MovementKind.RECEIVE:
     case MovementKind.TRANSFER_IN:
     case MovementKind.RETURN:
+    // #143's split kinds sort by the same rule: an order's take put back and a found unit come IN, a broken unit goes
+    // OUT of Siap.
+    case MovementKind.CANCEL:
+    case MovementKind.FOUND:
       return "green";
     case MovementKind.PICK:
     case MovementKind.TRANSFER_OUT:
     case MovementKind.SAMPLE:
+    case MovementKind.BROKEN:
       return "orange";
     case MovementKind.MOVE:
       return "blue";

@@ -94,14 +94,18 @@ export function ProductStickyStrip({
   barRef: RefObject<HTMLDivElement>;
   shown: boolean;
   isMobile: boolean;
-  /** The compact SectionNav — drawn on a phone only. */
-  chips: ReactNode;
+  /**
+   * The compact SectionNav — drawn on a phone only. Omit it and a phone has no chips: only the title bar sticks, at the top
+   * (a batch's page — owner: *"yang navigasinya hilangkan saja, tapi header batchnya tetap sticky"*,
+   * the-phone-batch-page-has-no-section-chips).
+   */
+  chips?: ReactNode;
   /** The title row, stuck. */
   children: ReactNode;
 }) {
   return (
     <Box ref={stripRef} position="sticky" top="0" zIndex={10} h={isMobile ? undefined : "0"} data-testid={`${prefix}-header`}>
-      {isMobile && (
+      {isMobile && chips && (
         <Box bg="bg" py="2" borderBottomWidth="1px" borderColor="border">
           {chips}
         </Box>

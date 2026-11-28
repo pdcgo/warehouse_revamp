@@ -96,8 +96,8 @@ function parseId(raw: string | undefined): bigint {
 //                 ┌ Penempatan ── Tempat · Ditaruh · Opname ┐              ┌ Info Batch ── Dari · Diterima oleh ┐
 //                 ┌ Riwayat ── (Tiba · semua tanggal) ─────────────────┐   │ Harga satuan · Kedaluwarsa         │
 //
-// The nav on the left (Section, SectionNav, useScrollSpy); the heading sticks once it scrolls away; on a phone the
-// section chips stick at the top and Koreksi is its icon. Info is the batch's short record, so where there is room it
+// The nav on the left (Section, SectionNav, useScrollSpy); the heading sticks once it scrolls away; on a phone there is
+// no nav at all — only the heading's bar sticks (the-phone-batch-page-has-no-section-chips) — and Sesuaikan is its icon. Info is the batch's short record, so where there is room it
 // stands beside the rest, as a rack's Info does.
 export function BatchDetailPage() {
   const { current } = useTeam();
@@ -579,7 +579,11 @@ export function BatchDetailPage() {
               <Table.Row>
                 <Table.ColumnHeader>{t("batchDetail.place")}</Table.ColumnHeader>
                 <Table.ColumnHeader textAlign="end">{t("batchDetail.readyHere")}</Table.ColumnHeader>
-                <Table.ColumnHeader>{t("batchDetail.lastOpname")}</Table.ColumnHeader>
+                {/* One word on a phone — the badge under it says the rest (owner: *"opname terakhir di mobile terlalu
+                    panjang"*, then *"ganti opname saja"*). */}
+                <Table.ColumnHeader data-testid="batch-detail-opname-header">
+                  {isMobile ? t("batchDetail.lastOpnameShort") : t("batchDetail.lastOpname")}
+                </Table.ColumnHeader>
               </Table.Row>
             </Table.Header>
             <Table.Body>
@@ -699,6 +703,9 @@ export function BatchDetailPage() {
           testId="batch-detail-date"
           full
           clearable
+          // On a phone both open as a drawer from the bottom (owner: *"untuk filter select dan tanggal, di mobile bisa
+          // pakai drawer dari bawah?"*, a-phone-filter-opens-from-the-bottom).
+          sheetOnPhone
         />
         <MovementKindSelect
           value={historyKind}
@@ -707,6 +714,7 @@ export function BatchDetailPage() {
             setHistoryPage(1);
           }}
           testId="batch-detail-kind"
+          sheetOnPhone
         />
       </Grid>
       {historyQuery.isPending && batch.productId > 0n ? (
@@ -726,6 +734,9 @@ export function BatchDetailPage() {
           kindBadge
           // With no pager under it, no line under its last row (the-batch-page-hides-a-pager-that-fits).
           endsBare={historyPagerAside}
+          // On a phone each block leads with the rack, the kind and the day under it (owner: *"atasnya kode dan nama rack,
+          // di bawahnya tipe dan tanggal"*, riwayat-on-a-phone-leads-with-the-rack).
+          placeFirst
           afterLabel={t("batchDetail.after")}
           emptyText={t("batchDetail.noHistory")}
           emptyIcon={History}
@@ -764,16 +775,20 @@ export function BatchDetailPage() {
   );
 
   return (
-    <Stack gap="section" data-testid="batch-detail-page" style={{ ["--detail-header-h" as string]: `${stick.height}px` }}>
-      {/* THE STICKY STRIP — the section chips on a phone (always), and the title bar under them, drawn over the page once
-          the heading has gone behind it. */}
+    // NO GAP UNDER THE STRIP (owner: *"heading yang sekarang ada jarak di atas, entah margin atau padding, hilangkan"* —
+    // *"bukan yang stickynya"*): the strip is 0 tall where it holds no chips, and a stack's gap after it was 16px of air
+    // over the heading. The grid below holds the page's own gaps; the dialogs are portalled and take no room.
+    <Box data-testid="batch-detail-page" style={{ ["--detail-header-h" as string]: `${stick.height}px` }}>
+      {/* THE STICKY STRIP — the title bar, drawn over the page once the heading has gone behind it. On a phone NO SECTION
+          CHIPS (owner: *"headernya terlalu tinggi"*, *"yang sticky yang ketinggian, saat scroll dia terlalu menutupi"*, then
+          *"yang navigasinya hilangkan saja, tapi header batchnya tetap sticky"*, the-phone-batch-page-has-no-section-chips)
+          — three sections on one page are read by scrolling; the bar alone sticks, at the top. */}
       <ProductStickyStrip
         prefix="batch-detail"
         stripRef={stick.strip}
         barRef={stick.bar}
         shown={stick.past}
         isMobile={isMobile}
-        chips={<SectionNav compact sections={navSections} ariaLabel={t("batchDetail.navLabel")} active={active} onSelect={scrollTo} />}
       >
         {titleRow(true)}
       </ProductStickyStrip>
@@ -861,6 +876,6 @@ export function BatchDetailPage() {
           }}
         />
       )}
-    </Stack>
+    </Box>
   );
 }

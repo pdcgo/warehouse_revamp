@@ -3611,6 +3611,7 @@
     "searchRack": "Search rack…",
     "noRackMatch": "No rack matches your search.",
     "lastOpname": "Last opname",
+    "lastOpnameShort": "Opname",
     "neverCounted": "Never",
     "actions": "Batch actions",
     "noHistoryHint": "Every put-away, pick, move and count of this batch shows up here."
@@ -3661,7 +3662,9 @@
       "none": "No activity matches",
       "cancel": "Cancelled",
       "broken": "Broken",
-      "found": "Found"
+      "found": "Found",
+      "title": "Activity",
+      "search": "Search activities"
     },
     "incoming": "On its way",
     "lastOrder": "Last order",

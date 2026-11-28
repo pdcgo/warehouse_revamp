@@ -292,16 +292,31 @@ export const ThePreviewShowsItsWorking: Story = {
   },
 };
 
-// ON A PHONE THE PREVIEW COMES AFTER THE NOTE — one column, the same nodes (the-adjust-preview-shows-its-working).
+// ON A PHONE, A DRAWER FROM THE BOTTOM (owner: *"sesuaikan stok juga pakai drawer di bawah"*,
+// the-adjust-dialog-is-a-sheet-on-a-phone) — its foot on the screen's, the screen's width; the preview after the note, one
+// column (the-adjust-preview-shows-its-working); Batal and Sesuaikan two equal halves under the thumb.
 export const OnAPhoneThePreviewIsUnderTheNote: Story = {
-  name: "On a phone the preview is under the note",
+  name: "On a phone, a sheet with the preview under the note",
   globals: { viewport: { value: "mobile1" } },
   play: async () => {
-    await screen.findByTestId("adjust-dialog");
+    const sheet = await screen.findByTestId("adjust-dialog");
+    await waitFor(() => expect(sheet).toBeVisible());
+    await expect(sheet).toHaveAttribute("role", "dialog");
+    await expect(Math.round(sheet.getBoundingClientRect().bottom)).toBe(window.innerHeight);
+    await expect(Math.round(sheet.getBoundingClientRect().width)).toBe(window.innerWidth);
+
     await expect(screen.getByTestId("adjust-layout")).toHaveAttribute("data-layout", "stacked");
     await expect(screen.getByTestId("adjust-delta").getBoundingClientRect().top).toBeGreaterThan(
       screen.getByTestId("adjust-reason").getBoundingClientRect().bottom,
     );
+
+    const cancel = screen.getByTestId("adjust-cancel").getBoundingClientRect();
+    const submit = screen.getByTestId("submit-adjust").getBoundingClientRect();
+    await expect(Math.abs(cancel.width - submit.width)).toBeLessThan(2);
+
+    // Batal closes it.
+    await userEvent.click(screen.getByTestId("adjust-cancel"));
+    await screen.findByTestId("adjust-closed");
   },
 };
 

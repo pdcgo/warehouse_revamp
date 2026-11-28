@@ -1,5 +1,5 @@
 import type { ElementType, ReactNode } from "react";
-import { Badge, HStack, Stack, Table, Text } from "@chakra-ui/react";
+import { Badge, Box, HStack, Span, Stack, Table, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { EmptyHint } from "../../components/feedback/EmptyHint";
@@ -163,6 +163,15 @@ export interface MovementTableProps {
    * block alike.
    */
   endsBare?: boolean;
+  /**
+   * OPT-IN, a phone's block with the `place` column: the PLACE leads — the rack's code in bold and its name on the first
+   * line, the kind and the day on the second (owner, on a batch's Riwayat: *"atasnya kode dan nama rack, di bawahnya
+   * tipe dan tanggal"*, riwayat-on-a-phone-leads-with-the-rack). A movement that touched no rack reads as before.
+   *
+   *   B-02-1 · Aisle B bawah                      +2
+   *   (Diterima) 22 Nov 13:01          Siap setelah 7
+   */
+  placeFirst?: boolean;
 }
 
 export function MovementTable({
@@ -182,6 +191,7 @@ export function MovementTable({
   kindBadge = false,
   rackName,
   endsBare = false,
+  placeFirst = false,
 }: MovementTableProps) {
   const { t } = useTranslation();
   const kindWord = (kind: MovementKind) => (wording === "transaction" ? transactionLabel(t, kind) : kindLabel(t, kind));
@@ -329,64 +339,103 @@ export function MovementTable({
     //   7 Okt 2026, 07.00                 Sisa di gudang itu 76
     return (
       <Stack gap="0" data-testid={`${testId}-table`}>
-        {movements.map((m) => (
-          <Stack
-            key={m.id.toString()}
-            gap="0.5"
-            py="2"
-            borderBottomWidth="1px"
-            borderColor="border.muted"
-            // The last block's line too, with no pager under it (endsBare).
-            _last={endsBare ? { borderBottomWidth: "0" } : undefined}
-            data-testid={`${testId}-row-${m.id}`}
-          >
-            <HStack justify="space-between" gap="2" fontSize="sm">
-              <Text truncate minW="0">
-                {kindShown(m, true)}
-                {/* A price correction touched no rack — its block leaves the place out rather than say "—". */}
-                {columns
-                  .filter((c) => !(m.priceChange && c === "place"))
-                  .map((c) => (
-                    <Text as="span" key={c} color="fg.muted">
-                      {" · "}
-                      {cell(c, m, true)}
-                    </Text>
-                  ))}
-              </Text>
-              {/* A price correction moved no unit: its change is the stock value's, signed and coloured. */}
-              {m.priceChange ? (
-                <Text fontWeight="bold" color={valueColor(m.priceChange)} flexShrink={0} data-testid={`${testId}-row-${m.id}-value`}>
-                  {formatSignedRupiah(m.priceChange.valueDelta)}
-                </Text>
-              ) : (
-                <Text fontWeight="bold" color={deltaColor(m)} flexShrink={0}>
-                  {deltaText(m)}
-                </Text>
+        {movements.map((m) => {
+          // THE PLACE LEADS (placeFirst) — only a movement that touched a rack; a price correction touched none, so its
+          // block reads as before, the kind first.
+          const leadsWithPlace = placeFirst && columns.includes("place") && m.rackId !== undefined && !m.priceChange;
+          const rackCode = m.rackId === undefined ? "" : rackLabel ? rackLabel(m.rackId) : `#${m.rackId}`;
+          const rackNamed = m.rackId === undefined ? "" : (rackName?.(m.rackId) ?? "");
+
+          return (
+            <Stack
+              key={m.id.toString()}
+              gap="0.5"
+              py="2"
+              borderBottomWidth="1px"
+              borderColor="border.muted"
+              // The last block's line too, with no pager under it (endsBare).
+              _last={endsBare ? { borderBottomWidth: "0" } : undefined}
+              data-testid={`${testId}-row-${m.id}`}
+            >
+              <HStack justify="space-between" gap="2" fontSize="sm">
+                {leadsWithPlace ? (
+                  // The rack's code in bold, its name after it — the kind and the day move under it.
+                  <Text truncate minW="0" data-testid={`${testId}-row-${m.id}-place`}>
+                    <Span fontWeight="bold">{rackCode}</Span>
+                    {rackNamed && (
+                      <Span color="fg.muted">
+                        {" · "}
+                        {rackNamed}
+                      </Span>
+                    )}
+                    {columns
+                      .filter((c) => c !== "place")
+                      .map((c) => (
+                        <Text as="span" key={c} color="fg.muted">
+                          {" · "}
+                          {cell(c, m, true)}
+                        </Text>
+                      ))}
+                  </Text>
+                ) : (
+                  <Text truncate minW="0">
+                    {kindShown(m, true)}
+                    {/* A price correction touched no rack — its block leaves the place out rather than say "—". */}
+                    {columns
+                      .filter((c) => !(m.priceChange && c === "place"))
+                      .map((c) => (
+                        <Text as="span" key={c} color="fg.muted">
+                          {" · "}
+                          {cell(c, m, true)}
+                        </Text>
+                      ))}
+                  </Text>
+                )}
+                {/* A price correction moved no unit: its change is the stock value's, signed and coloured. */}
+                {m.priceChange ? (
+                  <Text fontWeight="bold" color={valueColor(m.priceChange)} flexShrink={0} data-testid={`${testId}-row-${m.id}-value`}>
+                    {formatSignedRupiah(m.priceChange.valueDelta)}
+                  </Text>
+                ) : (
+                  <Text fontWeight="bold" color={deltaColor(m)} flexShrink={0}>
+                    {deltaText(m)}
+                  </Text>
+                )}
+              </HStack>
+              {m.priceChange && (
+                <Stack gap="0.5">
+                  {priceLine(m.priceChange, `${testId}-row-${m.id}`)}
+                  {whyLine(m.priceChange, `${testId}-row-${m.id}`)}
+                </Stack>
               )}
-            </HStack>
-            {m.priceChange && (
-              <Stack gap="0.5">
-                {priceLine(m.priceChange, `${testId}-row-${m.id}`)}
-                {whyLine(m.priceChange, `${testId}-row-${m.id}`)}
-              </Stack>
-            )}
-            {m.countCorrection && (
-              <Stack gap="0.5">
-                {countLine(m.countCorrection, `${testId}-row-${m.id}`)}
-                {whyLine(m.countCorrection, `${testId}-row-${m.id}`)}
-              </Stack>
-            )}
-            {recipientLine(m)}
-            <HStack justify="space-between" gap="2" fontSize="xs" color="fg.muted">
-              <Text truncate minW="0">
-                {formatRfc3339DateTimeShort(m.createdAt)}
-              </Text>
-              <Text flexShrink={0}>
-                {afterLabel} {m.balance.toString()}
-              </Text>
-            </HStack>
-          </Stack>
-        ))}
+              {m.countCorrection && (
+                <Stack gap="0.5">
+                  {countLine(m.countCorrection, `${testId}-row-${m.id}`)}
+                  {whyLine(m.countCorrection, `${testId}-row-${m.id}`)}
+                </Stack>
+              )}
+              {recipientLine(m)}
+              <HStack justify="space-between" gap="2" fontSize="xs" color="fg.muted">
+                {leadsWithPlace ? (
+                  // The kind and the day, under the place.
+                  <HStack gap="2" minW="0">
+                    <Box flexShrink={0}>{kindShown(m, false)}</Box>
+                    <Text truncate minW="0">
+                      {formatRfc3339DateTimeShort(m.createdAt)}
+                    </Text>
+                  </HStack>
+                ) : (
+                  <Text truncate minW="0">
+                    {formatRfc3339DateTimeShort(m.createdAt)}
+                  </Text>
+                )}
+                <Text flexShrink={0}>
+                  {afterLabel} {m.balance.toString()}
+                </Text>
+              </HStack>
+            </Stack>
+          );
+        })}
       </Stack>
     );
   }

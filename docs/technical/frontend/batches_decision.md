@@ -40,7 +40,11 @@ and priced, is the business record: [batch.md](../../business/inventory/batch.md
 | [the-batch-page-adjusts-its-own-batch](#the-batch-page-adjusts-its-own-batch) | a batch's *Koreksi* is **Sesuaikan**, and its dialog's Rusak and Hilang take that batch — not asked again |
 | [the-adjust-dialog-leads-with-what-it-adjusts](#the-adjust-dialog-leads-with-what-it-adjusts) | Sesuaikan Stok opens on the product and its units here; from a batch's page, that batch and its units left under it, its racks the only ones offered, and a reason opens nothing in the form |
 | [riwayat-filters-by-one-kind](#riwayat-filters-by-one-kind) | Riwayat filters by Kegiatan beside the date — ONE kind at a time, as the read takes it, picked from a search select of the kinds' badges; each filter with its ×; the date four parts of the row, Kegiatan three |
-| [the-batch-page-hides-a-pager-that-fits](#the-batch-page-hides-a-pager-that-fits) | on a batch's page a pager steps aside on page 1 while the list fits the smallest page size (10), and its table ends with no line under the last row — this page only, for now |
+| [the-adjust-dialog-is-a-sheet-on-a-phone](#the-adjust-dialog-is-a-sheet-on-a-phone) | on a phone Sesuaikan Stok opens as a drawer from the bottom — its form scrolling between its title and Batal · Sesuaikan, two equal halves under the thumb |
+| [a-phone-filter-opens-from-the-bottom](#a-phone-filter-opens-from-the-bottom) | on a phone Riwayat's date and Kegiatan open as drawers from the bottom — the date's panel stacked in it; Kegiatan a search and the kinds' badges as 44px rows, its control the picked badge with its × |
+| [riwayat-on-a-phone-leads-with-the-rack](#riwayat-on-a-phone-leads-with-the-rack) | on a phone each Riwayat block leads with the rack — its code in bold and its name on top, the kind's badge and the day under them |
+| [the-phone-batch-page-has-no-section-chips](#the-phone-batch-page-has-no-section-chips) | on a phone a batch's page has no section chips — the title bar alone sticks, at the very top; one row and hide-on-scroll were tried and dropped |
+| [the-batch-page-hides-a-pager-that-fits](#the-batch-page-hides-a-pager-that-fits) | on a batch's page a pager steps aside on page 1 while the list fits the smallest page size (10), and its table ends with no line under the last row — 🔄 every section card's list since, [a-section-cards-pager-steps-aside-when-it-fits](context_decision.md#a-section-cards-pager-steps-aside-when-it-fits) |
 | [the-adjust-preview-shows-its-working](#the-adjust-preview-shows-its-working) | the dialog's preview sits at the form's right as a receipt — the stock before, the reason and its units, the difference with a Berkurang / Bertambah / Tetap badge, the total; Ditemukan has one too, its approval line under it |
 
 ## the-batches-follow-the-screen-rules
@@ -818,6 +822,102 @@ before                                    now — 5031: 2 racks, 2 movements, th
 
 What it replaces: on a batch's page, [the-pager-is-always-on-screen](context_decision.md#the-pager-is-always-on-screen) — *‹ [1] ›* with both arrows off, and the per-page picker, under a list of two.
 
+## the-phone-batch-page-has-no-section-chips
+
+> Owner, in chat (2026-11-28): *"sekarang di mobilenya, headernya terlalu tinggi, ada saran?"* — *"yang sticky yang
+> ketinggian, saat scroll dia terlalu menutupi"*. Offered A (one row: the bar takes the chips' place, a section menu on
+> it), B (two thinner rows), C (away on the way down, back on the way up): *"coba A, tapi kalau kurang cocok nanti ke
+> C"*, *"ganti C saja"*, and seeing C: *"ee tidak, yang navigasinya hilangkan saja, tapi header batchnya tetap sticky"*.
+
+```
+before — 115px stuck while reading         now — 62px
+[Penempatan] [Riwayat] [Info Batch]  53px  ←  Batch #5031                   ✎   ← the title bar alone, at the very top
+←  Batch #5031                   ✎   62px     Beras Pandan Wangi 5kg
+   Beras Pandan Wangi 5kg
+```
+
+| | |
+| --- | --- |
+| the chips | gone on a phone — three sections on one page are read by scrolling, and the chips' row was the half of the sticky strip that covered the page for nothing. A desktop keeps its nav column |
+| the bar | still sticks once the heading has gone behind it — now at the very top, the strip under it 0 tall |
+| how | `ProductStickyStrip`'s `chips` is optional; a batch's page passes none. Every other detail page on the strip keeps its chips |
+| *Opname*, one word | on a phone Penempatan's last-count column is headed **Opname** (`batchDetail.lastOpnameShort`) — *Opname terakhir* was the widest thing in a three-column table (owner: *"opname terakhir di mobile terlalu panjang"*, offered the word alone or a block per rack: *"ganti opname saja"*). A desktop keeps *Opname terakhir* |
+| the bar at the very top | in the app it stuck 12px under the screen's top, the page showing through — the phone shell's gutter was on its scroller; fixed for every phone page, [a-phone-sticks-at-the-screens-top](context_decision.md#a-phone-sticks-at-the-screens-top) |
+| no air over the heading | the strip, 0 tall, sat in the page's stack, and the stack's 16px gap after it was air over the heading (owner: *"heading yang sekarang ada jarak di atas … hilangkan"*, *"bukan yang stickynya"*). The page's root is a plain box now — the heading starts at the shell's own gutter, phone 28 → 12px, desktop 38 → 22px |
+| ✗ tried | A (the bar in the chips' place, a section menu on it) and C (the strip sliding away on the way down) — both built, both dropped and reverted; nothing of either kept |
+| pinned by | BatchDetail `Mobile` (no chips, no column; scrolled, the bar shown at top 0) |
+
+What it replaces: on a phone, the section chips stuck over the page, the title bar under them — 115px.
+
+## riwayat-on-a-phone-leads-with-the-rack
+
+> Owner, in chat (2026-11-28): *"untuk riwayat, atasnya kode dan nama rack, di bawahnya tipe dan tanggal"*.
+
+```
+before                                          now
+(Diterima) · B-02-1 · Aisle B bawah        +2   B-02-1 · Aisle B bawah                     +2
+22 Nov 13:01                  Siap setelah 7    (Diterima) 22 Nov 13:01         Siap setelah 7
+```
+
+| | |
+| --- | --- |
+| line one | the rack — its code in bold, its name after it, quiet ([a-rack-is-its-code-with-its-name-under](context_decision.md#a-rack-is-its-code-with-its-name-under), inline); the change at the right, as before |
+| line two | the kind's badge, then the day; *Siap setelah* at the right, as before |
+| no rack | a price correction touched none — its block reads as before, the kind first |
+| how | `MovementTable`'s new `placeFirst`, opt-in — a phone's block only; the desktop table and every other ledger unchanged |
+| pinned by | BatchDetail `Mobile` (the first block's place line, its code bold; the kind's badge under it) |
+
+What it replaces: a phone's Riwayat block opening on the kind, the rack after it.
+
+## a-phone-filter-opens-from-the-bottom
+
+> Owner, in chat (2026-11-28): *"untuk filter select dan tanggal, di mobile bisa pakai drawer dari bawah?"*.
+
+```
+[📅 Semua tanggal          ⌄]      a tap ↓                    [(Diambil)              × ⌄]   a tap ↓
+┌ Tanggal                    × ┐                              ┌ Kegiatan                  × ┐
+│ Rentang cepat                 │                              │ [⌕ Cari kegiatan           ] │
+│ (Hari ini) (7 hari) (14 hari) │                              │ (Diterima)                   │  ← 44px rows
+│ Rentang tanggal               │                              │ (Diambil)                  ✓ │
+│ November 2026  ‹ ›  …         │                              │ …                            │
+│ [ Terapkan Rentang          ] │                              └──────────────────────────────┘
+└───────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| where | a phone; a desktop keeps the popover and the combobox |
+| the date | `DateRangePicker`'s new `sheetOnPhone`: its panel — the quick ranges, then the calendar and Apply — in a drawer from the bottom (`dateRange.field` its title); a quick range or Apply closes it, its × stays on the trigger |
+| Kegiatan | `MovementKindSelect`'s `sheetOnPhone`: the control is the picked kind's BADGE (or *Semua kegiatan*), its × beside it; the drawer is a search over the kinds' badges, each a 44px row, the picked one ticked; a tap picks and closes |
+| no keyboard | the drawer opens on its close button, never the search — a focused field throws the keyboard up over the list before anybody asked to type |
+| its words | a step larger in the drawer than in the ledger — a `md` badge, 14px (owner: *"teksnya buat lebih besar di drawer, biar lebih mudah dibaca"*; 16px in a `lg` badge was *"terlalu besar"*) |
+| opt-in | both: a list whose filters already sit in `FilterBar`'s sheet keeps its popover — a drawer would open over a drawer ([a-phone-filters-from-a-sheet](context_decision.md#a-phone-filters-from-a-sheet)). The same family as [the-phone-opens-its-panels-from-the-bottom](context_decision.md#the-phone-opens-its-panels-from-the-bottom) |
+| pinned by | DateRangePicker `On a phone, a sheet from the bottom` (a dialog at the screen's foot, a quick range closes it) · MovementKindSelect `On a phone, a sheet from the bottom` (focus on the close, 44px rows, search, pick, the ×) · BatchDetail `Mobile` (Kegiatan a button, the date a dialog) |
+
+What it replaces: on a phone, a popover under the date's trigger and a combobox list under Kegiatan's.
+
+## the-adjust-dialog-is-a-sheet-on-a-phone
+
+> Owner, in chat (2026-11-28), after the filters' drawers: *"sesuaikan stok juga pakai drawer di bawah"*.
+
+```
+before — a dialog in the middle         now — a drawer from the bottom
+┌ Sesuaikan Stok        × ┐             ┌ Sesuaikan Stok                     × ┐   ← stays
+│ …                       │             │ product · batch · rack · reason …    │   ← scrolls
+│ [Batal] [Sesuaikan]     │             │ Pratinjau …                          │
+└─────────────────────────┘             │ [     Batal     ] [   Sesuaikan    ] │   ← stays, two halves
+```
+
+| | |
+| --- | --- |
+| a phone | `AdjustStockDialog` is a bottom drawer (`maxH 90dvh`): the title stays, the form scrolls, the footer stays — Batal and Sesuaikan two equal halves under the thumb, as Koreksi Harga's sheet beside it ([the-phone-opens-its-panels-from-the-bottom](context_decision.md#the-phone-opens-its-panels-from-the-bottom)) |
+| the form | one body for both — the drawer's form is `display: contents`, so the drawer's body still scrolls between its header and footer |
+| a desktop | the dialog, `xl`, the preview at the form's right — unchanged |
+| everywhere | every screen that opens it — a batch's page, a warehouse product's, a rack's stock list |
+| pinned by | AdjustStockDialog `On a phone, a sheet with the preview under the note` (a dialog at the screen's foot and width; the preview under the note; the two buttons equal; Batal closes) |
+
+What it replaces: on a phone, Sesuaikan Stok as a dialog in the middle of the screen.
+
 # Contradiction
 
 ## the-pager-is-always-on-screen, on one page
@@ -826,6 +926,11 @@ What it replaces: on a batch's page, [the-pager-is-always-on-screen](context_dec
 - **Which holds.** The newer, on a batch's page — the owner's word on the screen in hand. The older still holds everywhere else: nothing was said of any other list, and a rule for every screen is not widened from one.
 
 **→ Recommend:** ask whether it is every list's rule now. If yes, every pager that knows its total is told it (`total`) and the context rule is renamed for its new verdict; if no, it stays this page's. The opt-in prop keeps either answer one line per screen.
+
+**✅ Resolved (owner, 2026-11-28):** *"untuk yang card seperti riwayat dan penempatan di halaman batch ini"* — neither
+answer whole: every list inside a section CARD steps aside
+([a-section-cards-pager-steps-aside-when-it-fits](context_decision.md#a-section-cards-pager-steps-aside-when-it-fits)), and a
+page's own list keeps the-pager-is-always-on-screen, whose row now says so.
 
 ```mermaid
 flowchart LR
