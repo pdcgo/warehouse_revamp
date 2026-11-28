@@ -24,9 +24,12 @@ import { useTeamDetail } from "../../features/teams/queries";
 import { useWarehouseInfo } from "../../features/warehouse/queries";
 import { useSeedOnce } from "../../lib/useSeedOnce";
 import { SAVE_WAREHOUSE, useSaveWarehouse } from "./queries";
-import { ClosuresEditor } from "./components/ClosuresEditor";
-import { WeeklyHoursEditor, dayHoursFromWeek, weekFromDayHours } from "./components/WeeklyHoursEditor";
-import type { WeekHours } from "./components/WeeklyHoursEditor";
+// The profile's editors are SHARED with the warehouse's own Settings (the-warehouse-sets-its-own-hours-in-settings):
+// one location field, one weekly grid, one closures list for both doors, saving the same profile.
+import { ClosuresEditor } from "../../features/warehouse/ClosuresEditor";
+import { WarehouseLocationField } from "../../features/warehouse/WarehouseLocationField";
+import { WeeklyHoursEditor, dayHoursFromWeek, weekFromDayHours } from "../../features/warehouse/WeeklyHoursEditor";
+import type { WeekHours } from "../../features/warehouse/WeeklyHoursEditor";
 
 // WarehouseEditPage is the warehouse edit surface as a DEDICATED PAGE (issue #39 comment 6 — not
 // a popup). It edits the warehouse's name and description AND its two weekly schedules: general
@@ -151,15 +154,7 @@ export function WarehouseEditPage() {
                   />
                 </Field.Root>
 
-                <Field.Root>
-                  <Field.Label>{t("teams.location")}</Field.Label>
-                  <Textarea
-                    value={location}
-                    data-testid="warehouse-edit-location"
-                    onChange={(e) => setLocation(e.target.value)}
-                  />
-                  <Field.HelperText>{t("teams.warehouseAddressHelp")}</Field.HelperText>
-                </Field.Root>
+                <WarehouseLocationField value={location} onChange={setLocation} testId="warehouse-edit-location" />
               </Stack>
             </Card.Body>
           </Card.Root>

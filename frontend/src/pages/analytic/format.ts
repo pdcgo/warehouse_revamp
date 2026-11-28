@@ -82,6 +82,25 @@ export function useKeyNames(group: TableGroup, keys: string[], teamId?: bigint):
 }
 
 /**
+ * The groups whose row names useKeyNames reads through a lookup KEPT for a while (`referenceQuery`): shops, sellers and
+ * warehouses, people, accounts. Products and suppliers are on the plain always-fresh default.
+ */
+const NAMES_KEPT: ReadonlySet<TableGroup> = new Set<TableGroup>(["shop", "team", "warehouse", "user", "account"]);
+
+/**
+ * A PAGE'S ROW NAMES, ASKED AHEAD of its rows (#134, the-speed-audits-old-findings-are-fixed-smallest-first) — the moment
+ * the search has answered with the page's keys (loadReport's `onKeys`), beside the figures for those keys, never after
+ * them: the names need only the ids. useKeyNames then finds them in the cache when the rows arrive. Only the kept lookups
+ * (NAMES_KEPT): a plain one answered ahead would be asked AGAIN by the rows' own reader at `staleTime: 0`, so a product or
+ * supplier group keeps naming its rows after them, as before. Draws nothing.
+ */
+export function useKeyNamesAhead(group: TableGroup | undefined, keys: string[], teamId?: bigint): void {
+  const ahead = group !== undefined && NAMES_KEPT.has(group);
+
+  useKeyNames(group ?? "shop", ahead ? keys : [], teamId);
+}
+
+/**
  * What a row is called — an entity's name, a day, the week it starts, a month, a year. In the app's language.
  *
  * An id is named by `names` first (a served metric's real ids); a shop the lookup could not name is a SAMPLE metric's

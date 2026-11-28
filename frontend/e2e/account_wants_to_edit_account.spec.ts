@@ -4,13 +4,14 @@ import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { SUFFIX, api, login } from "./restock_helpers";
 
 // An owner or an admin of either team type wants to fix an account's details — the check behind
-// docs/acceptances/financial_account/account.md, section *accounts*, when *edit account* (given 11).
+// docs/acceptances/financial_account/account.md, section *accounts*, when *edit account* (given 17).
+// (Numbered 11 until hfrada's renumbering, aa6e65f6, 11-24.)
 // The given names selling:owner · selling:admin · warehouse:owner · warehouse:admin: one test per role, each signed in
 // as a person of that role, in a team of its OWN holding one active BCA bank account whose holder is PT Melati
 // (an-account-has-a-name-and-a-holder: the holder is the name on the real account, fixable later, while the type,
 // provider and number stay as recorded).
 //
-//   11 (active bank BCA · holder changed from PT Melati to PT Melati Jaya) — the row's Account actions → Edit, the
+//   17 (active bank BCA · holder changed from PT Melati to PT Melati Jaya) — the row's Account actions → Edit, the
 //      dialog opens on the account's own holder, PT Melati Jaya typed over it, Save
 //      then: PT Melati Jaya under the account's name, in the list and on its page — the list row's line under the
 //            name reads PT Melati Jaya (read afresh after a reload, so it is the server's answer and not the dialog's

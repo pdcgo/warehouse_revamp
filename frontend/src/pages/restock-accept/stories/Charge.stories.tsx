@@ -38,12 +38,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * the-courier-is-paid-once-per-restock — on Ada the amount is required, and its note once it is above 0. What is still
- * missing is the one line by Terima (a-save-button-says-what-it-waits-for); the note shows an example
- * (every-form-field-shows-an-example).
+ * the-courier-is-paid-once-per-restock — on Ada the amount is required; its note is OPTIONAL
+ * (the-couriers-charge-note-is-optional — inverted from "Charge needs a note"). What is still missing is the one line by
+ * Terima (a-save-button-says-what-it-waits-for) — the amount, never the note; the note shows an example
+ * (every-form-field-shows-an-example). Accepted with no note, the restock keeps the amount and an empty note.
  */
-export const ACourierChargeNeedsANote: Story = {
-  name: "Charge needs a note",
+export const ACourierChargeNeedsNoNote: Story = {
+  name: "Charge needs no note",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     await countWhole(canvasElement, COFFEE.productId, A_01_1);
@@ -57,16 +58,27 @@ export const ACourierChargeNeedsANote: Story = {
     await expect(canvas.getByTestId("accept-courier-note")).toHaveAttribute("placeholder", "e.g. COD handling fee");
 
     await typeInto(canvas.getByTestId("accept-courier-charge"), "5000");
-    await expect(await canvas.findByTestId("accept-courier-note-error")).toBeInTheDocument();
-    await expect(canvas.getByTestId("accept-ready-line-missing-chargeNote")).toHaveTextContent(
-      "what the courier's charge was for",
-    );
-    await expectAccept(canvasElement, false);
-
-    await typeInto(canvas.getByTestId("accept-courier-note"), "Biaya COD");
-    await waitFor(() => expect(canvas.queryByTestId("accept-courier-note-error")).toBeNull());
-    await expect(canvas.getByTestId("accept-ready-line-ready")).toHaveTextContent("Ready to accept");
+    await waitFor(() => expect(canvas.getByTestId("accept-ready-line-ready")).toHaveTextContent("Ready to accept"));
+    await expect(canvas.queryByTestId("accept-ready-line-missing-chargeNote")).toBeNull();
+    await expect(canvas.queryByTestId("accept-courier-note-error")).toBeNull();
+    await expect(canvas.getByTestId("accept-courier-note-optional")).toHaveTextContent("(optional)");
     await expectAccept(canvasElement, true);
+
+    // Selesai folds it to its text with the amount alone — owed back, no note before it.
+    await userEvent.click(canvas.getByTestId("accept-courier-done"));
+    await waitFor(() => expect(canvas.getByTestId("accept-courier-paid-line")).toHaveTextContent(/^Owed back by Toko Melati$/));
+
+    await userEvent.click(acceptControl(canvasElement));
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await userEvent.click(confirm);
+    await canvas.findByTestId("at-restock-detail", {}, { timeout: 4000 });
+
+    const stored = (
+      await restockRequestService.restockRequestDetail!({ teamId: 11n, requestId: 502n } as never, {} as never)
+    ).request!;
+    await expect(stored.warehouseAdditionalCost).toBe(5000);
+    await expect(stored.warehouseAdditionalCostNote).toBe("");
   },
 };
 

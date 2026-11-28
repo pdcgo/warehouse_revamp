@@ -155,7 +155,15 @@ func (s *Service) createTeam(ctx context.Context, msg *teamv1.TeamCreateRequest)
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		err := tx.Create(team).Error
+		// A code another team holds — or held once, and moved on from — is refused naming that team: a team code once
+		// used is never given to another team (a-team-code-change-recomposes-its-product-codes, its Q1 "A"). Two creates
+		// racing for one new code still meet the unique index, and the loser is named the winner below.
+		err := refuseTakenCode(tx, team.TeamCode, 0)
+		if err != nil {
+			return err
+		}
+
+		err = tx.Create(team).Error
 		if err != nil {
 			return err
 		}
@@ -163,6 +171,15 @@ func (s *Service) createTeam(ctx context.Context, msg *teamv1.TeamCreateRequest)
 		return tx.Create(&team_service_models.TeamInfo{TeamID: team.ID}).Error
 	})
 	if err != nil {
+		var taken *errCodeTaken
+
+		switch {
+		case errors.As(err, &taken):
+			return nil, codeTakenAnswer(taken)
+		case isUniqueViolation(err):
+			return nil, s.codeRaceAnswer(ctx, team.TeamCode, 0)
+		}
+
 		return nil, dbError(err)
 	}
 

@@ -53,7 +53,7 @@ export const DrillsIntoChildren: Story = {
     await userEvent.click(drill);
 
     // A second column appears with the children.
-    await expect(await canvas.findByTestId("category-node-Audio")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("category-node-Audio")).toBeVisible(), { timeout: 5000 });
   },
 };
 

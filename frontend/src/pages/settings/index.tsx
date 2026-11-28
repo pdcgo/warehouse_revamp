@@ -8,9 +8,12 @@ import { useUpdateTeam, useSaveTeamInfo, useTeamDetail } from "../../features/te
 import { TeamPicture } from "./components/TeamPicture";
 import { ReturnWarehouseCard } from "./components/ReturnWarehouseCard";
 import { WarehouseFeeCard } from "./components/WarehouseFeeCard";
+import { WarehouseHoursCard } from "./components/WarehouseHoursCard";
 import { TeamAgentsCard } from "./components/TeamAgentsCard";
+// The team code (#150) — a selling team's code, its edit and the confirm of what follows.
+import { TeamCodeCard } from "./components/TeamCodeCard";
 import { toaster } from "../../components/feedback/Toaster";
-import { canOverseeTeamAgents, isTeamManager } from "../../lib/roles";
+import { canOverseeTeamAgents, editsWarehouseProfile, isTeamManager } from "../../lib/roles";
 import { TeamSelect } from "../../components/teams/TeamSelect";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 
@@ -166,6 +169,10 @@ export function SettingsPage() {
         </Card.Body>
       </Card.Root>
 
+      {/* THE TEAM CODE (#150) — a selling team's code, its edit and the confirm of what follows
+          (a-team-code-change-recomposes-its-product-codes, the-team-code-and-product-tags-prototype-is-accepted). */}
+      <TeamCodeCard />
+
       {/* The default shipping warehouse (#145) — a SELLING team's setting only. A warehouse does not
           ship from a warehouse, so the card is absent rather than disabled for one. */}
       {current.teamType === TeamType.SELLING && (
@@ -209,6 +216,13 @@ export function SettingsPage() {
 
       {/* What this warehouse charges per order (warehouse-prices-balance-records) — a WAREHOUSE's setting only. */}
       {current.teamType === TeamType.WAREHOUSE && <WarehouseFeeCard teamId={current.teamId} canEdit={canEdit} />}
+
+      {/* The warehouse's hours, location and closures — the Edit warehouse page's editors, for the warehouse's Owner and
+          Admin (the-warehouse-sets-its-own-hours-in-settings), with the set-your-hours prompt while none are set
+          (a-warehouse-with-no-hours-is-not-closed). Absent, not disabled, for Staff and a monitor: the RPCs refuse them. */}
+      {current.teamType === TeamType.WAREHOUSE && canWrite(current) && editsWarehouseProfile(current.role) && (
+        <WarehouseHoursCard teamId={current.teamId} />
+      )}
 
       {/* The AI agents reading this team, and whether CS and staff may connect one — the OWNER's, with Root and the
           Administrator (the-owner-decides-who-connects-an-agent). Absent, not disabled, for everyone else: the three RPCs

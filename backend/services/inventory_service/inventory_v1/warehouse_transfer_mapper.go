@@ -21,15 +21,14 @@ import (
 // errors, the row lock, the trail and the wire shape.
 
 var (
-	errTransferMissing          = errors.New("warehouse transfer not found")
-	errTransferToItself         = errors.New("a transfer never goes to its own warehouse")
-	errTransferProductTwice     = errors.New("a product appears once per transfer")
-	errTransferProductNotOwned  = errors.New("a transfer carries only the team's own products")
-	errTransferAccountRequired  = errors.New("finance_account_id: required when shipment_cost is above 0")
-	errTransferChargeNoteNeeded = errors.New("warehouse_additional_cost_note: required when the charge is above 0")
-	errTransferWrongStatus      = errors.New("the transfer is not in a status that allows this")
-	errTransferCountEveryLine   = errors.New("lines: every line must be counted exactly once")
-	errTransferCountInvalid     = errors.New("a counted line does not add up")
+	errTransferMissing         = errors.New("warehouse transfer not found")
+	errTransferToItself        = errors.New("a transfer never goes to its own warehouse")
+	errTransferProductTwice    = errors.New("a product appears once per transfer")
+	errTransferProductNotOwned = errors.New("a transfer carries only the team's own products")
+	errTransferAccountRequired = errors.New("finance_account_id: required when shipment_cost is above 0")
+	errTransferWrongStatus     = errors.New("the transfer is not in a status that allows this")
+	errTransferCountEveryLine  = errors.New("lines: every line must be counted exactly once")
+	errTransferCountInvalid    = errors.New("a counted line does not add up")
 )
 
 // transferSide is the column a team must match to act on a transfer: the owning team, A or B
@@ -73,7 +72,6 @@ func transferErr(err error) error {
 		errors.Is(err, errTransferProductTwice),
 		errors.Is(err, errTransferProductNotOwned),
 		errors.Is(err, errTransferAccountRequired),
-		errors.Is(err, errTransferChargeNoteNeeded),
 		errors.Is(err, errTransferCountEveryLine),
 		errors.Is(err, errTransferCountInvalid):
 		return connect.NewError(connect.CodeInvalidArgument, err)

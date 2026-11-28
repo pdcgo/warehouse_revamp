@@ -254,7 +254,8 @@ function ArriveDialog({ parcel, teamId, onClose }: { parcel: InboundParcel; team
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const charge = asked ? toRupiah(amount) : 0;
-  const incomplete = asked && (charge <= 0 || note.trim() === "");
+  // Ada asks for the amount; what it was for is optional (the-couriers-charge-note-is-optional).
+  const incomplete = asked && charge <= 0;
 
   async function confirm() {
     try {
@@ -286,7 +287,6 @@ function ArriveDialog({ parcel, teamId, onClose }: { parcel: InboundParcel; team
         onAsked={setAsked}
         amount={amount}
         note={note}
-        noteMissing={charge > 0 && note.trim() === ""}
         onAmount={setAmount}
         onNote={setNote}
         hint={t("restock.actions.sign.courierHint")}
@@ -331,7 +331,7 @@ function ReceiveDialog({ parcel, teamId, onClose }: { parcel: InboundParcel; tea
   });
   const ready =
     counted.every((c) => c.received !== undefined && !c.over && !c.badBroken && (c.good <= 0n || c.d.rack !== "")) &&
-    !(asked && (charge <= 0 || note.trim() === "")) &&
+    !(asked && charge <= 0) &&
     !receive.isPending;
   const set = (id: bigint, patch: Partial<CountDraft>) => setDrafts((prev) => ({ ...prev, [id.toString()]: { ...prev[id.toString()]!, ...patch } }));
 
@@ -421,7 +421,6 @@ function ReceiveDialog({ parcel, teamId, onClose }: { parcel: InboundParcel; tea
                   onAsked={setAsked}
                   amount={amount}
                   note={note}
-                  noteMissing={charge > 0 && note.trim() === ""}
                   onAmount={setAmount}
                   onNote={setNote}
                   testId="inbound-receive-courier"

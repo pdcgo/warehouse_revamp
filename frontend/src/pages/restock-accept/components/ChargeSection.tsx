@@ -27,7 +27,6 @@ export function ChargeSection({
   amount,
   charge,
   note,
-  noteMissing,
   onAmount,
   onNote,
   photo,
@@ -43,7 +42,6 @@ export function ChargeSection({
   /** The charge it comes to — 0 when none. */
   charge: number;
   note: string;
-  noteMissing: boolean;
   onAmount: (value: string) => void;
   onNote: (value: string) => void;
   /** The courier's slip (the-courier-slip-has-an-optional-photo) — kept with the charge, uploaded as it is picked. */
@@ -57,8 +55,9 @@ export function ChargeSection({
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
-  // Ada with an amount and its note, or Tidak ada — anything else is still being filled, and the form stays open.
-  const complete = !asked || (charge > 0 && note.trim() !== "");
+  // Ada with an amount, or Tidak ada — anything else is still being filled, and the form stays open. The note is
+  // optional (the-couriers-charge-note-is-optional).
+  const complete = !asked || charge > 0;
 
   if (editing) {
     return (
@@ -68,7 +67,6 @@ export function ChargeSection({
           onAsked={onAsked}
           amount={amount}
           note={note}
-          noteMissing={noteMissing}
           onAmount={onAmount}
           onNote={onNote}
           photo={photo}

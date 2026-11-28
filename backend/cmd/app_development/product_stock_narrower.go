@@ -14,7 +14,8 @@ import (
 // a minimum closes now (a-minimum-closes-only-under-it) and which have stock at least N days old (the-dates-read-as-ages)
 // — the product list's Kunci *Terkunci sekarang* and Umur stok filters (lock-and-stock-age-filter-ahead-of-the-contract)
 // and Discover's Kunci — and which products the shelves hold, how many ready and at what cost spread: Discover's Gudang,
-// Stok siap and Harga cross (discovers-warehouse-keeps-ready-stock-there, a-cross-band-keeps-a-range-that-touches-it).
+// Stok siap and Harga cross (discovers-warehouse-keeps-ready-stock-there, a-cross-band-keeps-a-range-that-touches-it)
+// — and which of some products a warehouse has held, ProductTagsByIds' who-sees check (products-have-their-own-tag-list).
 // The cost spread crosses only this in-process seam; product_service prices it with the markup and never sends it.
 //
 // Plain functions over the shared database, as productHistory is — not *inventory_v1.Service: inventory already reads
@@ -68,6 +69,28 @@ func (n productStockNarrower) ProductsReadyAbove(ctx context.Context, ceiling in
 	}
 
 	return shelvedForProducts(rows), nil
+}
+
+// HeldAmong is which of the products the warehouse has held — ProductTagsByIds' check that a warehouse reads the tags of
+// a product it holds (products-have-their-own-tag-list, its 🔄 *who sees*), over inventory's own batches.
+func (n productStockNarrower) HeldAmong(ctx context.Context, warehouseID uint64, productIDs []uint64) ([]uint64, error) {
+	return inventory_v1.HeldAmong(ctx, n.db, warehouseID, productIDs)
+}
+
+// StockSitsAmong is which warehouses hold units of each product on a shelf now — the team code change's reprint waits and
+// `need_reprint_code` (backlog #149) — over inventory's own placements, on the change's own transaction.
+func (n productStockNarrower) StockSitsAmong(ctx context.Context, tx *gorm.DB, productIDs []uint64) ([]product_v1.ShelvedIn, error) {
+	rows, err := inventory_v1.StockSitsAmong(ctx, tx, productIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]product_v1.ShelvedIn, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, product_v1.ShelvedIn{ProductID: r.ProductID, WarehouseID: r.WarehouseID})
+	}
+
+	return out, nil
 }
 
 func shelvedForProducts(rows []inventory_v1.ShelvedProduct) []product_v1.ShelvedProduct {

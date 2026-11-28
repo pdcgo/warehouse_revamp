@@ -6,22 +6,35 @@
 // warehouse; `warehouse` is the picker and, under it, TABS for what one warehouse holds (the-warehouse-zone-is-tabs) —
 // so only the tab being read loads.
 import type { LucideIcon } from "lucide-react";
-import { FileText, GitBranch, Handshake, Package, Warehouse } from "lucide-react";
+import { FileText, GitBranch, Handshake, History, Package, Tag, Warehouse } from "lucide-react";
 
 // Aktivitas is not a section: its two dates are rows of Info (owner: *"aktivitas masukkan ke info produk"*).
-export type ProductSectionKey = "info" | "batch" | "cross" | "derived" | "warehouse";
+// The TAG card (backlog #148, the-team-code-and-product-tags-prototype-is-accepted) is the first side card, after Batch.
+// The RIWAYAT PRODUK card (backlog #150, the same accept's *the history*) is the side card after Produk Turunan — drawn
+// only for those who read a product's history (`readsProductHistory`), so the page lists it in `sectionKeysFor`.
+export type ProductSectionKey = "info" | "batch" | "tags" | "cross" | "derived" | "history" | "warehouse";
 
 // `navKey` is the short label for the 13rem column, `titleKey` the card's full one.
 export const PRODUCT_SECTIONS: { key: ProductSectionKey; titleKey: string; navKey: string; icon: LucideIcon }[] = [
   { key: "info", titleKey: "products.detail.section.info", navKey: "products.detail.nav.info", icon: FileText },
   { key: "batch", titleKey: "products.detail.section.batch", navKey: "products.detail.nav.batch", icon: Package },
+  { key: "tags", titleKey: "products.detail.section.tags", navKey: "products.detail.nav.tags", icon: Tag },
   { key: "cross", titleKey: "products.detail.section.cross", navKey: "products.detail.nav.cross", icon: Handshake },
   { key: "derived", titleKey: "products.detail.section.derived", navKey: "products.detail.nav.derived", icon: GitBranch },
+  { key: "history", titleKey: "products.detail.section.history", navKey: "products.detail.nav.history", icon: History },
   { key: "warehouse", titleKey: "products.detail.section.warehouse", navKey: "products.detail.nav.warehouse", icon: Warehouse },
 ];
 
 /** Every key, in order — the stable list `useScrollSpy` reads. */
 export const PRODUCT_SECTION_KEYS: ProductSectionKey[] = PRODUCT_SECTIONS.map((s) => s.key);
+
+/** The same, without the Riwayat card — for whoever does not read a product's history. */
+const KEYS_WITHOUT_HISTORY: ProductSectionKey[] = PRODUCT_SECTION_KEYS.filter((key) => key !== "history");
+
+/** The sections the page draws — the stable list (one of two constants) for the nav and the scroll spy. */
+export function sectionKeysFor(readsHistory: boolean): ProductSectionKey[] {
+  return readsHistory ? PRODUCT_SECTION_KEYS : KEYS_WITHOUT_HISTORY;
+}
 
 /**
  * The sections scrolling may light while the side column is beside them — every one but the side cards. The side

@@ -29,7 +29,9 @@ var errWarehouseStockListShort = errors.New("type at least 2 characters of a pro
 //   - which products have been here — the batch ledger's distinct products, inventory's. A batch is never deleted, so a
 //     product emptied to 0 stays listed, and can still be found and adjusted;
 //   - which of them are on this page — product_service names, searches (or, with no term, lists) and orders them among
-//     the held ids, in-process, so the page, its order and its total come from one statement there;
+//     the held ids, in-process, so the page, its order and its total come from one statement there — narrowed by the
+//     Tag filter (`tag_ids`, ANY of) in that same statement, and each row with its product tags
+//     (products-have-their-own-tag-list, its 🔄 *who sees*: every warehouse holding the product sees them);
 //   - how many of each are here — the placement ledger summed per product, StockList's formula (warehouseOnHand), read
 //     for the page's products only. A held product with no shelf row left reads 0.
 //
@@ -57,20 +59,30 @@ func (s *Service) WarehouseStockList(
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
+	// *Cetak ulang kode (N)* rides on this read when the screen asks for it (backlog #151) — product_service's count of
+	// this warehouse's waits, whatever the search or the tags narrow.
+	waiting, err := s.reprintWaitingFor(ctx, warehouseID, msg.GetDataRequest())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, fmt.Errorf("count the products waiting for the reprint: %w", err))
+	}
+
 	// Nothing has ever been here: an empty list, and no question for product_service.
 	if len(held) == 0 {
 		items, ids := warehouseStockListItems(warehouseID, nil, nil, msg.GetDataRequest())
 
 		return connect.NewResponse(&inventoryv1.WarehouseStockListResponse{
-			Items:    items,
-			Ids:      ids,
-			PageInfo: pageInfo(page, 0),
+			Items:          items,
+			Ids:            ids,
+			PageInfo:       pageInfo(page, 0),
+			ReprintWaiting: waiting,
 		}), nil
 	}
 
 	found, err := s.products.Search(ctx, warehouseID, ProductSearch{
 		ProductIDs: held,
 		Q:          q,
+		TagIDs:     msg.GetFilter().GetTagIds(),
+		WithTags:   asksProductSlice(msg.GetDataRequest()),
 		Offset:     pageOffset(page),
 		Limit:      int(page.GetLimit()),
 	})
@@ -86,10 +98,35 @@ func (s *Service) WarehouseStockList(
 	items, ids := warehouseStockListItems(warehouseID, found.Products, onHand, msg.GetDataRequest())
 
 	return connect.NewResponse(&inventoryv1.WarehouseStockListResponse{
-		Items:    items,
-		Ids:      ids,
-		PageInfo: pageInfo(page, found.Total),
+		Items:          items,
+		Ids:            ids,
+		PageInfo:       pageInfo(page, found.Total),
+		ReprintWaiting: waiting,
 	}), nil
+}
+
+// reprintWaitingFor is how many products wait for this warehouse's reprint of changed codes — asked of product_service
+// only when the read asks for it (WAREHOUSE_STOCK_LIST_DATA_TYPE_REPRINT_WAITING: the warehouse's own Products list),
+// else 0 and no question.
+func (s *Service) reprintWaitingFor(ctx context.Context, warehouseID uint64, types []inventoryv1.WarehouseStockListDataType) (uint32, error) {
+	asked := false
+
+	for _, t := range types {
+		if t == inventoryv1.WarehouseStockListDataType_WAREHOUSE_STOCK_LIST_DATA_TYPE_REPRINT_WAITING {
+			asked = true
+		}
+	}
+
+	if !asked {
+		return 0, nil
+	}
+
+	total, err := s.products.ReprintWaitingCount(ctx, warehouseID)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint32(total), nil
 }
 
 // onHandOf is the units on hand here of the page's products, by product id — warehouseOnHand narrowed to them. A product
@@ -120,6 +157,22 @@ func onHandOf(db *gorm.DB, warehouseID uint64, products []ProductMatch) (map[uin
 	}
 
 	return onHand, nil
+}
+
+// asksProductSlice is whether the list's answer carries the PRODUCT slice (the default, a row of the screen) — the one
+// slice that draws a product's tags, so the only time they are read.
+func asksProductSlice(types []inventoryv1.WarehouseStockListDataType) bool {
+	if len(types) == 0 {
+		return true
+	}
+
+	for _, t := range types {
+		if t == inventoryv1.WarehouseStockListDataType_WAREHOUSE_STOCK_LIST_DATA_TYPE_PRODUCT {
+			return true
+		}
+	}
+
+	return false
 }
 
 // warehouseStockListItems builds the requested slices — a row of the screen, PRODUCT and STOCK, by default — and the ids
@@ -164,6 +217,7 @@ func warehouseStockListItems(
 					ProductCode: p.ProductCode,
 					Name:        p.Name,
 					Archived:    p.Archived,
+					Tags:        p.Tags,
 				}
 			}
 

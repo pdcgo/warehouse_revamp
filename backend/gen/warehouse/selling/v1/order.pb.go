@@ -3373,8 +3373,8 @@ type OrderReturnAcceptRequest struct {
 	// Above 0, the order's selling team owes the ACCEPTING warehouse that amount — it paid at its door — and liability
 	// posts it from OrderReturnAccepted.
 	CourierCharge float64 `protobuf:"fixed64,4,opt,name=courier_charge,json=courierCharge,proto3" json:"courier_charge,omitempty"`
-	// What it was for — required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for); the handler
-	// checks, since a rule across two fields is not written here. Ignored when there is no charge.
+	// What it was for — optional (the-couriers-charge-note-is-optional): a charge with no note is accepted. Ignored when
+	// there is no charge.
 	CourierChargeNote string `protobuf:"bytes,5,opt,name=courier_charge_note,json=courierChargeNote,proto3" json:"courier_charge_note,omitempty"`
 	// EVERY LINE OF THE ORDER, ONCE, as the crew counted it (the-return-accept-page-is-accepted). The return is whole
 	// (a-return-is-never-partial): sound = the line's quantity − broken − missing goes onto the racks named.

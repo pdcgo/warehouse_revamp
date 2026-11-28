@@ -258,7 +258,8 @@
       "ready": "Export ready — the file is downloading",
       "failed": "The export could not be finished",
       "noFile": "The export ended without a file"
-    }
+    },
+    "opensInNewTab": "opens in a new tab"
   },
   "readyLine": {
     "missing": "Not filled in:",
@@ -491,10 +492,6 @@
       "division": {
         "label": "Priority / Research",
         "reason": "sample — a product's division is set per product but stored nowhere yet, so it is the same invented one the Discover card shows"
-      },
-      "derived": {
-        "label": "Derived products",
-        "reason": "sample — goods returned to another team become that team's product; the link is not recorded yet, so the rows are the same ones the owner's product page shows"
       }
     }
   },
@@ -640,14 +637,18 @@
         "batch": "Batches",
         "cross": "Other teams",
         "derived": "Derived",
-        "warehouse": "Per warehouse"
+        "warehouse": "Per warehouse",
+        "tags": "Tags",
+        "history": "History"
       },
       "section": {
         "info": "Product Info",
         "batch": "Batches",
         "cross": "Sales by Other Teams",
         "derived": "Derived Products",
-        "warehouse": "Per Warehouse"
+        "warehouse": "Per Warehouse",
+        "tags": "Tags",
+        "history": "Product history"
       },
       "layer": {
         "unitCost": "Unit cost",
@@ -665,12 +666,6 @@
       "emptyInWarehouse": "Try another warehouse, or all of them.",
       "batchTotal": "Ready at known cost: {{value}}",
       "historyEmpty": "Nothing has moved yet.",
-      "pending": {
-        "derived": {
-          "label": "Derived products",
-          "reason": "Goods returned to a team other than their owner become a product of that team. Nothing records that link yet, and the rows shown — both ways — are samples."
-        }
-      },
       "suppliers": {
         "supplier": "Supplier",
         "store": "Supplier store",
@@ -802,6 +797,73 @@
     "picker": {
       "archived": "Archived",
       "none": "No products found"
+    },
+    "tags": {
+      "column": "Tags",
+      "filterAll": "All tags",
+      "filterSearch": "Search tags",
+      "filterEmpty": "No tags yet",
+      "noMatch": "No tag matches",
+      "none": "No tags on this product yet.",
+      "add": "Add a tag…",
+      "addLabel": "Add a tag",
+      "typeToCreate": "Type a name to make a new tag",
+      "createCustom": "Create tag “{{name}}”",
+      "createSystem": "Create system tag “{{name}}”",
+      "adminOnly": "Admin only",
+      "alreadyOn": "Already on this product",
+      "shared": "The owning team and every warehouse holding its stock see the same tags.",
+      "lockedHint": "A system tag (with a lock) is put on by the app or an admin; you cannot change it.",
+      "adminHint": "As an admin you may also make a system tag, put one on or take it off, and rename or delete any tag but the app's.",
+      "byApp": "Put on by the app",
+      "saveFailed": "The tags were not saved",
+      "manage": {
+        "open": "Manage tags",
+        "title": "Manage product tags",
+        "hint": "Every team's product tags. A rename or a delete applies to every product that carries the tag.",
+        "usage_one": "{{count}} product",
+        "usage_other": "{{count}} products",
+        "rename": "Rename {{name}}",
+        "delete": "Delete {{name}}",
+        "save": "Save",
+        "taken": "Another tag already has this name.",
+        "deleteTitle": "Delete tag “{{name}}”?",
+        "deleteMessage_one": "It comes off the {{count}} product that carries it, for every team. This cannot be undone.",
+        "deleteMessage_other": "It comes off the {{count}} products that carry it, for every team. This cannot be undone.",
+        "deleteMessageNone": "No product carries it. It leaves the list for every team.",
+        "deleteConfirm": "Delete tag"
+      }
+    },
+    "history": {
+      "none": "No changes yet.",
+      "codeChanged": "Code changed",
+      "by": "by {{name}}"
+    },
+    "reprint": {
+      "open_one": "Reprint codes ({{count}})",
+      "open_other": "Reprint codes ({{count}})",
+      "title": "Reprint Codes",
+      "warehouseOnly": "Only a warehouse reprints its labels.",
+      "back": "Back to Products",
+      "count_one": "{{labels}} to print · {{count}} product",
+      "count_other": "{{labels}} to print · {{count}} products",
+      "none": "Nothing waits to be reprinted here",
+      "noneHint": "Every product whose code changed has its new labels printed in this warehouse.",
+      "lead": "These products' codes changed. Print the labels and stick each one on its shelf over the old sticker — once printed, the products stop waiting here, and their tag comes off when every warehouse holding them has printed.",
+      "settingsLine": "Label setup: {{width}} × {{height}} mm · {{rows}} × {{columns}} — as set up on this device's Cetak Label.",
+      "more_one": "{{count}} more label waits for the next print — one print sends as many as the device's run allows.",
+      "more_other": "{{count}} more labels wait for the next print — one print sends as many as the device's run allows.",
+      "toPrintLine_one": "{{count}} label, one per shelf spot",
+      "toPrintLine_other": "{{count}} labels, one per shelf spot",
+      "formerCode": "was {{code}}",
+      "where_one": "{{placement}} · {{count}} pc on the shelf",
+      "where_other": "{{placement}} · {{count}} pcs on the shelf",
+      "printed_one": "Printed — {{count}} product no longer waits here.",
+      "printed_other": "Printed — {{count}} products no longer wait here.",
+      "codeChanged_one": "{{count}} product's code changed again since this page read it — print its new label now.",
+      "codeChanged_other": "{{count}} products' codes changed again since this page read them — print their new labels now.",
+      "moreProducts_one": "{{count}} more product waits after these — it shows here once these are printed.",
+      "moreProducts_other": "{{count}} more products wait after these — they show here once these are printed."
     }
   },
   "bundles": {
@@ -1491,7 +1553,7 @@
       "clearPicked": "Clear the selection",
       "pickFull": "At most {{max}} restocks a print — the rest cannot be ticked.",
       "title": "Incoming Restocks",
-      "subtitle": "Deliveries on their way to this warehouse — sign for a box when it arrives, accept it to count it onto the shelves.",
+      "subtitle": "Deliveries on their way to this warehouse — set a box arrived when it comes in, accept it to count it onto the shelves.",
       "empty": "Nothing is coming in to this warehouse yet.",
       "emptyHint": "A restock shows here when a selling team sends goods to this warehouse.",
       "fromAll": "From any team",
@@ -1534,8 +1596,8 @@
       "courierCharge": "Courier's charge at the door",
       "courierChargeOwedBySelling": "Paid by {{warehouse}} when the box was handed over. Your team owes it to the warehouse — it is not part of the total.",
       "courierChargeOwedToUs": "Paid by this warehouse when the box was handed over. {{team}} owes it back — it is not part of the total.",
-      "courierChargeNotedBySelling": "Noted by {{warehouse}} when the box was signed for — final when it is accepted, and from then your team owes it to the warehouse. It is not part of the total.",
-      "courierChargeNotedToUs": "Noted by this warehouse when the box was signed for — final when it is accepted, and from then {{team}} owes it back. It is not part of the total.",
+      "courierChargeNotedBySelling": "Noted by {{warehouse}} when the box was set arrived — final when it is accepted, and from then your team owes it to the warehouse. It is not part of the total.",
+      "courierChargeNotedToUs": "Noted by this warehouse when the box was set arrived — final when it is accepted, and from then {{team}} owes it back. It is not part of the total.",
       "courierChargeNone": "None — the courier asked for nothing at the door.",
       "note": "Note",
       "products": "Products",
@@ -1592,10 +1654,10 @@
       "cancelled": "Cancelled",
       "noDate": "Date not recorded",
       "edited": "Edited",
-      "arrived": "Signed for the box",
+      "arrived": "Set arrived",
       "lost": "Marked lost",
       "changed": "Status changed",
-      "awaitingSign": "Waiting for the warehouse to sign for the box",
+      "awaitingSign": "Waiting for the warehouse to set it arrived",
       "awaitingCount": "Waiting for the warehouse to count it in",
       "change": {
         "none": "—",
@@ -1709,7 +1771,7 @@
       "clearSupplier": "Clear supplier",
       "allSupplierPick": "Choose Supplier",
       "supplierTitle": "Supplier",
-      "supplierHelp": "Every product needs a supplier — choose one for all of them, or set it on each product.",
+      "supplierHelp": "Optional — choose one supplier for all products, or set it on each product.",
       "allSupplierNone": "Not chosen yet",
       "clearAllSupplier": "Clear the supplier for all products",
       "followsAll": "Same as all",
@@ -1721,6 +1783,11 @@
       "paymentAndParcel": "Payment and Parcel",
       "financeAccount": "Paid from",
       "financeAccountHelp": "The team's operational account that paid for this restock.",
+      "noOperationalAccount": "No operational account",
+      "accountNoneYet": "No account yet — create one and mark it operational.",
+      "accountNoneOperational": "No account marked operational — mark one.",
+      "accountAskOwner": "Ask your owner or admin to set up an operational account.",
+      "openAccounts": "Open Financial Accounts",
       "invoiceRef": "Order ID",
       "invoiceRefHelp": "The order ID at the store it was bought from — one per restock.",
       "invoiceRefPlaceholder": "Example: INV/2026/10/1001",
@@ -1895,7 +1962,7 @@
         "tracking": "Tracking number",
         "orderId": "Order ID",
         "raised": "Raised",
-        "signedFor": "Signed for",
+        "signedFor": "Set arrived",
         "note": "Selling team's note"
       },
       "confirm": {
@@ -1949,6 +2016,8 @@
       "tooMany": "{{count}} too many",
       "placed": "{{count}} placed",
       "placementPlaceholder": "Select a placement",
+      "noRack": "This warehouse has no rack yet.",
+      "openRacks": "Open Racks",
       "placementQty": "Units on this placement",
       "courier": {
         "title": "Courier's COD charge",
@@ -2002,6 +2071,8 @@
       "storeCount_other": "{{count}} stores",
       "noMatch": "No supplier matches this search.",
       "empty": "No suppliers yet.",
+      "createSupplier": "Create Supplier",
+      "createSupplierHint": "Create one in a new tab — it is listed here when you come back.",
       "pickSupplierFirst": "Pick a supplier to see its stores.",
       "noStore": "No store — bought offline",
       "noStoreHelp": "A market stall, or bought in person.",
@@ -2012,13 +2083,13 @@
       "editLines": "Edit Lines",
       "cancel": "Cancel",
       "markLost": "Mark Lost",
-      "signForBox": "Sign for Box",
+      "signForBox": "Set Arrived",
       "accept": "Accept",
       "menu": "Restock actions",
       "sign": {
-        "title": "Sign for Restock #{{id}}",
+        "title": "Set Arrived — Restock #{{id}}",
         "message": "Confirm the courier has handed this box over. The restock moves to Arrived — stock does not go up until you accept it, and the selling team can still correct its lines until then.",
-        "messageLost": "This restock was marked lost, and the box has turned up after all. Signing for it moves it to Arrived, and you accept it as usual.",
+        "messageLost": "This restock was marked lost, and the box has turned up after all. Setting it arrived moves it to Arrived, and you accept it as usual.",
         "dismiss": "Not Yet",
         "tracking": "Tracking number on the label: {{receipt}}",
         "noTracking": "No tracking number was given — check the box against its lines.",
@@ -2030,13 +2101,13 @@
         "lost": "Restock marked lost",
         "lostFailed": "Mark lost failed",
         "arrived": "Restock marked as arrived",
-        "arriveFailed": "Sign for box failed"
+        "arriveFailed": "Set arrived failed"
       },
       "notes": "Notes"
     },
     "lost": {
       "title": "Mark Restock #{{id}} as Lost",
-      "message": "The parcel never came. If it turns up later, the warehouse signs for it and it goes on as usual.",
+      "message": "The parcel never came. If it turns up later, the warehouse sets it arrived and it goes on as usual.",
       "confirm": "Mark Lost",
       "keep": "Keep Waiting",
       "reason": "Why",
@@ -2761,7 +2832,11 @@
     "ownerPlaceholder": "Search a person by name, username or phone",
     "ownerRequired": "Pick the team's owner, or create them.",
     "createOwner": "Create a New User",
-    "backToOwnerSearch": "Back to Search"
+    "backToOwnerSearch": "Back to Search",
+    "codeEdit": {
+      "help": "The team's products take the new code; the warehouses holding their stock reprint the labels.",
+      "typeFixed": "The type is fixed after creation."
+    }
   },
   "users": {
     "title": "Users",
@@ -3142,6 +3217,11 @@
     "changePicture": "Change Picture",
     "selectTeamForPicture": "Select a team first to change your picture.",
     "pictureHint": "JPG or PNG, shown across the app.",
+    "teamPictureChange": "Change picture",
+    "teamPictureHint": "JPG or PNG, shown across the app.",
+    "teamPictureSelectTeam": "Select a team first to change its picture.",
+    "teamPictureOnlyManagers": "Only a team owner or admin can change the picture.",
+    "teamPictureUpdated": "Team picture updated",
     "settings": "Settings",
     "selectTeamToManage": "Select a team to manage its settings.",
     "teamNameUpdated": "Team name updated",
@@ -3192,6 +3272,36 @@
       "title": "No answer from the server — you are still signed in.",
       "help": "Your sign-in could not be checked, so it is kept. Try Again, or this page checks again by itself when the connection comes back.",
       "tryAgain": "Try Again"
+    },
+    "warehouseHours": {
+      "title": "Hours and location",
+      "hint": "When the building is open, when it receives orders, and where it is. A seller's order form warns when this warehouse is closed.",
+      "promptTitle": "Set your order-receiving hours",
+      "promptBody": "They are not set yet, so a seller's order shows no closed warning for this warehouse. Set them below.",
+      "saved": "Hours and location saved"
+    },
+    "teamCode": {
+      "title": "Team code",
+      "lead": "The prefix in front of every product code this team owns — {{example}}.",
+      "label": "Code",
+      "help": "Up to {{max}} characters. The old code stays this team's.",
+      "tooLong": "A team code has at most {{max}} characters.",
+      "taken": "{{code}} already exists — {{team}} uses it.",
+      "former": "{{code}} already exists — another team used it before, and a team code once used is never given to another team.",
+      "onlyManagers": "Only the team's owner or admin can change the team code.",
+      "saved_one": "The team code is {{code}} now — {{count}} product took the new code.",
+      "saved_other": "The team code is {{code}} now — {{count}} products took the new code.",
+      "confirm": {
+        "title": "Change the team code to {{code}}?",
+        "action": "Change Code",
+        "products_one": "{{count}} product takes the new code — {{old}} becomes {{new}}.",
+        "products_other": "{{count}} products take the new code — {{old}} becomes {{new}}, and so on.",
+        "productsNone": "No product carries the team code yet, so no product code changes.",
+        "reprint": "Each warehouse holding their stock reprints the labels: {{warehouses}}. Until it has, the products carry the tag {{tag}}.",
+        "reprintNone": "No warehouse holds their stock, so no label needs reprinting.",
+        "past": "Past orders, restocks and transfers keep the code they were written with.",
+        "former": "{{code}} stays this team's: an old sticker still finds its product, and no other team can take {{code}}."
+      }
     }
   },
   "picking": {
@@ -3524,7 +3634,10 @@
       "move": "Moved",
       "return": "Returned",
       "unknown": "Unknown",
-      "sample": "Sample"
+      "sample": "Sample",
+      "cancel": "Cancelled",
+      "broken": "Broken",
+      "found": "Found"
     },
     "incoming": "On its way",
     "lastOrder": "Last order",
@@ -4929,7 +5042,7 @@
       "markLost": "Mark Lost",
       "process": "Process",
       "ship": "Ship",
-      "arrive": "Sign for Box",
+      "arrive": "Set Arrived",
       "accept": "Accept"
     },
     "cost": {
@@ -4952,7 +5065,7 @@
     },
     "lost": {
       "title": "Mark Transfer #{{id}} Lost",
-      "message": "The box never came. The loss is your team's. If it turns up, the receiving warehouse can still sign for it.",
+      "message": "The box never came. The loss is your team's. If it turns up, the receiving warehouse can still set it arrived.",
       "reason": "Reason",
       "confirm": "Mark Lost",
       "keep": "Keep Waiting"
@@ -4973,9 +5086,9 @@
       "dismiss": "Not Yet"
     },
     "arrive": {
-      "title": "Sign for Transfer #{{id}}",
+      "title": "Set Arrived — Transfer #{{id}}",
       "message": "The box is here. You can count it in now or later.",
-      "messageLost": "This box was marked lost. Signing for it records that it turned up after all.",
+      "messageLost": "This box was marked lost. Setting it arrived records that it turned up after all.",
       "dismiss": "Not Yet"
     },
     "timeline": {
@@ -4984,7 +5097,7 @@
       "changed": "Status changed",
       "process": "Confirmed by the sending warehouse",
       "shipped": "Handed to the courier",
-      "arrived": "Signed for at the receiving warehouse",
+      "arrived": "Set arrived at the receiving warehouse",
       "accepted": "Counted in",
       "cancelled": "Cancelled",
       "lost": "Marked lost",
@@ -5007,8 +5120,8 @@
       "processFailed": "Could not confirm the transfer",
       "shipped": "Transfer shipped",
       "shipFailed": "Could not ship the transfer",
-      "arrived": "Box signed for",
-      "arriveFailed": "Could not sign for the box",
+      "arrived": "Box set arrived",
+      "arriveFailed": "Could not set the box arrived",
       "accepted": "Transfer accepted",
       "acceptFailed": "Could not accept the transfer"
     },
@@ -6307,10 +6420,10 @@
       "markLost": "Mark Lost",
       "receive": "Count In",
       "resiTitle": "Tracking Number — Reshipping #{{id}}",
-      "resiMessage": "Editable until the warehouse signs for the parcel.",
+      "resiMessage": "Editable until the warehouse sets the parcel arrived.",
       "lostTitle": "Mark Reshipping #{{id}} Lost?",
       "lostMessage": "The parcel never came. The restock stays open until you mark it settled.",
-      "signTitle": "Sign for Reshipping #{{id}}",
+      "signTitle": "Set Arrived — Reshipping #{{id}}",
       "signMessage": "The parcel is at the door. A charge the courier asks for is noted now and final at count-in.",
       "receiveTitle": "Count In Reshipping #{{id}}",
       "receiveMessage": "Type what is in the box and how many are broken. Good units go on a rack; broken and short ones are written down and stay open on the restock.",

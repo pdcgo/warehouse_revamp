@@ -5,36 +5,37 @@ import { API_URL } from "./env";
 import { SUFFIX, api, login } from "./restock_helpers";
 
 // An owner or an admin of either team type wants to add an account — the check behind
-// docs/acceptances/financial_account/account.md, section *accounts*, when *create account* (givens 7–10 and 19).
-// Givens 7–10 name selling:owner · selling:admin · warehouse:owner · warehouse:admin: one test per role, each signed in
+// docs/acceptances/financial_account/account.md, section *accounts*, when *create account* (givens 11–14 and 27).
+// (Numbered 7–10 and 19 until hfrada's renumbering, aa6e65f6, 11-24 — the code keeps the old numbers in its keys.)
+// Givens 11–14 name selling:owner · selling:admin · warehouse:owner · warehouse:admin: one test per role, each signed in
 // as a person of that role, in a team of its OWN for each given (the list is the whole team's, and a name is the
-// team's — an-account-has-a-name-and-a-holder). Given 19 names the roles that are refused (selling:cs ·
+// team's — an-account-has-a-name-and-a-holder). Given 27 names the roles that are refused (selling:cs ·
 // warehouse:staff): one test each, on a team holding two accounts.
 //
-//   7 (type bank · provider BCA · name "BCA Operasional" · number · holder PT Melati · opening Rp 500.000) — the New
+//   11 (type bank · provider BCA · name "BCA Operasional" · number · holder PT Melati · opening Rp 500.000) — the New
 //     Account dialog filled as the given says; the number is the run's own (a number is recorded once app-wide,
 //     a-real-account-is-recorded-once), ten digits like the given's 1234567890
 //     then: account listed with Rp 500.000 — its row, its name and holder, its balance
 //     then: its first row: opening balance Rp 500.000 — the account's page, one row, Opening balance, +Rp 500.000
 //           (an-account-opens-with-a-log-row)
-//   8 (type bank · provider BCA · number already in another team) — root records the BCA number in a team of its own
+//   12 (type bank · provider BCA · number already in another team) — root records the BCA number in a team of its own
 //     first; the role types the same number
 //     then: cannot create, message says one real account is recorded once — the dialog stays with the server's
 //           refusal (409), and the team still has no account
-//   9 (name "BCA Operasional" already used in this team) — root records "BCA Operasional" in the role's team; the role
+//   13 (name "BCA Operasional" already used in this team) — root records "BCA Operasional" in the role's team; the role
 //     types the same name with a fresh number
 //     then: cannot create — the refusal names the name, and the team still has the one account
-//   10 (type other · provider other · no number · opening Rp 0) — type Other sets its provider by itself
+//   14 (type other · provider other · no number · opening Rp 0) — type Other sets its provider by itself
 //     (kas-and-lainnya-ask-no-provider): no provider field, no number typed
 //     then: account created with provider other — its row's provider badge reads Other, no number, Rp 0
-//   19 (team with 2 active accounts) — selling:cs and warehouse:staff
+//   27 (team with 2 active accounts) — selling:cs and warehouse:staff
 //     then: cannot add, New Account not offered — no New Account beside the Archive button, and the server refuses
 //           the create under the role's own token (403)
 //     then: the 2 accounts still shown with their balances, with no actions — both rows, both balances, no Actions
 //           column, no Transfer and no Account actions
 //
-// The ground (root, once): a team per (given, role) — 16 for givens 7–10, two for given 19, and the "another team" of
-// given 8 — and a person of every role, made in its given-7 team (given 19's in its own) and added to the others.
+// The ground (root, once): a team per (given, role) — 16 for givens 11–14, two for given 27, and the "another team" of
+// given 12 — and a person of every role, made in its given-11 team (given 27's in its own) and added to the others.
 
 const PASSWORD = "e2e-acct-create-pass-1";
 type Side = "selling" | "warehouse";
@@ -78,9 +79,9 @@ const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jak
 
 const ground = {
   team: {} as Record<string, string>,
-  // given 9: the "BCA Operasional" root recorded in the role's team
+  // given 13: the "BCA Operasional" root recorded in the role's team
   taken: {} as Record<string, string>,
-  // given 19: the two accounts of each refused role's team
+  // given 27: the two accounts of each refused role's team
   pair: {} as Record<string, { bank: string; cash: string }>,
 };
 const teamOf = (g: Given, r: Role) => ground.team[`${g}${r.key}`];
@@ -111,7 +112,7 @@ test.beforeAll(async ({ browser }) => {
       ).account.id,
     );
 
-  // Givens 7–10: a team per given and role, the person made in the given-7 one and added to the other three.
+  // Givens 11–14: a team per given and role, the person made in the given-11 one and added to the other three.
   for (const r of MANAGERS) {
     for (const g of [7, 8, 9, 10] as const) {
       ground.team[`${g}${r.key}`] = await makeTeam(teamName(g, r), teamCode(g, r), r.side);
@@ -131,7 +132,7 @@ test.beforeAll(async ({ browser }) => {
     }
   }
 
-  // Given 8 — "already in another team": each role's BCA number, recorded first in a selling team of root's.
+  // Given 12 — "already in another team": each role's BCA number, recorded first in a selling team of root's.
   const other = await makeTeam(OTHER_TEAM, OTHER_CODE, "selling");
   for (const r of MANAGERS) {
     await account(other, {
@@ -143,7 +144,7 @@ test.beforeAll(async ({ browser }) => {
     });
   }
 
-  // Given 9 — "BCA Operasional already used in this team": recorded in the role's own given-9 team.
+  // Given 13 — "BCA Operasional already used in this team": recorded in the role's own given-13 team.
   for (const r of MANAGERS) {
     ground.taken[r.key] = await account(teamOf(9, r), {
       type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
@@ -154,7 +155,7 @@ test.beforeAll(async ({ browser }) => {
     });
   }
 
-  // Given 19 — a team with 2 active accounts, per refused role.
+  // Given 27 — a team with 2 active accounts, per refused role.
   for (const r of REFUSED) {
     ground.team[`19${r.key}`] = await makeTeam(teamName(19, r), teamCode(19, r), r.side);
     await api(page, "user.v1.UserService/CreateUser", {

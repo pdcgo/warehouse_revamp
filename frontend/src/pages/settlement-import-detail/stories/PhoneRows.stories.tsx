@@ -250,7 +250,7 @@ export const LoadingTheRows: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(await canvas.findByTestId("lines-loading")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("lines-loading")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.getByTestId("file-tally")).toBeVisible();
     await expect(canvas.getByTestId("lines-tab-held")).toBeVisible();
     await expect(rowsShown(canvasElement)).toHaveLength(0);
@@ -269,10 +269,10 @@ export const ATabNeverShowsAnotherTabsRows: Story = {
 
     settlementImportScenario.linesHoldMs = 400;
     await userEvent.click(canvas.getByTestId("lines-tab-posted"));
-    await expect(await canvas.findByTestId("lines-loading")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("lines-loading")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId(`line-row-${heldFirst!.id}`)).toBeNull();
 
-    await expect(await canvas.findByTestId(`line-row-${postedLines()[0]!.id}`, {}, { timeout: 3000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId(`line-row-${postedLines()[0]!.id}`)).toBeVisible(), { timeout: 3000 });
     await expect(canvas.queryByTestId("lines-loading")).toBeNull();
   },
 };

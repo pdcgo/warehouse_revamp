@@ -29,7 +29,7 @@ func TestProductTeamCodes_ReadsTheCodeFromTeamService(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle(teamv1connect.NewTeamServiceHandler(team_v1.NewService(db, nil)))
+	mux.Handle(teamv1connect.NewTeamServiceHandler(team_v1.NewService(db, nil, nil)))
 
 	srv := httptest.NewServer(mux)
 	defer srv.Close()

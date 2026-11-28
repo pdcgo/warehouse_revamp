@@ -140,6 +140,15 @@ export function noOperationalAccountForStory(teamId: bigint) {
 }
 
 /**
+ * A STORY'S SETUP: a team with NO active account at all — nothing to pick and nothing to mark (the restock form's
+ * account box then says *create one and mark it operational*, the-account-box-points-to-the-accounts-page). Its accounts
+ * are archived, which takes them out of every picker. `resetFinancialAccounts` (preview's beforeEach) brings them back.
+ */
+export function noAccountForStory(teamId: bigint) {
+  for (const a of accounts) if (a.teamId === teamId) a.status = FinancialAccountStatus.ARCHIVED;
+}
+
+/**
  * A STORY'S SETUP: one account unmarked as operational — as an admin would, between a form loading its Paid from and
  * the person pressing Save. `resetFinancialAccounts` (preview's beforeEach) marks it back.
  */

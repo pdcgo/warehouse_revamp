@@ -7,8 +7,11 @@ stored is `<team_code>-<part>` — team ABC types `SHOE-42`, the product is `ABC
 ([the-field-is-product-code-composed-on-write](../../business/product/context_decision.md#the-field-is-product-code-composed-on-write)).
 The team code is team_service's, so `ProductCreate` and a code correction in `ProductUpdate` depend on it — through
 `product_v1.TeamCodes`, which the composition root answers with `TeamByIds` asked as the caller
-([product_team_codes.go](../../../backend/cmd/app_development/product_team_codes.go)). It is immutable after the team is
-created, so a composed code never goes stale.
+([product_team_codes.go](../../../backend/cmd/app_development/product_team_codes.go)), uncached. A selling team's code
+**can change** (team_service's `TeamCodeUpdate`, which recomposes every product of the team in its own transaction —
+[*The team code change*](#the-team-code-change--the-products-take-the-new-code-built-2026-11-27-backlog-149) below), so
+both read it INSIDE their transaction, under the team's product-code lock the recompose takes too: a create or a
+correction racing a change never stores the old prefix.
 
 | RPC | the code |
 | --- | --- |
@@ -25,12 +28,14 @@ sequenceDiagram
   participant H as history — inventory and selling
   participant DB as products
   UI->>P: ProductCreate — team_id, product_code_part SHOE-42
+  P->>DB: begin, the team's product-code lock
   P->>T: the team's code
   T-->>P: ABC — or nothing, then FailedPrecondition
   P->>DB: INSERT product_code ABC-SHOE-42
   DB-->>P: unique over every row — a taken code is AlreadyExists
   UI->>P: ProductUpdate — product_code_part SHOE-43
-  P->>T: the team's code, before the transaction
+  P->>DB: begin, the team's product-code lock — only when a part is sent
+  P->>T: the team's code
   P->>DB: lock the product row
   alt the composed code is the one it has
     P->>DB: no correction — the other fields only
@@ -47,7 +52,85 @@ catalogue. ⚠ A team code may contain a dash, so `AB` + `C-1` and `AB-C` + `1` 
 as AlreadyExists.
 
 **Today's rows** — written before composition — are recomposed once by
-[`san product recompose-codes`](../../tools/san.md#product-recompose-codes), which `dev setup` runs.
+[`san product recompose-codes`](../../tools/san.md#product-recompose-codes), which `dev setup` runs. A code under one of
+its team's FORMER codes is not a bare part, and the command leaves it alone (backlog #149).
+
+## The team code change — the products take the new code (built 2026-11-27, backlog #149)
+
+A selling team's code changes through team_service's `TeamCodeUpdate`
+([a-team-code-change-recomposes-its-product-codes](../../business/product/context_decision.md#a-team-code-change-recomposes-its-product-codes);
+the cross-service flow is team rpc.md *TeamCodeUpdate*), and in that one transaction its products take the new code:
+`product_v1.(*Service).RecomposeTeamCodes(ctx, tx, team, old, new, actor)`
+([product_code_recompose_team.go](../../../backend/services/product_service/product_v1/product_code_recompose_team.go)),
+handed team_service's transaction by the composition root
+([product_code_recomposer.go](../../../backend/cmd/app_development/product_code_recomposer.go)) — the
+liability_poster pattern. Set-based, a fixed number of statements whatever the team's size:
+
+| step | what |
+| --- | --- |
+| the lock | `pg_advisory_xact_lock(hashtextextended('product_service:product-code:<team>', 0))` (`lockTeamProductCodes`) — the FIRST lock `ProductCreate` and a code correction in `ProductUpdate` take too, so none of them lands the old prefix |
+| left alone | the team's products NOT under `<old>-` (rows written before composition) are counted and the first 20 named; never touched |
+| the clash | a product of the team taking a code another product carries (only through a dash in a code) refuses the WHOLE change, AlreadyExists, nothing written |
+| the clear | the moving products' earlier reprint waits and `need_reprint_code` — a second change before a reprint starts the reprint over (⚠7) |
+| the move | ONE statement: every product under `<old>-`, **archived too**, becomes `<new>-<part>` (the exact old prefix comes off), and each gets a `product_logs` line — `code_changed`, old → new, who, override, when. Only when one prefix begins with the other (`ABC` → `ABC-X`) are the rows parked first on a placeholder unique by id |
+| the shelves | inventory, in the same transaction, in-process: `StockNarrower.StockSitsAmong(tx, ids)` → each (product, warehouse) with units on a shelf NOW (`product_placements.stock_count > 0`) — HeldAmong's sibling, which answers "ever held", not "where now" |
+| the waits | ONE statement: a `product_reprint_waits (product_id, warehouse_id, since)` row per pair, and `need_reprint_code` (put on by the app, user 0) on those products — a product with nothing on a shelf anywhere takes the new code and is never tagged (⚠4). #151's reprint deletes a warehouse's row, the tag goes with the last |
+
+Past order, restock and transfer lines are other services' copies and keep the code they were written under.
+
+| RPC | who (proto policy) | what |
+| --- | --- | --- |
+| `ProductLogList` | the owning team's Owner, Admin and CS, Root, Administrator — never a warehouse, never Discover | a product's history (`product_logs`), newest first, PAGED (HARD RULE 9): `old_code`, `new_code`, `actor_id` (a name at read time), `is_override`, `created_at_unix` — the product page's Riwayat Produk card. Another team's product or none → NotFound; archived ones answer. Messages in `product_log.proto` |
+| `ProductCodesByIds` | every selling / warehouse role, Root, Administrator (a read) | up to 200 ids → each one's code NOW and its former codes (`product_logs` `code_changed` `old_code`s, newest first, each once case-insensitively, never the code it carries now), keyed by id — the scoped team's own products, and for a warehouse the products it has held (`HeldAmong`, the rule `ProductTagsByIds` keeps — one helper, `readable_by_ids.go`); any other id **absent**, never refused. Messages in `product_log.proto` |
+
+- **A former code still finds the product** (backlog #152, #141 P4 — its 🔄 *an old sticker scanned before the
+  reprint*, owner Q1 "A"). The pick pages' item scan (`features/picking/ItemScan.tsx`, the order's and the custom
+  shipment's) matches a scan — trimmed, case-insensitive, WHOLE — against the line's own code, the line product's code
+  now and every former code: ONE `ProductCodesByIds` per page, beside `StockPickLocations` in one `Promise.all`, only
+  while the item scan is on screen (a processed order, a requested parcel) — never a read per scan. The product search —
+  `ProductList`'s `q` and `SearchAmong` (the warehouse's list and picker) — matches a former code whole too
+  (`productTermClause`, [product_term_clause.go](../../../backend/services/product_service/product_v1/product_term_clause.go)):
+  `… OR products.id IN (SELECT product_id FROM product_logs WHERE lower(old_code) = lower(q) AND kind = 'code_changed')`,
+  never a piece of one; the name and the code now as before. Measured (100 000 products, 50 000 history lines):
+  `ProductList`'s count 22.4 → 17.8 ms, `SearchAmong` 15.1 → 16.1 ms with `product_logs_old_code_idx` (53.3 / 48.4 ms
+  without it), `ProductCodesByIds` of 200 ids 0.2–0.5 ms in the database
+  ([the audit](../../../audits/services/product_service/performances/ProductList.md)).
+
+```mermaid
+sequenceDiagram
+    participant P as a pick page
+    participant O as OrderDetail / CustomShipmentDetail
+    participant I as inventory StockPickLocations
+    participant C as ProductCodesByIds
+    participant H as inventory HeldAmong
+    P->>O: the order (its lines, their product ids)
+    par beside each other
+        P->>I: the racks
+    and only while scanning
+        P->>C: the lines' product ids (≤ 200 a call)
+        C->>C: the team's own products
+        C->>H: the others, as a warehouse — held here?
+        C-->>P: code now + former codes, by id
+    end
+    Note over P: each scan matched on the page, no read
+```
+
+- **Concurrency** (`cmd/app_development/product_code_recomposer_race_test.go`, `raceaudit`, the real seam): a
+  `ProductCreate` racing the change never lands the old prefix (parked on the lock, 3 rounds — it composes from the new
+  code, or commits first and is recomposed); a code correction likewise; two teams changing to one code → one lands, the
+  other AlreadyExists naming the winner; two changes of one team serialise on the team row; a tag put-on / take-off
+  racing the recompose lands beside it. Removing the create's lock, the correction's, the recompose's or the team row's
+  fails its race (mutation-checked).
+- **Measured** — 🟡 HEAVY, the < 1 s target missed: 5 000 products 0.9–1.2 s, 50 000 products 6.3–8.1 s, 15 statements
+  at every size — [TeamCodeUpdate audit](../../../audits/services/product_service/performances/TeamCodeUpdate.md).
+  `ProductCreate` with the lock: 1.08 → 2.00 ms median, 2 → 4 statements in the test transaction.
+- **The preview** (backlog #150): `PreviewTeamRecompose` answers team_service's `TeamCodePreview` through the same seam
+  (`ProductCodeRecomposer.PreviewTeamCodes`) on the caller's db, writing nothing — how many products the recompose would
+  move (archived too), one example old → new (an active product first: `ORDER BY archived, id LIMIT 1`), and the
+  warehouse ids `StockSitsAmong` names for them; three statements at any size
+  ([team_service rpc.md](../team_service/rpc.md#teamcodepreview--what-a-teamcodeupdate-would-do-read-before-it-is-sent-built-2026-11-27-backlog-150),
+  [the audit](../../../audits/services/team_service/performances/TeamCodePreview.md)). `ProductLogList` is live on the product
+  page's Riwayat Produk card since #150 (one call a load, its people named by one `UserByIDs`).
 
 ## Bundles — `BundleService`
 
@@ -398,3 +481,62 @@ sequential scan and a hash aggregate; with `products_category_idx` dropped on th
 COMMITTED, `VACUUM ANALYZE`d copy of 300 000 rows: a parallel index-only scan of `products_category_idx` (0 heap
 fetches) 46–57 ms, the generic plan 58 ms, with no category index 48–50 ms. The count reads every live row by nature, so
 no index buys anything; none added. The page is opened rarely. Not heavy; no audit file.
+
+## Product tags (built 2026-11-27, backlog #147)
+
+A product carries **tags**; the seller's Products list and the warehouse's show and filter by them, and the owning team
+tags its products ([products-have-their-own-tag-list](../../business/product/context_decision.md#products-have-their-own-tag-list)
+with its 🔄 lines, [the-team-code-and-product-tags-prototype-is-accepted](../../business/product/context_decision.md#the-team-code-and-product-tags-prototype-is-accepted)).
+**The products' own list** (`product_tags`, database-schema.md), apart from the orders' and the restocks': one list for
+every team, a name one tag whatever its case. The order tags' rules on it (selling rpc.md *Order tags*), with one app
+tag: **`need_reprint_code`** (`app_task` `product.code.reprint`, seeded by `00010`), found by its task, never by name —
+locked for everyone, admins included (FailedPrecondition), as the restocks' problem tags. The messages are in
+`proto/warehouse/product/v1/product_tag.proto`, the RPCs on `ProductService`; the handlers are
+`product_v1/product_tag_*.go`, `product_system_tag_*.go` and `product_tags_by_ids.go` on `product_tags.go`.
+
+| RPC | who (proto policy) | what |
+| --- | --- | --- |
+| `ProductTagList` | every selling / warehouse role, Root, Administrator (a read) | the products' list, the system's first then by name, `q` narrowing — the Tag filter's and the Tag card's picker |
+| `ProductTagManageList` | Root, Administrator | the same, each tag's `product_count` (every team's) and `app_task` |
+| `ProductTagCreate` | ProductUpdate's roles: selling Owner and Admin, Root, Administrator | a **custom** tag; a name that exists, any case, answers THAT tag with `created` false — never a twin |
+| `ProductTagSystemCreate` | Root, Administrator | a **system** tag, same answer for a name that exists |
+| `ProductTagRename` | Root, Administrator | a name another product tag carries → AlreadyExists; the app's tag → FailedPrecondition |
+| `ProductTagDelete` | Root, Administrator | takes it off every product and says how many (`product_count`); the app's tag → FailedPrecondition |
+| `ProductTagAdd` / `Remove` | ProductUpdate's roles | a **custom** tag on / off a product of the scoped team, archived or not; another team's or an unknown product → NotFound; a system tag → PermissionDenied |
+| `ProductSystemTagAdd` / `Remove` | Root, Administrator | an admin's **system** tag on / off, same products; a custom tag → InvalidArgument; the app's tag → FailedPrecondition |
+| `ProductTagsByIds` | every selling / warehouse role, Root, Administrator (a read) | up to 200 ids → each one's tags, keyed by id: the scoped team's own products, and for a warehouse the products it has held (a batch there, at 0 too); any other id **absent**, never refused |
+
+- **Who sees** (its 🔄 *who sees*): the owning team and every warehouse holding the product's stock. `ProductList` (the
+  team's own) and `ProductDetail` carry the tags — `ProductRowItem.tags`, `Product.tags`, the system's first then by
+  name, one statement per page (`productTagsOf`); `ProductDiscover` and `ProductByIds` serve other teams and carry
+  **none**, and Discover refuses `tag_ids` (InvalidArgument, as the list-only filters). The warehouse reads them
+  through inventory: `WarehouseStockList`'s rows (inventory rpc.md *The Stock screen*) and `ProductTagsByIds`, whose
+  held check asks inventory in-process — `StockNarrower.HeldAmong(warehouse, ids)`, one read of `batches`
+  (`warehouse_id = ? AND product_id = ANY(…)`, an index-only scan of `batches_last_price_idx`), no shared model.
+- **The Tag filter** — `ProductListFilter.tag_ids`, up to 50, ANY of: `EXISTS (SELECT 1 FROM product_tag_links l
+  WHERE l.product_id = products.id AND l.tag_id = ANY(…))`, inside the list's one count and page, beside every other
+  filter (the stock-age and lock narrowing included); empty = any tag or none. `SearchAmong` takes the same filter among
+  the held ids and, when asked (`WithTags`), names each match's tags in the same pass.
+- **Every product, archived too**: a tag goes on and comes off a live or an archived product alike (the order tags'
+  *every status*; the prototype's ⚠2 tags archived products where stock sits). A put-on already on, or a take-off not
+  on, is no change; both answer the product's tags after. Who put a tag on is kept on its link
+  (`added_by_user_id`, `added_by_is_override`). `ProductDelete` (a never-used product) takes its links by the cascade.
+- **Concurrency** (`product_tags_race_test.go`, `raceaudit`): eight creates of one new name → one tag, one `created`
+  (`ON CONFLICT ((lower(name))) DO NOTHING`, then the holder is read); eight put-ons → one link; on vs off at once → on
+  or off, never an error (10 / 10 over 20 rounds); a put-on holds the product and then the tag `FOR KEY SHARE`, a tag
+  delete locks the tag `FOR UPDATE` first — a put-on racing a delete lands first and is taken off with the rest (10) or
+  answers NotFound (10), and one racing `ProductDelete` lands and is cascaded (11) or answers NotFound (9), never a
+  foreign-key Internal; two renames onto one name → one lands, one AlreadyExists. Removing either `KEY SHARE` fails its
+  race (mutation-checked).
+- **Measured** (`product_tags_perf_test.go`, `perfaudit`, 100 000 products in five teams, the team 20 000, tags on 1 in
+  503 / 53 / 7 / 97, median of 7, in the test transaction): `ProductList` 3 statements at every pick, 3.0–20.4 ms
+  (newest 4.9–9.7, by name 3.0–20.4; the rare tag by name 7.1 → 3.0 ms with `product_tag_links_tag_idx`); under a
+  forced generic plan 10.6–28.4 ms, its no-tag page itself 10.6 / 19.1 ms; `SearchAmong` among 3 000 / 6 000 held ids 50–61 ms wall, all of it this host's loopback carrying the id
+  array (a bare `SELECT length($1)` of it: 50 ms) — server execution ≤ 7.5 ms; `ProductTagsByIds` of 200 ids 1.2 ms,
+  2 statements. Through the real wiring (`cmd/app_development/product_tags_seam_perf_test.go`, 30 000 products, 70 000
+  batches): `WarehouseStockList` at 10 000 held executes in 8.4 ms with no tag, 2.8 ms rare, 5.1 ms common (wall ≈ the
+  same 50–60 ms loopback control as before the tags); `ProductTagsByIds` as a warehouse 2.7 ms, `HeldAmong` 1.0 ms.
+  Not heavy; no audit file. `product_tag_links_tag_idx` (tag_id, product_id) is part of the new table, as
+  `order_tag_links_tag_idx`: the rare tag's filter, the per-tag count and the delete's take-off.
+
+- **On screen** (backlog #148): the product page's Tag card reads `Product.tags` and writes through the tag RPCs above (`ProductTagList` only for someone who may add); the seller's Products list reads `ProductRowItem.tags` and sends `tag_ids`; the warehouse's list reads `WarehouseStockList`'s row tags and sends its `tag_ids`; the Tag filter reads `ProductTagList` once per screen; the warehouse product page asks `ProductTagsByIds` for its one product; Kelola tag produk reads `ProductTagManageList` while open. Hooks: `frontend/src/features/products/tags/tagQueries.ts`.

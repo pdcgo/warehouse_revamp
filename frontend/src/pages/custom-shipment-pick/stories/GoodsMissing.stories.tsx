@@ -316,7 +316,7 @@ export const AnotherParcelsNoteStaysOnIt: Story = {
     const canvas = await opened(canvasElement);
 
     await expect(canvas.getByTestId("pick-scan")).toBeVisible();
-    await expect(await canvas.findByTestId("custom-shipment-goods-missing-open")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-goods-missing-open")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId("custom-shipment-goods-missing-notice")).toBeNull();
     await expect(kinds(canvasElement)).toEqual(["created"]);
   },

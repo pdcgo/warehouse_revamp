@@ -54,7 +54,8 @@ const (
 // service.
 type WarehouseInfoServiceClient interface {
 	// A warehouse's profile. Any authenticated caller: a selling team legitimately needs to know when a warehouse can
-	// receive its orders. A warehouse with no profile yet reads as closed every day.
+	// receive its orders. A warehouse with no profile yet answers empty grids — its hours are not set, which is NOT
+	// closed (a-warehouse-with-no-hours-is-not-closed).
 	WarehouseInfoDetail(context.Context, *connect.Request[v1.WarehouseInfoDetailRequest]) (*connect.Response[v1.WarehouseInfoDetailResponse], error)
 	// Replaces a warehouse's weekly hours and location. Warehouse managers edit their own.
 	WarehouseInfoUpdate(context.Context, *connect.Request[v1.WarehouseInfoUpdateRequest]) (*connect.Response[v1.WarehouseInfoUpdateResponse], error)
@@ -150,7 +151,8 @@ func (c *warehouseInfoServiceClient) WarehouseReceivingStatus(ctx context.Contex
 // warehouse.warehouse.v1.WarehouseInfoService service.
 type WarehouseInfoServiceHandler interface {
 	// A warehouse's profile. Any authenticated caller: a selling team legitimately needs to know when a warehouse can
-	// receive its orders. A warehouse with no profile yet reads as closed every day.
+	// receive its orders. A warehouse with no profile yet answers empty grids — its hours are not set, which is NOT
+	// closed (a-warehouse-with-no-hours-is-not-closed).
 	WarehouseInfoDetail(context.Context, *connect.Request[v1.WarehouseInfoDetailRequest]) (*connect.Response[v1.WarehouseInfoDetailResponse], error)
 	// Replaces a warehouse's weekly hours and location. Warehouse managers edit their own.
 	WarehouseInfoUpdate(context.Context, *connect.Request[v1.WarehouseInfoUpdateRequest]) (*connect.Response[v1.WarehouseInfoUpdateResponse], error)

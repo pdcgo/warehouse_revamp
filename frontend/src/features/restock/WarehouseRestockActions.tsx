@@ -230,7 +230,7 @@ export function WarehouseRestockActions({ request, teamId, variant, idSuffix = "
   );
 }
 
-// SIGN FOR THE BOX — the courier handed it over: ongoing (or lost) → arrived. It cannot be taken back, so it confirms;
+// SET ARRIVED (an-arrival-is-set-arrived) — the courier handed it over: ongoing (or lost) → arrived. It cannot be taken back, so it confirms;
 // it is not destructive, so the confirm is the brand colour, not red.
 //
 // TIBA ONLY MARKS; TERIMA IS FINAL (owner: *"tiba itu untuk menandai, diterima itu final"*,
@@ -238,7 +238,8 @@ export function WarehouseRestockActions({ request, teamId, variant, idSuffix = "
 //
 // THE COURIER'S CHARGE CAN BE NOTED HERE (owner: *"ongkir cod bisa keduanya"*, the-cod-can-be-noted-when-the-box-arrives)
 // — when the courier asks for it at the door, which is now. ASKED FIRST (the-charge-is-asked-for-before-it-is-filled): unticked,
-// the sign goes ahead with nothing to fill; ticked, the amount and the note are required and the sign waits for them.
+// the sign goes ahead with nothing to fill; ticked, the amount is required and the sign waits for it — the note is
+// optional (the-couriers-charge-note-is-optional).
 // KEPT (owner: *"arrived can set that, and can edited too in accept stock"*,
 // the-courier-charge-is-noted-at-tiba-and-final-at-terima): the sign sends the charge, its note and its slip, and the
 // restock keeps them — both restock pages show it, and Terima opens with it, its figure final. No money moves here.
@@ -263,10 +264,9 @@ function SignForBoxDialog({
 
   const charge = asked ? toRupiah(amount) : 0;
   const charged = charge > 0;
-  // Ticked, both are required; the note's error shows once there is an amount, so a fresh tick is not all red. A slip
-  // still uploading holds the sign for the seconds it takes, as it holds Terima — it would go without it.
-  const incomplete = asked && (!charged || note.trim() === "" || photoUploading(photo));
-  const noteMissing = charged && note.trim() === "";
+  // Ticked, the amount is required; the note is not (the-couriers-charge-note-is-optional). A slip still uploading holds
+  // the sign for the seconds it takes, as it holds Terima — it would go without it.
+  const incomplete = asked && (!charged || photoUploading(photo));
 
   async function confirm() {
     try {
@@ -309,7 +309,6 @@ function SignForBoxDialog({
         onAsked={setAsked}
         amount={amount}
         note={note}
-        noteMissing={noteMissing}
         onAmount={setAmount}
         onNote={setNote}
         photo={photo}

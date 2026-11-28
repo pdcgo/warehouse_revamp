@@ -232,7 +232,7 @@ sequenceDiagram
     participant L as liability_service
 
     W->>S: team_id = the accepting warehouse, order_id, lines - broken, missing, note, racks - courier charge and its note
-    S->>S: the root team, or a charge above 0 with no note - InvalidArgument
+    S->>S: the root team - InvalidArgument
     S->>DB: the order and its lines WHERE id, and in return or read by the caller - not locked
     S->>S: the selling team - PermissionDenied, not return - FailedPrecondition
     S->>DB: the selling team's return warehouse, read now
@@ -272,7 +272,7 @@ sequenceDiagram
 | `return_transaction_id` | the return's inventory transaction, on the order beside `transaction_id` (selling `00049`, nullable, no FK — another service's id) and on the wire as `Order.return_transaction_id` |
 | broken / missing | inventory's door rows, the **selling team's** — never the warehouse's payable, claim or Inventory Lost ([a-short-return-is-missing-at-the-door](../../business/inventory/return_decision.md#a-short-return-is-missing-at-the-door), [a-broken-returned-unit-is-thrown-away-at-the-door](../../business/inventory/return_decision.md#a-broken-returned-unit-is-thrown-away-at-the-door)) — named on ONE note row from the warehouse at the accept's moment, for customer service's platform claim: *"Missing from the returned parcel: 1 × KPH-M Kaos Polos Hitam. Broken, thrown away: 1 × TOP-01 Topi Rajut (sobek di jahitan)"* ([a-return-door-row-carries-an-optional-note](../../business/inventory/return_decision.md#a-return-door-row-carries-an-optional-note)) |
 | a borrowed line | a line whose owner is known and is not the selling team. It comes back as the mapped own product (inventory relabels it, [a-returned-borrowed-unit-is-relabelled-at-the-accept](../../business/order/context_decision.md#a-returned-borrowed-unit-is-relabelled-at-the-accept)) and answers a label per **sound** unit; `OrderDetail` answers the same labels (`return_labels`) while the order is in `return`, so the page shows the code to print before the accept. An unmapped one refuses the whole accept ([a-return-never-clones-a-product](../../business/order/context_decision.md#a-return-never-clones-a-product)) |
-| the courier | `courier_charge` (a double, frozen exact; 0 = none) and its note, required above 0 — unchanged: the accept row's note *"Courier charge Rp 15.000: ongkir retur"*, carried by `OrderReturnAccepted`, posted by liability ([liability_service](../liability_service/rpc.md#the-courier-at-a-return--chargereturncourier)) |
+| the courier | `courier_charge` (a double, frozen exact; 0 = none) and its note, optional ([the-couriers-charge-note-is-optional](../../business/balance/context_decision.md#the-couriers-charge-note-is-optional), #146 — `errReturnChargeNoteMissing` is gone): the accept row's note *"Courier charge Rp 15.000: ongkir retur"*, or *"Courier charge Rp 15.000"* with no note, carried by `OrderReturnAccepted`, posted by liability ([liability_service](../liability_service/rpc.md#the-courier-at-a-return--chargereturncourier)) |
 | the override | `is_override` on both rows it writes, and `actor_is_override` on the event |
 | no call under the lock | the catalogue and the stock half are read/written before the order's lock; the lines and maps cannot change under them, and the status is re-read under the lock |
 | the event | `OrderReturnAccepted` on `order-return-accepted`, `event_id` = `order-return-accepted:<order_id>` — terminal, so once |
@@ -878,7 +878,7 @@ and `order_draft_items.unit_price` are `double precision`, and `goods_cost` (Ord
 finite; `OrderReturnAccepted` carries it) are `double`. `placeOrder` freezes each line's `unit_cost` (the take's drawn
 unit cost) and the order's `goods_cost` (Σ the lines' totals) EXACT — never rounded; the warehouse fee is the pricer's
 exact answer on that basis (2,5% of Rp 12.666,99 = Rp 316,67475) and `total_cost` their exact sum. `OrderReturnAccept`
-freezes the courier's charge as typed before its note check, its event and the liability posting read it. A draft's
+freezes the courier's charge as typed; its event and the liability posting read it. A draft's
 `unit_price` is information, kept as read. The order form previews the same exact figures — the line figures summed,
 nothing rounded (`features/orders/form/money.ts`, the fee quote as the warehouse answers it) — so the preview, the fee's
 basis and the frozen order are one figure; only the screen rounds, to 3 decimals. The credit block's message writes
@@ -1277,6 +1277,46 @@ sequenceDiagram
 | policy | all three requests: Root, Administrator, Selling Owner, Selling Admin, Selling CS — the roles that create orders |
 | names | not stored — the form names our product from `ProductByIds`, the read it already makes |
 | concurrency | ✅ safe — the phantom insert is closed by the unique index: N concurrent maps of one product leave one row and every caller is handed it; the interleave shows the second insert waiting on the first and reading its pair (`product_return_map_create_race_test.go`) |
+
+## Produk Turunan — `ProductDerivedList` (2026-11-27, #140)
+
+[produk-turunan-is-the-return-map](../../business/product/context_decision.md#produk-turunan-is-the-return-map): a
+product's *Produk Turunan* IS its return maps, read in **both directions and across teams** — the product's own page and
+the Discover detail draw it. A separate read on `TeamReturnConfigurationService`: the order form's
+`ProductReturnMapByIds` above stays team-scoped, and another team's map is still never seen there.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Produk Turunan - product page or Discover detail
+    participant SELL as selling_service
+    participant P as product_service
+    participant T as team_service
+    participant I as inventory_service
+
+    UI->>SELL: ProductDerivedList(team, product) - asked from the address, beside the product's own read
+    SELL-->>UI: derived_from - the maps whose own product it is, derived_to - every team's map from it, each with its total
+    par as soon as the maps answer, in one query function
+        UI->>P: ProductByIds - name, SKU, cover, each borrowed product's owner
+    and
+        UI->>I: DiscoverStockByIds - ready stock, every warehouse
+    and no Turunan dari line
+        UI->>T: TeamByIds - the maps' teams
+    end
+    opt a Turunan dari line - its team is its product's owner
+        UI->>T: TeamByIds - the maps' teams and the owners, once the records answer
+    end
+```
+
+| | |
+| --- | --- |
+| the read | `ProductDerivedList(team_id, filter.product_id)` — two statements, one per direction: `own_product_id = ?` (*Turunan dari*) and `shared_product_id = ?` (*Turunannya*, every team's). Each map is `ProductReturnMap` — `team_id`, `shared_product_id`, `own_product_id`, `created_at_unix` |
+| the scope | `team_id` only **authorizes** — the maps are every team's. A product no map names reads two empty lists |
+| several sources | the map is unique on its SOURCE, not on its own product ([the-map-is-unique-on-its-source](../../business/order/context_decision.md#the-map-is-unique-on-its-source)): a team may land several borrowed products on one own product, and each is its own *Turunan dari* row |
+| capped, not paged | each direction is its **newest 200** maps (`created_at DESC, id DESC`) — CommonPagination's largest page and the `max_items` of the three by-ids reads that name the rows — with `derived_from_total` / `derived_to_total` beside it (`COUNT(*) OVER ()`, counted before the `LIMIT`), so the section's count is never short |
+| names | not here — the screen names the rows with ProductByIds, TeamByIds and DiscoverStockByIds, the reads the Discover detail already makes (`features/products/queries.ts` `useProductDerived`) |
+| policy | Root, Administrator, Selling Owner, Selling Admin, Selling CS — Discover's (`ProductDiscover`) and `ProductReturnMapByIds`'; a warehouse role is refused. `NO_SIDE_EFFECTS`: the monitor and an agent's credential may call it. Pinned by `TestProductDerivedList_DiscoversPeopleReadAndAWarehouseIsRefused` |
+| performance | 2 queries flat, each an index seek since selling `00056` (`product_return_maps (shared_product_id)` and `(own_product_id)`, [a-pure-index-is-added-without-asking](../../technical/architecture/context_decision.md#a-pure-index-is-added-without-asking)): ≈0.5 ms at 10 000 maps, ≈1.0 ms at 50 000 (a seq scan before: 2.4 / 7.9 ms); the writer unchanged within noise ([ProductDerivedList.md](../../../audits/services/selling_service/performances/ProductDerivedList.md)) |
 
 ## The shop, asked by other services — `ShopAccessCheck`
 

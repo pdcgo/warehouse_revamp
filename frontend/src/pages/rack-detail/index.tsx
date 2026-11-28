@@ -10,7 +10,7 @@ import type { Product } from "../../gen/warehouse/product/v1/product_pb";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { ProductStickyStrip } from "../../features/products/ProductTitleRow";
-import { type RackHistoryRow, useRackDetail, useRackHistory } from "../../features/racks/queries";
+import { type RackHistoryRow, useRackDetail } from "../../features/racks/queries";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { CompactActions } from "../../components/chrome/CompactActions";
 import { Fact, Section } from "../../components/chrome/DetailSection";
@@ -24,7 +24,6 @@ import { ProductListItem } from "../../components/products/ProductListItem";
 import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
 import { cameFrom } from "../../lib/cameFrom";
 import { formatUnixDate } from "../../lib/datetime";
-import { PLACEMENT_KINDS } from "../../features/inventory/movementKind";
 import { MovementTable } from "../../features/inventory/MovementTable";
 import { formatRupiah } from "../../lib/money";
 import { useIsMobile } from "../../layouts/shell";
@@ -44,6 +43,7 @@ import {
   rackSection,
   rackSectionDomId,
 } from "./sections";
+import { type HistoryLens, type RackLedger, useRackLedger } from "./useRackLedger";
 import { type RackShelf, useRackShelf } from "./useRackShelf";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -119,6 +119,10 @@ export function RackDetailPage() {
 
   // WHAT IS ON IT, PRICED — Produk's read and its pager (useRackShelf).
   const shelf = useRackShelf(teamId, rackId);
+
+  // WHAT HAS HAPPENED TO IT — Riwayat's read and its chip and pager (useRackLedger), asked beside the rack and the shelf:
+  // it needs only the address's rack (#134).
+  const ledger = useRackLedger(teamId, rackId);
 
   // The names alone, for the dialogs, which show a team inside a product's line.
   const teamNames = useMemo(() => new Map([...shelf.teams].map(([id, team]) => [id, team.name])), [shelf.teams]);
@@ -340,7 +344,7 @@ export function RackDetailPage() {
   // to the movements that decided goods LIVE here.
   const history = section(
     "history",
-    <RackHistory teamId={teamId} rackId={rackId} testId="rack-history" />,
+    <RackHistory ledger={ledger} testId="rack-history" />,
     "rack-history-panel",
   );
 
@@ -635,13 +639,10 @@ function RackStockTable({ lines, products, teams, loading, error }: RackStockTab
 }
 
 interface RackHistoryProps {
-  teamId: bigint | undefined;
-  rackId: bigint;
+  /** The page's read of this shelf's ledger, and its chip and pager (useRackLedger). */
+  ledger: RackLedger;
   testId: string;
 }
-
-/** Riwayat's chips: every movement, or only the ones that decided goods live here. */
-type HistoryLens = "all" | "placement";
 
 const NO_MOVEMENTS: RackHistoryRow[] = [];
 const NO_NAMES = new Map<string, string>();
@@ -655,19 +656,13 @@ const NO_NAMES = new Map<string, string>();
 //
 //   (Semua) (Hanya penempatan)  ← Diterima and Pindah rak only — what decided goods live here
 //
-// The read is a query (features/racks useRackHistory): the page of rows, WHO did each (any-warehouse-member-may-move-goods
-// — every row names its person) and to WHAT, committed together; a failed name lookup falls back to "#id". A write on the
-// page refreshes it by invalidation.
-function RackHistory({ teamId, rackId, testId }: RackHistoryProps) {
+// The read is a query (features/racks useRackHistory), the PAGE's (useRackLedger — asked beside the rack, #134): the page
+// of rows, WHO did each (any-warehouse-member-may-move-goods — every row names its person) and to WHAT, committed
+// together; a failed name lookup falls back to "#id". A write on the page refreshes it by invalidation.
+function RackHistory({ ledger, testId }: RackHistoryProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const [lens, setLens] = useState<HistoryLens>("all");
-  const kinds = lens === "placement" ? PLACEMENT_KINDS : undefined;
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const kindKey = (kinds ?? []).join(",");
-
-  const query = useRackHistory({ teamId, rackId, kinds, page, pageSize });
+  const { query, lens, setLens, page, setPage, pageSize, setPageSize, kindKey } = ledger;
   const movements = query.data?.movements ?? NO_MOVEMENTS;
   const actorNames = query.data?.actorNames ?? NO_NAMES;
   const productNames = query.data?.productNames ?? NO_NAMES;
@@ -683,10 +678,8 @@ function RackHistory({ teamId, rackId, testId }: RackHistoryProps) {
   const chips = (
     <FilterChips<HistoryLens>
       value={lens}
-      onChange={(next) => {
-        setLens(next);
-        setPage(1);
-      }}
+      // Another lens starts from page one (useRackLedger).
+      onChange={setLens}
       all="all"
       allLabel={t("racks.detail.historyAll")}
       options={[

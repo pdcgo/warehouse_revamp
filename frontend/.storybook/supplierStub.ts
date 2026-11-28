@@ -62,6 +62,15 @@ export function addSupplierRows(more: { suppliers: SupplierFixture[]; channels: 
   channels.push(...more.channels.map((c) => ({ ...c })));
 }
 
+/**
+ * A STORY'S SETUP: no supplier — in team `teamId`, or in ANY team when it is omitted (the restock form's supplier popup
+ * with nothing to list, the-supplier-popup-points-to-create-supplier-when-none-exists). Lasts the story: preview's
+ * `beforeEach` resets the tables.
+ */
+export function noSuppliersForStory(teamId?: bigint) {
+  for (const s of suppliers) if (teamId === undefined || s.teamId === teamId) s.deleted = true;
+}
+
 const nextId = (rows: { id: bigint }[]) => rows.reduce((max, r) => (r.id > max ? r.id : max), 0n) + 1n;
 
 const newestFirst = <R extends { id: bigint }>(rows: R[]) => [...rows].sort((a, b) => (a.id > b.id ? -1 : a.id < b.id ? 1 : 0));

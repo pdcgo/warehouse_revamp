@@ -93,3 +93,47 @@ func TestRecomposeProductCodes_ThroughTeamService(t *testing.T) {
 		t.Fatalf("a second run changed the shoe to %q", got)
 	}
 }
+
+// THE GUARD (backlog #149): a team code can change now, and the change recomposes the team's products itself. A product
+// still under a code its team HELD ONCE is therefore not a bare part — `recompose-codes` (and `dev setup`, which runs it)
+// leaves it alone and names it, never doubling the prefix to XYZ-ABC-…; a truly bare part of the same team still takes
+// today's code.
+func TestRecomposeProductCodes_LeavesAFormerCodeAlone(t *testing.T) {
+	db := san_testdb.DB(t)
+	san := &San{db: db, teams: NewTeamCodes(db), target: "test"}
+
+	team := seedCodedTeam(t, db, "RCF-XYZ", false)
+
+	err := db.Create(&team_service_models.TeamFormerCode{TeamCode: "RCF-ABC", TeamID: team}).Error
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	under := seedCodedProduct(t, db, team, "RCF-ABC-SHOE-42")
+	bare := seedCodedProduct(t, db, team, "BOOT-1")
+
+	report, err := san.RecomposeProductCodes(context.Background())
+	if err != nil {
+		t.Fatalf("recompose: %v", err)
+	}
+
+	if got := codeOfProduct(t, db, under); got != "RCF-ABC-SHOE-42" {
+		t.Fatalf("a product under the team's former code became %q — the prefix doubled", got)
+	}
+
+	if got := codeOfProduct(t, db, bare); got != "RCF-XYZ-BOOT-1" {
+		t.Fatalf("a bare part = %q, want RCF-XYZ-BOOT-1", got)
+	}
+
+	named := false
+
+	for _, id := range report.UnderFormerCode {
+		if id == under {
+			named = true
+		}
+	}
+
+	if !named {
+		t.Fatalf("report.UnderFormerCode = %v, want it to name product %d", report.UnderFormerCode, under)
+	}
+}

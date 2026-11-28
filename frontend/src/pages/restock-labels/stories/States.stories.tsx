@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam } from "../../../../.storybook/pageStory";
 import { asRole } from "../../../../.storybook/sessionScenario";
@@ -62,7 +62,7 @@ export const ASellingTeamCannotPrint: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByTestId("labels-not-warehouse", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("labels-not-warehouse")).toBeVisible(), { timeout: 4000 });
   },
 };
 

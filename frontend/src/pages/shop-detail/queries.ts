@@ -10,14 +10,20 @@ import { publicUsersByIds, userByIdsRowData } from "../../features/users/adapt";
 // why this is not features/shops' useShopUsers: that one names a missing person "#id" and never fails on the names, for
 // the primary-CS dialog. Its own key under `shops`, so a shop write re-reads it; a shop is worked by a handful, so one
 // page of 100 covers them.
-export function useShopGrants(args: { teamId: bigint; shopId: bigint }) {
+//
+// READ BY THE PAGE, BESIDE THE SHOP (#134, the-speed-audits-old-findings-are-fixed-smallest-first): it needs only the
+// address's shop and the team, so it no longer waits for ShopDetail to answer and the section to mount — the speed
+// audit's ShopDetail → ShopUserList → UserByIDs. The section takes this answer as a prop (a second reader of the key,
+// mounting after the first had answered, would ask again at `staleTime: 0`).
+export function useShopGrants(args: { teamId: bigint | undefined; shopId: bigint }) {
   const { teamId, shopId } = args;
 
   return useQuery({
     queryKey: key.shops(teamId, { grants: shopId.toString() }),
+    enabled: teamId !== undefined && shopId > 0n,
     queryFn: async () => {
       const res = await shopClient.shopUserList({
-        teamId,
+        teamId: teamId!,
         filter: { shopId },
         page: { page: 1, limit: 100 },
       });
@@ -31,3 +37,6 @@ export function useShopGrants(args: { teamId: bigint; shopId: bigint }) {
     },
   });
 }
+
+/** The grants read as the page hands it to its access section. */
+export type ShopGrantsRead = ReturnType<typeof useShopGrants>;

@@ -53,11 +53,13 @@ export const LostCanBeSignedFor: Story = {
 
 export const AsARow: Story = { args: { variant: "row" } };
 
-// TANDAI TIBA ONLY MARKS (tiba-marks-and-terima-is-final): the dialog says stock waits for Terima, and its toast never
-// says "received". THE COURIER'S CHARGE CAN BE NOTED IN IT (the-cod-can-be-noted-when-the-box-arrives) — optional, with a
-// note once there is an amount, as at Terima — and KEPT (the-courier-charge-is-noted-at-tiba-and-final-at-terima): the
-// sign sends it, the restock holds it, and no mark or toast says to enter it again at Terima.
-export const SignForBoxNotesTheCourierCharge: Story = {
+// SET ARRIVED ONLY MARKS (tiba-marks-and-terima-is-final; an-arrival-is-set-arrived — the dialog and its button say Set
+// Arrived): the dialog says stock waits for Terima, and its toast never says "received". THE COURIER'S CHARGE CAN BE NOTED
+// IN IT (the-cod-can-be-noted-when-the-box-arrives) — the amount alone, its note optional
+// (the-couriers-charge-note-is-optional), as at Terima — and KEPT (the-courier-charge-is-noted-at-tiba-and-final-at-terima):
+// it sends it, the restock holds it, and no mark or toast says to enter it again at Terima. (Was
+// SignForBoxNotesTheCourierCharge, which held the sign for a note.)
+export const SetArrivedNotesTheChargeWithNoNote: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -65,23 +67,24 @@ export const SignForBoxNotesTheCourierCharge: Story = {
     const confirm = await screen.findByTestId("confirm-action");
     await waitFor(() => expect(confirm).toBeVisible());
 
+    // The act's name (an-arrival-is-set-arrived): the row's button, the dialog's title and its confirm.
+    await expect(canvas.getByTestId("restock-action-sign-501")).toHaveTextContent("Set Arrived");
+    await expect(screen.getByRole("alertdialog")).toHaveTextContent("Set Arrived — Restock #501");
+    await expect(confirm).toHaveTextContent("Set Arrived");
     await expect(screen.getByText(/stock does not go up until you accept it/)).toBeVisible();
     await expect(within(screen.getByTestId("sign-courier")).queryByTestId(/^not-implemented-/)).toBeNull();
     // ASKED FIRST (the-charge-is-asked-for-before-it-is-filled) — unticked, nothing to fill, and the sign goes ahead.
     await expect(screen.queryByTestId("sign-courier-charge")).toBeNull();
     await expect(confirm).toBeEnabled();
 
-    // Ticked, the amount and the note are required — the sign waits for them; the slip's photo is optional.
+    // Ticked, the amount is required — the dialog waits for it; the note and the slip's photo are optional.
     await userEvent.click(screen.getByTestId("sign-courier-asked-yes"));
     await waitFor(() => expect(screen.getByTestId("sign-courier-photo-pick")).toBeVisible(), { timeout: 5000 });
     await expect(confirm).toBeDisabled();
 
     await userEvent.type(screen.getByTestId("sign-courier-charge"), "15000", { delay: 20 });
-    await waitFor(() => expect(screen.getByTestId("sign-courier-note-error")).toBeVisible(), { timeout: 5000 });
-    await expect(confirm).toBeDisabled();
-
-    await userEvent.type(screen.getByTestId("sign-courier-note"), "COD handling fee", { delay: 20 });
     await waitFor(() => expect(confirm).toBeEnabled());
+    await expect(screen.queryByTestId("sign-courier-note-error")).toBeNull();
     await userEvent.click(confirm);
 
     await expect(await screen.findByText("Restock marked as arrived")).toBeInTheDocument();
@@ -90,7 +93,7 @@ export const SignForBoxNotesTheCourierCharge: Story = {
     // KEPT on the restock — what both its pages show and Terima opens with; no slip was picked, so none.
     const stored = await storedRestockForStory(501n);
     await expect(stored.warehouseAdditionalCost).toBe(15000);
-    await expect(stored.warehouseAdditionalCostNote).toBe("COD handling fee");
+    await expect(stored.warehouseAdditionalCostNote).toBe("");
     await expect(stored.warehouseAdditionalCostFile).toBe("");
   },
 };

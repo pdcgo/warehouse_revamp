@@ -26,7 +26,7 @@ func TestLiabilityTeamNamer_ReadsNamesAndFactsFromTeamService(t *testing.T) {
 		}
 	}
 
-	namer := NewLiabilityTeamNamer(team_v1.NewService(db, nil))
+	namer := NewLiabilityTeamNamer(team_v1.NewService(db, nil, nil))
 	ctx := context.Background()
 
 	// 250 ids — past TeamByIds' 200 — with the live team LAST, so it is answered from the second batch.

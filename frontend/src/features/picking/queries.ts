@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { inventoryClient, orderClient } from "../../api/clients";
 import { key } from "../../api/queryClient";
+import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
+import { type ScanCodes, readScanCodes } from "./scanCodes";
 
 // The picking screens' reads (#176).
 //
@@ -29,14 +31,21 @@ export function usePickOrder(args: { warehouseId: bigint | undefined; orderId: b
       const order = detail.order ?? null;
       const transactionId = order?.transactionId ?? 0n;
 
-      const places =
+      // THE CODES ITS ITEM SCAN TAKES (backlog #152): a processed order is the one being scanned, so only then are its
+      // products' codes now and former codes asked — beside the shelves, not after them, in one read for the page.
+      const scanned = order?.status === OrderStatus.PROCESSED ? order.items.map((item) => item.productId) : [];
+
+      const [places, codes] = await Promise.all([
         transactionId > 0n
-          ? await inventoryClient.stockPickLocations({ warehouseId: warehouseId!, transactionId })
-          : { locations: [] };
+          ? inventoryClient.stockPickLocations({ warehouseId: warehouseId!, transactionId })
+          : Promise.resolve({ locations: [] }),
+        scanned.length > 0 ? readScanCodes(warehouseId!, scanned) : Promise.resolve<ScanCodes>(new Map()),
+      ]);
 
       return {
         order,
         locations: places.locations,
+        codes,
       };
     },
   });

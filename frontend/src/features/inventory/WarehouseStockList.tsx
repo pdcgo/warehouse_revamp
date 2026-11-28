@@ -1,10 +1,11 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Badge, Box, Button, HStack, Icon, IconButton, Menu, Portal, Stack, Table, Text } from "@chakra-ui/react";
 import { ArrowRightLeft, Boxes, MoreHorizontal, Pencil, SearchX } from "lucide-react";
 import { rpcError } from "../../api/clients";
-import { FilterBar, FilterSearch } from "../../components/chrome/FilterBar";
+import { FilterBar, FilterField, FilterSearch } from "../../components/chrome/FilterBar";
 import { GrowingPager } from "../../components/chrome/GrowingPager";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../components/feedback/ListSkeleton";
@@ -17,9 +18,13 @@ import { canWrite, useTeam } from "../team/TeamContext";
 import { AdjustStockDialog } from "./AdjustStockDialog";
 import { MoveStockDialog } from "./MoveStockDialog";
 import { type StockScreenRow, useWarehouseStock } from "./queries";
+import { ProductTagFilter } from "../products/tags/ProductTagFilter";
+import { NO_TAGS, TAGS_CODEC, tagsOfProduct } from "../products/tags/productTags";
+import { NO_PRODUCT_TAGS, useProductTagCatalogue } from "../products/tags/tagQueries";
+import { RestockTagChips } from "../restock/RestockTagChips";
 
 export const description =
-  "What one warehouse holds: every product with a batch there — any team's, archived ones labelled, at 0 too — with its owner and its units on hand, searched on the server and paged. Adjust and Move sit in each row's overflow; a row opens the warehouse product page when `opensProduct` is set.";
+  "What one warehouse holds: every product with a batch there — any team's, archived ones labelled, at 0 too — with its tags, its owner and its units on hand, searched and filtered by tag (any of the picked) on the server and paged. Adjust and Move sit in each row's overflow; a row opens the warehouse product page when `opensProduct` is set.";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -38,6 +43,12 @@ interface WarehouseStockListProps {
    * building, so it opens only for a warehouse team.
    */
   opensProduct?: boolean;
+  /**
+   * The page's heading, drawn first — given how many products wait for this warehouse's reprint of changed codes
+   * (backlog #151), which rides on the list's own read (WarehouseStockList `reprint_waiting`): the warehouse's Products
+   * puts its *Cetak ulang kode (N)* there. Without it the list asks no count.
+   */
+  heading?: (reprintWaiting: number) => ReactNode;
 }
 
 // WarehouseStockList is THE LIST OF WHAT A WAREHOUSE HOLDS (the-stock-screen-lists-what-the-warehouse-has-held): every
@@ -48,15 +59,15 @@ interface WarehouseStockListProps {
 //   a warehouse's Products (/products)   its own building; a row opens the warehouse product page
 //   root/admin Inventory (/inventory)     the building picked above it; rows open nothing
 //
-//   [⌕ Search products by product code or name                ×]
-//   Product code   · Product                     · Owner          · On hand · Actions
-//   SL-03-ANG-003    Minyak Goreng 2L [Archived]   Toko Anggrek          0   [⋯]
+//   [⌕ Search products by product code or name                ×] [All tags ⌄]
+//   Product code   · Product                     · Tags                  · Owner          · On hand · Actions
+//   SL-03-ANG-003    Minyak Goreng 2L [Archived]   [🔒 need_reprint_code]   Toko Anggrek          0   [⋯]
 //                                                                Per page [20 ⌄]  ‹ [1] ›
 //
-// The search lives in the URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a product, opens the same
+// The search and the tags live in the URL (a-lists-filters-live-in-the-url) — a refresh, or Back from a product, opens the same
 // narrowed list. Goods come IN only by a restock (a-box-nobody-raised-comes-in-by-the-teams-restock), so a row offers
 // Adjust and Move and no receive.
-export function WarehouseStockList({ warehouseId, opensProduct = false }: WarehouseStockListProps) {
+export function WarehouseStockList({ warehouseId, opensProduct = false, heading }: WarehouseStockListProps) {
   const { current } = useTeam();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -72,15 +83,24 @@ export function WarehouseStockList({ warehouseId, opensProduct = false }: Wareho
 
   // Another warehouse, another term or another page size is a new question, so it starts again at page one — the page is
   // held WITH the question it belongs to, and a different question reads page one without an effect to reset it.
-  const question = [warehouseId.toString(), term, pageSize].join("|");
+  // THE TAG FILTER (the-team-code-and-product-tags-prototype-is-accepted) — several product tags, ANY of them, in the
+  // address (`?tag=1,2`), narrowed on the server (`tag_ids`) inside the list's one count and page. Its options are the
+  // products' one list — a picker feed, read once (ProductTagList).
+  const [tagIds, setTagIds] = useUrlState("tag", NO_TAGS, TAGS_CODEC);
+  const tagged = tagIds.length > 0;
+  const tagCatalogue = useProductTagCatalogue(current?.teamId).data ?? NO_PRODUCT_TAGS;
+
+  const question = [warehouseId.toString(), term, pageSize, tagIds.map(String).join(",")].join("|");
   const [paging, setPaging] = useState({ question, page: 1 });
   const page = paging.question === question ? paging.page : 1;
   const setPage = (next: number) => setPaging({ question, page: next });
 
   const [dialog, setDialog] = useState<{ kind: "adjust" | "move"; row: StockScreenRow } | null>(null);
 
-  const query = useWarehouseStock({ warehouseId, q: term, page, pageSize });
+  const query = useWarehouseStock({ warehouseId, q: term, page, pageSize, tagIds, withReprint: heading !== undefined });
 
+  // THE TAGS a warehouse holding the stock sees (products-have-their-own-tag-list, 🔄 who sees) ride on the rows the list
+  // already reads (WarehouseProductSearchItem.tags): a Tag column after the product, a line of chips per phone block.
   const rows = query.data?.rows ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   const error = query.isError ? rpcError(query.error) : "";
@@ -94,6 +114,7 @@ export function WarehouseStockList({ warehouseId, opensProduct = false }: Wareho
 
   function clearSearch() {
     setQ("");
+    setTagIds(NO_TAGS);
     setPage(1);
   }
 
@@ -153,7 +174,7 @@ export function WarehouseStockList({ warehouseId, opensProduct = false }: Wareho
 
   function list() {
     if (rows.length === 0) {
-      return term !== "" ? (
+      return term !== "" || tagged ? (
         <EmptyHint
           icon={SearchX}
           title={t("inventory.noneMatch")}
@@ -191,6 +212,7 @@ export function WarehouseStockList({ warehouseId, opensProduct = false }: Wareho
                 onClick={opensProduct ? () => open(row) : undefined}
               >
                 {productName(row)}
+                <RestockTagChips tags={tagsOfProduct(row.product)} wrap testId={`stock-tags-${code}`} />
                 <HStack gap="2" align="center">
                   <Stack gap="0" flex="1" minW="0">
                     <Text fontSize="sm" color="fg.muted" truncate>
@@ -218,6 +240,8 @@ export function WarehouseStockList({ warehouseId, opensProduct = false }: Wareho
           <Table.Row>
             <Table.ColumnHeader>{t("inventory.table.sku")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("inventory.table.product")}</Table.ColumnHeader>
+            {/* THE TAG COLUMN after the product — two chips and +N, two lines at most (one-context-per-column-and-never-three-lines). */}
+            <Table.ColumnHeader data-testid="inventory-tag-header">{t("products.tags.column")}</Table.ColumnHeader>
             <Table.ColumnHeader>{t("inventory.table.owner")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("inventory.table.onHand")}</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="end">{t("inventory.table.actions")}</Table.ColumnHeader>
@@ -238,6 +262,9 @@ export function WarehouseStockList({ warehouseId, opensProduct = false }: Wareho
               >
                 <Table.Cell whiteSpace="nowrap">{code}</Table.Cell>
                 <Table.Cell maxW="24rem">{productName(row)}</Table.Cell>
+                <Table.Cell data-testid={`stock-tags-cell-${code}`}>
+                  <RestockTagChips tags={tagsOfProduct(row.product)} testId={`stock-tags-${code}`} />
+                </Table.Cell>
                 <Table.Cell data-testid={`stock-owner-${code}`}>{row.ownerName}</Table.Cell>
                 <Table.Cell textAlign="end" data-testid={`stock-onhand-${code}`}>
                   {row.onHand.toString()}
@@ -256,7 +283,14 @@ export function WarehouseStockList({ warehouseId, opensProduct = false }: Wareho
 
   return (
     <>
-      <FilterBar testId="inventory-filter" active={q.trim() !== ""} count={q.trim() !== "" ? 1 : 0} onClear={clearSearch}>
+      {heading?.(query.data?.reprintWaiting ?? 0)}
+
+      <FilterBar
+        testId="inventory-filter"
+        active={q.trim() !== "" || tagged}
+        count={(q.trim() !== "" ? 1 : 0) + (tagged ? 1 : 0)}
+        onClear={clearSearch}
+      >
         <FilterSearch
           value={q}
           onChange={(value) => {
@@ -266,6 +300,16 @@ export function WarehouseStockList({ warehouseId, opensProduct = false }: Wareho
           placeholder={t("inventory.searchPlaceholder")}
           testId="inventory-search"
         />
+        <FilterField w="16rem" testId="inventory-tag-filter">
+          <ProductTagFilter
+            tags={tagCatalogue}
+            value={tagIds}
+            onChange={(next) => {
+              setTagIds(next);
+              setPage(1);
+            }}
+          />
+        </FilterField>
       </FilterBar>
 
       {error && (

@@ -78,10 +78,8 @@ export function WarehouseTransferAcceptPage() {
   const arrived = lines.reduce((sum, line) => sum + toCount(line.arrived), 0n);
   const good = lines.reduce((sum, line) => sum + (isCounted(line) ? goodOf(line) : 0n), 0n);
   const uncounted = lines.filter((line) => !isCounted(line)).length;
-  const blocked =
-    lines.length === 0 ||
-    lines.some((line) => problemOf(itemOf(line), line) !== null) ||
-    (chargeValue > 0 && chargeNote.trim() === "");
+  // What the courier's charge was for is optional (the-couriers-charge-note-is-optional): it never blocks the accept.
+  const blocked = lines.length === 0 || lines.some((line) => problemOf(itemOf(line), line) !== null);
 
   async function confirm() {
     try {
@@ -129,7 +127,8 @@ export function WarehouseTransferAcceptPage() {
         />
       ))}
 
-      {/* THE COURIER'S CHARGE AT THE DOOR — B pays it, the team owes it back. A note says what it was for. */}
+      {/* THE COURIER'S CHARGE AT THE DOOR — B pays it, the team owes it back. A note may say what it was for — optional
+          (the-couriers-charge-note-is-optional). */}
       <Card.Root data-testid="accept-charge">
         <Card.Header>
           <Card.Title>{t("warehouseTransfer.accept.charge")}</Card.Title>
@@ -141,11 +140,8 @@ export function WarehouseTransferAcceptPage() {
               <Field.Label>{t("warehouseTransfer.accept.chargeAmount")}</Field.Label>
               <CurrencyInput value={charge} onChange={setCharge} data-testid="accept-charge-amount" />
             </Field.Root>
-            <Field.Root required={chargeValue > 0} invalid={chargeValue > 0 && chargeNote.trim() === ""}>
-              <Field.Label>
-                {t("warehouseTransfer.accept.chargeNote")}
-                <Field.RequiredIndicator />
-              </Field.Label>
+            <Field.Root>
+              <Field.Label>{t("warehouseTransfer.accept.chargeNote")}</Field.Label>
               <Input
                 value={chargeNote}
                 maxLength={200}

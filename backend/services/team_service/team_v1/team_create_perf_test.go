@@ -39,7 +39,7 @@ func TestPerf_TeamCreate(t *testing.T) {
 			}
 			san_perf.SeedRows(t, db, &teams)
 
-			s := NewService(db, &fakeGrants{err: tc.err})
+			s := NewService(db, &fakeGrants{err: tc.err}, nil)
 			ctx := context.Background()
 
 			call := func(i int) {

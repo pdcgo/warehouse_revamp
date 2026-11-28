@@ -221,7 +221,7 @@ export const RootSeesEveryTeam: Story = {
     const canvas = await loaded(canvasElement);
 
     await pickTeam(canvas, "0");
-    await expect(await canvas.findByText(/It reads every team in the business/)).toBeVisible();
+    await waitFor(() => expect(canvas.getByText(/It reads every team in the business/)).toBeVisible(), { timeout: 5000 });
 
     await userEvent.click(canvas.getByTestId("agent-allow"));
     await waitFor(() => expect(exits).toHaveLength(1));

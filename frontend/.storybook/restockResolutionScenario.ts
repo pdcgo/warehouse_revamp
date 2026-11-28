@@ -667,8 +667,8 @@ export function markInboundLost(req: { teamId: bigint; id: bigint; reason: strin
 
 export function arriveInbound(req: { teamId: bigint; id: bigint; doorCharge: number; doorChargeNote: string }) {
   const p = heldInbound(req.id, req.teamId, "warehouse");
-  if (p.status !== S.ON_THE_WAY && p.status !== S.LOST) throw precondition("only a parcel on its way, or a lost one, is signed for");
-  if (req.doorCharge > 0 && req.doorChargeNote.trim() === "") throw invalid("a courier's charge says why");
+  if (p.status !== S.ON_THE_WAY && p.status !== S.LOST) throw precondition("only a parcel on its way, or a lost one, is set arrived");
+  // What the courier's charge was for is optional (the-couriers-charge-note-is-optional) — never refused.
   p.status = S.ARRIVED;
   p.arrivedByUserId = restockResolutionScenario.actor;
   p.arrivedAtUnix = nowUnix();

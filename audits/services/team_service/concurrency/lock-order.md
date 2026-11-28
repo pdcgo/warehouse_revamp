@@ -8,11 +8,17 @@ question two callers can race on — *is this team code free?* — is answered b
 `team_code`, not by the handler. `TeamCreate`'s one network call, the Owner grant to user_service, is made
 **after** its transaction commits, so no lock is ever held across it. Raced: **safe**.
 
+**Since #149, one row lock: `TeamCodeUpdate` takes the team row `FOR UPDATE` first**, so two changes of one team
+serialise, then hands its transaction to product_service's recompose — the team's product-code advisory lock, then the
+team's products (product_service's matrix). A product write that composes a code takes that advisory lock FIRST and
+reads `teams` without a lock, so it never holds what the change waits on next. Raced: **safe**.
+
 | Handler | What it writes | Notes |
 | --- | --- | --- |
 | `TeamCreate` | `teams` + `team_infos` (one transaction) → *(the Owner grant, user_service — outside)* → on a refusal, `DELETE teams` (`team_infos` cascades); on an unknown outcome, `teams.deleted = true` | a racing duplicate code is refused by `teams_team_code_unique` as `already_exists` |
 | `TeamUpdate`, `TeamInfoUpdate`, `WarehouseInfoUpdate` | a *team exists* check, then one row, by team id, in a transaction | `TeamInfoUpdate` and `WarehouseInfoUpdate` upsert on a UNIQUE `team_id`. ⚠ not raced in this pass |
 | `TeamDelete` | a *team exists* check, then `teams.deleted = true` | ⚠ not raced in this pass |
+| `TeamCodeUpdate` (#149) | `teams` (one row, `FOR UPDATE`) → the held-or-former check (`teams`, `team_former_codes`, no lock) → `team_former_codes` (delete its own taken-back code, insert the old one) → `teams.team_code` → product_service's recompose, same transaction | two teams onto one free code meet on `teams_team_code_unique` (or `team_former_codes`' key) — the loser is told AlreadyExists naming the winner. A `TeamUpdate` or `TeamDelete` of that team waits for the change (up to its run time — product_service's TeamCodeUpdate audit) |
 
 Evidence: [`team_create_race_test.go`](../../../../backend/services/team_service/team_v1/team_create_race_test.go) (`raceaudit`).
 
@@ -28,3 +34,4 @@ team the hard delete then removes. Nobody can learn the id but the creator, so i
 | History | |
 | --- | --- |
 | 2026-10-06 | first matrix — `TeamCreate` grants the NAMED Owner, and a refused grant hard-deletes the team so its code stays free |
+| 2026-11-27 | `TeamCodeUpdate` (#149) — raced in `cmd/app_development/product_code_recomposer_race_test.go` (`raceaudit`): two changes of one team, two teams to one code |

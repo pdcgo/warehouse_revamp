@@ -12,7 +12,7 @@ import (
 // newService builds a Service against the test tx. userClient is nil — every handler tested here
 // except TeamCreate's saga is pure DB and never calls it.
 func newService(db *gorm.DB) *team_v1.Service {
-	return team_v1.NewService(db, nil)
+	return team_v1.NewService(db, nil, nil)
 }
 
 // newTeam inserts a team directly (bypassing the TeamCreate saga, which needs a live

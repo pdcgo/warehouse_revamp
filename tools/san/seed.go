@@ -376,12 +376,25 @@ func seedDev(ctx context.Context, db *sql.DB, target, password string) error {
 	return nil
 }
 
+// rowQuerier is what ensureTeam reads and writes through — a *sql.DB in the command, a *sql.Tx in its test.
+type rowQuerier interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 // ensureTeam returns the id of the team with this code, creating it if absent. Idempotent so
 // the fixture can be re-run.
-func ensureTeam(ctx context.Context, db *sql.DB, teamType, name, code string) (uint64, error) {
+//
+// A team is found by the code it HOLDS or once HELD (team_service's team_former_codes, backlog #149): the owner may edit a
+// dev team's code (TeamCodeUpdate), and the next `san seed` / `dev setup` must find that same team, not create a second
+// *Dev Selling* — whose code would be the first one's former code, which is never given to another team.
+func ensureTeam(ctx context.Context, db rowQuerier, teamType, name, code string) (uint64, error) {
 	var id uint64
 
-	err := db.QueryRowContext(ctx, `SELECT id FROM teams WHERE team_code = $1`, code).Scan(&id)
+	err := db.QueryRowContext(ctx,
+		`SELECT id FROM teams WHERE team_code = $1
+		UNION ALL
+		SELECT team_id FROM team_former_codes WHERE team_code = $1
+		LIMIT 1`, code).Scan(&id)
 	if err == nil {
 		return id, nil
 	}

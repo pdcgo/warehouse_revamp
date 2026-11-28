@@ -115,16 +115,33 @@ export const EveryGoodUnitNeedsARack: Story = {
   },
 };
 
-// A courier's charge says what it was for.
-export const AChargeNeedsItsNote: Story = {
+// A courier's charge needs no note (the-couriers-charge-note-is-optional — inverted from "a charge needs its note"): the
+// whole count with an amount alone is accepted, and the transfer keeps the amount with an empty note.
+export const AChargeNeedsNoNote: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByTestId("accept-line-6081");
 
+    await type(spin(canvas, "accept-line-6081-arrived"), "3");
+    await pickRack(canvas, "6081", 41n);
+    await type(spin(canvas, "accept-line-6081-placement-0-qty"), "3");
+    await type(spin(canvas, "accept-line-6082-arrived"), "5");
+    await pickRack(canvas, "6082", 43n);
+    await type(spin(canvas, "accept-line-6082-placement-0-qty"), "5");
+
     await userEvent.type(canvas.getByTestId("accept-charge-amount"), "5000", { delay: 20 });
-    await expect(canvas.getByTestId("accept-submit")).toBeDisabled();
+    await expect(canvas.getByTestId("accept-charge-note")).not.toBeRequired();
+    await waitFor(() => expect(canvas.getByTestId("accept-submit")).toBeEnabled());
     // The team's debt to B is posted to the team balance (built) — the card carries no pending mark.
     await expect(canvas.queryByTestId("not-implemented-courierDebt")).toBeNull();
+
+    await userEvent.click(canvas.getByTestId("accept-submit"));
+    await userEvent.click(await screen.findByTestId("confirm-action"));
+    await canvas.findByTestId("at-transfer-detail");
+    const done = transferWire(608n);
+    await expect(done.status).toBe(WarehouseTransferStatus.ACCEPTED);
+    await expect(done.warehouseAdditionalCost).toBe(5000);
+    await expect(done.warehouseAdditionalCostNote).toBe("");
   },
 };
 

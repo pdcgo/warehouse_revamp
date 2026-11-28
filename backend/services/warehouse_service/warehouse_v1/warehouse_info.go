@@ -15,8 +15,8 @@ import (
 
 // THE WAREHOUSE PROFILE (the-warehouse-profile-lives-in-warehouse-service) — moved whole from team_service, its
 // policies unchanged. ⚠ my build detail: it no longer asks whether a team is a warehouse — that would be a read of
-// team_service's table. The update is gated by a WAREHOUSE role, which exists only on a warehouse team, and a team with
-// no profile reads as closed every day.
+// team_service's table. The update is gated by a WAREHOUSE role, which exists only on a warehouse team. A team with no
+// profile has its hours NOT SET, which is not closed (a-warehouse-with-no-hours-is-not-closed).
 
 var errBadDay = errors.New("a day must be YYYY-MM-DD")
 
@@ -40,7 +40,7 @@ func (s *Service) WarehouseInfoDetail(
 	err := s.db.WithContext(ctx).Where("warehouse_id = ?", warehouseID).Take(&info).Error
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
-		// No hours set yet — empty grids, closed every day, not an error.
+		// No hours set yet — empty grids, not an error, and not closed (a-warehouse-with-no-hours-is-not-closed).
 	case err != nil:
 		return nil, dbError(err)
 	default:
@@ -188,6 +188,8 @@ func (s *Service) WarehouseClosureDelete(
 
 // WarehouseReceivingStatus answers, for each asked warehouse, whether it receives orders NOW and, if not, when next and
 // why (a-closed-day-warns-and-never-refuses). It refuses nothing: the order form and the picker only MARK a closed one.
+// A warehouse with no profile row, or a grid that opens on no day, answers `hours_set` false — NOT closed
+// (a-warehouse-with-no-hours-is-not-closed); a closure still names its reason for it.
 func (s *Service) WarehouseReceivingStatus(
 	ctx context.Context,
 	req *connect.Request[warehousev1.WarehouseReceivingStatusRequest],

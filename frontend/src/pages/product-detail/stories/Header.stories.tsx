@@ -87,6 +87,6 @@ export const AnotherTeamsProductIsNotFound: Story = {
   render: () => <AtOtherTeams />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByTestId("product-detail-error", {}, { timeout: 5000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("product-detail-error")).toBeVisible(), { timeout: 5000 });
   },
 };

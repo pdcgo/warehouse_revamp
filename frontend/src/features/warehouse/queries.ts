@@ -110,9 +110,9 @@ export function useWarehouseReceiving(warehouseId: bigint) {
 
 /**
  * A WAREHOUSE'S PROFILE — its weekly hours, its location and its closures still to come (WarehouseInfoDetail), `null`
- * when it has none. ONE cache entry per warehouse for every screen that shows it: the team page's Gudang section, and
- * the edit page — its form AND its closures list, which used to read it twice a load (the speed audit's duplicate,
- * audits/frontend/warehouse-edit.md). A by-id read on the plain always-fresh default: another warehouse is another
+ * when it has none. ONE cache entry per warehouse for every screen that shows it: the team page's Gudang section, the
+ * edit page and the warehouse's own Settings — each one's form AND its closures list, which used to read it twice a
+ * load (the speed audit's duplicate, audits/frontend/warehouse-edit.md). A by-id read on the plain always-fresh default: another warehouse is another
  * subject, never drawn under this one's address.
  *
  * `enabled` may be a FUNCTION — the edit page keeps the read still while its own save runs (pages/warehouse-edit).
@@ -134,4 +134,21 @@ export function useInvalidateWarehouseInfo() {
   const client = useQueryClient();
 
   return (warehouseId: bigint) => client.invalidateQueries({ queryKey: key.warehouseInfo(warehouseId) });
+}
+
+/**
+ * THE WAREHOUSE SAVES ITS OWN PROFILE — the weekly hours and the location, from its Settings
+ * (the-warehouse-sets-its-own-hours-in-settings). WarehouseInfoUpdate alone, which replaces both grids and the location:
+ * the team's name is Settings' own card, so no TeamUpdate rides along as on root's Edit warehouse (its
+ * `useSaveWarehouse`). The same profile either way, so the same invalidation: the profile and the receiving state, read
+ * again — the Settings page stays, and its *set your hours* prompt follows the profile it re-reads.
+ */
+export function useSaveWarehouseProfile() {
+  const invalidateWarehouseInfo = useInvalidateWarehouseInfo();
+
+  return useMutation({
+    mutationFn: async (vars: Parameters<typeof warehouseInfoClient.warehouseInfoUpdate>[0] & { teamId: bigint }) =>
+      (await warehouseInfoClient.warehouseInfoUpdate(vars)).info ?? null,
+    onSuccess: (_answer, vars) => invalidateWarehouseInfo(vars.teamId),
+  });
 }

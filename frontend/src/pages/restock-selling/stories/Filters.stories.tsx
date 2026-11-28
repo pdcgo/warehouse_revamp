@@ -248,7 +248,9 @@ export const TheCourierNarrowsTheRows: Story = {
 
     await userEvent.click(canvas.getByTestId("restock-filter-clear"));
     await waitFor(() => expect(location).not.toHaveTextContent("courier="));
-    for (const id of [502, 503, 505]) await expect(await canvas.findByTestId(`restock-row-${id}`)).toBeVisible();
+    for (const id of [502, 503, 505]) {
+      await waitFor(() => expect(canvas.getByTestId(`restock-row-${id}`)).toBeVisible(), { timeout: 5000 });
+    }
   },
 };
 

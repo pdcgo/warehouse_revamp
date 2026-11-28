@@ -17,6 +17,20 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/tea
 service TeamService {
   rpc TeamCreate(TeamCreateRequest) returns (TeamCreateResponse);
   rpc TeamUpdate(TeamUpdateRequest) returns (TeamUpdateResponse);
+  // TeamCodeUpdate changes a SELLING team's code, and its products take the new one in the same transaction
+  // (a-team-code-change-recomposes-its-product-codes): ABC-SHOE-42 becomes XYZ-SHOE-42, archived products too, each one
+  // some warehouse holds stock of tagged `need_reprint_code` and waiting for that warehouse's reprint. A code another team
+  // holds — or EVER held — is refused naming that team (a former code stays taken, the decision's Q1 "A"); the team's own
+  // former code may be taken back. Its own request message: TeamUpdate's policy also admits warehouse and admin roles.
+  rpc TeamCodeUpdate(TeamCodeUpdateRequest) returns (TeamCodeUpdateResponse);
+  // TeamCodePreview says what a TeamCodeUpdate to that code WOULD do, before anything is sent — the four-line confirm
+  // (the-team-code-and-product-tags-prototype-is-accepted): the refusal the write would give (another team holds the
+  // code, or held it once — named), else how many products take the new code with one example, and the warehouses that
+  // must reprint. TeamCodeUpdate's policy and scope; it writes nothing.
+  rpc TeamCodePreview(TeamCodePreviewRequest) returns (TeamCodePreviewResponse) {
+    // A READ — no row, no event, no file (the-admin-team-monitors-read-only reads it by this mark, never by its name).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc TeamDelete(TeamDeleteRequest) returns (TeamDeleteResponse);
   rpc TeamList(TeamListRequest) returns (TeamListResponse) {
     // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
@@ -127,6 +141,8 @@ message TeamCreateRequest {
     min_len: 4
     max_len: 128
   }];
+  // A code another team holds — or held once, a former code being never given to another team
+  // (a-team-code-change-recomposes-its-product-codes) — is AlreadyExists, a TeamCodeTaken detail naming that team.
   string team_code = 3 [(buf.validate.field).string = {
     min_len: 1
     max_len: 10
@@ -168,7 +184,8 @@ message TeamUpdateRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
 
-  // Absent = leave alone. `type` and `team_code` are immutable after create.
+  // Absent = leave alone. `type` is immutable after create; `team_code` changes only through TeamCodeUpdate, whose
+  // policy is narrower (a selling team's owner and admin, Root, the Administrator) and which recomposes the products.
   optional string name = 2 [(buf.validate.field).string = {
     min_len: 4
     max_len: 128
@@ -181,6 +198,115 @@ message TeamUpdateRequest {
 
 message TeamUpdateResponse {
   Team team = 1;
+}
+
+// THE TEAM CODE EDIT (backlog #149, a-team-code-change-recomposes-its-product-codes; the screens' design
+// the-team-code-and-product-tags-prototype-is-accepted). The selling Owner and Admin on their own team (Settings' Kode tim),
+// Root and the Administrator on any selling team (Teams → Edit Team) — the acceptance rows' givens. A warehouse or admin
+// team's code is refused (FailedPrecondition): no product is composed from it.
+message TeamCodeUpdateRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
+    ]
+  };
+
+  // use_scope is LOAD-BEARING: the selling roles above are evaluated in this team.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The new code, 1–10 characters as TeamCreate takes it; trimmed of surrounding space (blank is InvalidArgument).
+  // The code the team has already is no change: nothing is written and nothing recomposed.
+  string team_code = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 10
+  }];
+}
+
+message TeamCodeUpdateResponse {
+  Team team = 1;
+  // false when the code sent is the team's code already — nothing was written.
+  bool changed = 2;
+  // How many of the team's products took the new code — every one whose code began with the old code and a dash,
+  // archived ones too.
+  uint32 products_recomposed = 3;
+  // How many of them were tagged `need_reprint_code` — those some warehouse holds stock of; one with nothing on a shelf
+  // takes the new code untagged.
+  uint32 products_tagged = 4;
+  // How many of the team's products did NOT begin with the old code and a dash, and were left as they were (rows written
+  // before codes were composed); `left_alone_codes` names the first 20 of them.
+  uint32 products_left_alone = 5;
+  repeated string left_alone_codes = 6;
+}
+
+// THE TEAM CODE PREVIEW (backlog #150) — the figures of the confirm Settings' Kode tim card and root's Edit Team open
+// BEFORE TeamCodeUpdate is sent (the-team-code-and-product-tags-prototype-is-accepted, *the confirm*): read when the
+// confirm opens, never on a page load. TeamCodeUpdate's policy and scope — whoever may change the code may ask first.
+message TeamCodePreviewRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN
+    ]
+  };
+
+  // use_scope is LOAD-BEARING: the selling roles above are evaluated in this team.
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The code the person typed, as TeamCodeUpdate takes it: 1–10 characters, trimmed (blank is InvalidArgument).
+  string team_code = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 10
+  }];
+}
+
+// What a TeamCodeUpdate to the code would do.
+enum TeamCodePreviewVerdict {
+  TEAM_CODE_PREVIEW_VERDICT_UNSPECIFIED = 0;
+  // The team would take the code: the counts below say what follows.
+  TEAM_CODE_PREVIEW_VERDICT_CHANGES = 1;
+  // The code is the team's own already — the write would change nothing.
+  TEAM_CODE_PREVIEW_VERDICT_SAME = 2;
+  // Another team holds the code now — the write would be refused AlreadyExists; `holder_team_name` names it.
+  TEAM_CODE_PREVIEW_VERDICT_TAKEN = 3;
+  // Another team held the code once (a former code is never given to another team) — refused as TAKEN is.
+  TEAM_CODE_PREVIEW_VERDICT_FORMER = 4;
+}
+
+message TeamCodePreviewResponse {
+  TeamCodePreviewVerdict verdict = 1;
+  // TAKEN / FORMER: the team that holds the code, or held it — the refusal's words (*SL-01 sudah ada — dipakai Toko
+  // Melati*). Empty otherwise.
+  string holder_team_name = 2;
+  // CHANGES only — everything below is empty for any other verdict.
+  // How many of the team's products would take the new code: every one whose code begins with the team's code and a
+  // dash, archived ones too (TeamCodeUpdate's rule).
+  uint32 products = 3;
+  // One of them, old → new (an active product first): SL-03-ANG-001 → ANGR-ANG-001. Empty when there is none.
+  string example_old_code = 4;
+  string example_new_code = 5;
+  // The warehouses holding units of those products on a shelf now — each must reprint their labels, and the products
+  // carry `need_reprint_code` until it does. By name, sorted; a product with nothing on a shelf is counted above and
+  // names no warehouse.
+  repeated string warehouse_names = 6;
+}
+
+// TeamCodeTaken rides the AlreadyExists of a TeamCodeUpdate — and of a TeamCreate — whose code another team holds now, or
+// held once (a former code is never given to another team). It names that team for the refusal's words
+// (*SL-01 sudah ada — dipakai Toko Melati*).
+message TeamCodeTaken {
+  string team_code = 1;
+  string team_name = 2;
+  // true: the team held it once and has another code now.
+  bool former = 3;
 }
 
 message TeamDeleteRequest {

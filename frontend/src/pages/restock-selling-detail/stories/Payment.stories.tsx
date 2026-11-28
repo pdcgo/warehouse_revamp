@@ -121,7 +121,7 @@ export const TheChargeNotedAtTibaIsShown: Story = {
     await expect(within(card).getByTestId("restock-detail-courier-charge")).toHaveTextContent("Rp 15.000");
     await expect(within(card).getByTestId("restock-detail-courier-charge-note")).toHaveTextContent("Biaya COD");
     await expect(within(card).getByTestId("restock-detail-courier-charge-owed")).toHaveTextContent(
-      /^Noted by .+ when the box was signed for — final when it is accepted, and from then your team owes it/,
+      /^Noted by .+ when the box was set arrived — final when it is accepted, and from then your team owes it/,
     );
     await expect(canvas.getByTestId("restock-detail-total")).toHaveTextContent("Rp 2.080.000");
     const slip = await within(card).findByTestId("restock-detail-courier-photo", {}, { timeout: 4000 });

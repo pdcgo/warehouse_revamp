@@ -28,7 +28,7 @@ export const TheWarehouseAdminNeitherTransfersNorAddsCapital: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByTestId("account-reconcile-button-1307", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("account-reconcile-button-1307")).toBeVisible(), { timeout: 4000 });
     await expect(canvas.queryByTestId("account-transfer-button-1307")).toBeNull();
 
     await userEvent.click(canvas.getByTestId("account-actions-1307"));

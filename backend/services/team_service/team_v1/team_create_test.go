@@ -22,7 +22,7 @@ import (
 
 func TestCreateTeam_InsertsTeamAndInfo(t *testing.T) {
 	db := san_testdb.DB(t)
-	s := NewService(db, nil)
+	s := NewService(db, nil, nil)
 
 	team, err := s.createTeam(context.Background(), &teamv1.TeamCreateRequest{
 		Type:     teamv1.TeamType_TEAM_TYPE_SELLING,
@@ -52,7 +52,7 @@ func TestCreateTeam_InsertsTeamAndInfo(t *testing.T) {
 
 func TestCreateTeam_DuplicateCodeErrors(t *testing.T) {
 	db := san_testdb.DB(t)
-	s := NewService(db, nil)
+	s := NewService(db, nil, nil)
 	ctx := context.Background()
 
 	req := &teamv1.TeamCreateRequest{Type: teamv1.TeamType_TEAM_TYPE_SELLING, Name: "First", TeamCode: "DUP"}
@@ -70,7 +70,7 @@ func TestCreateTeam_DuplicateCodeErrors(t *testing.T) {
 
 func TestCreateTeam_RootTypeRejected(t *testing.T) {
 	db := san_testdb.DB(t)
-	s := NewService(db, nil)
+	s := NewService(db, nil, nil)
 
 	_, err := s.createTeam(context.Background(), &teamv1.TeamCreateRequest{
 		Type:     teamv1.TeamType_TEAM_TYPE_ROOT,
@@ -129,7 +129,7 @@ func teamsWithCode(t *testing.T, db *gorm.DB, code string) (all, live int64) {
 func TestTeamCreate_GrantsTheNamedOwner(t *testing.T) {
 	db := san_testdb.DB(t)
 	grants := &fakeGrants{}
-	s := NewService(db, grants)
+	s := NewService(db, grants, nil)
 
 	res, err := s.TeamCreate(context.Background(), createRequest("GDP", 57))
 	if err != nil {
@@ -156,7 +156,7 @@ func TestTeamCreate_ARefusedOwnerFreesTheCode(t *testing.T) {
 	db := san_testdb.DB(t)
 	grants := &fakeGrants{err: connect.NewError(connect.CodeFailedPrecondition,
 		errors.New("a suspended user cannot be added to a team"))}
-	s := NewService(db, grants)
+	s := NewService(db, grants, nil)
 
 	_, err := s.TeamCreate(context.Background(), createRequest("GDP", 57))
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
@@ -185,7 +185,7 @@ func TestTeamCreate_ARefusedOwnerFreesTheCode(t *testing.T) {
 func TestTeamCreate_AnUnknownOutcomeOnlySoftDeletes(t *testing.T) {
 	db := san_testdb.DB(t)
 	grants := &fakeGrants{err: connect.NewError(connect.CodeUnavailable, errors.New("user_service is down"))}
-	s := NewService(db, grants)
+	s := NewService(db, grants, nil)
 
 	_, err := s.TeamCreate(context.Background(), createRequest("GDP", 57))
 	if connect.CodeOf(err) != connect.CodeInternal {

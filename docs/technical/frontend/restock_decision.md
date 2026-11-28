@@ -964,6 +964,8 @@ left in place, and its long wording (*rekening yang membayar*, *minimal satu pro
 What it replaces: the old order (warehouse, account, products, counts, note); *Opsional* in the supplier part's line
 ([the-card-is-supplier-then-produk](#the-card-is-supplier-then-produk)).
 
+🔄 *(2026-11-27)* **A supplier is optional — the owner's later word.** The second check here (*"di produk perlu cek semuanya punya supplier dulu"*, 2026-11-04) is superseded by [the-supplier-popup-points-to-create-supplier-when-none-exists](../../business/inventory/restock_decision.md#the-supplier-popup-points-to-create-supplier-when-none-exists) (owner *"B"*, 2026-11-27, which also turned down *C: make a supplier required on every restock*) and by his acceptance row [restock.md](../../acceptances/inventory/restock.md) given 15, *restock created without a supplier* — the server already took a line with none. The order stands for the rest: products (a count and a total on every one), warehouse, paying account, resi. ✅ Built 2026-11-27 (#144): `missingParts` (`pages/restock-form/draft.ts`) no longer asks for a supplier; the product line's *Dibeli dari* label drops its required mark (test id `restock-line-N-supplier-required` gone with it); the card's help line reads *Opsional — pilih satu supplier untuk semua produk, atau atur di tiap produk.*; pinned by `TheChecksRunProductsWarehouseAccountResi` (no supplier picked, the restock created).
+
 ## the-count-and-total-are-required
 
 > Owner, in chat (2026-11-04): *"jumlah dan total produk juga wajib"*.
@@ -1308,7 +1310,7 @@ Dalam Perjalanan ──Tandai Tiba──▶ Tiba ──Terima──▶ Diterima 
 | one component | `CourierCharge` moved from the accept page to `features/restock/` — two places draw it now. Its story: `Features/Restock/CourierCharge` |
 | ⚠ pending, `dropped` | `RestockRequestArrive` takes no charge, so what is typed at Tiba is thrown away. The page's mark sits by the charge's title in the dialog — the warehouse list's **2**, the warehouse detail's **1** (its first strip) — and after the sign a warning toast says *enter it again at Terima*. **Backend needed:** the charge and its note on Arrive, stored on the restock, and the accept page opening with them |
 | no photo | the courier's slip is not photographed (the owner's *"foto"* was for broken products — next, on the accept page) |
-| pinned by | `SignForBoxNotesTheCourierCharge`, `SignForBoxWithoutACharge`, `ANoteIsRequiredOnceThereIsAnAmount`, `TheSignDialogMarksItsCourierCharge` (list and detail) |
+| pinned by | `SetArrivedNotesTheChargeWithNoNote` (was `SignForBoxNotesTheCourierCharge`, renamed by #146), `SignForBoxWithoutACharge`, `TheNoteIsOptional` (was `ANoteIsRequiredOnceThereIsAnAmount`, renamed by #146), `TheSignDialogMarksItsCourierCharge` (list and detail) |
 
 Conflict with the business docs: [the-warehouse-cost-is-the-couriers-charge-at-the-door](../../business/inventory/restock_decision.md#the-warehouse-cost-is-the-couriers-charge-at-the-door)
 has it *entered at accept*. Noting it at Tiba too is this screen's; that rule's text stands until the owner changes it.
@@ -1317,7 +1319,9 @@ What it replaces: the charge entered at Terima only.
 
 🔄 *(2026-11-18)* The conflict above is settled: the owner keeps the charge typed at Tandai Tiba and lets Terima edit it, Terima final — [the-courier-charge-is-noted-at-tiba-and-final-at-terima](../../business/inventory/restock_decision.md#the-courier-charge-is-noted-at-tiba-and-final-at-terima). The `dropped` mark stays until backlog #76 builds it.
 
-✅ Built 2026-11-18 (backlog #76, [the-courier-charge-is-noted-at-tiba-and-final-at-terima](../../business/inventory/restock_decision.md#the-courier-charge-is-noted-at-tiba-and-final-at-terima)): the sign sends the charge, its note and the slip — uploaded as it is picked, under the warehouse, Terima's way; the sign waits only for a slip still uploading — and the restock keeps them. The `dropped` marks are gone — the warehouse list's (its last, so the list's strip and `pending.ts` went with it) and the warehouse detail's (its broken-rack mark is now its **1**) — and so is the after-sign *enter it again at Terima* toast; the accept page's `codFromArrival` (`missing`) mark too: Terima opens with the charge, its note and its slip (the slip shown as a kept photo, *Foto tersimpan*, from its own link). The selling page draws Ongkir COD as a section once a charge is noted, the warehouse page's Kiriman fact reads it, each with a line saying it is noted — final at Terima *(Not asked — the build's default)*. Pinned by `SignForBoxNotesTheCourierCharge`, `SignForBoxKeepsTheSlip`, `SignForBoxWithoutACharge` (Features/Restock/WarehouseRestockActions), `TheSignDialogKeepsItsCourierCharge` (the list), `TheChargeNotedAtTheDoorIsShown`, `ALateLostBoxTakesTheCharge` (the warehouse detail's SignForBox), `TheChargeNotedAtTibaIsShown` (both detail pages' Payment), `TheChargeOpensWithTheRestocks`, `TibasChargeIsSentAsItCame`, `TibasChargeCanBeChanged`, `TibasSlipOpensKept`, `TibasSlipCanBeRemoved` (RestockAccept/Charge).
+✅ Built 2026-11-18 (backlog #76, [the-courier-charge-is-noted-at-tiba-and-final-at-terima](../../business/inventory/restock_decision.md#the-courier-charge-is-noted-at-tiba-and-final-at-terima)): the sign sends the charge, its note and the slip — uploaded as it is picked, under the warehouse, Terima's way; the sign waits only for a slip still uploading — and the restock keeps them. The `dropped` marks are gone — the warehouse list's (its last, so the list's strip and `pending.ts` went with it) and the warehouse detail's (its broken-rack mark is now its **1**) — and so is the after-sign *enter it again at Terima* toast; the accept page's `codFromArrival` (`missing`) mark too: Terima opens with the charge, its note and its slip (the slip shown as a kept photo, *Foto tersimpan*, from its own link). The selling page draws Ongkir COD as a section once a charge is noted, the warehouse page's Kiriman fact reads it, each with a line saying it is noted — final at Terima *(Not asked — the build's default)*. Pinned by `SetArrivedNotesTheChargeWithNoNote` (was `SignForBoxNotesTheCourierCharge`, renamed by #146), `SignForBoxKeepsTheSlip`, `SignForBoxWithoutACharge` (Features/Restock/WarehouseRestockActions), `TheSignDialogKeepsItsCourierCharge` (the list), `TheChargeNotedAtTheDoorIsShown`, `ALateLostBoxTakesTheCharge` (the warehouse detail's SignForBox), `TheChargeNotedAtTibaIsShown` (both detail pages' Payment), `TheChargeOpensWithTheRestocks`, `TibasChargeIsSentAsItCame`, `TibasChargeCanBeChanged`, `TibasSlipOpensKept`, `TibasSlipCanBeRemoved` (RestockAccept/Charge).
+
+🔄 *(2026-11-27, owner)* The note is optional now — an amount no longer holds the sign back: [the-couriers-charge-note-is-optional](../../business/balance/context_decision.md#the-couriers-charge-note-is-optional). The act is called *Set Arrived*: [an-arrival-is-set-arrived](./context_decision.md#an-arrival-is-set-arrived).
 
 ## tiba-marks-and-terima-is-final
 
@@ -1337,7 +1341,7 @@ Terima       →  Diterima     counted in, stock up — final
 | fixed: the sign toast | *"Paket diterima — restok sudah tiba"* said **diterima** of the step that is not final → *"Restok ditandai tiba"* (en *Restock marked as arrived*) |
 | fixed: the warehouse list's column | *Sampai*, beside a status called *Tiba* → **Tiba** (en *Arrived*, unchanged) |
 | fixed: the sign dialog | it now says stock does not go up until Terima |
-| pinned by | `SignForBoxNotesTheCourierCharge` (the message and the toast) |
+| pinned by | `SetArrivedNotesTheChargeWithNoNote` (was `SignForBoxNotesTheCourierCharge`, renamed by #146) (the message and the toast) |
 
 What it replaces: the column's *Sampai* in [the-inbound-row-says-who-and-when](#the-inbound-row-says-who-and-when), and the
 sign toast's wording.
@@ -1441,7 +1445,7 @@ Foto nota   [▣] nota.jpg ✕   [📷 Ganti Foto]   ⚠1 (at Terima)
 | required | no, at either act — the note still is, once there is an amount |
 | the control | `features/restock/PhotoPick` — the broken photo's picker, moved out of the accept page so both use it: one photo, replaced or removed, the camera on a phone |
 | ⚠ pending, `dropped` | not uploaded. At Tiba the whole charge is already not kept, so the dialog's one mark covers the photo too (its reason now says so); at Terima the charge is kept and the photo is not — the accept page's **1**. Terima's one toast lists what was not kept: *Belum tersimpan: foto nota, foto barang rusak, rak barang rusak.* |
-| pinned by | `TheCouriersSlipTakesAPhoto`, `AcceptingSaysWhatWasNotKept`, `SignForBoxNotesTheCourierCharge` |
+| pinned by | `TheCouriersSlipTakesAPhoto`, `AcceptingSaysWhatWasNotKept`, `SetArrivedNotesTheChargeWithNoNote` (was `SignForBoxNotesTheCourierCharge`, renamed by #146) |
 
 What it replaces: *"no photo — the courier's slip is not photographed"* in [the-cod-can-be-noted-when-the-box-arrives](#the-cod-can-be-noted-when-the-box-arrives).
 
@@ -1620,10 +1624,12 @@ Ongkir COD dari kurir
 | the note | a **textarea**, two rows growing, with its count (*9/200* — `a-limited-field-shows-its-count`) |
 | back to *Tidak ada* | the fields go and nothing is sent — what was typed is kept on screen, in case *Ada* comes back |
 | at Terima | the same pills; they open on **Ada** when the restock already carries a charge ([terima-starts-from-the-charge-noted-at-tiba](#terima-starts-from-the-charge-noted-at-tiba)) |
-| pinned by | `TheChargeIsAskedFirst` (`Features/Restock/CourierCharge`), `SignForBoxNotesTheCourierCharge`, `ACourierChargeNeedsANote`, `TheChargeOpensWithTheRestocks`; e2e *Accept: a delivery is counted…* picks *Ada* |
+| pinned by | `TheChargeIsAskedFirst` (`Features/Restock/CourierCharge`), `SetArrivedNotesTheChargeWithNoNote` (was `SignForBoxNotesTheCourierCharge`, renamed by #146), `ACourierChargeNeedsNoNote` (was `ACourierChargeNeedsANote`, renamed by #146), `TheChargeOpensWithTheRestocks`; e2e *Accept: a delivery is counted…* picks *Ada* |
 
 What it replaces: the amount and the note always open in [the-cod-can-be-noted-when-the-box-arrives](#the-cod-can-be-noted-when-the-box-arrives) and on the accept page, with the note a
 one-line input.
+
+🔄 *(2026-11-27, owner)* On *Ada* only the amount is required now; the note is optional: [the-couriers-charge-note-is-optional](../../business/balance/context_decision.md#the-couriers-charge-note-is-optional).
 
 ## the-restock-page-leads-with-the-box
 

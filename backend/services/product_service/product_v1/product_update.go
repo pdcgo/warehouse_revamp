@@ -30,19 +30,6 @@ func (s *Service) ProductUpdate(
 
 	updates := map[string]any{}
 
-	// Composed before the transaction: the team's code is a call to team_service, and it is immutable, so nothing can
-	// change it between this read and the write.
-	newCode := ""
-
-	if req.Msg.ProductCodePart != nil {
-		var err error
-
-		newCode, err = s.productCodeFor(ctx, teamID, req.Msg.GetProductCodePart())
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if req.Msg.Name != nil {
 		updates["name"] = req.Msg.GetName()
 	}
@@ -85,6 +72,26 @@ func (s *Service) ProductUpdate(
 	var product product_service_models.Product
 
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// A correction composes from the team's code INSIDE the transaction, under the team's product-code lock
+		// (lockTeamProductCodes, backlog #149): the code can change now (a-team-code-change-recomposes-its-product-codes),
+		// and the recompose takes the same lock — so a correction never stores the old prefix after the change. Taken
+		// before the row's lock, as the recompose takes it before the rows'.
+		newCode := ""
+
+		if req.Msg.ProductCodePart != nil {
+			lockErr := lockTeamProductCodes(tx, teamID)
+			if lockErr != nil {
+				return lockErr
+			}
+
+			var codeErr error
+
+			newCode, codeErr = s.productCodeFor(ctx, teamID, req.Msg.GetProductCodePart())
+			if codeErr != nil {
+				return codeErr
+			}
+		}
+
 		// Check existence FIRST — Postgres reports 0 rows affected when an UPDATE writes identical
 		// values, so inferring NotFound from RowsAffected would misfire on a no-op resubmit.
 		exists, err := productExists(tx, teamID, productID)
@@ -146,7 +153,12 @@ func (s *Service) ProductUpdate(
 			Error
 	})
 	if err != nil {
+		// productCodeFor's refusals are Connect errors already.
+		var connectErr *connect.Error
+
 		switch {
+		case errors.As(err, &connectErr):
+			return nil, connectErr
 		case errors.Is(err, errProductMissing):
 			return nil, notFound()
 		case errors.Is(err, errCodeFixedByHistory):

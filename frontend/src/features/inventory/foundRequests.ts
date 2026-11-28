@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { foundRequestClient } from "../../api/clients";
 import { key, listQuery } from "../../api/queryClient";
@@ -8,6 +8,11 @@ import {
   type FoundRequestListResponse,
   FoundRequestStatus,
 } from "../../gen/warehouse/inventory/v1/found_request_pb";
+import type { Product } from "../../gen/warehouse/product/v1/product_pb";
+import type { Team } from "../../gen/warehouse/team/v1/team_pb";
+import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
+import { productsNamed } from "../racks/queries";
+import { teamsByIdsQuery } from "../teams/queries";
 import { fetchActors } from "../users/queries";
 import { useInvalidateStock } from "./queries";
 
@@ -29,7 +34,41 @@ export function foundRequestsFromList(res: FoundRequestListResponse): FoundReque
   return res.ids.map((id) => m[id.toString()]).filter((r): r is FoundRequest => r !== undefined);
 }
 
-/** The warehouse's found requests of one status (UNSPECIFIED = every one), newest report first — with the people named. */
+/** One page of the found list as it is drawn: the requests, and what each names — its people, its owner, its product. */
+export interface FoundRequestPage {
+  requests: FoundRequest[];
+  /** Who reported and who decided each, by user id. */
+  actors: Map<string, PublicUser>;
+  /** The owning team of each, by team id — an id it could not name is absent. */
+  teams: { [id: string]: Team };
+  /** The catalogue's product of each, by product id, for its picture — an id it could not name is absent. */
+  products: Map<string, Product>;
+  hasNext: boolean;
+}
+
+// The owning teams of a page — a name lookup through the shared entry (teamsByIdsQuery, a referenceQuery). Best-effort, no
+// retry: a team is decoration, and the rows should not wait a second for one — every row keeps its own fallback.
+async function ownersNamed(client: QueryClient, ids: bigint[]): Promise<{ [id: string]: Team }> {
+  if (!ids.some((id) => id > 0n)) return {};
+
+  try {
+    return await client.fetchQuery({ ...teamsByIdsQuery(ids), retry: false });
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * The warehouse's found requests of one status (UNSPECIFIED = every one), newest report first — with what each row names.
+ *
+ * WHAT A ROW NAMES IS READ SIDE BY SIDE, once the page of requests is known (#134, the-speed-audits-old-findings-are-fixed-
+ * smallest-first): who reported and who decided each (UserByIDs), the owning team (TeamByIds) and the product's picture
+ * (ProductByIds) each need only the requests. The teams and pictures were the page's own reads of the rows, so they waited
+ * for the people too — the speed audit's FoundRequestList → UserByIDs → TeamByIds / ProductByIds. Committed together
+ * with the rows, so a row arrives named, as it always did, and a page turn keeps the last page up until the next is
+ * whole (`listQuery`). The teams and pictures are name lookups — kept for a while (`referenceQuery`, as the rack page's
+ * shelf names its products, productsNamed), best-effort, a failed one leaving the row its snapshot and placeholder.
+ */
 export function useFoundRequests(args: {
   teamId: bigint | undefined;
   status: FoundRequestStatus;
@@ -37,12 +76,13 @@ export function useFoundRequests(args: {
   pageSize: number;
 }) {
   const { teamId, status, page, pageSize } = args;
+  const client = useQueryClient();
 
   return useQuery({
     queryKey: key.foundRequests(teamId, { status, page, pageSize }),
     ...listQuery,
     enabled: teamId !== undefined,
-    queryFn: async () => {
+    queryFn: async (): Promise<FoundRequestPage> => {
       const res = await foundRequestClient.foundRequestList({
         teamId: teamId!,
         filter: { status },
@@ -50,10 +90,16 @@ export function useFoundRequests(args: {
         page: { page, limit: pageSize },
       });
       const requests = foundRequestsFromList(res);
-      // Who reported and who decided each, resolved once for the page.
-      const actors = await fetchActors(requests.flatMap((r) => [r.reportedById, r.decidedById]));
 
-      return { requests, actors, hasNext: hasNextOf(res.pageInfo) };
+      const [actors, teams, products] = await Promise.all([
+        // Who reported and who decided each, resolved once for the page.
+        fetchActors(requests.flatMap((r) => [r.reportedById, r.decidedById])),
+        ownersNamed(client, requests.map((r) => r.teamId)),
+        // The pictures — one read for the page's products, any team's (a warehouse holds several sellers' goods).
+        productsNamed(client, teamId!, requests.map((r) => r.productId)),
+      ]);
+
+      return { requests, actors, teams, products, hasNext: hasNextOf(res.pageInfo) };
     },
   });
 }

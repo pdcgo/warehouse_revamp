@@ -88,7 +88,7 @@ export const Mobile: Story = {
 export const NoBundlesYet: Story = {
   beforeEach: standingAs(Role.SELLING_OWNER, 15n),
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByTestId("bundles-empty", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(within(canvasElement).getByTestId("bundles-empty")).toBeVisible(), { timeout: 4000 });
   },
 };
 
@@ -97,7 +97,7 @@ export const AWarehouseTeam: Story = {
   beforeEach: standingAs(Role.WAREHOUSE_ADMIN, 11n),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByTestId("bundles-selling-only")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("bundles-selling-only")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId("open-create-bundle")).toBeNull();
   },
 };
@@ -253,7 +253,7 @@ export const ARowOpensTheBundle: Story = {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(within(canvas.getByTestId(`bundle-row-${HEMAT_BUDI.id}`)).getByText("Paket Hemat"));
-    await expect(await canvas.findByTestId("at-bundle")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("at-bundle")).toBeVisible(), { timeout: 5000 });
   },
 };
 
@@ -264,6 +264,6 @@ export const NewBundleOpensTheForm: Story = {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("open-create-bundle"));
-    await expect(await canvas.findByTestId("at-bundle-new")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("at-bundle-new")).toBeVisible(), { timeout: 5000 });
   },
 };

@@ -86,8 +86,9 @@ func TestCustomShipmentInbound_TheSellersEditsAndGivingItUp(t *testing.T) {
 }
 
 // Hilang while on its way (lost-is-set-only-before-the-box-arrives, alike): the seller gives it up with a reason, nothing
-// moves; a lost parcel that turns up is signed for (a-late-lost-box-is-signed-for-as-arrived). Tiba notes the courier's
-// charge at the door — a note above 0 — kept and shown to both sides, and publishes nothing (no money at Tiba).
+// moves; a lost parcel that turns up is set arrived (a-late-lost-box-is-signed-for-as-arrived). Tiba notes the courier's
+// charge at the door — its note optional (the-couriers-charge-note-is-optional) — kept and shown to both sides, and
+// publishes nothing (no money at Tiba).
 func TestCustomShipmentInbound_LostThenSignedForWithTheDoorCharge(t *testing.T) {
 	f := rsStocked(t)
 	cs := f.inbound(t, f.restock, "inbound-lost")
@@ -102,11 +103,6 @@ func TestCustomShipmentInbound_LostThenSignedForWithTheDoorCharge(t *testing.T) 
 		lost.GetLostReason() != "never came" || lost.GetLostAtUnix() == 0 {
 		t.Fatalf("lost = %v", lost)
 	}
-
-	_, err = f.svc.CustomShipmentArrive(ctxUser(wtStaffA), connect.NewRequest(&inventoryv1.CustomShipmentArriveRequest{
-		TeamId: wtA, Id: cs.GetId(), DoorCharge: 8000,
-	}))
-	codeOf(t, "a charge without its note", err, connect.CodeInvalidArgument)
 
 	_, err = f.svc.CustomShipmentArrive(ctxUser(wtSeller), connect.NewRequest(&inventoryv1.CustomShipmentArriveRequest{
 		TeamId: otMelati, Id: cs.GetId(),
@@ -124,6 +120,11 @@ func TestCustomShipmentInbound_LostThenSignedForWithTheDoorCharge(t *testing.T) 
 		t.Fatalf("arrived = %v", arrived)
 	}
 
+	// The trail's words for a charge WITH its note are as they always were: the amount, a dash, the note.
+	if got := lastLog(arrived).GetDescription(); got != "courier's charge Rp 8.000 — COD asked by the courier" {
+		t.Fatalf("Tiba's trail row says %q, want the charge and its note", got)
+	}
+
 	seller, err := f.detail(otMelati, cs.GetId())
 	if err != nil {
 		t.Fatalf("seller detail: %v", err)
@@ -139,6 +140,46 @@ func TestCustomShipmentInbound_LostThenSignedForWithTheDoorCharge(t *testing.T) 
 
 	_, err = f.markLost(otMelati, cs.GetId())
 	codeOf(t, "lost again after Tiba", err, connect.CodeFailedPrecondition)
+}
+
+// A DOOR CHARGE WITH NO NOTE IS KEPT (the-couriers-charge-note-is-optional — inverted from "a charge without its note
+// is refused"): at Tiba the parcel is set arrived with the amount and no note, its trail row naming the amount alone (no
+// dangling dash); at Terima the final amount with no note is counted in, and CustomShipmentReceived carries it, so the
+// selling team owes it as it would with a note.
+func TestCustomShipmentInbound_ADoorChargeWithNoNoteIsKept(t *testing.T) {
+	f := rsStocked(t)
+	cs := f.inbound(t, f.restock, "inbound-no-note")
+	widget, kaos := csItemOf(t, cs, csWidget).GetId(), csItemOf(t, cs, wtKaosHitam).GetId()
+
+	arrived := f.arrive(t, cs.GetId(), 8000, "  ")
+	if arrived.GetStatus() != inventoryv1.CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_ARRIVED ||
+		arrived.GetShippingCost() != 8000 || arrived.GetChargeNote() != "" {
+		t.Fatalf("arrived = %v, want arrived with 8000 and no note", arrived)
+	}
+
+	if got := lastLog(arrived).GetDescription(); got != "courier's charge Rp 8.000" {
+		t.Fatalf("Tiba's trail row says %q, want the amount alone", got)
+	}
+
+	f.sent.events = nil
+
+	got, err := f.receive(cs.GetId(), 6000, "", inLine(widget, 3, 0, f.rakB), inLine(kaos, 2, 0, f.rakB))
+	if err != nil {
+		t.Fatalf("receive with a charge and no note = %v, want it counted in", err)
+	}
+
+	if got.GetStatus() != inventoryv1.CustomShipmentStatus_CUSTOM_SHIPMENT_STATUS_RECEIVED || got.GetShippingCost() != 6000 ||
+		got.GetChargeNote() != "" {
+		t.Fatalf("received = %v, want received with 6000 and no note", got)
+	}
+
+	if text := lastLog(got).GetDescription(); text != "received — 0 broken, 0 short; courier's charge Rp 6.000" {
+		t.Fatalf("Terima's trail row says %q, want the count and the amount alone", text)
+	}
+
+	if events := receivedEvents(f); len(events) != 1 || events[0].GetDoorCharge() != 6000 {
+		t.Fatalf("CustomShipmentReceived = %v, want one carrying 6000", events)
+	}
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────────────────────────────────────────────

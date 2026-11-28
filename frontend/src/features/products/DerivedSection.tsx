@@ -1,36 +1,43 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Badge, Box, Button, CloseButton, Dialog, HStack, Icon, Image, Portal, Stack, Table, Text, Tooltip } from "@chakra-ui/react";
+import { Badge, Box, Button, CloseButton, Dialog, HStack, Icon, Image, Portal, Spinner, Stack, Table, Text, Tooltip } from "@chakra-ui/react";
 import { Package } from "lucide-react";
 
-import type { SampleDerived } from "./derivedSample";
+import type { DerivedProduct, DerivedProducts } from "./adapt";
 
 // A ROW LIGHTS UP under the pointer, every cell of it (a-table-row-lights-up).
 const LIGHTS_UP = { _hover: { "& > td": { bg: "bg.muted" } } } as const;
 
 // PRODUK TURUNAN — the link a RETURN TO ANOTHER TEAM makes between two products (owner: *"barang yang retur ke team beda
 // team"*), shown BOTH WAYS, because the product on screen can be either end of it (owner: *"bisa jadi yang sekarang itu
-// juga turunan"*):
+// juga turunan"*). It IS the return map (produk-turunan-is-the-return-map):
 //
-//   Turunan dari   the product this one came from, in another team — at most one, one line
-//   Turunannya     the products other teams made of this one through a return — any number
+//   Turunan dari   the other teams' products this one was mapped FROM — one line each; usually one, but a team may land
+//                  several borrowed products on one product of its own (the map is unique on its source, not on its
+//                  own product: the-map-is-unique-on-its-source), so each gets its own line in the same style
+//   Turunannya     every team's own product mapped from this one — any number, one per team
 //
 // ⚠ THERE CAN BE MANY (owner: *"dia bisa banyak, design sekarang kalau kepanjangan membingungkan"*), and a side card that
 // grows a block per return stops being readable. So the card holds the COUNT, the first few as ONE LINE each — the team,
 // the SKU and its READY STOCK as just "N pcs", what the number is said by a tooltip (owner: *"tidak perlu dikasih
 // tanggal"*, *"pcs stok readynya bukan diretur sejumlah"*, then *"cuma pcs aja di produk turunan, siapnya jadi tooltip
 // aja"*) — and "Lihat Semua" opens the whole list in a dialog, as a table with the derived product's name and SKU.
-// ⚠ The rows are SAMPLES until the link exists (each page's pending.ts `derived`).
 //
+// REAL since 2026-11-27 (#140): the maps are TeamReturnConfigurationService.ProductDerivedList, read across teams, and the
+// page names them with the reads it already makes — ProductByIds, TeamByIds, DiscoverStockByIds (useProductDerived).
 // The product's own page and its discover detail both (owner: *"produk turunan juga ditampilkan"*,
 // the-discover-detail-shows-no-markup) — the body of the section card each page draws.
 
 /** How many the card shows before "see all". */
 const IN_CARD = 3;
 
+/** A product with no maps either way — what an empty answer draws. */
+const NONE: DerivedProducts = { from: [], to: [], fromTotal: 0, toTotal: 0 };
+
 /** One derived product as a single line — which team, its SKU, its stock ready. */
-function DerivedLine({ item, testId }: { item: SampleDerived; testId: string }) {
+function DerivedLine({ item, testId }: { item: DerivedProduct; testId: string }) {
   const { t } = useTranslation();
+  const ready = item.readyQty.toString();
 
   return (
     <HStack justify="space-between" gap="2" py="1.5" borderBottomWidth="1px" borderColor="border.muted" minW="0" data-testid={testId}>
@@ -48,10 +55,10 @@ function DerivedLine({ item, testId }: { item: SampleDerived; testId: string }) 
             fontSize="xs"
             color="fg.muted"
             flexShrink={0}
-            aria-label={t("products.detail.derived.ready", { n: item.readyQty })}
+            aria-label={t("products.detail.derived.ready", { n: ready })}
             data-testid={`${testId}-pcs`}
           >
-            {t("products.stat.pcs", { n: item.readyQty })}
+            {t("products.stat.pcs", { n: ready })}
           </Text>
         </Tooltip.Trigger>
         <Portal>
@@ -64,10 +71,29 @@ function DerivedLine({ item, testId }: { item: SampleDerived; testId: string }) 
   );
 }
 
-export function DerivedSection({ derived }: { derived: { from?: SampleDerived; to: SampleDerived[] } }) {
+/**
+ * The section's body: `derived` once the maps and their names have answered, `loading` while they have not, `error` when
+ * the read was refused or failed — said in place, so the rest of the page stands.
+ */
+export function DerivedSection({ derived, loading, error }: { derived?: DerivedProducts; loading: boolean; error?: string }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const rest = derived.to.length - IN_CARD;
+
+  // While the maps and their names load — the section's own spinner, as its neighbours' (Pemasok, Keluar Masuk Harian).
+  if (loading) {
+    return <Spinner colorPalette="brand" size="sm" data-testid="pd-derived-loading" />;
+  }
+
+  if (error) {
+    return (
+      <Text color="error.fg" fontSize="sm" data-testid="pd-derived-error">
+        {error}
+      </Text>
+    );
+  }
+
+  const shown = derived ?? NONE;
+  const rest = shown.to.length - IN_CARD;
 
   return (
     <Stack gap="card">
@@ -75,12 +101,17 @@ export function DerivedSection({ derived }: { derived: { from?: SampleDerived; t
         <Text fontSize="xs" fontWeight="bold" color="fg.label">
           {t("products.detail.derived.from")}
         </Text>
-        {derived.from ? (
-          <DerivedLine item={derived.from} testId="pd-derived-from-item" />
-        ) : (
+        {shown.from.length === 0 ? (
           <Text fontSize="sm" color="fg.muted">
             {t("products.detail.derived.fromNone")}
           </Text>
+        ) : (
+          <Box>
+            {shown.from.map((item, i) => (
+              // The first keeps the section's one-line id; a second source onto the same product is numbered.
+              <DerivedLine key={i} item={item} testId={i === 0 ? "pd-derived-from-item" : `pd-derived-from-item-${i}`} />
+            ))}
+          </Box>
         )}
       </Stack>
 
@@ -90,16 +121,16 @@ export function DerivedSection({ derived }: { derived: { from?: SampleDerived; t
             {t("products.detail.derived.to")}
           </Text>
           <Badge size="sm" variant="subtle" data-testid="pd-derived-count">
-            {derived.to.length}
+            {shown.toTotal}
           </Badge>
         </HStack>
-        {derived.to.length === 0 ? (
+        {shown.to.length === 0 ? (
           <Text fontSize="sm" color="fg.muted">
             {t("products.detail.derived.toNone")}
           </Text>
         ) : (
           <Box>
-            {derived.to.slice(0, IN_CARD).map((item, i) => (
+            {shown.to.slice(0, IN_CARD).map((item, i) => (
               <DerivedLine key={i} item={item} testId={`pd-derived-to-${i}`} />
             ))}
           </Box>
@@ -109,7 +140,7 @@ export function DerivedSection({ derived }: { derived: { from?: SampleDerived; t
           <Dialog.Root open={open} onOpenChange={(e) => setOpen(e.open)} size="lg" scrollBehavior="inside">
             <Dialog.Trigger asChild>
               <Button size="xs" variant="ghost" alignSelf="flex-start" data-testid="pd-derived-see-all">
-                {t("products.detail.derived.seeAll", { count: derived.to.length })}
+                {t("products.detail.derived.seeAll", { count: shown.toTotal })}
               </Button>
             </Dialog.Trigger>
             <Portal>
@@ -129,7 +160,7 @@ export function DerivedSection({ derived }: { derived: { from?: SampleDerived; t
                         </Table.Row>
                       </Table.Header>
                       <Table.Body>
-                        {derived.to.map((item, i) => (
+                        {shown.to.map((item, i) => (
                           <Table.Row key={i} css={LIGHTS_UP} data-testid={`pd-derived-row-${i}`}>
                             <Table.Cell>
                               {/* WITH ITS PICTURE (owner: *"produk turunan di modal ada gambarnya"*) — a product is
@@ -169,7 +200,7 @@ export function DerivedSection({ derived }: { derived: { from?: SampleDerived; t
                               </HStack>
                             </Table.Cell>
                             <Table.Cell>{item.teamName}</Table.Cell>
-                            <Table.Cell textAlign="end">{t("products.stat.pcs", { n: item.readyQty })}</Table.Cell>
+                            <Table.Cell textAlign="end">{t("products.stat.pcs", { n: item.readyQty.toString() })}</Table.Cell>
                           </Table.Row>
                         ))}
                       </Table.Body>

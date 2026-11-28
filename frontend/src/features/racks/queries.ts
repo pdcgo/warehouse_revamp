@@ -2,6 +2,7 @@ import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tansta
 import { useMemo, useState } from "react";
 import { productClient, rackClient, userClient } from "../../api/clients";
 import { key, referenceQuery } from "../../api/queryClient";
+import { rereadOnReturnWhileEmpty } from "../../api/rereadOnReturn";
 import type { StockMovement } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Rack, RackStockLine, RackSummary } from "../../gen/warehouse/inventory/v1/rack_pb";
 import type { Product } from "../../gen/warehouse/product/v1/product_pb";
@@ -63,10 +64,17 @@ function rackListOptions(warehouseId: bigint, enabled: boolean) {
 // error and stopped. The effect could not re-run because the warehouse had not changed, so one
 // transient failure left the picker permanently empty — "Racks unavailable" with no way back but a
 // reload. ShopSelect hit exactly this (#176) and this is the same fix.
-export function useRacks(args: { warehouseId: bigint; enabled?: boolean }) {
-  const { warehouseId, enabled = true } = args;
+//
+// `rereadOnReturn` — while the warehouse has NO rack, read again when the person comes back to the tab: the accept page's
+// placement picker then links to Racks in a new tab, and the rack made there must be pickable on return
+// (the-accept-page-points-to-the-racks-page, a-helper-link-opens-a-new-tab).
+export function useRacks(args: { warehouseId: bigint; enabled?: boolean; rereadOnReturn?: boolean }) {
+  const { warehouseId, enabled = true, rereadOnReturn = false } = args;
 
-  return useQuery(rackListOptions(warehouseId, enabled));
+  return useQuery({
+    ...rackListOptions(warehouseId, enabled),
+    ...(rereadOnReturn ? { refetchOnWindowFocus: rereadOnReturnWhileEmpty((racks: Rack[]) => racks.length === 0) } : {}),
+  });
 }
 
 export function useRackCodes(args: { warehouseId: bigint; enabled?: boolean }) {
@@ -168,7 +176,7 @@ function idSet(ids: bigint[]): bigint[] {
   return [...new Set(ids.filter((id) => id > 0n))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
-async function productsNamed(client: QueryClient, teamId: bigint, ids: bigint[]): Promise<Map<string, Product>> {
+export async function productsNamed(client: QueryClient, teamId: bigint, ids: bigint[]): Promise<Map<string, Product>> {
   const wanted = idSet(ids);
   // ProductByIds demands min_items:1, unique ids, each > 0 — so a duplicate or an empty set never becomes a call. Its
   // cap is 200 and a page is at most 50, so a page's ids always fit in ONE call.
@@ -265,6 +273,12 @@ export interface RackShelfRead {
 // rows and their names arrive as one value or not at all. (A team NAME is decoration with an honest "Team #<id>"
 // fallback, so that one resolves after — useShelfTeams.)
 //
+// THE OWNERS ARE ASKED THE MOMENT THE NAMES ARE IN (#138, a-chains-server-read-waits-for-a-frontend-probe): the team read
+// is STARTED here, right after ProductByIds answers, into useShelfTeams' own entry — never awaited, so the lines and
+// their names still commit exactly when they did. The hook then finds the read in flight or done. Started from the hook
+// alone, it went out only once the rows had rendered: the speed audit measured 170–270 ms of render between the products'
+// answer and the owners' request, against 2–5 ms on the wire.
+//
 // The page exists because a warehouse holds OTHER TEAMS' goods: RackStock returns product ids this warehouse does not
 // own, and ONLY ids — resolving them is the caller's job, via ProductByIds and NOT ProductList, which serves the
 // warehouse's own catalogue and would silently omit most of the shelf. A failed lookup is swallowed (productsNamed): the
@@ -285,10 +299,12 @@ export function useRackShelfPage(args: { teamId: bigint | undefined; rackId: big
         page: { page, limit: pageSize },
       });
       const lines = rackStockFromList(res.items, res.ids);
+      const products = await productsNamed(client, teamId!, lines.map((line) => line.productId));
+      void startShelfTeams(client, products);
 
       return {
         lines,
-        products: await productsNamed(client, teamId!, lines.map((line) => line.productId)),
+        products,
         totalItems: Number(res.pageInfo?.totalItems ?? 0n),
       };
     },
@@ -298,9 +314,10 @@ export function useRackShelfPage(args: { teamId: bigint | undefined; rackId: big
 // THE OWNING TEAM PER SHELF ROW — the Tim column and the dialogs' team names. One TeamByIds for a page's owners
 // (teamsByIdsQuery, a referenceQuery name lookup), resolved AFTER the rows: it never holds them back — rows render with
 // TeamItem's "Team #<id>" fallback and upgrade in place. Every name resolved is kept for the page's life, so paging back,
-// or a page owned by teams already named, never drops a name back to its fallback.
+// or a page owned by teams already named, never drops a name back to its fallback. The shelf's own read has usually
+// started it already (startShelfTeams), so this observer joins that read rather than asking a second time.
 export function useShelfTeams(products: Map<string, Product>): Map<string, Team> {
-  const ids = useMemo(() => idSet([...products.values()].map((product) => product.teamId)), [products]);
+  const ids = useMemo(() => shelfTeamIds(products), [products]);
   const query = useQuery({ ...teamsByIdsQuery(ids), enabled: ids.length > 0 });
 
   // Adjusted while rendering, not in an effect (React's "storing information from previous renders"): each new answer is
@@ -315,6 +332,21 @@ export function useShelfTeams(products: Map<string, Product>): Map<string, Team>
   }
 
   return known.teams;
+}
+
+// The owners a page of products names — ONE id set for the read the shelf starts and the hook that reads it, so both
+// land on the same entry (teamsByIdsQuery keys the sorted set).
+function shelfTeamIds(products: Map<string, Product>): bigint[] {
+  return idSet([...products.values()].map((product) => product.teamId));
+}
+
+// Starts the owners' read into useShelfTeams' entry — the same key, and its referenceQuery window and retries
+// (prefetchQuery takes the query's own options): a fresh entry asks nothing, a read in flight is joined, and a failure
+// is swallowed — the rows keep TeamItem's "Team #<id>", as when the hook's own read fails.
+function startShelfTeams(client: QueryClient, products: Map<string, Product>): Promise<void> {
+  const ids = shelfTeamIds(products);
+
+  return ids.length > 0 ? client.prefetchQuery(teamsByIdsQuery(ids)) : Promise.resolve();
 }
 
 /** A history row as the ledger draws it — a received-count correction reads as one. */

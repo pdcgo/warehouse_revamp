@@ -22,6 +22,7 @@ import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import type { StockPickLocation } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { OrderStatusBadge } from "../../components/badges/OrderStatusBadge";
 import { OrderCourierBadge } from "../../features/orders/OrderCourierBadge";
+import { useShippingCatalogue } from "../../features/shipping/catalogue";
 import { AddressField, Field } from "../../features/orders/components/OrderFields";
 import { toaster } from "../../components/feedback/Toaster";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
@@ -98,6 +99,11 @@ export function PickOrderPage() {
 
   // Both reads land together — see usePickOrder. A partial screen would be worse than a slower one.
   const query = usePickOrder({ warehouseId, orderId });
+  // THE COURIER'S NAME is read beside the order, not after it (#134, the-speed-audits-old-findings-are-fixed-smallest-
+  // first): the catalogue needs nothing from the order, but OrderCourierBadge mounts only once the order is drawn, so its
+  // read waited for the order AND its shelves — the speed audit's OrderDetail → StockPickLocations → ShipmentChannelList.
+  // The same cache entry the badge reads (a `referenceQuery`), so the badge finds it answered and asks nothing again.
+  useShippingCatalogue();
   // The move invalidates the orders and the stock screens together.
   const moveMutation = useOrderStatusChange();
   // THE RETURN ACCEPT's page (the-return-accept-page-is-accepted).
@@ -454,6 +460,7 @@ export function PickOrderPage() {
         <ItemScan
           key={order.id.toString()}
           items={order.items}
+          codes={query.data?.codes}
           setting={moveMutation.isPending}
           onSetPicked={() => void setPicked()}
         />

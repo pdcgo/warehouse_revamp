@@ -1034,6 +1034,16 @@ test("Analytic: the orders placed today count in Orders created, by shop", async
       async () => {
         await page.goto("/analytic?g=shop&m=metrics/orders/created");
         await expect(page.getByTestId("analytic-page")).toBeVisible();
+        // The headline reads "—" until MetricData has answered: read it only once it holds a number, or a slow answer
+        // under load reads as NaN on every pass (red once in an affected run, 2026-11-27, with "2" on screen at the end).
+        // Caught, not thrown: expect.poll does not retry a callback that throws.
+        const answered = await expect(headline)
+          .toHaveText(/^\d[\d.]*$/, { timeout: 10_000 })
+          .then(
+            () => true,
+            () => false,
+          );
+        if (!answered) return -1;
 
         return Number(((await headline.textContent({ timeout: 5000 })) ?? "0").replace(/\./g, ""));
       },
@@ -1246,7 +1256,8 @@ test("Return: the warehouse accepts a returned parcel and the courier's charge l
   await page.getByTestId(`pick-queue-row-${orderId}`).locator("td").nth(1).click();
 
   // Accept Return opens the accept page (the-return-accept-page-is-accepted). Every unit missing — nothing to rack; the
-  // courier asked for postage, and the charge needs what it was for before Accept presses.
+  // courier asked for postage, and what the charge was for is OPTIONAL (the-couriers-charge-note-is-optional): the
+  // charge alone holds nothing back.
   await page.getByTestId("pick-order-accept-return").click();
   await expect(page).toHaveURL(new RegExp(`/warehouse-orders/${orderId}/accept-return$`));
 
@@ -1260,8 +1271,14 @@ test("Return: the warehouse accepts a returned parcel and the courier's charge l
   }
 
   await page.getByTestId("return-accept-charge").fill("12000");
-  await expect(page.getByTestId("return-accept-charge-note-error")).toBeVisible();
-  await expect(page.getByTestId("return-accept-submit")).toBeDisabled();
+  // With the charge typed and NO note there is no error and Accept is enabled (the-couriers-charge-note-is-optional —
+  // the note error and its *note missing* message are gone). A note given is still kept (return.md #11), so the test
+  // goes on with one.
+  await expect(page.getByTestId("return-accept-charge-note")).toHaveValue("");
+  await expect(page.getByTestId("return-accept-charge-note-error")).toHaveCount(0);
+  await expect(page.getByTestId("return-accept-progress")).toHaveCount(0);
+  await expect(page.getByTestId("return-accept-ready")).toBeVisible();
+  await expect(page.getByTestId("return-accept-submit")).toBeEnabled();
 
   await page.getByTestId("return-accept-charge-note").fill("ongkir retur");
   await page.getByTestId("return-accept-submit").click();
@@ -1520,9 +1537,11 @@ test("Accept: a delivery is counted, split across shelves, and its breakage writ
   await page.getByTestId("accept-courier-charge").fill("8000");
   await expect(worth).not.toHaveText(before);
 
-  // ⚠ THE NOTE IS REQUIRED once there is a charge (the-courier-is-paid-once-per-restock), and without it Accept stays
-  // disabled.
-  await expect(page.getByTestId("accept-submit")).toBeDisabled();
+  // What it was for is OPTIONAL (the-couriers-charge-note-is-optional): with the charge typed and no note there is no
+  // error and Accept is enabled. A note given is still kept as typed, so the test goes on with one.
+  await expect(page.getByTestId("accept-courier-note-optional")).toBeVisible();
+  await expect(page.getByTestId("accept-courier-note-error")).toHaveCount(0);
+  await expect(page.getByTestId("accept-submit")).toBeEnabled();
   await page.getByTestId("accept-courier-note").fill("courier asked at the door");
 
   await expect(page.getByTestId("accept-submit")).toBeEnabled();

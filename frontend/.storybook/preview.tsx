@@ -25,6 +25,7 @@ import { resetSessionScenario } from "./sessionScenario";
 import { resetDuplicateRefStub } from "./duplicateRefStub";
 import { resetOrderAnswerStub } from "./orderAnswerStub";
 import { resetUserStub } from "./userStub";
+import { resetTeamCodeStub } from "./teamCodeStub";
 import { resetSupplierStub } from "./supplierStub";
 import { resetSupplierGoodsStub } from "./supplierGoodsStub";
 import { resetShopStub } from "./shopStub";
@@ -38,6 +39,7 @@ import { resetOpnameStub } from "./opnameStub";
 import { resetFoundRequestStub } from "./foundRequestStub";
 import { resetExpenseStub } from "./expenseStub";
 import { resetWarehouseStockStub } from "./warehouseStockListStub";
+import { resetProductReprintStub } from "./productReprintStub";
 import { resetBundleStub } from "./bundleStub";
 import { resetProductScenario } from "./productScenario";
 import { resetRackStub } from "./rackStub";
@@ -431,6 +433,8 @@ const preview: Preview = {
     resetExpenseStub();
     // …and the Stock screen's one switch — a warehouse that has held nothing.
     resetWarehouseStockStub();
+    // …and the reprint of changed codes, which a story's Cetak writes to (backlog #151).
+    resetProductReprintStub();
     // …and the bundles, which a create, an edit or a delete writes to — and any product a story locked or archived.
     resetBundleStub();
     resetProductScenario();
@@ -446,6 +450,8 @@ const preview: Preview = {
     resetWarehouseFeeStub();
     // …and the AI agents' connections and each team's switch, which a connect, a revoke or the switch writes.
     resetAgentStub();
+    // …and the team codes a team code edit saved (#150), with the former codes it kept.
+    resetTeamCodeStub();
     // …and the upload store, so a file attached in one story is not still "uploaded" in the next. It
     // also installs the fetch shim that answers the signed-URL PUT in the middle of every upload.
     stubUploads();

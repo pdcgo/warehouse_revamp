@@ -37,6 +37,12 @@ const (
 	TeamServiceTeamCreateProcedure = "/warehouse.team.v1.TeamService/TeamCreate"
 	// TeamServiceTeamUpdateProcedure is the fully-qualified name of the TeamService's TeamUpdate RPC.
 	TeamServiceTeamUpdateProcedure = "/warehouse.team.v1.TeamService/TeamUpdate"
+	// TeamServiceTeamCodeUpdateProcedure is the fully-qualified name of the TeamService's
+	// TeamCodeUpdate RPC.
+	TeamServiceTeamCodeUpdateProcedure = "/warehouse.team.v1.TeamService/TeamCodeUpdate"
+	// TeamServiceTeamCodePreviewProcedure is the fully-qualified name of the TeamService's
+	// TeamCodePreview RPC.
+	TeamServiceTeamCodePreviewProcedure = "/warehouse.team.v1.TeamService/TeamCodePreview"
 	// TeamServiceTeamDeleteProcedure is the fully-qualified name of the TeamService's TeamDelete RPC.
 	TeamServiceTeamDeleteProcedure = "/warehouse.team.v1.TeamService/TeamDelete"
 	// TeamServiceTeamListProcedure is the fully-qualified name of the TeamService's TeamList RPC.
@@ -54,6 +60,17 @@ const (
 type TeamServiceClient interface {
 	TeamCreate(context.Context, *connect.Request[v1.TeamCreateRequest]) (*connect.Response[v1.TeamCreateResponse], error)
 	TeamUpdate(context.Context, *connect.Request[v1.TeamUpdateRequest]) (*connect.Response[v1.TeamUpdateResponse], error)
+	// TeamCodeUpdate changes a SELLING team's code, and its products take the new one in the same transaction
+	// (a-team-code-change-recomposes-its-product-codes): ABC-SHOE-42 becomes XYZ-SHOE-42, archived products too, each one
+	// some warehouse holds stock of tagged `need_reprint_code` and waiting for that warehouse's reprint. A code another team
+	// holds — or EVER held — is refused naming that team (a former code stays taken, the decision's Q1 "A"); the team's own
+	// former code may be taken back. Its own request message: TeamUpdate's policy also admits warehouse and admin roles.
+	TeamCodeUpdate(context.Context, *connect.Request[v1.TeamCodeUpdateRequest]) (*connect.Response[v1.TeamCodeUpdateResponse], error)
+	// TeamCodePreview says what a TeamCodeUpdate to that code WOULD do, before anything is sent — the four-line confirm
+	// (the-team-code-and-product-tags-prototype-is-accepted): the refusal the write would give (another team holds the
+	// code, or held it once — named), else how many products take the new code with one example, and the warehouses that
+	// must reprint. TeamCodeUpdate's policy and scope; it writes nothing.
+	TeamCodePreview(context.Context, *connect.Request[v1.TeamCodePreviewRequest]) (*connect.Response[v1.TeamCodePreviewResponse], error)
 	TeamDelete(context.Context, *connect.Request[v1.TeamDeleteRequest]) (*connect.Response[v1.TeamDeleteResponse], error)
 	TeamList(context.Context, *connect.Request[v1.TeamListRequest]) (*connect.Response[v1.TeamListResponse], error)
 	TeamDetail(context.Context, *connect.Request[v1.TeamDetailRequest]) (*connect.Response[v1.TeamDetailResponse], error)
@@ -84,6 +101,19 @@ func NewTeamServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+TeamServiceTeamUpdateProcedure,
 			connect.WithSchema(teamServiceMethods.ByName("TeamUpdate")),
+			connect.WithClientOptions(opts...),
+		),
+		teamCodeUpdate: connect.NewClient[v1.TeamCodeUpdateRequest, v1.TeamCodeUpdateResponse](
+			httpClient,
+			baseURL+TeamServiceTeamCodeUpdateProcedure,
+			connect.WithSchema(teamServiceMethods.ByName("TeamCodeUpdate")),
+			connect.WithClientOptions(opts...),
+		),
+		teamCodePreview: connect.NewClient[v1.TeamCodePreviewRequest, v1.TeamCodePreviewResponse](
+			httpClient,
+			baseURL+TeamServiceTeamCodePreviewProcedure,
+			connect.WithSchema(teamServiceMethods.ByName("TeamCodePreview")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		teamDelete: connect.NewClient[v1.TeamDeleteRequest, v1.TeamDeleteResponse](
@@ -123,13 +153,15 @@ func NewTeamServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // teamServiceClient implements TeamServiceClient.
 type teamServiceClient struct {
-	teamCreate     *connect.Client[v1.TeamCreateRequest, v1.TeamCreateResponse]
-	teamUpdate     *connect.Client[v1.TeamUpdateRequest, v1.TeamUpdateResponse]
-	teamDelete     *connect.Client[v1.TeamDeleteRequest, v1.TeamDeleteResponse]
-	teamList       *connect.Client[v1.TeamListRequest, v1.TeamListResponse]
-	teamDetail     *connect.Client[v1.TeamDetailRequest, v1.TeamDetailResponse]
-	teamByIds      *connect.Client[v1.TeamByIdsRequest, v1.TeamByIdsResponse]
-	teamInfoUpdate *connect.Client[v1.TeamInfoUpdateRequest, v1.TeamInfoUpdateResponse]
+	teamCreate      *connect.Client[v1.TeamCreateRequest, v1.TeamCreateResponse]
+	teamUpdate      *connect.Client[v1.TeamUpdateRequest, v1.TeamUpdateResponse]
+	teamCodeUpdate  *connect.Client[v1.TeamCodeUpdateRequest, v1.TeamCodeUpdateResponse]
+	teamCodePreview *connect.Client[v1.TeamCodePreviewRequest, v1.TeamCodePreviewResponse]
+	teamDelete      *connect.Client[v1.TeamDeleteRequest, v1.TeamDeleteResponse]
+	teamList        *connect.Client[v1.TeamListRequest, v1.TeamListResponse]
+	teamDetail      *connect.Client[v1.TeamDetailRequest, v1.TeamDetailResponse]
+	teamByIds       *connect.Client[v1.TeamByIdsRequest, v1.TeamByIdsResponse]
+	teamInfoUpdate  *connect.Client[v1.TeamInfoUpdateRequest, v1.TeamInfoUpdateResponse]
 }
 
 // TeamCreate calls warehouse.team.v1.TeamService.TeamCreate.
@@ -140,6 +172,16 @@ func (c *teamServiceClient) TeamCreate(ctx context.Context, req *connect.Request
 // TeamUpdate calls warehouse.team.v1.TeamService.TeamUpdate.
 func (c *teamServiceClient) TeamUpdate(ctx context.Context, req *connect.Request[v1.TeamUpdateRequest]) (*connect.Response[v1.TeamUpdateResponse], error) {
 	return c.teamUpdate.CallUnary(ctx, req)
+}
+
+// TeamCodeUpdate calls warehouse.team.v1.TeamService.TeamCodeUpdate.
+func (c *teamServiceClient) TeamCodeUpdate(ctx context.Context, req *connect.Request[v1.TeamCodeUpdateRequest]) (*connect.Response[v1.TeamCodeUpdateResponse], error) {
+	return c.teamCodeUpdate.CallUnary(ctx, req)
+}
+
+// TeamCodePreview calls warehouse.team.v1.TeamService.TeamCodePreview.
+func (c *teamServiceClient) TeamCodePreview(ctx context.Context, req *connect.Request[v1.TeamCodePreviewRequest]) (*connect.Response[v1.TeamCodePreviewResponse], error) {
+	return c.teamCodePreview.CallUnary(ctx, req)
 }
 
 // TeamDelete calls warehouse.team.v1.TeamService.TeamDelete.
@@ -171,6 +213,17 @@ func (c *teamServiceClient) TeamInfoUpdate(ctx context.Context, req *connect.Req
 type TeamServiceHandler interface {
 	TeamCreate(context.Context, *connect.Request[v1.TeamCreateRequest]) (*connect.Response[v1.TeamCreateResponse], error)
 	TeamUpdate(context.Context, *connect.Request[v1.TeamUpdateRequest]) (*connect.Response[v1.TeamUpdateResponse], error)
+	// TeamCodeUpdate changes a SELLING team's code, and its products take the new one in the same transaction
+	// (a-team-code-change-recomposes-its-product-codes): ABC-SHOE-42 becomes XYZ-SHOE-42, archived products too, each one
+	// some warehouse holds stock of tagged `need_reprint_code` and waiting for that warehouse's reprint. A code another team
+	// holds — or EVER held — is refused naming that team (a former code stays taken, the decision's Q1 "A"); the team's own
+	// former code may be taken back. Its own request message: TeamUpdate's policy also admits warehouse and admin roles.
+	TeamCodeUpdate(context.Context, *connect.Request[v1.TeamCodeUpdateRequest]) (*connect.Response[v1.TeamCodeUpdateResponse], error)
+	// TeamCodePreview says what a TeamCodeUpdate to that code WOULD do, before anything is sent — the four-line confirm
+	// (the-team-code-and-product-tags-prototype-is-accepted): the refusal the write would give (another team holds the
+	// code, or held it once — named), else how many products take the new code with one example, and the warehouses that
+	// must reprint. TeamCodeUpdate's policy and scope; it writes nothing.
+	TeamCodePreview(context.Context, *connect.Request[v1.TeamCodePreviewRequest]) (*connect.Response[v1.TeamCodePreviewResponse], error)
 	TeamDelete(context.Context, *connect.Request[v1.TeamDeleteRequest]) (*connect.Response[v1.TeamDeleteResponse], error)
 	TeamList(context.Context, *connect.Request[v1.TeamListRequest]) (*connect.Response[v1.TeamListResponse], error)
 	TeamDetail(context.Context, *connect.Request[v1.TeamDetailRequest]) (*connect.Response[v1.TeamDetailResponse], error)
@@ -197,6 +250,19 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 		TeamServiceTeamUpdateProcedure,
 		svc.TeamUpdate,
 		connect.WithSchema(teamServiceMethods.ByName("TeamUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamServiceTeamCodeUpdateHandler := connect.NewUnaryHandler(
+		TeamServiceTeamCodeUpdateProcedure,
+		svc.TeamCodeUpdate,
+		connect.WithSchema(teamServiceMethods.ByName("TeamCodeUpdate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	teamServiceTeamCodePreviewHandler := connect.NewUnaryHandler(
+		TeamServiceTeamCodePreviewProcedure,
+		svc.TeamCodePreview,
+		connect.WithSchema(teamServiceMethods.ByName("TeamCodePreview")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	teamServiceTeamDeleteHandler := connect.NewUnaryHandler(
@@ -237,6 +303,10 @@ func NewTeamServiceHandler(svc TeamServiceHandler, opts ...connect.HandlerOption
 			teamServiceTeamCreateHandler.ServeHTTP(w, r)
 		case TeamServiceTeamUpdateProcedure:
 			teamServiceTeamUpdateHandler.ServeHTTP(w, r)
+		case TeamServiceTeamCodeUpdateProcedure:
+			teamServiceTeamCodeUpdateHandler.ServeHTTP(w, r)
+		case TeamServiceTeamCodePreviewProcedure:
+			teamServiceTeamCodePreviewHandler.ServeHTTP(w, r)
 		case TeamServiceTeamDeleteProcedure:
 			teamServiceTeamDeleteHandler.ServeHTTP(w, r)
 		case TeamServiceTeamListProcedure:
@@ -262,6 +332,14 @@ func (UnimplementedTeamServiceHandler) TeamCreate(context.Context, *connect.Requ
 
 func (UnimplementedTeamServiceHandler) TeamUpdate(context.Context, *connect.Request[v1.TeamUpdateRequest]) (*connect.Response[v1.TeamUpdateResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.team.v1.TeamService.TeamUpdate is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) TeamCodeUpdate(context.Context, *connect.Request[v1.TeamCodeUpdateRequest]) (*connect.Response[v1.TeamCodeUpdateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.team.v1.TeamService.TeamCodeUpdate is not implemented"))
+}
+
+func (UnimplementedTeamServiceHandler) TeamCodePreview(context.Context, *connect.Request[v1.TeamCodePreviewRequest]) (*connect.Response[v1.TeamCodePreviewResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.team.v1.TeamService.TeamCodePreview is not implemented"))
 }
 
 func (UnimplementedTeamServiceHandler) TeamDelete(context.Context, *connect.Request[v1.TeamDeleteRequest]) (*connect.Response[v1.TeamDeleteResponse], error) {

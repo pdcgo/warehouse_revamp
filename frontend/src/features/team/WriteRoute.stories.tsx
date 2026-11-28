@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Text } from "@chakra-ui/react";
-import { expect, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
 import { asTeam } from "../../../.storybook/pageStory";
 import { teams } from "../../../.storybook/fixtures";
@@ -36,7 +36,7 @@ export const AMemberGetsTheForm: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByTestId("the-form", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("the-form")).toBeVisible(), { timeout: 4000 });
     await expect(canvas.queryByTestId("read-only-route")).toBeNull();
   },
 };

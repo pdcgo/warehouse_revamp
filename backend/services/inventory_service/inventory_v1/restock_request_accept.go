@@ -31,14 +31,11 @@ func (s *Service) RestockRequestAccept(
 ) (*connect.Response[inventoryv1.RestockRequestAcceptResponse], error) {
 	warehouseID := req.Msg.GetTeamId()
 
-	// THE COURIER'S CHARGE AT THE DOOR — one per restock, with its note (the-courier-is-paid-once-per-restock). Checked
-	// before anything is written: the note rule spans two fields, which protovalidate cannot express.
+	// THE COURIER'S CHARGE AT THE DOOR — one per restock, with its note (the-courier-is-paid-once-per-restock). The note —
+	// what it was for — is OPTIONAL (the-couriers-charge-note-is-optional): an amount with no note is kept and owed as it
+	// is, and a note given is kept as typed.
 	courierCharge := req.Msg.GetWarehouseAdditionalCost()
 	courierNote := req.Msg.GetWarehouseAdditionalCostNote()
-
-	if courierCharge > 0 && courierNote == "" {
-		return nil, restockErr(errRestockCostNoteMissing)
-	}
 
 	// THE COURIER'S SLIP, optional (the-courier-slip-has-an-optional-photo) — kept beside the charge it belongs to, so
 	// only with a charge: with none there is no slip, and a photo sent anyway is dropped, never kept on its own.

@@ -11,6 +11,7 @@ import { DESKTOP, PHONE, SELLING_META, WAREHOUSE_META, resolutionCalls, sellingA
 // the door charge (CustomShipmentArrive) and counts it in (CustomShipmentReceive).
 
 const Seller901 = sellingAt("/inventories/custom-shipments/in/901");
+const Warehouse901 = warehouseAt("/inventories/custom-shipments/in/901");
 const Warehouse902 = warehouseAt("/inventories/custom-shipments/in/902");
 const AnOutboundId = sellingAt("/inventories/custom-shipments/in/801");
 
@@ -109,6 +110,8 @@ export const TheWarehousesView: Story = {
     await expect(canvas.queryByTestId("inbound-total")).toBeNull();
     await expect(canvas.getByTestId("inbound-door-charge")).toHaveTextContent("Rp 8.000");
     await expect(canvas.getByTestId("inbound-door-charge")).toHaveTextContent("noted at Tiba");
+    // A note given reads as it always did: the note, a dash, what it means.
+    await expect(canvas.getByTestId("inbound-door-charge-line")).toHaveTextContent(/^Ongkir COD diminta kurir — noted at Tiba/);
 
     await userEvent.click(canvas.getByTestId("inbound-action-receive-902"));
     const dialog = within(await screen.findByTestId("inbound-receive-dialog", {}, { timeout: 3000 }));
@@ -129,6 +132,28 @@ export const TheWarehousesView: Story = {
   },
 };
 
+/**
+ * A CHARGE WITH NO NOTE (the-couriers-charge-note-is-optional) — #901 set arrived with Rp 5.000 and nothing for what it was
+ * for: the page reads the amount, and its line starts at what it means — no dangling dash before it.
+ */
+export const AChargeWithNoNote: Story = {
+  name: "Warehouse — a charge with no note",
+  render: () => <Warehouse901 />,
+  ...WAREHOUSE_META,
+  play: async ({ canvasElement }) => {
+    const canvas = await page(canvasElement);
+    await userEvent.click(await canvas.findByTestId("inbound-action-sign-901"));
+    const dialog = within(await screen.findByRole("alertdialog", {}, { timeout: 3000 }));
+    await userEvent.click(dialog.getByTestId("inbound-sign-courier-asked-yes"));
+    await typeInto(await dialog.findByTestId("inbound-sign-courier-charge"), "5000");
+    await waitFor(() => expect(dialog.getByTestId("confirm-action")).toBeEnabled());
+    await userEvent.click(dialog.getByTestId("confirm-action"));
+
+    await waitFor(() => expect(canvas.getByTestId("inbound-door-charge")).toHaveTextContent("Rp 5.000"));
+    await expect(canvas.getByTestId("inbound-door-charge-line")).toHaveTextContent(/^noted at Tiba — final at count-in$/);
+  },
+};
+
 /** ON A PHONE — the header one row (back, number, step, ⋯), the kind under it; nothing runs off. */
 export const OnAPhone: Story = {
   name: "Phone — the seller's page",
@@ -145,6 +170,6 @@ export const AnOutboundIdIsNotFound: Story = {
   name: "Not found — an outbound parcel's id",
   render: () => <AnOutboundId />,
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByTestId("inbound-not-found", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(within(canvasElement).getByTestId("inbound-not-found")).toBeVisible(), { timeout: 4000 });
   },
 };

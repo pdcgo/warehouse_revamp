@@ -111,7 +111,7 @@ export const ProcessThenShipFromTheBlock: Story = {
 
 // SIGN FOR THE BOX from the incoming block — 608 arrives; only Accept is left on it.
 export const SignFromTheBlock: Story = {
-  name: "Sign for the box, from the block",
+  name: "Set arrived, from the block",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 

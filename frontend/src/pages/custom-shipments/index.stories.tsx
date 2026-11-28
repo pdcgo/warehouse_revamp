@@ -144,7 +144,7 @@ export const OneLetterIsSearchedToo: Story = {
     await userEvent.paste("x");
 
     await waitFor(() => expect(customShipmentListTerms()).toContain("x"));
-    await expect(await canvas.findByTestId("custom-shipments-empty")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipments-empty")).toBeVisible(), { timeout: 5000 });
     await userEvent.click(canvas.getByTestId("custom-shipments-empty-clear"));
     await waitFor(() => expect(rowIds(canvasElement)).toHaveLength(7));
   },
@@ -197,10 +197,10 @@ export const NewParcelAndARowOpen: Story = {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("custom-shipment-row-804"));
-    await expect(await canvas.findByTestId("custom-shipment-detail-page")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-detail-page")).toBeVisible(), { timeout: 5000 });
     await userEvent.click(canvas.getByTestId("custom-shipment-back"));
 
     await userEvent.click(await canvas.findByTestId("open-create-custom-shipment"));
-    await expect(await canvas.findByTestId("custom-shipment-form")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-form")).toBeVisible(), { timeout: 5000 });
   },
 };

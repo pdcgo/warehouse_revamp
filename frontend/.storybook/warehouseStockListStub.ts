@@ -14,16 +14,25 @@
 //   on hand    the batches' stock here, summed (opnameOnHandHere) — 0 for a product held and emptied, or held only on
 //              the found register. (The server sums the racks; in a consistent ledger the two agree.)
 //   the order  by name, then code, then id; paged.
+//   the tags   each row carries its product's tags (products-have-their-own-tag-list, 🔄 who sees: every warehouse
+//              holding the stock); `tag_ids` keeps a product carrying ANY of them, inside the one count and page
+//              (productTagScenario.ts, which records what was asked).
+//   the (N)    asked with REPRINT_WAITING, `reprint_waiting` is how many products wait for this warehouse's reprint of
+//              changed codes (productReprintStub.ts), whatever the term or the tags; else 0 (backlog #151).
 //
 // STATELESS but for one switch: `warehouseStockNothingHeld()` (a `beforeEach`) answers every warehouse as one that has
 // held nothing; preview.tsx resets it.
 
 import { Code, ConnectError } from "@connectrpc/connect";
 
+import { WarehouseStockListDataType } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import type { WarehouseStockListRequest } from "../src/gen/warehouse/inventory/v1/inventory_pb";
 import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { opnameOnHandHere } from "./opnameStub";
+import { reprintWaitingOf } from "./productReprintStub";
 import { allProducts } from "./productStub";
+import { carriesAnyTag, productTagScenario, tagsOnWire } from "./productTagScenario";
+import { isFormerCode } from "./productCodeScenario";
 import { sessionScenario } from "./sessionScenario";
 import { heldHere } from "./warehouseProductSearchStub";
 
@@ -61,10 +70,20 @@ export function warehouseStockList(req: WarehouseStockListRequest) {
 
   const held = warehouseStockScenario.nothingHeld ? new Set<bigint>() : heldHere(req.warehouseId);
   const onHand = opnameOnHandHere(req.warehouseId);
+  const tagIds = [...(req.filter?.tagIds ?? [])];
+  productTagScenario.listTagIds.push(tagIds);
 
   const rows = allProducts()
     .filter((p) => held.has(p.id))
-    .filter((p) => term === "" || p.name.toLowerCase().includes(term) || p.productCode.toLowerCase().includes(term))
+    // The term on the name or the code now, or a FORMER code typed whole (product_term_clause.go, backlog #152).
+    .filter(
+      (p) =>
+        term === "" ||
+        p.name.toLowerCase().includes(term) ||
+        p.productCode.toLowerCase().includes(term) ||
+        isFormerCode(term, p.id),
+    )
+    .filter((p) => carriesAnyTag(p.id, tagIds))
     .sort(
       (a, b) =>
         a.name.localeCompare(b.name) || a.productCode.localeCompare(b.productCode) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
@@ -83,7 +102,7 @@ export function warehouseStockList(req: WarehouseStockListRequest) {
             mapData: Object.fromEntries(
               window.map((p) => [
                 p.id.toString(),
-                { id: p.id, teamId: p.teamId, productCode: p.productCode, name: p.name, archived: p.archived },
+                { id: p.id, teamId: p.teamId, productCode: p.productCode, name: p.name, archived: p.archived, tags: tagsOnWire(p.id) },
               ]),
             ),
           },
@@ -106,5 +125,6 @@ export function warehouseStockList(req: WarehouseStockListRequest) {
     ids: window.map((p) => p.id),
     // `currentPage` and `totalPage` are plain numbers on the wire; only `totalItems` is an int64.
     pageInfo: { currentPage: page, totalPage: Math.max(1, Math.ceil(rows.length / limit)), totalItems: BigInt(rows.length) },
+    reprintWaiting: req.dataRequest.includes(WarehouseStockListDataType.REPRINT_WAITING) ? reprintWaitingOf(req.warehouseId) : 0,
   };
 }

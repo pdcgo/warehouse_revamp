@@ -32,10 +32,9 @@ func (s *Service) WarehouseTransferAccept(
 	actor := actorFrom(ctx)
 	override := overrideFrom(ctx)
 
+	// The courier's charge at B's door is kept with its note, which is OPTIONAL (the-couriers-charge-note-is-optional): an
+	// amount with no note is saved and owed as it is.
 	charge := msg.GetWarehouseAdditionalCost()
-	if charge > 0 && msg.GetWarehouseAdditionalCostNote() == "" {
-		return nil, transferErr(errTransferChargeNoteNeeded)
-	}
 
 	counted := make(map[uint64]*inventoryv1.WarehouseTransferCountedLine, len(msg.GetLines()))
 	for _, line := range msg.GetLines() {
@@ -131,6 +130,14 @@ func (s *Service) WarehouseTransferAccept(
 			}
 		}
 
+		// UNITS ARRIVING WHILE TAGGED wear the old stickers (backlog #151, scope141 ⚠6; products-have-their-own-tag-list,
+		// 🔄 *what clears*: the tag stays until each warehouse holding stock has printed): each product put on a shelf here
+		// that some warehouse still waits for now waits for this one too — product_service's rows, on this transaction.
+		arrivalErr := s.products.ReprintArrivals(ctx, tx, warehouseID, shelvedProductIDs(in.Lines))
+		if arrivalErr != nil {
+			return arrivalErr
+		}
+
 		t.InboundTransactionID = &leg.ID
 		t.WarehouseAdditionalCost = charge
 		t.WarehouseAdditionalCostNote = msg.GetWarehouseAdditionalCostNote()
@@ -158,6 +165,25 @@ func (s *Service) WarehouseTransferAccept(
 type problemKey struct {
 	productID uint64
 	kind      models.TransferProblemType
+}
+
+// shelvedProductIDs is the products of the in-leg that put units on a shelf here — a line whose every unit arrived
+// broken or missing put nothing on a shelf, so no sticker of it hangs here.
+func shelvedProductIDs(lines []inventory_mutations.TransferInLine) []uint64 {
+	ids := make([]uint64, 0, len(lines))
+
+	for _, line := range lines {
+		var placed int64
+		for _, p := range line.Placements {
+			placed += p.Count
+		}
+
+		if placed > 0 {
+			ids = append(ids, line.ProductID)
+		}
+	}
+
+	return ids
 }
 
 // countedLines checks B's count against the transfer's lines — every line exactly once, never more in the box than was

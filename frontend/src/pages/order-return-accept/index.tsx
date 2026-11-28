@@ -251,11 +251,11 @@ export function OrderReturnAcceptPage() {
 
   const amount = charge === "" ? 0 : Number(charge);
   const charged = amount > 0;
-  const noteMissing = charged && note.trim() === "";
 
   const unfinished = lines.filter((l) => !l.st.ready).length;
   const writable = canWrite(current);
-  const ready = lines.length > 0 && unfinished === 0 && !noteMissing && writable;
+  // What the courier's charge was for is optional (the-couriers-charge-note-is-optional): it never holds Accept back.
+  const ready = lines.length > 0 && unfinished === 0 && writable;
   const busy = accept.isPending;
 
   const totals: ReturnTotals = { ordered: 0, sound: 0, broken: 0, missing: 0, labels: 0, byRack: new Map() };
@@ -312,10 +312,6 @@ export function OrderReturnAcceptPage() {
       {unfinished > 0 ? (
         <Text fontSize="xs" color="warning.fg" data-testid="return-accept-progress">
           {t("picking.returnAccept.progress", { count: unfinished })}
-        </Text>
-      ) : noteMissing ? (
-        <Text fontSize="xs" color="warning.fg" data-testid="return-accept-progress">
-          {t("picking.acceptReturn.courierNoteRequired")}
         </Text>
       ) : (
         <Text fontSize="xs" color="success.fg" data-testid="return-accept-ready">
@@ -401,8 +397,8 @@ export function OrderReturnAcceptPage() {
         );
       })}
 
-      {/* THE COURIER'S ASK AT THE DOOR — rarely asked, so empty by default; its note required once it is above 0
-          (an-incidental-line-must-say-what-it-was-for). The words are the live dialog's. */}
+      {/* THE COURIER'S ASK AT THE DOOR — rarely asked, so empty by default; what it was for is optional
+          (the-couriers-charge-note-is-optional). The words are the live dialog's. */}
       <Card.Root data-testid="return-accept-courier">
         <Card.Header>
           <Card.Title>{t("picking.acceptReturn.courierTitle")}</Card.Title>
@@ -414,11 +410,8 @@ export function OrderReturnAcceptPage() {
               <Field.Label>{t("picking.acceptReturn.courierAmount")}</Field.Label>
               <CurrencyInput value={charge} onChange={setCharge} data-testid="return-accept-charge" />
             </Field.Root>
-            <Field.Root required={charged} invalid={noteMissing}>
-              <Field.Label>
-                {t("picking.acceptReturn.courierNote")}
-                <Field.RequiredIndicator />
-              </Field.Label>
+            <Field.Root>
+              <Field.Label>{t("picking.acceptReturn.courierNote")}</Field.Label>
               <Input
                 value={note}
                 maxLength={NOTE_MAX}
@@ -427,13 +420,7 @@ export function OrderReturnAcceptPage() {
                 onChange={(e) => setNote(e.target.value)}
               />
               <Flex w="full" justify="space-between" gap="2">
-                {noteMissing ? (
-                  <Field.ErrorText data-testid="return-accept-charge-note-error">
-                    {t("picking.acceptReturn.courierNoteRequired")}
-                  </Field.ErrorText>
-                ) : (
-                  <Box />
-                )}
+                <Box />
                 <CharCount value={note} max={NOTE_MAX} />
               </Flex>
             </Field.Root>

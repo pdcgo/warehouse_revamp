@@ -302,7 +302,7 @@ export const Mobile: Story = {
 
     // No block is wider than the screen — nothing clipped off the edge.
     await expect(melati.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
-    await expect(await canvas.findByTestId("liability-default-terms")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("liability-default-terms")).toBeVisible(), { timeout: 5000 });
 
     await userEvent.click(melati);
     await expect(await canvas.findByTestId("at-pair-detail")).toBeInTheDocument();

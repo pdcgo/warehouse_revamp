@@ -131,14 +131,15 @@ export function BatchDetailPage() {
 
   // The history pages on its own (#218), independent of the detail aggregate above, and filters
   // by a date range on the movement timestamp — server-side, so it narrows the whole ledger, not just
-  // the loaded page. Changing either bound resets to page 1.
+  // the loaded page. Changing either bound resets to page 1. It asks the moment the batch itself answers — its product is
+  // all it needs — never after the names around the batch (#134).
   const [historyPage, setHistoryPage] = useState(1);
   const [historyPageSize, setHistoryPageSize] = useState(20);
   const [historyRange, setHistoryRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
   const { fromUnix: historyFromUnix, toUnix: historyToUnix } = resolveRange(historyRange);
   const historyQuery = useBatchHistory({
     warehouseId,
-    productId: batch?.productId ?? 0n,
+    productId: query.productId,
     batchId,
     page: historyPage,
     pageSize: historyPageSize,

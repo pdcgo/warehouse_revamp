@@ -11,12 +11,19 @@
 // first look: Toko Melati (12) maps Toko Kenanga's Gula Pasir (73) to its own Beras Pandan Wangi (74). The write
 // refuses what the server refuses — a "borrowed" product that is the team's own, "our" product that is not, and a
 // product nobody owns — and hands back the standing pair with `created = false` rather than overwriting it.
+//
+// The same maps are PRODUK TURUNAN (produk-turunan-is-the-return-map): ProductDerivedList reads one product's maps both
+// ways and ACROSS TEAMS — the ones landing on it, and every team's from it — newest first, at most 200 a direction with
+// its total, and refuses a warehouse role as the server does (Discover's policy). A story seeds its maps with
+// `withReturnMaps(...)`, each written after the one before it.
 
 import { Code, ConnectError } from "@connectrpc/connect";
 import type { ServiceImpl } from "@connectrpc/connect";
 
+import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import type { TeamReturnConfigurationService } from "../src/gen/warehouse/selling/v1/return_configuration_pb";
 import { products } from "./fixtures";
+import { sessionScenario } from "./sessionScenario";
 
 const SEEDED_AT = 1_790_000_000n;
 
@@ -69,6 +76,18 @@ export function seedReturnMap(teamId: bigint, sharedProductId: bigint, ownProduc
   maps.set(mapKey(teamId, sharedProductId), { ownProductId, createdAtUnix: SEEDED_AT });
 }
 
+/**
+ * A `beforeEach`: these maps — `[team, borrowed product, own product]` each — written one after another, so each is newer
+ * than the one before it (Produk Turunan lists the newest first). preview.tsx's reset puts the seed back.
+ */
+export function withReturnMaps(...pairs: [bigint, bigint, bigint][]) {
+  return () => {
+    pairs.forEach(([teamId, sharedProductId, ownProductId], i) => {
+      maps.set(mapKey(teamId, sharedProductId), { ownProductId, createdAtUnix: SEEDED_AT + 60n * BigInt(i + 1) });
+    });
+  };
+}
+
 /** The team's standing map of a borrowed product, 0n when none — what a story asserts a pick wrote. */
 export function returnMapOf(teamId: bigint, sharedProductId: bigint): bigint {
   return maps.get(mapKey(teamId, sharedProductId))?.ownProductId ?? 0n;
@@ -77,6 +96,22 @@ export function returnMapOf(teamId: bigint, sharedProductId: bigint): bigint {
 const pairOf = (teamId: bigint, sharedProductId: bigint, row: MapRow) => ({ teamId, sharedProductId, ...row });
 
 const productNamed = (id: bigint) => products.find((p) => p.id === id);
+
+/** At most this many maps a direction — the server's cap (CommonPagination's largest page). */
+const DERIVED_CAP = 200;
+const WAREHOUSE_ROLES: Role[] = [Role.WAREHOUSE_OWNER, Role.WAREHOUSE_ADMIN, Role.WAREHOUSE_STAFF];
+
+/** Every map in the table, newest first (written later first on a tie, as the server breaks it by id). */
+function newestMaps() {
+  return [...maps.entries()]
+    .map(([key, row], order) => {
+      const [teamId, sharedProductId] = key.split(":").map((part) => BigInt(part)) as [bigint, bigint];
+
+      return { teamId, sharedProductId, ...row, order };
+    })
+    .sort((a, b) => (a.createdAtUnix === b.createdAtUnix ? b.order - a.order : a.createdAtUnix > b.createdAtUnix ? -1 : 1))
+    .map(({ order: _order, ...pair }) => pair);
+}
 
 export const returnConfigurationService: Partial<ServiceImpl<typeof TeamReturnConfigurationService>> = {
   teamReturnConfigurationDetail: (req) => {
@@ -143,6 +178,25 @@ export const returnConfigurationService: Partial<ServiceImpl<typeof TeamReturnCo
     maps.set(key, row);
 
     return { map: pairOf(req.teamId, req.sharedProductId, row), created: true };
+  },
+  // PRODUK TURUNAN — one product's maps both ways, EVERY team's: the scoped team only authorizes. A warehouse role is
+  // refused, as Discover refuses it.
+  productDerivedList: (req) => {
+    if (WAREHOUSE_ROLES.includes(sessionScenario.role)) {
+      throw new ConnectError("a product's derived products are read on Discover, which serves selling teams only", Code.PermissionDenied);
+    }
+
+    const productId = req.filter?.productId ?? 0n;
+    const all = newestMaps();
+    const from = all.filter((m) => m.ownProductId === productId);
+    const to = all.filter((m) => m.sharedProductId === productId);
+
+    return {
+      derivedFrom: from.slice(0, DERIVED_CAP),
+      derivedTo: to.slice(0, DERIVED_CAP),
+      derivedFromTotal: BigInt(from.length),
+      derivedToTotal: BigInt(to.length),
+    };
   },
   // Keyed by the borrowed product; one this team has not mapped is absent — another team's pair never shows.
   productReturnMapByIds: (req) => ({

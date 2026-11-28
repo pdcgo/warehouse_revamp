@@ -468,7 +468,8 @@ message OrderReturnAccepted {
 
   // What the courier asked at the door, exact rupiah; 0 = nothing, which posts nothing — the common case.
   double courier_charge = 7;
-  // What it was for (an-incidental-line-must-say-what-it-was-for). Set whenever the charge is.
+  // What it was for — optional (the-couriers-charge-note-is-optional): "" when none was given, and always "" with no
+  // charge.
   string courier_charge_note = 8;
 }
 

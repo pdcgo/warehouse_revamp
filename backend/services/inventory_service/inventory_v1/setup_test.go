@@ -103,8 +103,8 @@ type recordingPoster struct {
 }
 
 // courierNote is what every fixture here says the courier's charge at the door was for. A restock carries ONE such
-// charge, as `warehouse_additional_cost` (the-courier-is-paid-once-per-restock), and its note is REQUIRED above 0
-// (an-incidental-line-must-say-what-it-was-for) — so every accept that charges anything says what the money was.
+// charge, as `warehouse_additional_cost` (the-courier-is-paid-once-per-restock); its note is optional
+// (the-couriers-charge-note-is-optional), and the fixtures give one so a kept note can be asserted.
 const courierNote = "courier at the door"
 
 // newServiceWithLiability is for the tests that care what reached the ledger (#184).

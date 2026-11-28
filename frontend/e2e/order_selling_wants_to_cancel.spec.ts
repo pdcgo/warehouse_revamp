@@ -549,7 +549,9 @@ test.describe("selling:all wants to cancel an order", () => {
   // The order's Settlement: the sale's figure on its summary.
   async function soldOf(page: Page, orderId: string) {
     await page.goto(`/orders/${orderId}`);
-    await expect(page.getByTestId("order-ledger-panel")).toBeVisible({ timeout: 3_000 });
+    // 10 s, not 3: under a long run's load the order page can still be "Loading" past 3 s on every try of the caller's
+    // 30 s toPass (red once in the #148 affected run, 2026-11-27 — passed alone).
+    await expect(page.getByTestId("order-ledger-panel")).toBeVisible({ timeout: 10_000 });
     return page.getByTestId("settlement-summary").getByTestId("sold-value");
   }
 

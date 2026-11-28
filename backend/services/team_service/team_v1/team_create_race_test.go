@@ -64,7 +64,7 @@ func rowsWithCode(s *Service, code string) int64 {
 // Two people create one code at the same second: exactly one team, the other told AlreadyExists.
 func TestRace_TeamCreate_OneCodeTwice(t *testing.T) {
 	h := san_race.New(t)
-	s := NewService(h.DB(), answerGrants{})
+	s := NewService(h.DB(), answerGrants{}, nil)
 	code := raceCodes(t, s)
 
 	for round := 0; round < 40; round++ {
@@ -92,7 +92,7 @@ func TestRace_TeamCreate_OneCodeTwice(t *testing.T) {
 // a refused create must never keep the code, and one caller's hard delete must not leave the other's row.
 func TestRace_TeamCreate_BothOwnersRefused(t *testing.T) {
 	h := san_race.New(t)
-	s := NewService(h.DB(), answerGrants{err: connect.NewError(connect.CodeNotFound, errors.New("user not found"))})
+	s := NewService(h.DB(), answerGrants{err: connect.NewError(connect.CodeNotFound, errors.New("user not found"))}, nil)
 	code := raceCodes(t, s)
 
 	for round := 0; round < 40; round++ {

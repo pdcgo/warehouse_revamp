@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
+import { type HeldRpc, callsOf, holdRpc } from "../../../.storybook/holdRpc";
+import { opnameClient, rackClient } from "../../api/clients";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { OpnameSessionDetailPage } from "./index";
 
@@ -128,5 +130,39 @@ export const StaffAreTurnedAway: Story = {
 
     await canvas.findByTestId("opname-detail-forbidden", {}, { timeout: 4000 });
     await expect(canvas.queryByTestId("opname-row-book-1501")).toBeNull();
+  },
+};
+
+// THE RACK FILTER'S RACKS ARE ASKED WITH THE COUNT (#134, the-speed-audits-old-findings-are-fixed-smallest-first) — they
+// need only the warehouse, but the filter mounts under the session once it is named, so its read waited for the session
+// and its people. The page asks it beside the session and hands it to the picker, which reads none of its own.
+let sessionHeld: HeldRpc | undefined;
+
+export const TheRacksAreAskedWithTheCount: Story = {
+  name: "Racks asked with the count",
+  beforeEach: () => {
+    // The count answers late — the warehouse's racks go out meanwhile.
+    sessionHeld = holdRpc(opnameClient, "opnameSessionDetail");
+    const spy = spyOn(rackClient, "rackList");
+
+    return () => {
+      sessionHeld?.restore();
+      spy.mockRestore();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(callsOf(rackClient.rackList)).toHaveLength(1), { timeout: 5000 });
+    await expect(canvas.queryByTestId("opname-detail-page")).toBeNull();
+
+    sessionHeld?.release();
+    await loaded(canvasElement);
+
+    // The filter offers the racks from that one answer.
+    const filter = canvas.getByTestId("opname-detail-rack-filter");
+    await userEvent.click(within(filter).getByTestId("rack-select"));
+    await waitFor(() => expect(within(filter).getByTestId("rack-select-option-41")).toBeVisible(), { timeout: 5000 });
+    await expect(callsOf(rackClient.rackList)).toHaveLength(1);
   },
 };

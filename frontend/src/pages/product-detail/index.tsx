@@ -31,6 +31,7 @@ import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import {
   useArchiveProduct,
   useProductActivity,
+  useProductDerived,
   useProductDetail,
   useDeleteProduct,
   useUnarchiveProduct,
@@ -46,31 +47,33 @@ import { formatMarkup, withMarkup } from "../../lib/markup";
 import { formatRupiah, formatRupiahRange } from "../../lib/money";
 import { useScrollSpy } from "../../lib/useScrollSpy";
 import { useStickyTitle } from "../../lib/useStickyTitle";
-import { NotImplemented } from "../../features/pending/NotImplemented";
-import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { FigureRows, type FigureRow } from "../../features/products/FigureRows";
 import { ProductStickyStrip, ProductTitleRow } from "../../features/products/ProductTitleRow";
 import { StockHighlight } from "../../features/products/StockHighlight";
-import { PRODUCT_DETAIL_PENDING } from "./pending";
 import { DailySection } from "../../features/products/DailySection";
 import { DerivedSection } from "../../features/products/DerivedSection";
-import { sampleDerived } from "../../features/products/derivedSample";
 import { HistorySection } from "../../features/products/HistorySection";
 import { ProductGallery } from "../../features/products/ProductGallery";
 import { orderFormFor, restockFormFor } from "../../features/products/presetProduct";
 import { type StartKind, StartFormDialog } from "../../features/products/StartFormDialog";
 import { SuppliersSection } from "../../features/products/SuppliersSection";
 import { WarehouseFilter, WarehouseNote } from "../../features/products/WarehouseLens";
+// The Riwayat Produk card (#150) — the product's history lines, for whoever reads them (`readsProductHistory`).
+import { readsProductHistory } from "../../features/products/productLogs";
+import { ProductTagsBox } from "../../features/products/tags/ProductTagsBox";
+import { tagsOfProduct } from "../../features/products/tags/productTags";
+import { useProductTags } from "../../features/products/tags/tagQueries";
 import { BATCH_SECTION_FLOOR_PX, BatchSection } from "./components/BatchSection";
 import { PriceSection } from "./components/PriceSection";
+import { ProductLogSection } from "./components/ProductLogSection";
 import { WhenOrNever } from "./components/parts";
 import {
   PRODUCT_MAIN_SECTIONS,
-  PRODUCT_SECTION_KEYS,
   PRODUCT_SECTIONS,
   WAREHOUSE_TABS,
   productSection,
   productSectionDomId,
+  sectionKeysFor,
 } from "./sections";
 import type { ProductSectionKey, WarehouseTab } from "./sections";
 
@@ -231,7 +234,7 @@ function parseProductId(raw: string | undefined): bigint {
 // (`the-warehouse-picker-splits-the-page`):
 //
 //   every warehouse     INFO (the name, pictures, record, the four TOTAL figures), BATCH, PEMASOK ⚠ — and beside them
-//                       PENJUALAN TIM LAIN (markup, lock), AKTIVITAS, PRODUK TURUNAN ⚠
+//                       PENJUALAN TIM LAIN (markup, lock), AKTIVITAS, PRODUK TURUNAN
 //   ── the picker ──    the chosen warehouse's four figures
 //   that warehouse      HARGA MODAL (the cost layers), RIWAYAT HARIAN ⚠, RIWAYAT STOK
 export function ProductDetailPage() {
@@ -268,6 +271,9 @@ export function ProductDetailPage() {
   // The product across every warehouse — Info's figures, the lock's badge, Aktivitas. The same entry as the lens's
   // while the lens is "every warehouse", so it is one read until a warehouse is chosen.
   const totalsQuery = useProductActivity({ teamId, productId: id, warehouseId: 0n });
+  // PRODUK TURUNAN — the return maps both ways, named (produk-turunan-is-the-return-map). Asked from the id in the
+  // address, beside the product's own read, so the section never waits for the record to land before it starts.
+  const derived = useProductDerived({ teamId, productId: id });
   const archiveProduct = useArchiveProduct();
   const restoreProduct = useUnarchiveProduct();
   const deleteProduct = useDeleteProduct();
@@ -280,6 +286,9 @@ export function ProductDetailPage() {
 
   const product = query.data?.product ?? null;
   const categories = query.data?.categories ?? [];
+  // THE TAG CARD'S api (the-team-code-and-product-tags-prototype-is-accepted) — the product's writers add and take off;
+  // everyone else reads its chips, which ride on ProductDetail (`Product.tags`), never a read of their own.
+  const tagsApi = useProductTags(product ? { id: product.id, teamId: product.teamId } : undefined);
   const loading = query.isPending && id !== 0n;
 
   // A malformed id never reaches the server, so its message comes from here.
@@ -382,14 +391,22 @@ export function ProductDetailPage() {
   // WHICH WAREHOUSE TAB IS OPEN — Overview first. Only that tab is mounted, so only its rows are read
   // (the-warehouse-zone-is-tabs): the cost layers and the movements wait until somebody opens them.
   const [warehouseTab, setWarehouseTab] = useState<WarehouseTab>("overview");
+  // THE RIWAYAT PRODUK CARD (#150) is drawn for the owning team's roles, Root and the Administrator — ProductLogList's
+  // (readsProductHistory); its nav entry comes and goes with it, so the scroll spy reads one of two stable lists.
+  const showsHistory = readsProductHistory(current?.role);
+  const sectionKeys = sectionKeysFor(showsHistory);
   const { active, scrollTo } = useScrollSpy(
     product !== null,
     stick.bar,
-    PRODUCT_SECTION_KEYS,
+    sectionKeys,
     productSectionDomId,
     wide ? PRODUCT_MAIN_SECTIONS : undefined,
   );
-  const navSections = PRODUCT_SECTIONS.map((s) => ({ key: s.key, label: t(s.navKey), icon: s.icon }));
+  const navSections = PRODUCT_SECTIONS.filter((s) => sectionKeys.includes(s.key)).map((s) => ({
+    key: s.key,
+    label: t(s.navKey),
+    icon: s.icon,
+  }));
 
   if (!current) {
     return (
@@ -461,14 +478,20 @@ export function ProductDetailPage() {
     );
   };
 
-  // ── PRODUK TURUNAN, filled with SAMPLE rows so its shape can be judged — with its ⚠ (sample). ──────────────────────
+  // ── PRODUK TURUNAN — the return maps, both ways and across teams: what this product was mapped from, and every team's
+  // own product mapped from it (produk-turunan-is-the-return-map). A refusal or a failure costs the section alone. ──────
   const derivedSection = section(
     "derived",
     <DerivedSection
-      derived={sampleDerived(product.id, product.name, product.productCode, product.defaultImageThumbnailUrl || product.defaultImageUrl)}
+      derived={derived.data}
+      loading={derived.isPending}
+      error={derived.isError ? rpcError(derived.error) : undefined}
     />,
-    <NotImplemented list={PRODUCT_DETAIL_PENDING} id="derived" />,
   );
+
+  // ── RIWAYAT PRODUK — the product's own changes, newest first (the-team-code-and-product-tags-prototype-is-accepted,
+  // *the history*), read in the OWNING team's scope: Root standing in another team reads it too. ──────────────────────
+  const historySection = showsHistory ? <ProductLogSection teamId={product.teamId} productId={product.id} /> : null;
 
   // ── INFO — the product across every warehouse: its name, the pictures, the record, and the four TOTAL figures. Not
   // read through the warehouse picker, which sits below the product-wide sections (the-warehouse-picker-splits-the-page).
@@ -635,6 +658,11 @@ export function ProductDetailPage() {
     <BatchSection teamId={teamId} productId={product.id} warehouseLabel={warehouseLabel} />,
   );
 
+  // ── TAG — the product's own tags (products-have-their-own-tag-list): `need_reprint_code` first and locked for everyone,
+  // admins included; a custom tag with its ×; *Tambah tag…* for the product's writers; Kelola tag produk for the admins.
+  // The first side card, beside Info (stacked: after Batch). ───────────────────────────────────────────────────────────
+  const tagsSection = section("tags", <ProductTagsBox productId={product.id} tags={tagsOfProduct(product)} api={tagsApi} />);
+
   // ── WHO ELSE MAY SELL IT — the markup and the lock. A minimum in force is badged on the TOTAL stock
   // (one-lock-three-ways); an archived product only reads it. ──────────────────────────────────────────────────────────
   const crossSection = section(
@@ -732,8 +760,6 @@ export function ProductDetailPage() {
       data-testid="product-detail-page"
       style={{ ["--detail-header-h" as string]: `${stick.height}px` }}
     >
-      <NotImplementedSummary list={PRODUCT_DETAIL_PENDING} />
-
       {/* THE STICKY STRIP — the section chips on a phone (always), and the header bar under them, drawn over the page once
           the title has gone behind it. On a desktop the strip itself has no height: the bar overlays, nothing moves. */}
       <ProductStickyStrip
@@ -804,16 +830,20 @@ export function ProductDetailPage() {
                 {warehouseSection}
               </Stack>
               <Stack gap="section" minW="0" data-testid="product-detail-side-column">
+                {tagsSection}
                 {crossSection}
                 {derivedSection}
+                {historySection}
               </Stack>
             </Grid>
           ) : (
             <>
               {infoSection}
               {batchSection}
+              {tagsSection}
               {crossSection}
               {derivedSection}
+              {historySection}
               {warehouseSection}
             </>
           )}

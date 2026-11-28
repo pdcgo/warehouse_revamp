@@ -28,6 +28,7 @@ import { useSupplierChannels } from "../../features/suppliers/queries";
 import { useDebounced } from "../../lib/useDebounced";
 import { MarketplaceBadge } from "../badges/MarketplaceBadge";
 import { GrowingPager } from "../chrome/GrowingPager";
+import { HelperLink } from "../feedback/HelperLink";
 import { RefreshOverlay } from "../feedback/RefreshOverlay";
 import { useIsMobile } from "../../layouts/shell";
 
@@ -48,6 +49,13 @@ export interface SupplierChannelPickerProps {
   /** The button that opens it. Defaults to a "Connect Supplier Channel" button. */
   trigger?: ReactNode;
   disabled?: boolean;
+  /**
+   * Where a supplier is made — the restock form passes the suppliers page. With NOTHING to list (no supplier in any
+   * team, no search typed) the popup links there, in a new tab, and reads its list again when the person comes back
+   * (the-supplier-popup-points-to-create-supplier-when-none-exists, a-helper-link-opens-a-new-tab). Every role gets it —
+   * the acceptance row is the selling team's whole (CS included). Omitted: no helper.
+   */
+  createSupplierHref?: string;
   /** Prefix for every test id inside — two pickers on one screen must not share ids. */
   testId?: string;
 }
@@ -85,6 +93,7 @@ export function SupplierChannelPicker({
   onChange,
   trigger,
   disabled,
+  createSupplierHref,
   testId = "supplier-channel-picker",
 }: SupplierChannelPickerProps) {
   const { t } = useTranslation();
@@ -116,6 +125,8 @@ export function SupplierChannelPicker({
     ownerTeamId: 0n,
     page,
     pageSize: PAGE_SIZE,
+    // Only where the helper is offered — an empty list's helper sends the person away to make one.
+    rereadOnReturn: createSupplierHref !== undefined,
   });
   const rows = suppliers.data?.suppliers ?? [];
   const totalItems = suppliers.data?.totalItems ?? 0;
@@ -184,10 +195,27 @@ export function SupplierChannelPicker({
     }
 
     if (rows.length === 0) {
+      // NOTHING TO LIST — no supplier in any team, and no search narrowing it (a search with no match is not that).
+      const nothingAnywhere = !term && page === 1;
+
       return (
-        <Text fontSize="sm" color="fg.muted" data-testid={`${testId}-empty`}>
-          {term ? t("restock.supplierPicker.noMatch") : t("restock.supplierPicker.empty")}
-        </Text>
+        <Stack gap="2" align="start">
+          <Text fontSize="sm" color="fg.muted" data-testid={`${testId}-empty`}>
+            {term ? t("restock.supplierPicker.noMatch") : t("restock.supplierPicker.empty")}
+          </Text>
+          {nothingAnywhere && createSupplierHref !== undefined && (
+            <Stack gap="1" align="start" data-testid={`${testId}-create-supplier-help`}>
+              <HelperLink
+                href={createSupplierHref}
+                label={t("restock.supplierPicker.createSupplier")}
+                testId={`${testId}-create-supplier`}
+              />
+              <Text fontSize="xs" color="fg.muted">
+                {t("restock.supplierPicker.createSupplierHint")}
+              </Text>
+            </Stack>
+          )}
+        </Stack>
       );
     }
 

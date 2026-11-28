@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Select, createListCollection } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { useRacks } from "../../features/racks/queries";
+import type { Rack } from "../../gen/warehouse/inventory/v1/rack_pb";
 
 /**
  * The value meaning "the not-yet-shelved pile" — stock that arrived before anyone put it away.
@@ -39,6 +40,13 @@ export interface RackSelectProps {
   takenRackIds?: string[];
   /** The trigger's testid. Defaults to "rack-select"; a dialog with one picker per line gives each its own. */
   testId?: string;
+  /**
+   * The warehouse's racks, when the SCREEN already reads them (`useRacks`, the same cache entry) — the picker then reads
+   * none of its own. For a picker that mounts only after the screen's first answer (the count page's rack filter, under
+   * its session): left to itself it would wait for that answer to ask at all, and a second reader mounting after the
+   * first had answered asks again at `staleTime: 0` (#134).
+   */
+  racks?: { data: Rack[] | undefined; isError: boolean };
 }
 
 // RackSelect is the shared place picker for a warehouse (#139) — the racks plus the unplaced pile.
@@ -72,12 +80,14 @@ export function RackSelect({
   excludeRackId,
   takenRackIds,
   testId = "rack-select",
+  racks: given,
 }: RackSelectProps) {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder ?? t("racks.select.placeholder");
 
   // Read through the cache rather than fetching in an effect — see useRacks for why that mattered.
-  const query = useRacks({ warehouseId });
+  const own = useRacks({ warehouseId, enabled: given === undefined });
+  const query = given ?? own;
   const racks = query.data ?? [];
   const error = query.isError;
   // A stable key for the memo: a new array of the same ids every render must not rebuild the collection.

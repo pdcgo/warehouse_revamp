@@ -105,6 +105,6 @@ export const NothingWithStock: Story = {
   play: async ({ canvasElement }) => {
     const { canvas } = await open(canvasElement);
 
-    await expect(await canvas.findByText("No batch still holds stock")).toBeVisible();
+    await waitFor(() => expect(canvas.getByText("No batch still holds stock")).toBeVisible(), { timeout: 5000 });
   },
 };

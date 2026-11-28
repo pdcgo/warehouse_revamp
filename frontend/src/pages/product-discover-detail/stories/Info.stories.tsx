@@ -4,12 +4,14 @@ import { expect, userEvent, waitFor } from "storybook/test";
 import { teams, warehouseStock } from "../../../../.storybook/fixtures";
 import { productImagesCalls } from "../../../../.storybook/productListScenario";
 import { discoverStockSample } from "../../../../.storybook/productStub";
+import { withReturnMaps } from "../../../../.storybook/returnConfigurationStub";
 import { asRole } from "../../../../.storybook/sessionScenario";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { formatRupiahRange } from "../../../lib/money";
 import {
   AtKopi,
   AtTeh,
+  BERAS,
   DISCOVER_PRODUCT_DETAIL_META,
   GULA,
   GULA_GALLERY,
@@ -37,6 +39,10 @@ type Story = StoryObj<typeof meta>;
 
 const teamName = (id: bigint) => teams.find((t) => t.id === id)!.name;
 
+// Produk Turunan's cast beyond the kit's: Anggrek's Minyak (700) and Melati's Kecap (76).
+const MINYAK = { id: 700n, productCode: "SL-03-ANG-001" };
+const KECAP_ID = 76n;
+
 // WHAT and WHOSE: the owning team is named — on a cross-team page that is the fact worth knowing — BY NAME ALONE, under
 // *Team*: it is a selling team, so an avatar and a type badge said nothing. The category and the cross price in Info — and
 // NO markup percentage (the-discover-detail-shows-no-markup). An open product carries no lock badge.
@@ -61,9 +67,12 @@ export const NamesTheTeamNotTheMarkup: Story = {
 
 // THE PICTURE AND PRODUK TURUNAN, as on the owner's page (owner: *"gambar produk ada, produk turunan juga ditampilkan"*):
 // the shared gallery shows Gula's one picture, square — its gallery IS its cover, so there is nothing more and nothing
-// marked — and the derived products are the owner's page's sample rows, marked.
+// marked — and the derived products are REAL (produk-turunan-is-the-return-map): every team's map from Gula, read across
+// teams by a team that holds neither — Anggrek's (the newest) and Melati's seeded one, each under its team with its SKU
+// and ready stock — and Turunan dari, Melati's Kecap that Kenanga lands on Gula. No mark, and none in the strip.
 export const ThePictureAndTheDerivedProducts: Story = {
   name: "Picture and derived",
+  beforeEach: withReturnMaps([15n, GULA.id, MINYAK.id], [13n, KECAP_ID, GULA.id]),
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     const info = await sectionOf(canvas, "info");
@@ -73,9 +82,33 @@ export const ThePictureAndTheDerivedProducts: Story = {
     await expect(info.queryByTestId("discover-detail-thumb-0")).toBeNull();
     await expect(info.queryByTestId("not-implemented-gallery")).toBeNull();
     await expect(info.queryByText("Cover only")).toBeNull();
-    await expect(derived.getByTestId("pd-derived-to")).toBeInTheDocument();
-    await expect(derived.getAllByTestId(/^pd-derived-to-\d+$/).length).toBeGreaterThan(0);
-    await expect(derived.getByTestId("not-implemented-derived")).toBeInTheDocument();
+
+    await waitFor(() => expect(derived.getByTestId("pd-derived-count")).toHaveTextContent(/^2$/), { timeout: 5000 });
+    await expect(derived.getByTestId("pd-derived-to-0")).toHaveTextContent("Toko Anggrek");
+    await expect(derived.getByTestId("pd-derived-to-0")).toHaveTextContent(MINYAK.productCode);
+    await expect(derived.getByTestId("pd-derived-to-1")).toHaveTextContent(teamName(BERAS.teamId));
+    await expect(derived.getByTestId("pd-derived-to-1")).toHaveTextContent(BERAS.productCode);
+    await expect(derived.getByTestId("pd-derived-to-1-pcs")).toHaveTextContent(`${discoverStockSample(BERAS.id, 0n).readyQty} pcs`);
+    await expect(derived.getByTestId("pd-derived-from-item")).toHaveTextContent("Toko Melati");
+    await expect(derived.getByTestId("pd-derived-from-item")).toHaveTextContent("SKU-KECAP-600");
+    await expect(derived.queryByTestId("not-implemented-derived")).toBeNull();
+    await openPendingStrip(canvas);
+    await expect(canvas.queryByTestId("pending-row-derived")).toBeNull();
+  },
+};
+
+// A REFUSED DERIVED READ says so in its section — a warehouse role is refused, as Discover refuses it — and costs the
+// page nothing else: whose product it is still reads.
+export const ARefusedDerivedReadSaysSo: Story = {
+  name: "Refused derived",
+  beforeEach: asRole(Role.WAREHOUSE_ADMIN),
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const derived = await sectionOf(canvas, "derived");
+
+    await waitFor(() => expect(derived.getByTestId("pd-derived-error")).toHaveTextContent(/Discover/), { timeout: 5000 });
+    await expect(derived.queryByTestId("pd-derived-to")).toBeNull();
+    await waitFor(() => expect(canvas.getByTestId("discover-detail-owner")).toHaveTextContent(teamName(GULA.teamId)), { timeout: 5000 });
   },
 };
 

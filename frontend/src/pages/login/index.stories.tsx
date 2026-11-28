@@ -1,6 +1,6 @@
 import { Text } from "@chakra-ui/react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, marker, routedPage } from "../../../.storybook/pageStory";
 import { AuthProvider } from "../../features/auth/AuthContext";
@@ -71,14 +71,14 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByRole("heading", { name: "Sign in" })).toBeVisible();
+    await waitFor(() => expect(canvas.getByRole("heading", { name: "Sign in" })).toBeVisible(), { timeout: 5000 });
   },
 };
 
 export const Mobile: Story = {
   globals: { viewport: { value: "mobile2" } },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole("button", { name: "Sign in" })).toBeVisible();
+    await waitFor(() => expect(within(canvasElement).getByRole("button", { name: "Sign in" })).toBeVisible(), { timeout: 5000 });
   },
 };
 

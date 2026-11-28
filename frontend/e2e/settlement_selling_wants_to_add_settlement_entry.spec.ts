@@ -101,7 +101,8 @@ test.describe("selling:all wants to record money on an order — add settlement 
     // Every order's Estimate is posted by the order's listener — wait for each account to open on it.
     const detail = (orderId: string) => api(page, "settlement.v1.SettlementService/OrderSettlementDetail", { teamId: g.team, orderId });
     for (const orderId of Object.values(ground.order)) {
-      await expect.poll(async () => Number((await detail(orderId)).settlement?.initialTotal ?? 0), { timeout: 30_000 }).toBe(SALE);
+      // 404 "no settlement account" until the listener ran — caught, or expect.poll stops on the throw.
+      await expect.poll(async () => Number((await detail(orderId).catch(() => ({ settlement: { initialTotal: -1 } }))).settlement?.initialTotal ?? 0), { timeout: 30_000 }).toBe(SALE);
     }
 
     // Givens 9 and 11 (and the admin regression): the placement Estimate taken down by root's reversal — the account

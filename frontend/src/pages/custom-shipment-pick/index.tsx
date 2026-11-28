@@ -188,6 +188,7 @@ export function CustomShipmentPickPage() {
             }),
           )}
           setting={picked.isPending}
+          codes={query.data?.codes}
           onSetPicked={setPicked}
         />
       )}

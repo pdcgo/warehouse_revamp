@@ -173,6 +173,8 @@ already have ([a-counted-line-is-three-columns](../../technical/frontend/context
 
 ✅ **Built 2026-11-09** — live at `/warehouse-orders/:orderId/accept-return` (`pages/order-return-accept`, `features/orders/returnAccept.ts`); the pick page, the warehouse order detail and Receive a Return open it; `AcceptReturnDialog` and the prototype gate are deleted; e2e `the_return_goes_back_on_the_shelf.spec.ts`, `orders.spec.ts` *Return*.
 
+🔄 *(2026-11-27, owner)* The courier's note is optional now, above 0 too: [the-couriers-charge-note-is-optional](../balance/context_decision.md#the-couriers-charge-note-is-optional).
+
 ---
 
 ## a-return-door-row-carries-an-optional-note

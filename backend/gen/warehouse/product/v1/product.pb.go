@@ -327,7 +327,9 @@ type Product struct {
 	TeamId uint64                 `protobuf:"varint,2,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	// The product's ONE code, as stored — `<team_code>-<the team's part>`, composed by product_service on write and globally
 	// unique over every row, archived ones included (the-field-is-product-code-composed-on-write). What the sticker and the
-	// scan carry. Read-only: a write sends the team's part (ProductCreateRequest.product_code_part).
+	// scan carry. Read-only: a write sends the team's part (ProductCreateRequest.product_code_part). When the team's code
+	// changes, it takes the new one (TeamCodeUpdate, a-team-code-change-recomposes-its-product-codes) and its history keeps
+	// the old (ProductLogList).
 	ProductCode string `protobuf:"bytes,3,opt,name=product_code,json=productCode,proto3" json:"product_code,omitempty"`
 	Name        string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
@@ -351,6 +353,10 @@ type Product struct {
 	CrossLocked bool `protobuf:"varint,12,opt,name=cross_locked,json=crossLocked,proto3" json:"cross_locked,omitempty"`
 	// RESERVED — see ProductCreateRequest.reserved_stock. Units held back from selling; 0 = none.
 	ReservedStock uint32 `protobuf:"varint,13,opt,name=reserved_stock,json=reservedStock,proto3" json:"reserved_stock,omitempty"`
+	// ITS TAGS (products-have-their-own-tag-list, product_tag.proto) — from the products' own list, the system's first,
+	// then by name. Filled by ProductDetail ONLY — the owning team's read (its 🔄 *who sees*); every other read of a Product
+	// (ProductByIds, the writes' answers) leaves it empty. `product_count` is 0 here.
+	Tags          []*ProductTag `protobuf:"bytes,14,rep,name=tags,proto3" json:"tags,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -474,6 +480,13 @@ func (x *Product) GetReservedStock() uint32 {
 		return x.ReservedStock
 	}
 	return 0
+}
+
+func (x *Product) GetTags() []*ProductTag {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
 }
 
 // ProductImage is one catalogue image: the full public URL and (best-effort) its thumbnail. Both
@@ -791,8 +804,13 @@ type ProductListFilter struct {
 	// ago (the-dates-read-as-ages). 0 = no narrowing. A product with nothing on a shelf has no age and never matches. Read
 	// in ProductListRequest.stock_warehouse_id when it is set, else across every warehouse. ProductList only.
 	StockAgeMinDays uint32 `protobuf:"varint,4,opt,name=stock_age_min_days,json=stockAgeMinDays,proto3" json:"stock_age_min_days,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// THE TAG FILTER (the-team-code-and-product-tags-prototype-is-accepted: several tags, ANY of them) — only products
+	// carrying at least one of these product tags. Empty = any tag or none. Narrows inside the list's one count and page, so
+	// `total_items` and the paging describe the narrowed list. ProductList only: ProductDiscover refuses it
+	// (INVALID_ARGUMENT — other teams see no tags, so they filter by none).
+	TagIds        []uint64 `protobuf:"varint,5,rep,packed,name=tag_ids,json=tagIds,proto3" json:"tag_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProductListFilter) Reset() {
@@ -851,6 +869,13 @@ func (x *ProductListFilter) GetStockAgeMinDays() uint32 {
 		return x.StockAgeMinDays
 	}
 	return 0
+}
+
+func (x *ProductListFilter) GetTagIds() []uint64 {
+	if x != nil {
+		return x.TagIds
+	}
+	return nil
 }
 
 type ProductListFilterSort struct {
@@ -967,6 +992,11 @@ type ProductRowItem struct {
 	// The hold-back buffer in units. On the row because a list is where "which products am I holding
 	// stock back on, and how much" is actually asked — one product at a time would never surface it.
 	ReservedStock uint32 `protobuf:"varint,12,opt,name=reserved_stock,json=reservedStock,proto3" json:"reserved_stock,omitempty"`
+	// ITS TAGS (products-have-their-own-tag-list, the-team-code-and-product-tags-prototype-is-accepted: the list's Tag
+	// column) — the system's first, then by name. Filled by ProductList ONLY, the owning team's list: ProductDiscover shares
+	// this row and leaves it empty (its 🔄 *who sees*: other teams on Discover see no tags), as do the by-ids rows.
+	// `product_count` is 0 here.
+	Tags          []*ProductTag `protobuf:"bytes,13,rep,name=tags,proto3" json:"tags,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1083,6 +1113,13 @@ func (x *ProductRowItem) GetReservedStock() uint32 {
 		return x.ReservedStock
 	}
 	return 0
+}
+
+func (x *ProductRowItem) GetTags() []*ProductTag {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
 }
 
 type ProductRowMapItem struct {
@@ -2803,7 +2840,7 @@ var File_warehouse_product_v1_product_proto protoreflect.FileDescriptor
 
 const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\n" +
-	"\"warehouse/product/v1/product.proto\x12\x14warehouse.product.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a!warehouse/role_base/v1/role.proto\"\xe3\x03\n" +
+	"\"warehouse/product/v1/product.proto\x12\x14warehouse.product.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1ewarehouse/common/v1/list.proto\x1a\x1ewarehouse/common/v1/page.proto\x1a&warehouse/product/v1/product_log.proto\x1a&warehouse/product/v1/product_tag.proto\x1a!warehouse/role_base/v1/role.proto\"\x99\x04\n" +
 	"\aProduct\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12!\n" +
@@ -2819,7 +2856,8 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	" \x03(\v2\".warehouse.product.v1.ProductImageR\x06images\x12(\n" +
 	"\x10cross_markup_bps\x18\v \x01(\rR\x0ecrossMarkupBps\x12!\n" +
 	"\fcross_locked\x18\f \x01(\bR\vcrossLocked\x12%\n" +
-	"\x0ereserved_stock\x18\r \x01(\rR\rreservedStock\"[\n" +
+	"\x0ereserved_stock\x18\r \x01(\rR\rreservedStock\x124\n" +
+	"\x04tags\x18\x0e \x03(\v2 .warehouse.product.v1.ProductTagR\x04tags\"[\n" +
 	"\fProductImage\x12\x1c\n" +
 	"\x03url\x18\x01 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\x80\x10R\x03url\x12-\n" +
@@ -2841,17 +2879,18 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\x92\xb5\x18\x06\n" +
 	"\x04\x01\x02\x03\x04\"P\n" +
 	"\x15ProductCreateResponse\x127\n" +
-	"\aproduct\x18\x01 \x01(\v2\x1d.warehouse.product.v1.ProductR\aproduct\"\xef\x01\n" +
+	"\aproduct\x18\x01 \x01(\v2\x1d.warehouse.product.v1.ProductR\aproduct\"\x98\x02\n" +
 	"\x11ProductListFilter\x12\x15\n" +
 	"\x01q\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\x01q\x12E\n" +
 	"\x06status\x18\x02 \x01(\x0e2#.warehouse.product.v1.ProductStatusB\b\xbaH\x05\x82\x01\x02\x10\x01R\x06status\x12E\n" +
 	"\x04lock\x18\x03 \x01(\x0e2'.warehouse.product.v1.ProductLockFilterB\b\xbaH\x05\x82\x01\x02\x10\x01R\x04lock\x125\n" +
-	"\x12stock_age_min_days\x18\x04 \x01(\rB\b\xbaH\x05*\x03\x18\xc2\x1cR\x0fstockAgeMinDays\"\xde\x01\n" +
+	"\x12stock_age_min_days\x18\x04 \x01(\rB\b\xbaH\x05*\x03\x18\xc2\x1cR\x0fstockAgeMinDays\x12'\n" +
+	"\atag_ids\x18\x05 \x03(\x04B\x0e\xbaH\v\x92\x01\b\x102\"\x042\x02 \x00R\x06tagIds\"\xde\x01\n" +
 	"\x15ProductListFilterSort\x12@\n" +
 	"\tsort_type\x18\x01 \x01(\x0e2#.warehouse.common.v1.CommonSortTypeR\bsortType\x12<\n" +
 	"\ageneral\x18\x02 \x01(\x0e2 .warehouse.common.v1.GeneralSortH\x00R\ageneral\x12@\n" +
 	"\aproduct\x18\x03 \x01(\x0e2$.warehouse.product.v1.ProductRowSortH\x00R\aproductB\x03\n" +
-	"\x01s\"\xae\x03\n" +
+	"\x01s\"\xe4\x03\n" +
 	"\x0eProductRowItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x17\n" +
 	"\ateam_id\x18\x02 \x01(\x04R\x06teamId\x12!\n" +
@@ -2866,7 +2905,8 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\x10cross_markup_bps\x18\n" +
 	" \x01(\rR\x0ecrossMarkupBps\x12!\n" +
 	"\fcross_locked\x18\v \x01(\bR\vcrossLocked\x12%\n" +
-	"\x0ereserved_stock\x18\f \x01(\rR\rreservedStock\"\xc6\x01\n" +
+	"\x0ereserved_stock\x18\f \x01(\rR\rreservedStock\x124\n" +
+	"\x04tags\x18\r \x03(\v2 .warehouse.product.v1.ProductTagR\x04tags\"\xc6\x01\n" +
 	"\x11ProductRowMapItem\x12O\n" +
 	"\bmap_data\x18\x01 \x03(\v24.warehouse.product.v1.ProductRowMapItem.MapDataEntryR\amapData\x1a`\n" +
 	"\fMapDataEntry\x12\x10\n" +
@@ -3037,7 +3077,7 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"$PRODUCT_BY_IDS_DATA_TYPE_UNSPECIFIED\x10\x00\x12$\n" +
 	" PRODUCT_BY_IDS_DATA_TYPE_GENERAL\x10\x01\x12$\n" +
 	" PRODUCT_BY_IDS_DATA_TYPE_PRODUCT\x10\x02\x12#\n" +
-	"\x1fPRODUCT_BY_IDS_DATA_TYPE_IMAGES\x10\x032\xef\b\n" +
+	"\x1fPRODUCT_BY_IDS_DATA_TYPE_IMAGES\x10\x032\x89\x15\n" +
 	"\x0eProductService\x12h\n" +
 	"\rProductCreate\x12*.warehouse.product.v1.ProductCreateRequest\x1a+.warehouse.product.v1.ProductCreateResponse\x12g\n" +
 	"\vProductList\x12(.warehouse.product.v1.ProductListRequest\x1a).warehouse.product.v1.ProductListResponse\"\x03\x90\x02\x01\x12s\n" +
@@ -3048,7 +3088,20 @@ const file_warehouse_product_v1_product_proto_rawDesc = "" +
 	"\rProductUpdate\x12*.warehouse.product.v1.ProductUpdateRequest\x1a+.warehouse.product.v1.ProductUpdateResponse\x12k\n" +
 	"\x0eProductArchive\x12+.warehouse.product.v1.ProductArchiveRequest\x1a,.warehouse.product.v1.ProductArchiveResponse\x12q\n" +
 	"\x10ProductUnarchive\x12-.warehouse.product.v1.ProductUnarchiveRequest\x1a..warehouse.product.v1.ProductUnarchiveResponse\x12h\n" +
-	"\rProductDelete\x12*.warehouse.product.v1.ProductDeleteRequest\x1a+.warehouse.product.v1.ProductDeleteResponseBNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1;productv1b\x06proto3"
+	"\rProductDelete\x12*.warehouse.product.v1.ProductDeleteRequest\x1a+.warehouse.product.v1.ProductDeleteResponse\x12p\n" +
+	"\x0eProductTagList\x12+.warehouse.product.v1.ProductTagListRequest\x1a,.warehouse.product.v1.ProductTagListResponse\"\x03\x90\x02\x01\x12\x82\x01\n" +
+	"\x14ProductTagManageList\x121.warehouse.product.v1.ProductTagManageListRequest\x1a2.warehouse.product.v1.ProductTagManageListResponse\"\x03\x90\x02\x01\x12v\n" +
+	"\x10ProductTagsByIds\x12-.warehouse.product.v1.ProductTagsByIdsRequest\x1a..warehouse.product.v1.ProductTagsByIdsResponse\"\x03\x90\x02\x01\x12q\n" +
+	"\x10ProductTagCreate\x12-.warehouse.product.v1.ProductTagCreateRequest\x1a..warehouse.product.v1.ProductTagCreateResponse\x12\x83\x01\n" +
+	"\x16ProductTagSystemCreate\x123.warehouse.product.v1.ProductTagSystemCreateRequest\x1a4.warehouse.product.v1.ProductTagSystemCreateResponse\x12q\n" +
+	"\x10ProductTagRename\x12-.warehouse.product.v1.ProductTagRenameRequest\x1a..warehouse.product.v1.ProductTagRenameResponse\x12q\n" +
+	"\x10ProductTagDelete\x12-.warehouse.product.v1.ProductTagDeleteRequest\x1a..warehouse.product.v1.ProductTagDeleteResponse\x12h\n" +
+	"\rProductTagAdd\x12*.warehouse.product.v1.ProductTagAddRequest\x1a+.warehouse.product.v1.ProductTagAddResponse\x12q\n" +
+	"\x10ProductTagRemove\x12-.warehouse.product.v1.ProductTagRemoveRequest\x1a..warehouse.product.v1.ProductTagRemoveResponse\x12z\n" +
+	"\x13ProductSystemTagAdd\x120.warehouse.product.v1.ProductSystemTagAddRequest\x1a1.warehouse.product.v1.ProductSystemTagAddResponse\x12\x83\x01\n" +
+	"\x16ProductSystemTagRemove\x123.warehouse.product.v1.ProductSystemTagRemoveRequest\x1a4.warehouse.product.v1.ProductSystemTagRemoveResponse\x12p\n" +
+	"\x0eProductLogList\x12+.warehouse.product.v1.ProductLogListRequest\x1a,.warehouse.product.v1.ProductLogListResponse\"\x03\x90\x02\x01\x12y\n" +
+	"\x11ProductCodesByIds\x12..warehouse.product.v1.ProductCodesByIdsRequest\x1a/.warehouse.product.v1.ProductCodesByIdsResponse\"\x03\x90\x02\x01BNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1;productv1b\x06proto3"
 
 var (
 	file_warehouse_product_v1_product_proto_rawDescOnce sync.Once
@@ -3065,123 +3118,178 @@ func file_warehouse_product_v1_product_proto_rawDescGZIP() []byte {
 var file_warehouse_product_v1_product_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_warehouse_product_v1_product_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_warehouse_product_v1_product_proto_goTypes = []any{
-	(ProductListDataType)(0),              // 0: warehouse.product.v1.ProductListDataType
-	(ProductRowSort)(0),                   // 1: warehouse.product.v1.ProductRowSort
-	(ProductStatus)(0),                    // 2: warehouse.product.v1.ProductStatus
-	(ProductLockFilter)(0),                // 3: warehouse.product.v1.ProductLockFilter
-	(ProductByIdsDataType)(0),             // 4: warehouse.product.v1.ProductByIdsDataType
-	(*Product)(nil),                       // 5: warehouse.product.v1.Product
-	(*ProductImage)(nil),                  // 6: warehouse.product.v1.ProductImage
-	(*ProductImages)(nil),                 // 7: warehouse.product.v1.ProductImages
-	(*ProductCreateRequest)(nil),          // 8: warehouse.product.v1.ProductCreateRequest
-	(*ProductCreateResponse)(nil),         // 9: warehouse.product.v1.ProductCreateResponse
-	(*ProductListFilter)(nil),             // 10: warehouse.product.v1.ProductListFilter
-	(*ProductListFilterSort)(nil),         // 11: warehouse.product.v1.ProductListFilterSort
-	(*ProductRowItem)(nil),                // 12: warehouse.product.v1.ProductRowItem
-	(*ProductRowMapItem)(nil),             // 13: warehouse.product.v1.ProductRowMapItem
-	(*ProductListResponseItem)(nil),       // 14: warehouse.product.v1.ProductListResponseItem
-	(*ProductListRequest)(nil),            // 15: warehouse.product.v1.ProductListRequest
-	(*ProductListResponse)(nil),           // 16: warehouse.product.v1.ProductListResponse
-	(*ProductDiscoverRequest)(nil),        // 17: warehouse.product.v1.ProductDiscoverRequest
-	(*DiscoverReadyRange)(nil),            // 18: warehouse.product.v1.DiscoverReadyRange
-	(*DiscoverPriceRange)(nil),            // 19: warehouse.product.v1.DiscoverPriceRange
-	(*ProductDiscoverResponse)(nil),       // 20: warehouse.product.v1.ProductDiscoverResponse
-	(*ProductByIdsRequest)(nil),           // 21: warehouse.product.v1.ProductByIdsRequest
-	(*ProductByIdsFilter)(nil),            // 22: warehouse.product.v1.ProductByIdsFilter
-	(*ProductByIdsResponseItem)(nil),      // 23: warehouse.product.v1.ProductByIdsResponseItem
-	(*ProductImagesMapItem)(nil),          // 24: warehouse.product.v1.ProductImagesMapItem
-	(*ProductByIdsResponseList)(nil),      // 25: warehouse.product.v1.ProductByIdsResponseList
-	(*ProductByIdsResponse)(nil),          // 26: warehouse.product.v1.ProductByIdsResponse
-	(*ProductUpdateRequest)(nil),          // 27: warehouse.product.v1.ProductUpdateRequest
-	(*ProductUpdateResponse)(nil),         // 28: warehouse.product.v1.ProductUpdateResponse
-	(*ProductDetailRequest)(nil),          // 29: warehouse.product.v1.ProductDetailRequest
-	(*ProductDetailResponse)(nil),         // 30: warehouse.product.v1.ProductDetailResponse
-	(*ProductCategoryCountsRequest)(nil),  // 31: warehouse.product.v1.ProductCategoryCountsRequest
-	(*ProductCategoryCount)(nil),          // 32: warehouse.product.v1.ProductCategoryCount
-	(*ProductCategoryCountsResponse)(nil), // 33: warehouse.product.v1.ProductCategoryCountsResponse
-	(*ProductArchiveRequest)(nil),         // 34: warehouse.product.v1.ProductArchiveRequest
-	(*ProductArchiveResponse)(nil),        // 35: warehouse.product.v1.ProductArchiveResponse
-	(*ProductDeleteRequest)(nil),          // 36: warehouse.product.v1.ProductDeleteRequest
-	(*ProductDeleteResponse)(nil),         // 37: warehouse.product.v1.ProductDeleteResponse
-	(*ProductUnarchiveRequest)(nil),       // 38: warehouse.product.v1.ProductUnarchiveRequest
-	(*ProductUnarchiveResponse)(nil),      // 39: warehouse.product.v1.ProductUnarchiveResponse
-	nil,                                   // 40: warehouse.product.v1.ProductRowMapItem.MapDataEntry
-	nil,                                   // 41: warehouse.product.v1.ProductImagesMapItem.MapDataEntry
-	nil,                                   // 42: warehouse.product.v1.ProductByIdsResponse.ItemsEntry
-	(v1.CommonSortType)(0),                // 43: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),                   // 44: warehouse.common.v1.GeneralSort
-	(*v1.GeneralMapItem)(nil),             // 45: warehouse.common.v1.GeneralMapItem
-	(*v1.CommonPagination)(nil),           // 46: warehouse.common.v1.CommonPagination
-	(*v1.PageInfo)(nil),                   // 47: warehouse.common.v1.PageInfo
+	(ProductListDataType)(0),               // 0: warehouse.product.v1.ProductListDataType
+	(ProductRowSort)(0),                    // 1: warehouse.product.v1.ProductRowSort
+	(ProductStatus)(0),                     // 2: warehouse.product.v1.ProductStatus
+	(ProductLockFilter)(0),                 // 3: warehouse.product.v1.ProductLockFilter
+	(ProductByIdsDataType)(0),              // 4: warehouse.product.v1.ProductByIdsDataType
+	(*Product)(nil),                        // 5: warehouse.product.v1.Product
+	(*ProductImage)(nil),                   // 6: warehouse.product.v1.ProductImage
+	(*ProductImages)(nil),                  // 7: warehouse.product.v1.ProductImages
+	(*ProductCreateRequest)(nil),           // 8: warehouse.product.v1.ProductCreateRequest
+	(*ProductCreateResponse)(nil),          // 9: warehouse.product.v1.ProductCreateResponse
+	(*ProductListFilter)(nil),              // 10: warehouse.product.v1.ProductListFilter
+	(*ProductListFilterSort)(nil),          // 11: warehouse.product.v1.ProductListFilterSort
+	(*ProductRowItem)(nil),                 // 12: warehouse.product.v1.ProductRowItem
+	(*ProductRowMapItem)(nil),              // 13: warehouse.product.v1.ProductRowMapItem
+	(*ProductListResponseItem)(nil),        // 14: warehouse.product.v1.ProductListResponseItem
+	(*ProductListRequest)(nil),             // 15: warehouse.product.v1.ProductListRequest
+	(*ProductListResponse)(nil),            // 16: warehouse.product.v1.ProductListResponse
+	(*ProductDiscoverRequest)(nil),         // 17: warehouse.product.v1.ProductDiscoverRequest
+	(*DiscoverReadyRange)(nil),             // 18: warehouse.product.v1.DiscoverReadyRange
+	(*DiscoverPriceRange)(nil),             // 19: warehouse.product.v1.DiscoverPriceRange
+	(*ProductDiscoverResponse)(nil),        // 20: warehouse.product.v1.ProductDiscoverResponse
+	(*ProductByIdsRequest)(nil),            // 21: warehouse.product.v1.ProductByIdsRequest
+	(*ProductByIdsFilter)(nil),             // 22: warehouse.product.v1.ProductByIdsFilter
+	(*ProductByIdsResponseItem)(nil),       // 23: warehouse.product.v1.ProductByIdsResponseItem
+	(*ProductImagesMapItem)(nil),           // 24: warehouse.product.v1.ProductImagesMapItem
+	(*ProductByIdsResponseList)(nil),       // 25: warehouse.product.v1.ProductByIdsResponseList
+	(*ProductByIdsResponse)(nil),           // 26: warehouse.product.v1.ProductByIdsResponse
+	(*ProductUpdateRequest)(nil),           // 27: warehouse.product.v1.ProductUpdateRequest
+	(*ProductUpdateResponse)(nil),          // 28: warehouse.product.v1.ProductUpdateResponse
+	(*ProductDetailRequest)(nil),           // 29: warehouse.product.v1.ProductDetailRequest
+	(*ProductDetailResponse)(nil),          // 30: warehouse.product.v1.ProductDetailResponse
+	(*ProductCategoryCountsRequest)(nil),   // 31: warehouse.product.v1.ProductCategoryCountsRequest
+	(*ProductCategoryCount)(nil),           // 32: warehouse.product.v1.ProductCategoryCount
+	(*ProductCategoryCountsResponse)(nil),  // 33: warehouse.product.v1.ProductCategoryCountsResponse
+	(*ProductArchiveRequest)(nil),          // 34: warehouse.product.v1.ProductArchiveRequest
+	(*ProductArchiveResponse)(nil),         // 35: warehouse.product.v1.ProductArchiveResponse
+	(*ProductDeleteRequest)(nil),           // 36: warehouse.product.v1.ProductDeleteRequest
+	(*ProductDeleteResponse)(nil),          // 37: warehouse.product.v1.ProductDeleteResponse
+	(*ProductUnarchiveRequest)(nil),        // 38: warehouse.product.v1.ProductUnarchiveRequest
+	(*ProductUnarchiveResponse)(nil),       // 39: warehouse.product.v1.ProductUnarchiveResponse
+	nil,                                    // 40: warehouse.product.v1.ProductRowMapItem.MapDataEntry
+	nil,                                    // 41: warehouse.product.v1.ProductImagesMapItem.MapDataEntry
+	nil,                                    // 42: warehouse.product.v1.ProductByIdsResponse.ItemsEntry
+	(*ProductTag)(nil),                     // 43: warehouse.product.v1.ProductTag
+	(v1.CommonSortType)(0),                 // 44: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),                    // 45: warehouse.common.v1.GeneralSort
+	(*v1.GeneralMapItem)(nil),              // 46: warehouse.common.v1.GeneralMapItem
+	(*v1.CommonPagination)(nil),            // 47: warehouse.common.v1.CommonPagination
+	(*v1.PageInfo)(nil),                    // 48: warehouse.common.v1.PageInfo
+	(*ProductTagListRequest)(nil),          // 49: warehouse.product.v1.ProductTagListRequest
+	(*ProductTagManageListRequest)(nil),    // 50: warehouse.product.v1.ProductTagManageListRequest
+	(*ProductTagsByIdsRequest)(nil),        // 51: warehouse.product.v1.ProductTagsByIdsRequest
+	(*ProductTagCreateRequest)(nil),        // 52: warehouse.product.v1.ProductTagCreateRequest
+	(*ProductTagSystemCreateRequest)(nil),  // 53: warehouse.product.v1.ProductTagSystemCreateRequest
+	(*ProductTagRenameRequest)(nil),        // 54: warehouse.product.v1.ProductTagRenameRequest
+	(*ProductTagDeleteRequest)(nil),        // 55: warehouse.product.v1.ProductTagDeleteRequest
+	(*ProductTagAddRequest)(nil),           // 56: warehouse.product.v1.ProductTagAddRequest
+	(*ProductTagRemoveRequest)(nil),        // 57: warehouse.product.v1.ProductTagRemoveRequest
+	(*ProductSystemTagAddRequest)(nil),     // 58: warehouse.product.v1.ProductSystemTagAddRequest
+	(*ProductSystemTagRemoveRequest)(nil),  // 59: warehouse.product.v1.ProductSystemTagRemoveRequest
+	(*ProductLogListRequest)(nil),          // 60: warehouse.product.v1.ProductLogListRequest
+	(*ProductCodesByIdsRequest)(nil),       // 61: warehouse.product.v1.ProductCodesByIdsRequest
+	(*ProductTagListResponse)(nil),         // 62: warehouse.product.v1.ProductTagListResponse
+	(*ProductTagManageListResponse)(nil),   // 63: warehouse.product.v1.ProductTagManageListResponse
+	(*ProductTagsByIdsResponse)(nil),       // 64: warehouse.product.v1.ProductTagsByIdsResponse
+	(*ProductTagCreateResponse)(nil),       // 65: warehouse.product.v1.ProductTagCreateResponse
+	(*ProductTagSystemCreateResponse)(nil), // 66: warehouse.product.v1.ProductTagSystemCreateResponse
+	(*ProductTagRenameResponse)(nil),       // 67: warehouse.product.v1.ProductTagRenameResponse
+	(*ProductTagDeleteResponse)(nil),       // 68: warehouse.product.v1.ProductTagDeleteResponse
+	(*ProductTagAddResponse)(nil),          // 69: warehouse.product.v1.ProductTagAddResponse
+	(*ProductTagRemoveResponse)(nil),       // 70: warehouse.product.v1.ProductTagRemoveResponse
+	(*ProductSystemTagAddResponse)(nil),    // 71: warehouse.product.v1.ProductSystemTagAddResponse
+	(*ProductSystemTagRemoveResponse)(nil), // 72: warehouse.product.v1.ProductSystemTagRemoveResponse
+	(*ProductLogListResponse)(nil),         // 73: warehouse.product.v1.ProductLogListResponse
+	(*ProductCodesByIdsResponse)(nil),      // 74: warehouse.product.v1.ProductCodesByIdsResponse
 }
 var file_warehouse_product_v1_product_proto_depIdxs = []int32{
 	6,  // 0: warehouse.product.v1.Product.images:type_name -> warehouse.product.v1.ProductImage
-	6,  // 1: warehouse.product.v1.ProductImages.items:type_name -> warehouse.product.v1.ProductImage
-	6,  // 2: warehouse.product.v1.ProductCreateRequest.images:type_name -> warehouse.product.v1.ProductImage
-	5,  // 3: warehouse.product.v1.ProductCreateResponse.product:type_name -> warehouse.product.v1.Product
-	2,  // 4: warehouse.product.v1.ProductListFilter.status:type_name -> warehouse.product.v1.ProductStatus
-	3,  // 5: warehouse.product.v1.ProductListFilter.lock:type_name -> warehouse.product.v1.ProductLockFilter
-	43, // 6: warehouse.product.v1.ProductListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	44, // 7: warehouse.product.v1.ProductListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
-	1,  // 8: warehouse.product.v1.ProductListFilterSort.product:type_name -> warehouse.product.v1.ProductRowSort
-	40, // 9: warehouse.product.v1.ProductRowMapItem.map_data:type_name -> warehouse.product.v1.ProductRowMapItem.MapDataEntry
-	45, // 10: warehouse.product.v1.ProductListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	13, // 11: warehouse.product.v1.ProductListResponseItem.product:type_name -> warehouse.product.v1.ProductRowMapItem
-	10, // 12: warehouse.product.v1.ProductListRequest.filter:type_name -> warehouse.product.v1.ProductListFilter
-	11, // 13: warehouse.product.v1.ProductListRequest.sort:type_name -> warehouse.product.v1.ProductListFilterSort
-	0,  // 14: warehouse.product.v1.ProductListRequest.data_request:type_name -> warehouse.product.v1.ProductListDataType
-	46, // 15: warehouse.product.v1.ProductListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	14, // 16: warehouse.product.v1.ProductListResponse.items:type_name -> warehouse.product.v1.ProductListResponseItem
-	47, // 17: warehouse.product.v1.ProductListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	10, // 18: warehouse.product.v1.ProductDiscoverRequest.filter:type_name -> warehouse.product.v1.ProductListFilter
-	11, // 19: warehouse.product.v1.ProductDiscoverRequest.sort:type_name -> warehouse.product.v1.ProductListFilterSort
-	0,  // 20: warehouse.product.v1.ProductDiscoverRequest.data_request:type_name -> warehouse.product.v1.ProductListDataType
-	46, // 21: warehouse.product.v1.ProductDiscoverRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	18, // 22: warehouse.product.v1.ProductDiscoverRequest.ready:type_name -> warehouse.product.v1.DiscoverReadyRange
-	19, // 23: warehouse.product.v1.ProductDiscoverRequest.cross_price:type_name -> warehouse.product.v1.DiscoverPriceRange
-	14, // 24: warehouse.product.v1.ProductDiscoverResponse.items:type_name -> warehouse.product.v1.ProductListResponseItem
-	47, // 25: warehouse.product.v1.ProductDiscoverResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	22, // 26: warehouse.product.v1.ProductByIdsRequest.filter:type_name -> warehouse.product.v1.ProductByIdsFilter
-	4,  // 27: warehouse.product.v1.ProductByIdsRequest.data_request:type_name -> warehouse.product.v1.ProductByIdsDataType
-	45, // 28: warehouse.product.v1.ProductByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	13, // 29: warehouse.product.v1.ProductByIdsResponseItem.product:type_name -> warehouse.product.v1.ProductRowMapItem
-	24, // 30: warehouse.product.v1.ProductByIdsResponseItem.images:type_name -> warehouse.product.v1.ProductImagesMapItem
-	41, // 31: warehouse.product.v1.ProductImagesMapItem.map_data:type_name -> warehouse.product.v1.ProductImagesMapItem.MapDataEntry
-	23, // 32: warehouse.product.v1.ProductByIdsResponseList.items:type_name -> warehouse.product.v1.ProductByIdsResponseItem
-	42, // 33: warehouse.product.v1.ProductByIdsResponse.items:type_name -> warehouse.product.v1.ProductByIdsResponse.ItemsEntry
-	7,  // 34: warehouse.product.v1.ProductUpdateRequest.images:type_name -> warehouse.product.v1.ProductImages
-	5,  // 35: warehouse.product.v1.ProductUpdateResponse.product:type_name -> warehouse.product.v1.Product
-	5,  // 36: warehouse.product.v1.ProductDetailResponse.product:type_name -> warehouse.product.v1.Product
-	32, // 37: warehouse.product.v1.ProductCategoryCountsResponse.counts:type_name -> warehouse.product.v1.ProductCategoryCount
-	5,  // 38: warehouse.product.v1.ProductUnarchiveResponse.product:type_name -> warehouse.product.v1.Product
-	12, // 39: warehouse.product.v1.ProductRowMapItem.MapDataEntry.value:type_name -> warehouse.product.v1.ProductRowItem
-	7,  // 40: warehouse.product.v1.ProductImagesMapItem.MapDataEntry.value:type_name -> warehouse.product.v1.ProductImages
-	25, // 41: warehouse.product.v1.ProductByIdsResponse.ItemsEntry.value:type_name -> warehouse.product.v1.ProductByIdsResponseList
-	8,  // 42: warehouse.product.v1.ProductService.ProductCreate:input_type -> warehouse.product.v1.ProductCreateRequest
-	15, // 43: warehouse.product.v1.ProductService.ProductList:input_type -> warehouse.product.v1.ProductListRequest
-	17, // 44: warehouse.product.v1.ProductService.ProductDiscover:input_type -> warehouse.product.v1.ProductDiscoverRequest
-	21, // 45: warehouse.product.v1.ProductService.ProductByIds:input_type -> warehouse.product.v1.ProductByIdsRequest
-	29, // 46: warehouse.product.v1.ProductService.ProductDetail:input_type -> warehouse.product.v1.ProductDetailRequest
-	31, // 47: warehouse.product.v1.ProductService.ProductCategoryCounts:input_type -> warehouse.product.v1.ProductCategoryCountsRequest
-	27, // 48: warehouse.product.v1.ProductService.ProductUpdate:input_type -> warehouse.product.v1.ProductUpdateRequest
-	34, // 49: warehouse.product.v1.ProductService.ProductArchive:input_type -> warehouse.product.v1.ProductArchiveRequest
-	38, // 50: warehouse.product.v1.ProductService.ProductUnarchive:input_type -> warehouse.product.v1.ProductUnarchiveRequest
-	36, // 51: warehouse.product.v1.ProductService.ProductDelete:input_type -> warehouse.product.v1.ProductDeleteRequest
-	9,  // 52: warehouse.product.v1.ProductService.ProductCreate:output_type -> warehouse.product.v1.ProductCreateResponse
-	16, // 53: warehouse.product.v1.ProductService.ProductList:output_type -> warehouse.product.v1.ProductListResponse
-	20, // 54: warehouse.product.v1.ProductService.ProductDiscover:output_type -> warehouse.product.v1.ProductDiscoverResponse
-	26, // 55: warehouse.product.v1.ProductService.ProductByIds:output_type -> warehouse.product.v1.ProductByIdsResponse
-	30, // 56: warehouse.product.v1.ProductService.ProductDetail:output_type -> warehouse.product.v1.ProductDetailResponse
-	33, // 57: warehouse.product.v1.ProductService.ProductCategoryCounts:output_type -> warehouse.product.v1.ProductCategoryCountsResponse
-	28, // 58: warehouse.product.v1.ProductService.ProductUpdate:output_type -> warehouse.product.v1.ProductUpdateResponse
-	35, // 59: warehouse.product.v1.ProductService.ProductArchive:output_type -> warehouse.product.v1.ProductArchiveResponse
-	39, // 60: warehouse.product.v1.ProductService.ProductUnarchive:output_type -> warehouse.product.v1.ProductUnarchiveResponse
-	37, // 61: warehouse.product.v1.ProductService.ProductDelete:output_type -> warehouse.product.v1.ProductDeleteResponse
-	52, // [52:62] is the sub-list for method output_type
-	42, // [42:52] is the sub-list for method input_type
-	42, // [42:42] is the sub-list for extension type_name
-	42, // [42:42] is the sub-list for extension extendee
-	0,  // [0:42] is the sub-list for field type_name
+	43, // 1: warehouse.product.v1.Product.tags:type_name -> warehouse.product.v1.ProductTag
+	6,  // 2: warehouse.product.v1.ProductImages.items:type_name -> warehouse.product.v1.ProductImage
+	6,  // 3: warehouse.product.v1.ProductCreateRequest.images:type_name -> warehouse.product.v1.ProductImage
+	5,  // 4: warehouse.product.v1.ProductCreateResponse.product:type_name -> warehouse.product.v1.Product
+	2,  // 5: warehouse.product.v1.ProductListFilter.status:type_name -> warehouse.product.v1.ProductStatus
+	3,  // 6: warehouse.product.v1.ProductListFilter.lock:type_name -> warehouse.product.v1.ProductLockFilter
+	44, // 7: warehouse.product.v1.ProductListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	45, // 8: warehouse.product.v1.ProductListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	1,  // 9: warehouse.product.v1.ProductListFilterSort.product:type_name -> warehouse.product.v1.ProductRowSort
+	43, // 10: warehouse.product.v1.ProductRowItem.tags:type_name -> warehouse.product.v1.ProductTag
+	40, // 11: warehouse.product.v1.ProductRowMapItem.map_data:type_name -> warehouse.product.v1.ProductRowMapItem.MapDataEntry
+	46, // 12: warehouse.product.v1.ProductListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	13, // 13: warehouse.product.v1.ProductListResponseItem.product:type_name -> warehouse.product.v1.ProductRowMapItem
+	10, // 14: warehouse.product.v1.ProductListRequest.filter:type_name -> warehouse.product.v1.ProductListFilter
+	11, // 15: warehouse.product.v1.ProductListRequest.sort:type_name -> warehouse.product.v1.ProductListFilterSort
+	0,  // 16: warehouse.product.v1.ProductListRequest.data_request:type_name -> warehouse.product.v1.ProductListDataType
+	47, // 17: warehouse.product.v1.ProductListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	14, // 18: warehouse.product.v1.ProductListResponse.items:type_name -> warehouse.product.v1.ProductListResponseItem
+	48, // 19: warehouse.product.v1.ProductListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	10, // 20: warehouse.product.v1.ProductDiscoverRequest.filter:type_name -> warehouse.product.v1.ProductListFilter
+	11, // 21: warehouse.product.v1.ProductDiscoverRequest.sort:type_name -> warehouse.product.v1.ProductListFilterSort
+	0,  // 22: warehouse.product.v1.ProductDiscoverRequest.data_request:type_name -> warehouse.product.v1.ProductListDataType
+	47, // 23: warehouse.product.v1.ProductDiscoverRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	18, // 24: warehouse.product.v1.ProductDiscoverRequest.ready:type_name -> warehouse.product.v1.DiscoverReadyRange
+	19, // 25: warehouse.product.v1.ProductDiscoverRequest.cross_price:type_name -> warehouse.product.v1.DiscoverPriceRange
+	14, // 26: warehouse.product.v1.ProductDiscoverResponse.items:type_name -> warehouse.product.v1.ProductListResponseItem
+	48, // 27: warehouse.product.v1.ProductDiscoverResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	22, // 28: warehouse.product.v1.ProductByIdsRequest.filter:type_name -> warehouse.product.v1.ProductByIdsFilter
+	4,  // 29: warehouse.product.v1.ProductByIdsRequest.data_request:type_name -> warehouse.product.v1.ProductByIdsDataType
+	46, // 30: warehouse.product.v1.ProductByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	13, // 31: warehouse.product.v1.ProductByIdsResponseItem.product:type_name -> warehouse.product.v1.ProductRowMapItem
+	24, // 32: warehouse.product.v1.ProductByIdsResponseItem.images:type_name -> warehouse.product.v1.ProductImagesMapItem
+	41, // 33: warehouse.product.v1.ProductImagesMapItem.map_data:type_name -> warehouse.product.v1.ProductImagesMapItem.MapDataEntry
+	23, // 34: warehouse.product.v1.ProductByIdsResponseList.items:type_name -> warehouse.product.v1.ProductByIdsResponseItem
+	42, // 35: warehouse.product.v1.ProductByIdsResponse.items:type_name -> warehouse.product.v1.ProductByIdsResponse.ItemsEntry
+	7,  // 36: warehouse.product.v1.ProductUpdateRequest.images:type_name -> warehouse.product.v1.ProductImages
+	5,  // 37: warehouse.product.v1.ProductUpdateResponse.product:type_name -> warehouse.product.v1.Product
+	5,  // 38: warehouse.product.v1.ProductDetailResponse.product:type_name -> warehouse.product.v1.Product
+	32, // 39: warehouse.product.v1.ProductCategoryCountsResponse.counts:type_name -> warehouse.product.v1.ProductCategoryCount
+	5,  // 40: warehouse.product.v1.ProductUnarchiveResponse.product:type_name -> warehouse.product.v1.Product
+	12, // 41: warehouse.product.v1.ProductRowMapItem.MapDataEntry.value:type_name -> warehouse.product.v1.ProductRowItem
+	7,  // 42: warehouse.product.v1.ProductImagesMapItem.MapDataEntry.value:type_name -> warehouse.product.v1.ProductImages
+	25, // 43: warehouse.product.v1.ProductByIdsResponse.ItemsEntry.value:type_name -> warehouse.product.v1.ProductByIdsResponseList
+	8,  // 44: warehouse.product.v1.ProductService.ProductCreate:input_type -> warehouse.product.v1.ProductCreateRequest
+	15, // 45: warehouse.product.v1.ProductService.ProductList:input_type -> warehouse.product.v1.ProductListRequest
+	17, // 46: warehouse.product.v1.ProductService.ProductDiscover:input_type -> warehouse.product.v1.ProductDiscoverRequest
+	21, // 47: warehouse.product.v1.ProductService.ProductByIds:input_type -> warehouse.product.v1.ProductByIdsRequest
+	29, // 48: warehouse.product.v1.ProductService.ProductDetail:input_type -> warehouse.product.v1.ProductDetailRequest
+	31, // 49: warehouse.product.v1.ProductService.ProductCategoryCounts:input_type -> warehouse.product.v1.ProductCategoryCountsRequest
+	27, // 50: warehouse.product.v1.ProductService.ProductUpdate:input_type -> warehouse.product.v1.ProductUpdateRequest
+	34, // 51: warehouse.product.v1.ProductService.ProductArchive:input_type -> warehouse.product.v1.ProductArchiveRequest
+	38, // 52: warehouse.product.v1.ProductService.ProductUnarchive:input_type -> warehouse.product.v1.ProductUnarchiveRequest
+	36, // 53: warehouse.product.v1.ProductService.ProductDelete:input_type -> warehouse.product.v1.ProductDeleteRequest
+	49, // 54: warehouse.product.v1.ProductService.ProductTagList:input_type -> warehouse.product.v1.ProductTagListRequest
+	50, // 55: warehouse.product.v1.ProductService.ProductTagManageList:input_type -> warehouse.product.v1.ProductTagManageListRequest
+	51, // 56: warehouse.product.v1.ProductService.ProductTagsByIds:input_type -> warehouse.product.v1.ProductTagsByIdsRequest
+	52, // 57: warehouse.product.v1.ProductService.ProductTagCreate:input_type -> warehouse.product.v1.ProductTagCreateRequest
+	53, // 58: warehouse.product.v1.ProductService.ProductTagSystemCreate:input_type -> warehouse.product.v1.ProductTagSystemCreateRequest
+	54, // 59: warehouse.product.v1.ProductService.ProductTagRename:input_type -> warehouse.product.v1.ProductTagRenameRequest
+	55, // 60: warehouse.product.v1.ProductService.ProductTagDelete:input_type -> warehouse.product.v1.ProductTagDeleteRequest
+	56, // 61: warehouse.product.v1.ProductService.ProductTagAdd:input_type -> warehouse.product.v1.ProductTagAddRequest
+	57, // 62: warehouse.product.v1.ProductService.ProductTagRemove:input_type -> warehouse.product.v1.ProductTagRemoveRequest
+	58, // 63: warehouse.product.v1.ProductService.ProductSystemTagAdd:input_type -> warehouse.product.v1.ProductSystemTagAddRequest
+	59, // 64: warehouse.product.v1.ProductService.ProductSystemTagRemove:input_type -> warehouse.product.v1.ProductSystemTagRemoveRequest
+	60, // 65: warehouse.product.v1.ProductService.ProductLogList:input_type -> warehouse.product.v1.ProductLogListRequest
+	61, // 66: warehouse.product.v1.ProductService.ProductCodesByIds:input_type -> warehouse.product.v1.ProductCodesByIdsRequest
+	9,  // 67: warehouse.product.v1.ProductService.ProductCreate:output_type -> warehouse.product.v1.ProductCreateResponse
+	16, // 68: warehouse.product.v1.ProductService.ProductList:output_type -> warehouse.product.v1.ProductListResponse
+	20, // 69: warehouse.product.v1.ProductService.ProductDiscover:output_type -> warehouse.product.v1.ProductDiscoverResponse
+	26, // 70: warehouse.product.v1.ProductService.ProductByIds:output_type -> warehouse.product.v1.ProductByIdsResponse
+	30, // 71: warehouse.product.v1.ProductService.ProductDetail:output_type -> warehouse.product.v1.ProductDetailResponse
+	33, // 72: warehouse.product.v1.ProductService.ProductCategoryCounts:output_type -> warehouse.product.v1.ProductCategoryCountsResponse
+	28, // 73: warehouse.product.v1.ProductService.ProductUpdate:output_type -> warehouse.product.v1.ProductUpdateResponse
+	35, // 74: warehouse.product.v1.ProductService.ProductArchive:output_type -> warehouse.product.v1.ProductArchiveResponse
+	39, // 75: warehouse.product.v1.ProductService.ProductUnarchive:output_type -> warehouse.product.v1.ProductUnarchiveResponse
+	37, // 76: warehouse.product.v1.ProductService.ProductDelete:output_type -> warehouse.product.v1.ProductDeleteResponse
+	62, // 77: warehouse.product.v1.ProductService.ProductTagList:output_type -> warehouse.product.v1.ProductTagListResponse
+	63, // 78: warehouse.product.v1.ProductService.ProductTagManageList:output_type -> warehouse.product.v1.ProductTagManageListResponse
+	64, // 79: warehouse.product.v1.ProductService.ProductTagsByIds:output_type -> warehouse.product.v1.ProductTagsByIdsResponse
+	65, // 80: warehouse.product.v1.ProductService.ProductTagCreate:output_type -> warehouse.product.v1.ProductTagCreateResponse
+	66, // 81: warehouse.product.v1.ProductService.ProductTagSystemCreate:output_type -> warehouse.product.v1.ProductTagSystemCreateResponse
+	67, // 82: warehouse.product.v1.ProductService.ProductTagRename:output_type -> warehouse.product.v1.ProductTagRenameResponse
+	68, // 83: warehouse.product.v1.ProductService.ProductTagDelete:output_type -> warehouse.product.v1.ProductTagDeleteResponse
+	69, // 84: warehouse.product.v1.ProductService.ProductTagAdd:output_type -> warehouse.product.v1.ProductTagAddResponse
+	70, // 85: warehouse.product.v1.ProductService.ProductTagRemove:output_type -> warehouse.product.v1.ProductTagRemoveResponse
+	71, // 86: warehouse.product.v1.ProductService.ProductSystemTagAdd:output_type -> warehouse.product.v1.ProductSystemTagAddResponse
+	72, // 87: warehouse.product.v1.ProductService.ProductSystemTagRemove:output_type -> warehouse.product.v1.ProductSystemTagRemoveResponse
+	73, // 88: warehouse.product.v1.ProductService.ProductLogList:output_type -> warehouse.product.v1.ProductLogListResponse
+	74, // 89: warehouse.product.v1.ProductService.ProductCodesByIds:output_type -> warehouse.product.v1.ProductCodesByIdsResponse
+	67, // [67:90] is the sub-list for method output_type
+	44, // [44:67] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_product_v1_product_proto_init() }
@@ -3189,6 +3297,8 @@ func file_warehouse_product_v1_product_proto_init() {
 	if File_warehouse_product_v1_product_proto != nil {
 		return
 	}
+	file_warehouse_product_v1_product_log_proto_init()
+	file_warehouse_product_v1_product_tag_proto_init()
 	file_warehouse_product_v1_product_proto_msgTypes[6].OneofWrappers = []any{
 		(*ProductListFilterSort_General)(nil),
 		(*ProductListFilterSort_Product)(nil),

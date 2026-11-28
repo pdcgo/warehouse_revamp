@@ -60,6 +60,12 @@ const (
 	// InventoryServiceWarehouseStockListProcedure is the fully-qualified name of the InventoryService's
 	// WarehouseStockList RPC.
 	InventoryServiceWarehouseStockListProcedure = "/warehouse.inventory.v1.InventoryService/WarehouseStockList"
+	// InventoryServiceProductReprintListProcedure is the fully-qualified name of the InventoryService's
+	// ProductReprintList RPC.
+	InventoryServiceProductReprintListProcedure = "/warehouse.inventory.v1.InventoryService/ProductReprintList"
+	// InventoryServiceProductReprintRecordProcedure is the fully-qualified name of the
+	// InventoryService's ProductReprintRecord RPC.
+	InventoryServiceProductReprintRecordProcedure = "/warehouse.inventory.v1.InventoryService/ProductReprintRecord"
 	// InventoryServiceProductPlacesProcedure is the fully-qualified name of the InventoryService's
 	// ProductPlaces RPC.
 	InventoryServiceProductPlacesProcedure = "/warehouse.inventory.v1.InventoryService/ProductPlaces"
@@ -152,6 +158,15 @@ type InventoryServiceClient interface {
 	// batch in this warehouse, any team's, at 0 today or not, archived ones flagged, each with its owner team and its units
 	// on hand here; searched by name or product code on the server, paged. The same set the picker searches.
 	WarehouseStockList(context.Context, *connect.Request[v1.WarehouseStockListRequest]) (*connect.Response[v1.WarehouseStockListResponse], error)
+	// CETAK ULANG KODE — the warehouse's reprint of the products whose code changed (backlog #151;
+	// products-have-their-own-tag-list, its 🔄 *what clears*; the-team-code-and-product-tags-prototype-is-accepted, row *the
+	// reprint*): every product still waiting for THIS warehouse's new labels, each with its LIVE code, its former code and
+	// one label per shelf spot of this warehouse holding it. Paged by product.
+	ProductReprintList(context.Context, *connect.Request[v1.ProductReprintListRequest]) (*connect.Response[v1.ProductReprintListResponse], error)
+	// THE RECORDED PRINT of the reprint (as the order label's *Cetak ulang label* clears on its recorded print,
+	// a-changed-label-asks-the-warehouse-to-reprint): this warehouse no longer waits for the products whose printed code is
+	// still their live code, and a product no warehouse waits for any more loses `need_reprint_code`. Idempotent.
+	ProductReprintRecord(context.Context, *connect.Request[v1.ProductReprintRecordRequest]) (*connect.Response[v1.ProductReprintRecordResponse], error)
 	// Which shelves already hold a product (#156) — the put-away recommendation.
 	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column. One take (the single pick page),
@@ -310,6 +325,19 @@ func NewInventoryServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		productReprintList: connect.NewClient[v1.ProductReprintListRequest, v1.ProductReprintListResponse](
+			httpClient,
+			baseURL+InventoryServiceProductReprintListProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("ProductReprintList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		productReprintRecord: connect.NewClient[v1.ProductReprintRecordRequest, v1.ProductReprintRecordResponse](
+			httpClient,
+			baseURL+InventoryServiceProductReprintRecordProcedure,
+			connect.WithSchema(inventoryServiceMethods.ByName("ProductReprintRecord")),
+			connect.WithClientOptions(opts...),
+		),
 		productPlaces: connect.NewClient[v1.ProductPlacesRequest, v1.ProductPlacesResponse](
 			httpClient,
 			baseURL+InventoryServiceProductPlacesProcedure,
@@ -463,6 +491,8 @@ type inventoryServiceClient struct {
 	stockTakeQuote         *connect.Client[v1.StockTakeQuoteRequest, v1.StockTakeQuoteResponse]
 	warehouseProductSearch *connect.Client[v1.WarehouseProductSearchRequest, v1.WarehouseProductSearchResponse]
 	warehouseStockList     *connect.Client[v1.WarehouseStockListRequest, v1.WarehouseStockListResponse]
+	productReprintList     *connect.Client[v1.ProductReprintListRequest, v1.ProductReprintListResponse]
+	productReprintRecord   *connect.Client[v1.ProductReprintRecordRequest, v1.ProductReprintRecordResponse]
 	productPlaces          *connect.Client[v1.ProductPlacesRequest, v1.ProductPlacesResponse]
 	stockPickLocations     *connect.Client[v1.StockPickLocationsRequest, v1.StockPickLocationsResponse]
 	batchList              *connect.Client[v1.BatchListRequest, v1.BatchListResponse]
@@ -528,6 +558,16 @@ func (c *inventoryServiceClient) WarehouseProductSearch(ctx context.Context, req
 // WarehouseStockList calls warehouse.inventory.v1.InventoryService.WarehouseStockList.
 func (c *inventoryServiceClient) WarehouseStockList(ctx context.Context, req *connect.Request[v1.WarehouseStockListRequest]) (*connect.Response[v1.WarehouseStockListResponse], error) {
 	return c.warehouseStockList.CallUnary(ctx, req)
+}
+
+// ProductReprintList calls warehouse.inventory.v1.InventoryService.ProductReprintList.
+func (c *inventoryServiceClient) ProductReprintList(ctx context.Context, req *connect.Request[v1.ProductReprintListRequest]) (*connect.Response[v1.ProductReprintListResponse], error) {
+	return c.productReprintList.CallUnary(ctx, req)
+}
+
+// ProductReprintRecord calls warehouse.inventory.v1.InventoryService.ProductReprintRecord.
+func (c *inventoryServiceClient) ProductReprintRecord(ctx context.Context, req *connect.Request[v1.ProductReprintRecordRequest]) (*connect.Response[v1.ProductReprintRecordResponse], error) {
+	return c.productReprintRecord.CallUnary(ctx, req)
 }
 
 // ProductPlaces calls warehouse.inventory.v1.InventoryService.ProductPlaces.
@@ -661,6 +701,15 @@ type InventoryServiceHandler interface {
 	// batch in this warehouse, any team's, at 0 today or not, archived ones flagged, each with its owner team and its units
 	// on hand here; searched by name or product code on the server, paged. The same set the picker searches.
 	WarehouseStockList(context.Context, *connect.Request[v1.WarehouseStockListRequest]) (*connect.Response[v1.WarehouseStockListResponse], error)
+	// CETAK ULANG KODE — the warehouse's reprint of the products whose code changed (backlog #151;
+	// products-have-their-own-tag-list, its 🔄 *what clears*; the-team-code-and-product-tags-prototype-is-accepted, row *the
+	// reprint*): every product still waiting for THIS warehouse's new labels, each with its LIVE code, its former code and
+	// one label per shelf spot of this warehouse holding it. Paged by product.
+	ProductReprintList(context.Context, *connect.Request[v1.ProductReprintListRequest]) (*connect.Response[v1.ProductReprintListResponse], error)
+	// THE RECORDED PRINT of the reprint (as the order label's *Cetak ulang label* clears on its recorded print,
+	// a-changed-label-asks-the-warehouse-to-reprint): this warehouse no longer waits for the products whose printed code is
+	// still their live code, and a product no warehouse waits for any more loses `need_reprint_code`. Idempotent.
+	ProductReprintRecord(context.Context, *connect.Request[v1.ProductReprintRecordRequest]) (*connect.Response[v1.ProductReprintRecordResponse], error)
 	// Which shelves already hold a product (#156) — the put-away recommendation.
 	ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error)
 	// WHERE TO WALK for an already-committed pick (#151) — the pick list's shelf column. One take (the single pick page),
@@ -813,6 +862,19 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 		svc.WarehouseStockList,
 		connect.WithSchema(inventoryServiceMethods.ByName("WarehouseStockList")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	inventoryServiceProductReprintListHandler := connect.NewUnaryHandler(
+		InventoryServiceProductReprintListProcedure,
+		svc.ProductReprintList,
+		connect.WithSchema(inventoryServiceMethods.ByName("ProductReprintList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	inventoryServiceProductReprintRecordHandler := connect.NewUnaryHandler(
+		InventoryServiceProductReprintRecordProcedure,
+		svc.ProductReprintRecord,
+		connect.WithSchema(inventoryServiceMethods.ByName("ProductReprintRecord")),
 		connect.WithHandlerOptions(opts...),
 	)
 	inventoryServiceProductPlacesHandler := connect.NewUnaryHandler(
@@ -974,6 +1036,10 @@ func NewInventoryServiceHandler(svc InventoryServiceHandler, opts ...connect.Han
 			inventoryServiceWarehouseProductSearchHandler.ServeHTTP(w, r)
 		case InventoryServiceWarehouseStockListProcedure:
 			inventoryServiceWarehouseStockListHandler.ServeHTTP(w, r)
+		case InventoryServiceProductReprintListProcedure:
+			inventoryServiceProductReprintListHandler.ServeHTTP(w, r)
+		case InventoryServiceProductReprintRecordProcedure:
+			inventoryServiceProductReprintRecordHandler.ServeHTTP(w, r)
 		case InventoryServiceProductPlacesProcedure:
 			inventoryServiceProductPlacesHandler.ServeHTTP(w, r)
 		case InventoryServiceStockPickLocationsProcedure:
@@ -1057,6 +1123,14 @@ func (UnimplementedInventoryServiceHandler) WarehouseProductSearch(context.Conte
 
 func (UnimplementedInventoryServiceHandler) WarehouseStockList(context.Context, *connect.Request[v1.WarehouseStockListRequest]) (*connect.Response[v1.WarehouseStockListResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.WarehouseStockList is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) ProductReprintList(context.Context, *connect.Request[v1.ProductReprintListRequest]) (*connect.Response[v1.ProductReprintListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.ProductReprintList is not implemented"))
+}
+
+func (UnimplementedInventoryServiceHandler) ProductReprintRecord(context.Context, *connect.Request[v1.ProductReprintRecordRequest]) (*connect.Response[v1.ProductReprintRecordResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.inventory.v1.InventoryService.ProductReprintRecord is not implemented"))
 }
 
 func (UnimplementedInventoryServiceHandler) ProductPlaces(context.Context, *connect.Request[v1.ProductPlacesRequest]) (*connect.Response[v1.ProductPlacesResponse], error) {

@@ -5,6 +5,7 @@ package warehouse.inventory.v1;
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/page.proto";
 import "warehouse/common/v1/list.proto";
+import "warehouse/product/v1/product_tag.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/inventory/v1;inventoryv1";
@@ -85,6 +86,21 @@ service InventoryService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // CETAK ULANG KODE — the warehouse's reprint of the products whose code changed (backlog #151;
+  // products-have-their-own-tag-list, its 🔄 *what clears*; the-team-code-and-product-tags-prototype-is-accepted, row *the
+  // reprint*): every product still waiting for THIS warehouse's new labels, each with its LIVE code, its former code and
+  // one label per shelf spot of this warehouse holding it. Paged by product.
+  rpc ProductReprintList(ProductReprintListRequest) returns (ProductReprintListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only): a monitor reads what waits, and records nothing.
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // THE RECORDED PRINT of the reprint (as the order label's *Cetak ulang label* clears on its recorded print,
+  // a-changed-label-asks-the-warehouse-to-reprint): this warehouse no longer waits for the products whose printed code is
+  // still their live code, and a product no warehouse waits for any more loses `need_reprint_code`. Idempotent.
+  rpc ProductReprintRecord(ProductReprintRecordRequest) returns (ProductReprintRecordResponse);
 
   // Which shelves already hold a product (#156) — the put-away recommendation.
   rpc ProductPlaces(ProductPlacesRequest) returns (ProductPlacesResponse) {
@@ -278,12 +294,9 @@ enum MovementKind {
   // WAREHOUSES, and each side only ever sees its own; both legs of a move are in the same warehouse,
   // so a reader sees the pair together and the rack plus the sign already tell the story.
   MOVEMENT_KIND_MOVE = 6;
-  // Stock put BACK after a pick was undone (#70/#149) — a cancelled order, or an order write that
-  // failed after its stock had already been taken.
-  //
-  // A distinct kind rather than a positive PICK, because "we took 10 for an order" and "we gave 10
-  // back because the order died" are different events, and a ledger that could not tell them apart
-  // would make a cancelled order look like a delivery that never happened.
+  // A BUYER'S RETURN put back on a shelf (an order return accepted — `return` rows). It once also read an order's take
+  // put back; that is CANCEL since #143 (docs/acceptances/inventory/transaction.md given 2: *"the cancelled order's
+  // units shown coming back, as a cancel"*). As a FILTER it still reaches both, as it always has.
   MOVEMENT_KIND_RETURN = 7;
   // A SAMPLE handed to a person at the warehouse (a-sample-is-handed-over-at-the-warehouse) — the owning team's units
   // leaving with no sale, off the rack staff took them from. Final: never rolled back (a-handed-over-sample-is-final).
@@ -291,8 +304,22 @@ enum MovementKind {
   // A batch's PRICE CORRECTED (the-owning-team-revalues-with-a-reason, BatchRevalue) — no unit moved (`delta` 0): the
   // batch's unit price went from `price_unit_before` to `price_unit_after`, and its units left are worth `value_change`
   // more or less; `reason` says why. A batch-ledger row only (no rack row is written), so a batch's history and the
-  // owner's show it and a rack's never does. Out of ADJUST, which keeps units found broken, lost or found.
+  // owner's show it and a rack's never does — nor a product's history narrowed to a kind other than this one. Out of
+  // ADJUST, which keeps the provisional adjustments, a lost unit and the received-count corrections.
   MOVEMENT_KIND_REVALUATION = 9;
+  // An order's take PUT BACK — the order cancelled, or an order write that failed after its stock was taken (#70/#149):
+  // the take's own rows reversed, under its transaction (a-rollback-reverses-its-log-rows). A distinct kind rather than a
+  // positive PICK, because "we took 10 for an order" and "we gave 10 back because the order died" are different
+  // events, and a ledger that could not tell them apart would make a cancelled order look like a delivery that never
+  // happened (#143, transaction.md given 2). Before #143 it read as RETURN.
+  MOVEMENT_KIND_CANCEL = 10;
+  // Units found BROKEN — a shelf report (Stock Adjust, damaged) or a stock count's broken units: `broken` rows of a
+  // `problem` transaction (#143, transaction.md given 3). Before #143 it read as ADJUST, and ADJUST as a FILTER still
+  // reaches it.
+  MOVEMENT_KIND_BROKEN = 11;
+  // Units FOUND — an approved found report, or a stock count's surplus: `found` rows (#143, transaction.md given 3).
+  // Before #143 it read as ADJUST, and ADJUST as a FILTER still reaches it.
+  MOVEMENT_KIND_FOUND = 12;
 }
 
 // StockLevel — the derived on-hand of a product at a warehouse (the snapshot).
@@ -332,6 +359,9 @@ message StockMovement {
 
   // Which batch moved (#209). 0 = a batch-less event — a shelf recount reconciles the whole shelf and
   // shows Batch "—" (#211), even though its delta lands on the oldest batch underneath (FIFO).
+  // A product's history read WITHOUT a batch (its rack rows) names each row's batch too (#142): the batch rows its
+  // transaction wrote for the product on the same side — one row per batch when several add up to the rack row — and
+  // for a move (no batch row) the warehouse's only batch of the product up to then; 0 where it is not recorded.
   uint64 batch_id = 12;
 
   // THE MOVE WAS AN OVERRIDE — its inventory transaction's creator was Root or the System Administrator acting inside a team they hold no role in (an-override-is-stamped-in-every-service);
@@ -339,8 +369,9 @@ message StockMovement {
   // From `inventory_transactions.is_override` of the row's transaction; false for a row under no transaction.
   bool is_override = 13;
 
-  // THE BATCH'S PRICE AND VALUE ON THIS ROW — set on a BATCH-ledger row (a history narrowed to a batch); a rack row
-  // carries 0 in all three. `value_change` is what the row changed the batch's value by (`batch_logs.change_valuation`),
+  // THE BATCH'S PRICE AND VALUE ON THIS ROW — set on a BATCH-ledger row (a history narrowed to a batch, and a price
+  // correction in a product's history, #143); a rack row carries 0 in all three. `value_change` is what the row changed
+  // the batch's value by (`batch_logs.change_valuation`),
   // `price_unit_after` the batch's unit price once it applied (batch-logs-carry-price-unit-after). Only a REVALUATION row
   // changes a price: there `price_unit_before` is the price it corrected; on every other row it equals `price_unit_after`.
   double price_unit_before = 14;
@@ -988,6 +1019,11 @@ message WarehouseProductSearchItem {
   // Its seller archived it. Still offered here (an-archived-product-held-here-can-be-picked): archiving retires it from
   // the catalogue, not its units from the shelf. The picker labels it.
   bool archived = 5;
+  // ITS TAGS — the products' own list (products-have-their-own-tag-list, its 🔄 *who sees*: every warehouse holding the
+  // product sees them), the system's first, then by name. Filled by WarehouseStockList ONLY — the warehouse's Products
+  // list, whose every row is a product held here; the picker (WarehouseProductSearch) leaves it empty. Named and read by
+  // product_service among the held ids (ProductReader.Search), never mirrored here.
+  repeated warehouse.product.v1.ProductTag tags = 6;
 }
 
 message WarehouseProductSearchMapItem {
@@ -1041,15 +1077,27 @@ message WarehouseStockListFilter {
   // A name or a product code, or part of one — matched anywhere, case-insensitive. EMPTY lists every product held here;
   // otherwise at least 2 characters after the server trims it (else InvalidArgument), as the picker's term.
   string q = 1 [(buf.validate.field).string.max_len = 100];
+  // THE TAG FILTER (the-team-code-and-product-tags-prototype-is-accepted: several product tags, ANY of them) — only held
+  // products carrying at least one. Empty = any tag or none. Narrowed by product_service among the held ids in the same
+  // one statement as the page and its total (ProductReader.Search), so `total_items` counts the narrowed list.
+  repeated uint64 tag_ids = 2 [(buf.validate.field).repeated = {
+    max_items: 50
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
 }
 
 enum WarehouseStockListDataType {
   WAREHOUSE_STOCK_LIST_DATA_TYPE_UNSPECIFIED = 0;
   WAREHOUSE_STOCK_LIST_DATA_TYPE_GENERAL = 1;
-  // WarehouseProductSearchItem per product: id, its OWNER team, product code, name, archived.
+  // WarehouseProductSearchItem per product: id, its OWNER team, product code, name, archived, its tags.
   WAREHOUSE_STOCK_LIST_DATA_TYPE_PRODUCT = 2;
   // StockLevel per product: its units on hand in this warehouse — its rows on every rack, summed; 0 when none.
   WAREHOUSE_STOCK_LIST_DATA_TYPE_STOCK = 3;
+  // Not a slice per product: the response's `reprint_waiting` — how many products whose code changed still wait for THIS
+  // warehouse's new labels (the warehouse Products list's *Cetak ulang kode (N)*, backlog #151), whatever the filter.
+  WAREHOUSE_STOCK_LIST_DATA_TYPE_REPRINT_WAITING = 4;
 }
 
 message WarehouseStockListResponseItem {
@@ -1065,6 +1113,116 @@ message WarehouseStockListResponse {
   // The product ids in order — by name, then product code, then id — the authoritative ordering of the page.
   repeated uint64 ids = 2;
   warehouse.common.v1.PageInfo page_info = 3;
+  // How many products wait for this warehouse's reprint of changed codes (ProductReprintList's total) — only when
+  // `data_request` asks WAREHOUSE_STOCK_LIST_DATA_TYPE_REPRINT_WAITING, else 0. The search and the tag filter never narrow
+  // it: it counts this warehouse's waits, not the page's rows.
+  uint32 reprint_waiting = 4;
+}
+
+// ProductReprintList — the warehouse's reprint of changed product codes (backlog #151, #141 P3;
+// products-have-their-own-tag-list, its 🔄 *what clears*: the tag comes off once each warehouse holding stock has printed
+// the new labels — a NEW print, of the tagged products' placements, opened from the warehouse's Products list).
+//
+// Two halves, each over its own rows (HARD RULE 3): product_service says which products wait for this warehouse (its
+// `product_reprint_waits`, written by the team code change and by a transfer accepted while tagged), with each one's LIVE
+// code, name and former code (the newest `code_changed` history line), paged by live code; inventory adds one label per
+// shelf spot of THIS warehouse holding the product now (`product_placements` with stock), with the spot's code and its
+// quantity. A product waiting here with nothing on a shelf here now is listed with no label — printing it still clears
+// its wait. Never a price, a cost or another warehouse's shelf.
+message ProductReprintListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+  // The warehouse whose waits and shelves are read — the scope.
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // By PRODUCT — a page of products, each with all its labels here.
+  warehouse.common.v1.CommonPagination page = 2 [(buf.validate.field).required = true];
+}
+
+// One label of the reprint — one shelf spot of this warehouse holding the product.
+message ProductReprintLabel {
+  uint64 placement_id = 1;
+  // The spot's code ("A-01-3").
+  string placement_code = 2;
+  // The product's units on that spot now.
+  int64 quantity = 3;
+}
+
+// One product waiting for this warehouse's new labels.
+message ProductReprintItem {
+  uint64 product_id = 1;
+  // Its LIVE code — what the new label prints (the QR and the SKU line, the-label-qr-is-the-product-code). The record
+  // sends it back, so a code changed again since this read is never cleared by it.
+  string product_code = 2;
+  string name = 3;
+  // The code it carried before — the newest `code_changed` line's old code — said beside the product so the crew finds
+  // the sticker it replaces. Empty when product_service holds no such line.
+  string former_code = 4;
+  // One per shelf spot of this warehouse holding it, by spot code. Empty when nothing of it sits on a shelf here now.
+  repeated ProductReprintLabel labels = 5;
+}
+
+message ProductReprintListResponse {
+  // In order — by live product code, then id.
+  repeated ProductReprintItem items = 1;
+  // `total_items` counts the PRODUCTS waiting for this warehouse.
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// ProductReprintRecord — the recorded print (backlog #151; products-have-their-own-tag-list, 🔄 *what clears*), sent by the
+// reprint page right after the print, for the products whose every label was in it. In ONE transaction: this warehouse's
+// wait is deleted for each product whose printed code is still its LIVE code (one changed again since the page read it
+// is NOT cleared — named in `code_changed_ids`, so the page re-reads); a product no warehouse waits for any more loses
+// `need_reprint_code`, taken off by the app. A second record of the same print changes nothing and is not refused.
+// The warehouse's own people only — a monitor reads the reprint and records nothing (no NO_SIDE_EFFECTS).
+message ProductReprintRecordRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+  // The warehouse that printed — the scope. Only its own waits are ever cleared.
+  uint64 warehouse_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // What the print carried, one entry per product.
+  repeated ProductReprintPrinted items = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 500
+  }];
+}
+
+// One product of the print, with the code its labels carried.
+message ProductReprintPrinted {
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+  // The code printed — ProductReprintList's `product_code` as the page read it.
+  string product_code = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+}
+
+message ProductReprintRecordResponse {
+  // This warehouse no longer waits for these — its wait was cleared by this record.
+  repeated uint64 cleared_ids = 1;
+  // Printed with a code that is no longer the product's live code — NOT cleared; the page re-reads and prints again.
+  repeated uint64 code_changed_ids = 2;
+  // `need_reprint_code` came off these — no warehouse waits for them any more.
+  repeated uint64 untagged_ids = 3;
 }
 
 // ProductPlaces answers "WHICH SHELVES ALREADY HOLD THIS PRODUCT, and how many are on each" (#156).

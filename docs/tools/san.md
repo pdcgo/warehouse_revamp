@@ -100,7 +100,7 @@ Outside a checkout it says so, rather than quietly looking in the wrong place.
 | [`supplier backfill-figures`](#supplier-backfill-figures) | Fold the restocks accepted before *Restock Accepted* existed into the supplier figures. Once — a second run folds nothing |
 | [`supplier backfill-links`](#supplier-backfill-links) | Link every accepted restock line's product to its supplier and store, and re-fold the figures a restock mixing suppliers never got. `--dry-run` first. Repeatable — a second run writes nothing |
 | [`supplier backfill-warehouses`](#supplier-backfill-warehouses) | Re-fold both supplier daily reports into the warehouse each figure came from, and print every supplier's totals BEFORE == AFTER. `--dry-run` first. Repeatable — a second run finds nothing |
-| [`product recompose-codes`](#product-recompose-codes) | Put each team's code in front of the product codes written before codes were composed on write. Safe to re-run — a second run changes nothing |
+| [`product recompose-codes`](#product-recompose-codes) | Put each team's code in front of the product codes written before codes were composed on write. Safe to re-run — a second run changes nothing; a code under one its team held once is left alone |
 | [`expense import-capital`](#expense-import-capital) | Bring a selling team's Setor / Tarik Modal made on the account page before capital's second door into Biaya — Setoran modal / Prive, linked to the account row. `--dry-run` first. Safe to re-run — a second run imports nothing |
 | [`shop grant-current-cs`](#shop-grant-current-cs) | The shop write gate's rollout: grant every current CS every live shop of their team, through `ShopUserAdd`. `--dry-run` prints it first. Safe to re-run — a second run adds nothing |
 | [`document sweep-generated`](#document-sweep-generated) | Delete the generated downloads older than 7 days — merged label PDFs, table exports, order exports — now, as the server's daily sweep does. Uploads never. `--dry-run` counts first. Safe to re-run — a second run finds nothing |
@@ -248,6 +248,11 @@ go run ./tools/san seed categories -f other.json
 | `dev` | Teams, several logins, and Dev Warehouse's fee | Development only. The fee is written only while Dev Warehouse has none: the decisions' worked example — 2.5%, floor 2.000, cap 20.000 ([the-fee-has-a-floor-and-a-cap](../business/teams/warehouse/context_decision.md#the-fee-has-a-floor-and-a-cap)). Without a rate, a warehouse takes no orders ([a-warehouse-with-no-rate-takes-no-orders](../business/teams/warehouse/context_decision.md#a-warehouse-with-no-rate-takes-no-orders)) |
 | `categories` | The product taxonomy from JSON | `-f` to point at another file |
 
+`seed dev` finds each of its teams by the code it **holds or once held** (team_service's `team_former_codes`, backlog
+#149): after the owner edits *Dev Selling*'s code in the app, the next `seed dev` or `dev setup` finds that same team —
+it never creates a second *Dev Selling*, whose code would be the first one's former code, which is never given to
+another team.
+
 ---
 
 ## `db`
@@ -339,7 +344,7 @@ go run ./tools/san dev setup --no-docker   # the containers are already up
 | 6 | the supplier figures of every restock accepted before the event existed — once | [`supplier backfill-figures`](#supplier-backfill-figures) |
 | 6a | every accepted line's product linked to its supplier and store, and a mixed restock's figures re-folded — repeatable | [`supplier backfill-links`](#supplier-backfill-links) |
 | 6a′ | the supplier figures folded before the reports carried the warehouse, re-folded into it — repeatable | [`supplier backfill-warehouses`](#supplier-backfill-warehouses) |
-| 6b | the product codes written before a code was composed — each team's code put in front, once | [`product recompose-codes`](#product-recompose-codes) |
+| 6b | the product codes written before a code was composed — each team's code put in front, once; a code under one its team held once (after a team code change) left alone | [`product recompose-codes`](#product-recompose-codes) |
 | 6c | a selling team's Setor / Tarik Modal made on the account page before capital's second door, brought into Biaya — repeatable | [`expense import-capital`](#expense-import-capital) |
 | 7 | the dev logins: `dev`, `wh_owner`, `wh_staff`, `seller`, and Dev Warehouse's fee while it has none | [`seed dev`](#seed) |
 | 8 | the product-category tree | [`seed categories`](#seed) |
@@ -1899,6 +1904,12 @@ Puts each team's code in front of the product codes written before a code was **
 that already begins with its team's code and a dash is left alone. [`dev setup`](#dev-setup) runs it after the supplier
 steps.
 
+**A team code can change** now (backlog #149, [a-team-code-change-recomposes-its-product-codes](../business/product/context_decision.md#a-team-code-change-recomposes-its-product-codes)):
+`TeamCodeUpdate` recomposes the team's products itself, in its own transaction. So a code that begins with one of its
+team's **former** codes and a dash (`ABC-SHOE-42` of a team now `XYZ`) is **not a bare part** — it is left as it is and
+named, never given a second prefix (`XYZ-ABC-SHOE-42`). The former codes are read through team_service's own
+`team_v1.FormerCodesOf` (its `team_former_codes` table, one read for every team).
+
 ```sh
 go run ./tools/san product recompose-codes                      # prompts: Local or Production
 go run ./tools/san product recompose-codes --dsn "$DATABASE_URL"
@@ -1923,7 +1934,9 @@ sequenceDiagram
   PROD->>PROD: every product, locked, oldest first
   PROD->>TEAM: the owning teams' codes, 200 ids a call
   TEAM-->>PROD: id to team_code — a deleted or unknown team is omitted
-  PROD->>PROD: per row — no team code, leave it and name it, already prefixed, leave it, else compose
+  PROD->>TEAM: the teams' former codes — team_v1.FormerCodesOf, one read
+  TEAM-->>PROD: id to the codes each held once — a team that never changed its code is omitted
+  PROD->>PROD: per row — no team code, leave it and name it, already prefixed, leave it, under a former code, leave it and name it, else compose
   PROD->>PROD: a code two rows would share, refuse the whole run and name both
   PROD->>PROD: park each changed row on a placeholder unique by id, then set its composed code
   PROD-->>SAN: recomposed, already composed, left without a team code
@@ -1932,6 +1945,7 @@ sequenceDiagram
 | guard | stops |
 | --- | --- |
 | `<team_code>-` prefix check | a second run prefixing twice (`ABC-ABC-SHOE-42`) |
+| the former-code check | a row a team code change left behind (none should be) given today's code on top of its old one (`XYZ-ABC-SHOE-42`) |
 | the collision check, before any write | two products ending up on one code — the run is refused with both named, nothing written |
 | the placeholder step | two rows trading codes tripping the unique index half way through |
 
@@ -1944,6 +1958,7 @@ composed and is left as it is — it is exactly the string composition would hav
 ```
 [Database Local] product codes: 12 recomposed, 0 already composed
 [Database Local] product codes: 1 left as they were — their team has no code: products [57]
+[Database Local] product codes: 1 left as they were — under a code their team held once, not a bare part: products [61]
 ```
 
 ### Errors you should expect

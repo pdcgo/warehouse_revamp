@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Badge,
+  Box,
   Button,
   Field,
   Flex,
@@ -37,6 +38,8 @@ import {
 } from "../../features/inventory/queries";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
 import { MoveStockDialog } from "../../features/inventory/MoveStockDialog";
+import { useProductTagsOf } from "../../features/products/tags/tagQueries";
+import { RestockTagChips } from "../../features/restock/RestockTagChips";
 
 function parseId(raw: string | undefined): bigint {
   if (!raw) return 0n;
@@ -129,6 +132,12 @@ export function WarehouseProductPage() {
 
   // The Info tab's money tiles (#209): Ready value, and the estimated value of what is inbound.
   const summary = useProductStockSummary({ warehouseId, productId }).data;
+
+  // THE PRODUCT'S TAGS, read-only (products-have-their-own-tag-list, 🔄 who sees: every warehouse holding its stock) —
+  // ONE read beside the others, from the address alone: the product is read by id (ProductByIds), which carries no tags,
+  // so ProductTagsByIds answers them (a product this warehouse never held is absent: no line). Best-effort — a failure
+  // costs the chips, never the page.
+  const tags = useProductTagsOf(warehouseId, productId).data ?? [];
 
   const loading = stockQuery.isPending && warehouseId !== undefined && productId !== 0n;
   const error = stockQuery.isError ? rpcError(stockQuery.error) : "";
@@ -234,6 +243,13 @@ export function WarehouseProductPage() {
           <Text fontSize="sm" color="fg.muted">
             {product.productCode}
           </Text>
+          {/* THE PRODUCT'S TAGS, READ-ONLY — a warehouse holding its stock sees them (products-have-their-own-tag-list, 🔄
+              who sees); only the owning team's writers change them. */}
+          {tags.length > 0 && (
+            <Box pt="1.5">
+              <RestockTagChips tags={tags} max={tags.length} wrap testId="wp-tags" />
+            </Box>
+          )}
         </Stack>
         <Spacer />
 

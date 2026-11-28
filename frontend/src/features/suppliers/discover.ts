@@ -1,6 +1,7 @@
 import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supplierClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
+import { rereadOnReturnWhileEmpty } from "../../api/rereadOnReturn";
 import type { Marketplace } from "../../gen/warehouse/marketplace/v1/marketplace_pb";
 import { SupplierListScope } from "../../gen/warehouse/supplier/v1/supplier_pb";
 import { teamsByIdsQuery } from "../teams/queries";
@@ -77,11 +78,9 @@ async function teamNames(client: QueryClient, teamIds: bigint[]): Promise<{ [id:
 }
 
 /** One page of every team's suppliers, with their teams' names and their live stores. */
-export async function fetchDiscoverPage(
-  client: QueryClient,
-  teamId: bigint,
-  query: DiscoverQuery,
-): Promise<{ suppliers: DiscoverSupplier[]; totalItems: number }> {
+export type DiscoverPage = { suppliers: DiscoverSupplier[]; totalItems: number };
+
+export async function fetchDiscoverPage(client: QueryClient, teamId: bigint, query: DiscoverQuery): Promise<DiscoverPage> {
   const { q, channelType, ownerTeamId, page, pageSize } = query;
   const ranges = query.ranges ?? NO_FIGURE_RANGES;
   const warehouseId = query.warehouseId ?? 0n;
@@ -115,8 +114,13 @@ export async function fetchDiscoverPage(
   return { suppliers, totalItems: Number(res.pageInfo?.totalItems ?? 0n) };
 }
 
-export function useDiscoverSuppliers(args: { teamId: bigint | undefined } & DiscoverQuery) {
-  const { teamId, q, channelType, ownerTeamId, page, pageSize } = args;
+/**
+ * `rereadOnReturn` — while a page comes back EMPTY, it is read again when the person returns to the tab: the restock
+ * form's supplier popup, with nothing to list, sends them to make a supplier in a new tab, and it must be listed on
+ * return (the-supplier-popup-points-to-create-supplier-when-none-exists, a-helper-link-opens-a-new-tab).
+ */
+export function useDiscoverSuppliers(args: { teamId: bigint | undefined; rereadOnReturn?: boolean } & DiscoverQuery) {
+  const { teamId, q, channelType, ownerTeamId, page, pageSize, rereadOnReturn = false } = args;
   const ranges = args.ranges ?? NO_FIGURE_RANGES;
   const warehouseId = args.warehouseId ?? 0n;
   const client = useQueryClient();
@@ -138,6 +142,9 @@ export function useDiscoverSuppliers(args: { teamId: bigint | undefined } & Disc
       pageSize,
     }),
     enabled: teamId !== undefined,
+    ...(rereadOnReturn
+      ? { refetchOnWindowFocus: rereadOnReturnWhileEmpty((found: DiscoverPage) => found.suppliers.length === 0) }
+      : {}),
     queryFn: () => fetchDiscoverPage(client, teamId!, { q, channelType, ownerTeamId, ranges, warehouseId, page, pageSize }),
   });
 }

@@ -95,6 +95,10 @@ type fakeStock struct {
 	above     []product_v1.ShelvedProduct
 	shelfAsks []product_v1.ShelfAsk
 	aboveAsks []int64
+	// ProductTagsByIds' held check: the product ids each warehouse has held.
+	held map[uint64][]uint64
+	// The team code change's shelves: each product with a warehouse holding units of it now.
+	onShelves []product_v1.ShelvedIn
 }
 
 func (f *fakeStock) ShelvedProducts(_ context.Context, ask product_v1.ShelfAsk) ([]product_v1.ShelvedProduct, error) {
@@ -113,6 +117,32 @@ func (f *fakeStock) ClosedByMinimum(_ context.Context, candidates []product_v1.M
 	f.candidates = append(f.candidates, candidates...)
 
 	return f.closed, f.err
+}
+
+// StockSitsAmong answers the shelves `onShelves` lists, among the ids asked (the team code change's reprint waits).
+func (f *fakeStock) StockSitsAmong(_ context.Context, _ *gorm.DB, productIDs []uint64) ([]product_v1.ShelvedIn, error) {
+	var out []product_v1.ShelvedIn
+
+	for _, shelf := range f.onShelves {
+		if slices.Contains(productIDs, shelf.ProductID) {
+			out = append(out, shelf)
+		}
+	}
+
+	return out, f.err
+}
+
+// HeldAmong answers, of the ids asked, those `held` lists for the warehouse (ProductTagsByIds' held check).
+func (f *fakeStock) HeldAmong(_ context.Context, warehouseID uint64, productIDs []uint64) ([]uint64, error) {
+	var out []uint64
+
+	for _, id := range productIDs {
+		if slices.Contains(f.held[warehouseID], id) {
+			out = append(out, id)
+		}
+	}
+
+	return out, f.err
 }
 
 func (f *fakeStock) AgedAtLeast(_ context.Context, teamID, warehouseID uint64, days uint32) ([]uint64, error) {

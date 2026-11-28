@@ -15,10 +15,16 @@ import (
 
 // ProductList returns one half of the scoped team's catalogue, paginated — ACTIVE by default, or the
 // ARCHIVED half when the filter asks for it (the two tabs on the product list). The filter's `q`
-// filters by name or product code; `lock` by the lock's way or the minimums in force now, and `stock_age_min_days` by
+// filters by name or product code — or a FORMER code, whole (productTermClause, backlog #152); `lock` by the lock's way
+// or the minimums in force now, and `stock_age_min_days` by
 // how long the oldest ready units have sat (lock-and-stock-age-filter-ahead-of-the-contract); `sort` orders the page
 // (default newest-first); `data_request` selects which slices the response carries per product. See the guideline list
 // shape in guidelines/service-guideline.md.
+//
+// `tag_ids` keeps the products carrying ANY of the picked product tags (the-team-code-and-product-tags-prototype-is-
+// accepted), inside the list's own scope — so the count, the sort and the paging describe the narrowed list — and each
+// row of the PRODUCT slice carries its tags (products-have-their-own-tag-list: the owning team's list), in one statement
+// for the page.
 //
 // The two filters that hang on STOCK ask inventory for ids through the StockNarrower seam BEFORE the count and the page
 // (stock_narrower.go), so `total_items`, the sort and the paging describe the narrowed list.
@@ -43,11 +49,10 @@ func (s *Service) ProductList(
 			Where("team_id = ? AND archived = ?", req.Msg.GetTeamId(), archived)
 
 		if q != "" {
-			pattern := "%" + escapeLike(q) + "%"
-			query = query.Where("name ILIKE ? OR product_code ILIKE ?", pattern, pattern)
+			query = productTermClause(query, q)
 		}
 
-		return query
+		return tagFilterClause(query, filter.GetTagIds())
 	}
 
 	query, err := s.narrowByLock(ctx, scope(), scope, filter.GetLock())
@@ -92,6 +97,11 @@ func (s *Service) ProductList(
 	}
 
 	items, ids := productListItems(products, req.Msg.GetDataRequest())
+
+	err = withListTags(s.db.WithContext(ctx), items)
+	if err != nil {
+		return nil, dbError(err)
+	}
 
 	return connect.NewResponse(&productv1.ProductListResponse{
 		Items: items,

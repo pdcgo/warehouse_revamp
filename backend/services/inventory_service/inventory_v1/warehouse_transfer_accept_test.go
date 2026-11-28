@@ -89,6 +89,37 @@ func TestWarehouseTransferAccept_MintsOneBatchPerSourceBatch(t *testing.T) {
 	}
 }
 
+// A CHARGE WITH NO NOTE IS SAVED (the-couriers-charge-note-is-optional — inverted from "a charge with no note is
+// refused"): B counts the box in with the courier's charge and no note; the transfer is accepted with the amount and an
+// empty note, the stock is on B's rack, and Warehouse Transfer Accepted carries the amount, so the team owes B as it
+// would with a note.
+func TestWarehouseTransferAccept_AChargeWithNoNoteIsSaved(t *testing.T) {
+	f := wtStocked(t)
+	tr := f.create(t, wtLine(wtKaosHitam, 2))
+	f.ship(t, tr.GetId())
+
+	accepted, err := f.accept(tr.GetId(), 3000, "", counted(itemOf(t, tr, wtKaosHitam), 2, 0, f.rakB1))
+	if err != nil {
+		t.Fatalf("accept with a charge and no note = %v, want it accepted — the note is optional", err)
+	}
+
+	if accepted.GetStatus() != inventoryv1.WarehouseTransferStatus_WAREHOUSE_TRANSFER_STATUS_ACCEPTED ||
+		accepted.GetWarehouseAdditionalCost() != 3000 || accepted.GetWarehouseAdditionalCostNote() != "" {
+		t.Fatalf("transfer = %v with charge %v %q — want accepted with 3000 and no note", accepted.GetStatus(),
+			accepted.GetWarehouseAdditionalCost(), accepted.GetWarehouseAdditionalCostNote())
+	}
+
+	if b, _ := unitsAt(t, f.db, wtB, wtKaosHitam); b != 2 {
+		t.Fatalf("B holds %d Kaos Hitam, want 2", b)
+	}
+
+	events := f.transferEvents()
+	last := events[len(events)-1].GetWarehouseTransferAccepted()
+	if last == nil || last.GetWarehouseAdditionalCost() != 3000 || last.GetWarehouseAdditionalCostNote() != "" {
+		t.Fatalf("last event = %+v, want Warehouse Transfer Accepted with the 3000 charge and no note", events[len(events)-1])
+	}
+}
+
 // Short in the box: 3 of 5 arrived. The 2 missing come off the newest layer, at Rp 12.000 each; the 3 good fill batch 1
 // and one of batch 2.
 func TestWarehouseTransferAccept_MissingComesOffTheNewestLayer(t *testing.T) {
@@ -140,8 +171,8 @@ func TestWarehouseTransferAccept_NothingGoodStillWritesTheInLeg(t *testing.T) {
 }
 
 // What B may not do: count from the wrong status, from another warehouse, half the lines, more than was sent, more broken
-// than arrived, put away a different number, onto another warehouse's rack, or charge without a note — and a box is
-// accepted once.
+// than arrived, put away a different number, or onto another warehouse's rack — and a box is accepted once. (A charge
+// without a note is no longer refused: the note is optional, TestWarehouseTransferAccept_AChargeWithNoNoteIsSaved.)
 func TestWarehouseTransferAccept_RefusesABadCount(t *testing.T) {
 	f := wtStocked(t)
 	tr := f.create(t, wtLine(wtKaosHitam, 2), wtLine(wtKaosPolos, 1))
@@ -176,9 +207,6 @@ func TestWarehouseTransferAccept_RefusesABadCount(t *testing.T) {
 
 	_, err = f.accept(tr.GetId(), 0, "", counted(hitam, 2, 0, foreign), counted(polos, 1, 0, f.rakB1))
 	wantCode(t, err, connect.CodeNotFound, "onto another warehouse's rack")
-
-	_, err = f.accept(tr.GetId(), 3000, "", counted(hitam, 2, 0, f.rakB1), counted(polos, 1, 0, f.rakB1))
-	wantCode(t, err, connect.CodeInvalidArgument, "a charge with no note")
 
 	if minted := batchesAtB(t, f, wtKaosHitam); len(minted) != 0 {
 		t.Fatalf("%d batches minted at B by refused accepts", len(minted))

@@ -25,10 +25,11 @@ const MAX_CHARGE_NOTE = 200;
 //   Ongkir COD dari kurir
 //   (• Tidak ada) (  Ada  )                ← the default: nothing to fill, nothing checked, nothing sent
 //   (  Tidak ada) (• Ada  )
-//     Jumlah *  [ Rp 15.000 ]   Untuk apa *  [ biaya COD … ] 0/200   Foto nota (opsional) [📷]
+//     Jumlah *  [ Rp 15.000 ]   Untuk apa (opsional)  [ biaya COD … ] 0/200   Foto nota (opsional) [📷]
 //
 // The fields are HIDDEN until Ada, not disabled: the dialog is narrow, and a disabled field still reads as something to
-// fill. On Ada, the amount and the note are REQUIRED — the person has said there was a charge; the photo stays optional.
+// fill. On Ada, the amount is REQUIRED — the person has said there was a charge; the note and the photo are optional
+// (the-couriers-charge-note-is-optional: *"note "what it was for" is optional too"*), so an amount alone saves.
 // The note is a textarea (owner: *"catatannya textarea"*): what the charge was for is a sentence, not a word.
 //
 // It is NOT part of the restock's total (the-couriers-charge-stays-out-of-total): the summary shows it on its own line,
@@ -42,7 +43,6 @@ export function CourierCharge({
   onAsked,
   amount,
   note,
-  noteMissing,
   onAmount,
   onNote,
   photo = null,
@@ -57,8 +57,6 @@ export function CourierCharge({
   onAsked: (asked: boolean) => void;
   amount: string;
   note: string;
-  /** Say under the note that it is missing — the caller decides when (once there is an amount). */
-  noteMissing: boolean;
   onAmount: (value: string) => void;
   onNote: (value: string) => void;
   /** The slip's photo — shown only where `onPhoto` is given. */
@@ -72,7 +70,7 @@ export function CourierCharge({
   mark?: ReactNode;
   /**
    * Prefix for the test ids: `<testId>`, `<testId>-asked` (the pills), `<testId>-asked-none`, `<testId>-asked-yes`,
-   * `<testId>-charge`, `<testId>-note`, `<testId>-note-count`, `<testId>-note-error`, `<testId>-photo`.
+   * `<testId>-charge`, `<testId>-note`, `<testId>-note-optional`, `<testId>-note-count`, `<testId>-photo`.
    */
   testId?: string;
 }) {
@@ -113,10 +111,13 @@ export function CourierCharge({
               <CurrencyInput value={amount} onChange={onAmount} data-testid={`${testId}-charge`} />
             </Field.Root>
 
-            <Field.Root required invalid={noteMissing} flex="1" minW={{ base: "full", md: "16rem" }} maxW="32rem">
+            {/* OPTIONAL (the-couriers-charge-note-is-optional) — said as the photo says it, never a red mark. */}
+            <Field.Root flex="1" minW={{ base: "full", md: "16rem" }} maxW="32rem">
               <Field.Label>
-                {t("restock.accept.courier.note")}
-                <Field.RequiredIndicator />
+                {t("restock.accept.courier.note")}{" "}
+                <Text as="span" color="fg.subtle" fontWeight="normal" data-testid={`${testId}-note-optional`}>
+                  {t("restock.accept.courier.optional")}
+                </Text>
               </Field.Label>
               <Textarea
                 value={note}
@@ -127,16 +128,10 @@ export function CourierCharge({
                 data-testid={`${testId}-note`}
                 onChange={(e) => onNote(e.target.value)}
               />
-              {noteMissing ? (
-                <Field.ErrorText data-testid={`${testId}-note-error`}>
-                  {t("restock.accept.courier.noteRequired")}
-                </Field.ErrorText>
-              ) : (
-                // How much of the limit is used (a-limited-field-shows-its-count).
-                <Field.HelperText alignSelf="end" data-testid={`${testId}-note-count`}>
-                  {note.length}/{MAX_CHARGE_NOTE}
-                </Field.HelperText>
-              )}
+              {/* How much of the limit is used (a-limited-field-shows-its-count). */}
+              <Field.HelperText alignSelf="end" data-testid={`${testId}-note-count`}>
+                {note.length}/{MAX_CHARGE_NOTE}
+              </Field.HelperText>
             </Field.Root>
           </Flex>
 

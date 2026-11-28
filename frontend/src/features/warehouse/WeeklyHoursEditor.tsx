@@ -1,7 +1,7 @@
 import { Box, HStack, Input, Stack, Switch, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
-import { Weekday } from "../../../gen/warehouse/warehouse/v1/warehouse_info_pb";
-import type { DayHours } from "../../../gen/warehouse/warehouse/v1/warehouse_info_pb";
+import { Weekday } from "../../gen/warehouse/warehouse/v1/warehouse_info_pb";
+import type { DayHours } from "../../gen/warehouse/warehouse/v1/warehouse_info_pb";
 
 // The seven weekdays in display order (Mon..Sun), matching the backend's Weekday 1..7.
 const WEEKDAYS: { day: Weekday; labelKey: string }[] = [
@@ -61,7 +61,8 @@ interface WeeklyHoursEditorProps {
 }
 
 // WeeklyHoursEditor is a fixed 7-row grid: each weekday has an open/closed switch and, when open,
-// an open and a close time. Used twice on the warehouse edit page (operating + receiving hours).
+// an open and a close time. Used twice on each page that edits a warehouse's profile (operating + receiving hours):
+// root's Edit warehouse and the warehouse's own Settings (the-warehouse-sets-its-own-hours-in-settings).
 export function WeeklyHoursEditor({ label, value, onChange, testId }: WeeklyHoursEditorProps) {
   const { t } = useTranslation();
 
@@ -78,8 +79,11 @@ export function WeeklyHoursEditor({ label, value, onChange, testId }: WeeklyHour
       {WEEKDAYS.map((wd, i) => {
         const row = value[i];
 
+        // ⚠ ON A PHONE THE ROW WRAPS (nothing-runs-past-a-phones-edge): a day, its switch and two time fields are
+        // ~430px, wider than a phone's card — so there the times go under the day, and at 320px the two times under each
+        // other. From `md` (the desktop shell) it stays one line, exactly as it always was.
         return (
-          <HStack key={wd.day} gap="card" align="center">
+          <HStack key={wd.day} gap="card" align="center" wrap={{ base: "wrap", md: "nowrap" }}>
             <Box w="90px" fontSize="sm">
               {t(wd.labelKey)}
             </Box>
@@ -95,7 +99,7 @@ export function WeeklyHoursEditor({ label, value, onChange, testId }: WeeklyHour
             </Switch.Root>
 
             {row.open && (
-              <HStack gap="2">
+              <HStack gap="2" wrap={{ base: "wrap", md: "nowrap" }}>
                 <Input
                   type="time"
                   size="xs"

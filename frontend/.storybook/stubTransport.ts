@@ -132,6 +132,10 @@ import { batchList, foundOrderNotesOf, foundRequestService, stockAdjust } from "
 import { expenseService } from "./expenseStub";
 import { warehouseProductSearch } from "./warehouseProductSearchStub";
 import { warehouseStockList } from "./warehouseStockListStub";
+import { productReprintList, productReprintRecord } from "./productReprintStub";
+import { productTagService } from "./productTagStub";
+import { productCodeService } from "./productCodeStub";
+import { teamCodeService } from "./teamCodeStub";
 import { FoundRequestService } from "../src/gen/warehouse/inventory/v1/found_request_pb";
 import { rackService } from "./rackStub";
 import { returnConfigurationService } from "./returnConfigurationStub";
@@ -1176,6 +1180,9 @@ export const transport = createRouterTransport(({ service }) => {
         info: { teamId: req.teamId, defaultWarehouseId: WAREHOUSE_ID },
       },
     }),
+    // THE TEAM CODE EDIT (#150) — the preview the confirm opens on, and the write (teamCodeStub.ts).
+    teamCodePreview: (req) => teamCodeService.teamCodePreview(req),
+    teamCodeUpdate: (req) => teamCodeService.teamCodeUpdate(req),
   });
 
   service(AuthService, {
@@ -1434,8 +1441,16 @@ export const transport = createRouterTransport(({ service }) => {
   });
 
   // The catalogue — productStub.ts, writeable, with the server's rules: a team lists its own, a SKU once among the
-  // live, archive is soft, restore can collide. Discovery and by-ids read the same rows.
-  service(ProductService, productService);
+  // live, archive is soft, restore can collide. Discovery and by-ids read the same rows. THE PRODUCT TAGS (#148) —
+  // productTagStub.ts over productTagScenario.ts: the eleven tag RPCs, on the server's rules.
+  // THE PRODUCT'S HISTORY (#150) — the Riwayat Produk card's ProductLogList (teamCodeStub.ts). THE CODES THAT STILL
+  // FIND A PRODUCT (#152) — the pick pages' ProductCodesByIds (productCodeStub.ts).
+  service(ProductService, {
+    ...productService,
+    ...productTagService,
+    ...productCodeService,
+    productLogList: (req) => teamCodeService.productLogList(req),
+  });
 
   service(InventoryService, {
     // A supplier's goods — the supplier pages' Terjual / Siap / Gudang terkait (supplierGoodsStub.ts).
@@ -1658,6 +1673,12 @@ export const transport = createRouterTransport(({ service }) => {
     // warehouse, any team's, at 0 too, archived flagged, with its on hand; the same held set as the picker above
     // (warehouseStockListStub.ts).
     warehouseStockList: (req) => warehouseStockList(req),
+
+    // CETAK ULANG KODE (backlog #151) — the products still waiting for this warehouse's new labels, one label per shelf
+    // spot, and the recorded print that clears this warehouse's wait and takes the tag off after the last
+    // (productReprintStub.ts).
+    productReprintList: (req) => productReprintList(req),
+    productReprintRecord: (req) => productReprintRecord(req),
   });
 
   service(OrderService, {

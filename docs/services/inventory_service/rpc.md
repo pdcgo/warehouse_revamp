@@ -58,7 +58,7 @@ counts it in, and *the accept is what receives the stock*. The design is
 | `RestockRequestUpdate` | selling team | ongoing / arrived | a full replace; every product the team's own, asked before the lock, as create. **Ongoing:** every field, the paying account required — a CHANGED account must be active and operational (asked before the lock, judged under it); an unchanged one is kept even if archived or un-marked since; a resi or an Order ID another restock of the team holds is AlreadyExists, as create (the restock itself is never its own duplicate). **Arrived:** the lines only — count, total, note; new lines may name their supplier and store, a stored line keeps its own, none removed; any other field that differs is refused. Every edit is a trail row, status unchanged, with what it changed under it — each field before and after, see [what an edit changed](#what-an-edit-changed--the-trail-rows-changes-built-2026-11-16). An edit that moves money announces *Restock Updated* |
 | `RestockRequestNoteSet` | selling team | any status, unchanged | the selling team's note ALONE, in every status — ongoing, arrived, accepted, lost, cancelled; under the restock's `FOR UPDATE`; scoped to the raising team (the warehouse and a third team read NotFound). A changed note stamps its own writer and time and is an edit's trail row with the note before and after; the same note again writes nothing; no money event — see [the selling note](#the-selling-note--its-own-writer-kept-in-any-status-built-2026-11-16) |
 | `RestockRequestWarehouseNoteSet` | receiving warehouse | any status, unchanged | the receiving warehouse's OWN note on the restock, in every status (when it may be written is not decided); under the restock's `FOR UPDATE`; scoped to `warehouse_id` (the selling team, another warehouse and an unknown id read NotFound). A changed note stamps its own writer and time and is an edit's trail row with the warehouse note before and after; the same note again writes nothing; no money event — see [the warehouse's note](#the-warehouses-note--its-own-writer-written-by-the-receiving-warehouse-built-2026-11-16) |
-| `RestockRequestArrive` | warehouse | ongoing / lost → arrived | signs for the box: who and when, a trail row; moves no stock. Locked FOR UPDATE, scoped to `warehouse_id` — the selling team and another warehouse read NotFound. A late lost box keeps its lost-by. Opens the arrived window of Update. Takes the courier's charge, its note and its slip, optional, under Accept's rules, and keeps them on the restock — no money moves; Terima's figure replaces it (built 2026-11-18, see [the charge noted at Tiba](#restockrequestarrive--the-couriers-charge-noted-at-tiba-built-2026-11-18)) |
+| `RestockRequestArrive` | warehouse | ongoing / lost → arrived | Set Arrived: who and when, a trail row (*set arrived*); moves no stock. Locked FOR UPDATE, scoped to `warehouse_id` — the selling team and another warehouse read NotFound. A late lost box keeps its lost-by. Opens the arrived window of Update. Takes the courier's charge, its note and its slip, optional, under Accept's rules, and keeps them on the restock — no money moves; Terima's figure replaces it (built 2026-11-18, see [the charge noted at Tiba](#restockrequestarrive--the-couriers-charge-noted-at-tiba-built-2026-11-18)) |
 | `RestockRequestAccept` | warehouse | ongoing / arrived → accepted | counts the box in — below |
 | `RestockRequestMarkLost` | selling team | ongoing → lost | gives the parcel up: who and when, a trail row carrying the optional why; moves no money. Ongoing only — a box in the building is not lost. A lost restock is neither accepted nor cancelled; only signing for a late box brings it back |
 | `RestockRequestCancel` | selling team | ongoing → cancelled | ongoing only, so a second cancel is refused — the money comes back once; whether it did is written on the trail row and announced in *Restock Cancelled* |
@@ -265,7 +265,7 @@ sequenceDiagram
     participant DB as Postgres - one tx
 
     W->>H: lines [item, received, broken, notes, placements], courier charge + note
-    H->>H: charge above 0 without a note → InvalidArgument
+    H->>H: the courier's charge as typed - its note optional
     H->>DB: SELECT restock WHERE id AND warehouse_id FOR UPDATE
     alt not this warehouse's
         H-->>W: NotFound
@@ -292,7 +292,7 @@ sequenceDiagram
 | the good units go onto placements of this warehouse, exactly received − broken; there is no unplaced choice | [there-is-no-unplaced-pile](../../business/inventory/restock_decision.md#there-is-no-unplaced-pile) |
 | a problem row's worth is the landed unit price over every unit ordered, filled at accept and stored | [the-problem-price-is-filled-by-the-system](../../business/inventory/restock_decision.md#the-problem-price-is-filled-by-the-system), [all-qty-is-every-unit-ordered](../../business/inventory/restock_decision.md#all-qty-is-every-unit-ordered) |
 | one batch per line with good units; the batch's price = line total ÷ line count + (shipping + courier charge) ÷ every unit ordered | [one-batch-per-line](../../business/inventory/restock_decision.md#one-batch-per-line), [unit-price-is-line-price-plus-costs-per-unit](../../business/inventory/restock_decision.md#unit-price-is-line-price-plus-costs-per-unit) |
-| one courier's charge, its note required; outside the restock's total, inside the unit price; saved on the restock, and *Restock Accepted* carries it — liability posts the debt from the event | [the-courier-is-paid-once-per-restock](../../business/inventory/restock_decision.md#the-courier-is-paid-once-per-restock), [balance-posts-the-couriers-debt-from-the-event](../../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event) |
+| one courier's charge, its note optional ([the-couriers-charge-note-is-optional](../../business/balance/context_decision.md#the-couriers-charge-note-is-optional), #146); outside the restock's total, inside the unit price; saved on the restock, and *Restock Accepted* carries it — liability posts the debt from the event | [the-courier-is-paid-once-per-restock](../../business/inventory/restock_decision.md#the-courier-is-paid-once-per-restock), [balance-posts-the-couriers-debt-from-the-event](../../business/inventory/restock_decision.md#balance-posts-the-couriers-debt-from-the-event) |
 | a problem row's note is optional — an empty one stays empty | [a-broken-reason-is-optional](../../business/inventory/restock_decision.md#a-broken-reason-is-optional) |
 | a line's broken units' photo (a document id) is kept on its broken row; the courier's slip beside the charge, only with a charge above 0 — both optional (built 2026-11-16) | [a-broken-product-carries-a-photo](../../technical/frontend/restock_decision.md#a-broken-product-carries-a-photo), [the-courier-slip-has-an-optional-photo](../../technical/frontend/restock_decision.md#the-courier-slip-has-an-optional-photo) |
 
@@ -817,6 +817,7 @@ sequenceDiagram
 | B mints one batch per source batch; the trip never changes a unit's price | [the-receiver-mints-one-batch-per-source-batch](../../business/inventory/warehouse_transfer_decision.md#the-receiver-mints-one-batch-per-source-batch), [a-transfer-never-changes-a-units-price](../../business/inventory/warehouse_transfer_decision.md#a-transfer-never-changes-a-units-price) |
 | every price is the system's, from the batch rows | [the-system-fills-a-transfers-prices](../../business/inventory/warehouse_transfer_decision.md#the-system-fills-a-transfers-prices) |
 | broken, missing and lost are the selling team's loss | [the-selling-team-bears-broken-missing-and-lost](../../business/inventory/warehouse_transfer_decision.md#the-selling-team-bears-broken-missing-and-lost) |
+| B's on-site charge keeps its note optional — no handler refusal (`errTransferChargeNoteNeeded` is gone) and inventory 00065 drops the row CHECK `warehouse_transfers_charge_has_note` (#146) | [the-couriers-charge-note-is-optional](../../business/balance/context_decision.md#the-couriers-charge-note-is-optional) |
 | the shipping expense reaches the account by event; B pays the on-site charge and saves it at accept, and balance posts the debt from the accepted event | [the-shipping-expense-reaches-the-account-by-event](../../business/inventory/warehouse_transfer_decision.md#the-shipping-expense-reaches-the-account-by-event), [the-on-site-charge-is-paid-by-b-at-accept](../../business/inventory/warehouse_transfer_decision.md#the-on-site-charge-is-paid-by-b-at-accept), [balance-posts-the-transfers-on-site-debt-from-the-event](../../business/inventory/warehouse_transfer_decision.md#balance-posts-the-transfers-on-site-debt-from-the-event) |
 | one line per product, one problem row per product per kind | [a-product-appears-once-per-transfer](../../business/inventory/warehouse_transfer_decision.md#a-product-appears-once-per-transfer) |
 | the receiving warehouse can find what is coming | [a-transfer-links-its-products-to-the-receiver](../../business/inventory/context_decision.md#a-transfer-links-its-products-to-the-receiver) |
@@ -1144,7 +1145,7 @@ create + state machine), `custom_shipment_{resi_set,prices_set,mark_lost,arrive,
 | `CustomShipmentResiSet` | the selling roles; the owning team | on_the_way, kept | the resi until Tiba; a trail row `resi_edit` (`JNE-1 → JNE-2`, read whole by both sides) |
 | `CustomShipmentPricesSet` | the selling roles; the owning team | on_the_way / arrived, kept | the seller's price per line until Terima; the parcel's total re-summed; a trail row `price_edit` (`WG-1 Rp 9.000 → Rp 9.500`) BLANK for the warehouse. Moves no money |
 | `CustomShipmentMarkLost` | the selling roles; the owning team | on_the_way → lost | a reason; nothing moves |
-| `CustomShipmentArrive` | Root, Administrator, warehouse Owner / Admin / Staff; the warehouse it comes to | on_the_way / lost → arrived | Tiba: the courier's charge at the door NOTED (`shipping_cost`, `charge_note` — a note required above 0); no event, no money |
+| `CustomShipmentArrive` | Root, Administrator, warehouse Owner / Admin / Staff; the warehouse it comes to | on_the_way / lost → arrived | Tiba: the courier's charge at the door NOTED (`shipping_cost`, `charge_note` — its note optional, #146); no event, no money |
 | `CustomShipmentReceive` | the warehouse roles; the warehouse it comes to | on_the_way / arrived → received | Terima — below |
 
 **Terima** (`custom_shipment_receive.go`, one `StockTransaction`): per line `received` (broken included, ≤ the line),
@@ -1266,6 +1267,78 @@ racks) → 5 001 rows, 305 000 rack rows: page 1 **1.9 → 13.9 ms** median (the
 **12 → 58 ms** (two ≈ 30 ms statements — the page walks every row before it, as `refExpr` already did). Under every audit
 threshold; no index helps (the lookup is already an index probe) — History row in
 [OwnerStockHistory.md](../../../audits/services/inventory_service/performances/OwnerStockHistory.md).
+
+### A product's history names each row's batch and every kind (backlog #142, #143)
+
+`StockHistory` WITHOUT a batch — the warehouse product page's Stock History, its Placement History (kind `MOVE`) and its
+last stock-take (kind `ADJUST`, one row) — read `0` as every row's batch, since a rack row (`product_placement_logs`)
+carries none; it folded an order's units coming back into `RETURN` and a broken or found unit into `ADJUST`, and it never
+listed a price correction, which writes a batch row and no rack row
+([revaluation-and-opname-are-transaction-types](../../business/inventory/transaction_decision.md#revaluation-and-opname-are-transaction-types)).
+Found by the acceptance check of [transaction.md](../../acceptances/inventory/transaction.md) *open stock history*
+(givens 1–4). Built 2026-11-27: `stock_history.go` `productHistory`; `ledger_history.go` `rackBatchJoin`,
+`placementBatchSelect`, `priceCorrectionSelect`, `moveBatchExpr`, `kindOf`, `kindsWhere`.
+
+The rack rows stay the backbone — the units, the rack's count after, who, the rack and the order are what they were —
+and each now names THE BATCH ITS UNITS CAME FROM, read from the batch rows (`batch_logs`) its transaction wrote for the
+same product in the same warehouse, of the same change type, on the same side (units in ↔ units in — a cancel's rows are
+its take's reversed under the same transaction, so only the side tells them apart). The mirror of #47's `batchRackJoin`,
+set-based: ONE pass over the product's batch rows in the warehouse, grouped per transaction, change type, side and
+batch, hash-joined to the rack rows (a lookup per rack row ran for every row of the product before the page was cut).
+
+| case | the row's batch (`StockMovement.batch_id`) |
+| --- | --- |
+| the transaction's batch rows on that side are ONE batch (a take off one batch, a put-away over two racks, a sample, a damaged unit) | that batch |
+| several batches that add up to this rack row (the transaction's only rack row of the product on that side — a take crossing from one batch into the next) | **one row per batch**, each with its batch's units and the rack's count after that part; a part past the first is keyed `((part − 1) << 48) \| id`, as #47 keys a batch row's parts |
+| several batches that do not add up (several racks drawn by several batches — which rack fed which batch is not recorded) | `0` — the screen says `—` |
+| a MOVE — it writes no batch row ([a-move-writes-two-rack-rows-and-no-batch-row](../../business/inventory/placement_decision.md#a-move-writes-two-rack-rows-and-no-batch-row)) and a rack never knows its batches | the warehouse's ONLY batch of the product up to the move (its owner's batches here minted at or before it) — every unit on any rack was that batch's; `0` (`—`) once it held two. One probe on `batches_last_price_idx` per move on the page |
+| a row under no transaction, or one that moved no unit (a rack an exact recount found right, #211) | `0` (`—`) |
+| a PRICE CORRECTION (#143, given 4) | joined in by `UNION ALL` — only when no kind, or `REVALUATION`, is asked: its batch, rack `0`, the batch's units left as the count after, `price_unit_before` / `price_unit_after` / `value_change` (`priceExprs`); keyed `(1 << 47) \| batch_logs.id`. The page draws *Price corrected · from → to*, why and who (`priceChangeOf`, `features/inventory/queries.ts` — no read added) |
+
+The page is ordered newest first by time (its rows come from two logs whose ids do not compare): within one instant a
+price correction above the rack rows, the rack rows by id, a row split over batches by its parts. The count covers the
+parts and the price rows. Still two statements (the count, the page); the reference, override stamp, a sample's recipient
+and a move's batch are read for the page's rows only. A batch's history (`filter.batch_id`, #47) and a rack's
+(`RackHistory`) read as before — they gain only the kinds below.
+
+**The kinds** — `inventory.v1.MovementKind`, additive (`kindOf` names a row, `kindsWhere` filters):
+
+| value | a row of | warehouse screens (`kindLabel`) | product pages (`transactionLabel`) |
+| --- | --- | --- | --- |
+| `RECEIVE` 1 | `restock` | Received · Diterima | Restock · Restok |
+| `ADJUST` 2 | `adjustment`, `lost`, `restock_correction`, `transfer_correction` — the filter also reaches `broken` and `found` | Counted · Dihitung | Adjustment · Penyesuaian |
+| `TRANSFER_OUT` 3 / `TRANSFER_IN` 4 | `transfer_out` / `transfer_in` | Transferred out / in · Ditransfer keluar / masuk | Transfer out / in · Transfer keluar / masuk |
+| `PICK` 5 | an `order` row taking units (change < 0) | Picked · Diambil | Order · Pesanan |
+| `MOVE` 6 | `move` (rack rows only) | Moved · Dipindahkan | Shelf move · Pindah rak (a move writes no batch row, so the owner's ledger never holds one) |
+| `RETURN` 7 | `return` (a buyer's return put back) — the filter also reaches an order's units coming back | Returned · Dikembalikan | Return · Retur |
+| `SAMPLE` 8 | `sample` | Sample · Sampel | Sample · Sampel |
+| `REVALUATION` 9 | `revaluation` (a price correction; batch rows only) | Price corrected · Harga dikoreksi | Price corrected · Harga dikoreksi |
+| `CANCEL` 10 *(#143)* | an `order` row giving units back (change > 0 — the order cancelled or its take rolled back) | Cancelled · Dibatalkan | Return · Retur |
+| `BROKEN` 11 *(#143)* | `broken` (units found damaged — Stock Adjust *damaged*, a damage report, a count) | Broken · Rusak | Adjustment · Penyesuaian |
+| `FOUND` 12 *(#143)* | `found` (units found — a found report approved, a count's find) | Found · Ditemukan | Adjustment · Penyesuaian |
+
+The kinds #143 split out find their own rows as filters; the kinds they were split from keep the reach they had —
+`ADJUST` still finds a broken and a found row (the warehouse product page's *last stock-take* reads it), `RETURN` still
+finds a cancel — so no existing filter answers differently. **`OwnerStockHistory` and `DiscoverStockHistory` keep
+their old kinds**: the selling product page and Discover's Riwayat Stok answer a cancel as `RETURN` and a broken or a
+found unit as `ADJUST`, exactly as before (`productPageKindOf`, `owner_stock_history.go` — folded in their handlers,
+not in the warehouse's read): their decisions name no word for the new kinds
+([the-product-history-names-the-transaction](../../technical/frontend/products_decision.md#the-product-history-names-the-transaction),
+[stock-history-is-everyones](../../technical/frontend/products_decision.md#stock-history-is-everyones),
+[the-discover-history-names-no-batch](../../technical/frontend/products_decision.md#the-discover-history-names-no-batch)).
+
+Tests: `stock_history_product_batches_test.go` (`TestStockHistory_AProductsRowsNameTheirBatch`,
+`TestStockHistory_AProductsRowSplitsOverItsBatches`, `TestStockHistory_AProductsKindsAreEachTheirOwn`),
+`stock_history_batch_test.go`, `product_pages_old_kinds_test.go` (`TestOwnerStockHistory_KeepsItsKinds`,
+`TestDiscoverStockHistory_KeepsItsKinds`); stories `Pages/Inventory/Products/WarehouseProduct › Stock History · batch and
+kind`, `Features/Inventory/MovementTable › Each Kind By Its Own Word` and `› The Product Pages Keep Their Words`.
+
+**Performance** — the batch naming walks every rack row of the product before the page is cut, and
+`product_placement_logs` had no index on the product: inventory `00064` adds `product_placement_logs_product_idx ON
+product_placement_logs (product_id, transaction_id, warehouse_id)`, a pure index
+([a-pure-index-is-added-without-asking](../../technical/architecture/context_decision.md#a-pure-index-is-added-without-asking)).
+Figures, the index trial (A / C rejected, E chosen) and what is left:
+[StockHistory.md](../../../audits/services/inventory_service/performances/StockHistory.md).
 
 ### A stock-take counts a RACK (#139) — provisionally, as an `adjustment`
 
@@ -1448,7 +1521,7 @@ sequenceDiagram
 | Received above the line's count **blocks** Accept | the selling team adds the extra by an edit first (accept-refuses-more-than-the-line-says) |
 | Missing is **worked out**, never typed | ordered − received (a-short-unit-at-the-door-is-missing) |
 | Placements must **sum** to received − broken | counting 8 good and placing 7 is an error in one of the two |
-| The courier's charge needs a note, and sits **outside** the total | the-courier-is-paid-once-per-restock, the-couriers-charge-stays-out-of-total |
+| The courier's charge sits **outside** the total; its note is optional | the-courier-is-paid-once-per-restock, the-couriers-charge-stays-out-of-total, the-couriers-charge-note-is-optional |
 
 The guard is a single expression mirroring the handler's rules — a second one beside it is how a screen's idea of
 "ready to send" drifts from the handler's idea of "acceptable". The HPP preview mirrors the accept's arithmetic, the
@@ -2009,7 +2082,7 @@ sequenceDiagram
     participant A as RestockRequestAccept
     participant BAL as liability
     W->>H: team, restock, charge + note + slip (all optional)
-    H->>H: charge above 0 without a note → InvalidArgument, nothing written
+    H->>H: the charge as typed, its note optional - a slip only with a charge
     H->>DB: SELECT … FOR UPDATE (the restock row, as before)
     H->>DB: status arrived, arrived_by/at, the charge, its note, the slip (only with a charge)
     Note over H,BAL: no event, no money — a sign publishes nothing
@@ -2021,7 +2094,7 @@ sequenceDiagram
 | | |
 | --- | --- |
 | the request | `RestockRequestArriveRequest.warehouse_additional_cost` (3, `double`, ≥ 0, finite), `_note` (4, ≤ 200), `_file` (5, ≤ 500) — Accept's three fields, Accept's rules |
-| validation | as Terima's: a charge above 0 needs its note (`errRestockCostNoteMissing`, InvalidArgument, checked before the transaction); a slip without a charge is dropped; a negative or non-finite charge is the contract's to refuse |
+| validation | as Terima's: the note is optional ([the-couriers-charge-note-is-optional](../../business/balance/context_decision.md#the-couriers-charge-note-is-optional) — `errRestockCostNoteMissing` is gone, #146), so an amount alone is kept; a slip without a charge is dropped; a negative or non-finite charge is the contract's to refuse |
 | stored | on the restock row the sign already updates, in the same `UPDATE` as the status — no migration (the columns are 00024's and 00052's) |
 | the slip | uploaded by the dialog the moment it is picked, under the restock's warehouse — Terima's way (`useReceiptUpload`, an order receipt); both detail pages read it back through `RestockDoorPhotos` as they read Terima's |
 | shown | the selling page's Ongkir COD section and the warehouse page's Kiriman fact show a charge noted at Tiba as they show Terima's, its line saying it is noted — final at Terima, owed from then |
@@ -2264,6 +2337,12 @@ rack rows. A rack row answers for a SHELF — its count is a rack's running tota
 commonest rows — and none of that is a fact about what an owner holds. A move writes no batch row
 ([a-move-writes-two-rack-rows-and-no-batch-row](../../business/inventory/placement_decision.md#a-move-writes-two-rack-rows-and-no-batch-row)),
 so it never appears here; every take, mint, adjustment and rollback does, each naming its batch.
+
+**Its kinds stay the product page's** (#143): the warehouse's `StockHistory` now names a cancel `CANCEL` and a broken or
+a found unit `BROKEN` / `FOUND`; this read answers them `RETURN` and `ADJUST`, as it always did (`productPageKindOf` —
+[below the warehouse's kinds](#a-products-history-names-each-rows-batch-and-every-kind-backlog-142-143)). Its kind
+filter is the shared `kindsWhere`: `RETURN` and `ADJUST` reach those rows as before. Pinned by
+`TestOwnerStockHistory_KeepsItsKinds`.
 
 ### Why the balance is computed and not stored
 
@@ -2925,6 +3004,85 @@ sequenceDiagram
 Measured: 3 statements flat at a page of 20 and 50, ≈ 20 ms at 10 000 products held
 ([performance audit](../../../audits/services/inventory_service/performances/WarehouseStockList.md)).
 
+**Product tags (built 2026-11-27, backlog #147).** Each row carries the product's **tags** (`WarehouseProductSearchItem.tags`
+— products-have-their-own-tag-list, its 🔄 *who sees*: every warehouse holding the product), and
+`WarehouseStockListFilter.tag_ids` (up to 50, ANY of) narrows the list to held products carrying one
+(the-team-code-and-product-tags-prototype-is-accepted). Both ride the same one search: `ProductReader.Search` gains
+`TagIDs` and `WithTags`, and product_service's `SearchAmong` narrows and names them among the held ids in its one
+statement, so `total_items` counts the narrowed list and no extra round trip is added. Asked only when the request asks
+the product slice; the picker (`WarehouseProductSearch`) asks neither and stays as it was. The warehouse product page
+reads one product's tags through product_service's `ProductTagsByIds`, whose held check comes back here in-process
+(`StockNarrower.HeldAmong` → `inventory_v1.HeldAmong`, one read of `batches`). Measured through the real wiring
+(`cmd/app_development/product_tags_seam_perf_test.go`): at 10 000 held the search executes in 8.4 ms with no tag,
+2.8 ms rare, 5.1 ms common; the wall is this host's loopback carrying the held ids, as before.
+
+## Cetak Ulang Kode — `ProductReprintList` / `ProductReprintRecord` (built 2026-11-27, backlog #151)
+
+A team code change recomposes the team's product codes and tags each product some warehouse holds on a shelf with
+`need_reprint_code`, with a `product_reprint_waits` row per such warehouse (#149,
+[a-team-code-change-recomposes-its-product-codes](../../business/product/context_decision.md#a-team-code-change-recomposes-its-product-codes)).
+This is the warehouse's side: its **reprint** of those labels, opened from its Products list (*Cetak ulang kode (N)*), and
+the **recorded print** that clears its wait — the tag coming off once every warehouse holding stock has printed
+([products-have-their-own-tag-list](../../business/product/context_decision.md#products-have-their-own-tag-list), its
+🔄 *what clears*; [the-team-code-and-product-tags-prototype-is-accepted](../../business/product/context_decision.md#the-team-code-and-product-tags-prototype-is-accepted),
+row *the reprint*), as the order label's *Cetak ulang label* clears on its recorded print
+([a-changed-label-asks-the-warehouse-to-reprint](../../business/inventory/order_decision.md#a-changed-label-asks-the-warehouse-to-reprint)).
+[inventory.proto](../../../proto/warehouse/inventory/v1/inventory.proto), `inventory_v1/product_reprint_list.go`,
+`inventory_v1/product_reprint_record.go`; product_service's half `product_v1/product_reprint.go`, reached in-process
+through `ProductReader` (`ReprintWaits`, `ReprintWaitingCount`, `RecordReprint`, `ReprintArrivals` —
+`backend/cmd/app_development/product_reader.go`); the page `frontend/src/pages/product-reprint-labels/`.
+
+| | `ProductReprintList` | `ProductReprintRecord` |
+| --- | --- | --- |
+| who | Root, Administrator, warehouse Owner, Admin, Staff; the admin team's monitor and an agent (`NO_SIDE_EFFECTS`) | the same minus the monitor and the agent |
+| scope | `warehouse_id` (`use_scope`) | `warehouse_id` (`use_scope`) — only its own waits are ever cleared |
+| in | `page` (`CommonPagination`, by product) | `items` 1–500: `product_id` + the `product_code` its labels carried |
+| out | per product: id, LIVE `product_code`, `name`, `former_code` (the newest `code_changed` line's old code, `""` if none), `labels` — one per `product_placements` row of THIS warehouse with stock (`placement_id`, `placement_code`, `quantity`), by spot code; by live code then id; `total_items` = products waiting | `cleared_ids`, `code_changed_ids` (printed with a code no longer live — NOT cleared), `untagged_ids` (`need_reprint_code` came off) |
+| never | a price, a cost, another warehouse's shelf | — |
+
+**The record, in ONE transaction** (the caller's: product_service's `RecordReprint` runs on inventory's tx through the
+seam, as the liability poster does): the owning teams' **product-code locks** (`pg_advisory_xact_lock` on
+`productCodeLockKey`, the team code change's own key, taken in key order in one statement), then the live codes under
+them; this warehouse's wait deleted for each product whose printed code is still live; then `need_reprint_code` taken off
+(the app's) every such product no warehouse waits for any more — `NOT EXISTS` over the waits, read after the delete. A
+second record of the same print changes nothing and is not refused. A product listed with no label (nothing on a shelf
+here now) is cleared by printing it like any other.
+
+**What adds a wait** besides the team code change: a transfer accepted while its product is still tagged —
+`WarehouseTransferAccept` calls `ReprintArrivals` in its own transaction for the lines it shelved (a line placing 0 units
+adds none), under the same locks: the receiving warehouse now holds old stickers too, so the tag stays until it prints. A
+product no warehouse waits for (untagged) gets no wait.
+
+**The entry's (N)** rides on the list's own read: `WarehouseStockList` with `WAREHOUSE_STOCK_LIST_DATA_TYPE_REPRINT_WAITING`
+in `data_request` answers `reprint_waiting` (one count over this warehouse's waits, whatever the term or the tag filter);
+asked only by the warehouse's own Products, never by root's Inventory. **Cetak Label of a restock prints the LIVE code**:
+`RestockRequestLabels` reads each product's code now through the reader (`ProductReader.Facts`, one read for the restock's products), not the
+code copied onto the restock line.
+
+```mermaid
+sequenceDiagram
+    participant S as Sari — warehouse Staff
+    participant I as inventory
+    participant P as product_service in-process
+    participant DB as Postgres
+    S->>I: ProductReprintList warehouse 11, page 1
+    I->>P: ReprintWaits 11, the window
+    P->>DB: waits JOIN products, the former code, COUNT OVER, by live code
+    I->>DB: product_placements of the page WHERE warehouse_id = 11 AND stock_count above 0
+    I-->>S: products, live and former codes, one label per spot
+    S->>S: the print dialog
+    S->>I: ProductReprintRecord warehouse 11, each product with its printed code
+    I->>P: RecordReprint on the tx
+    P->>DB: the teams' product-code locks, the live codes
+    P->>DB: DELETE this warehouse's waits WHERE the printed code is live
+    P->>DB: DELETE need_reprint_code WHERE no warehouse waits
+    I-->>S: cleared, code changed, untagged
+```
+
+Measured: the list 2 statements at any page, ≈ 10 ms at 5 000 waiting × 2 spots; the record 7 statements flat, ≈ 14 ms
+for 500 products; the arrival 4 statements ([ProductReprintList](../../../audits/services/inventory_service/performances/ProductReprintList.md),
+[ProductReprintRecord](../../../audits/services/inventory_service/performances/ProductReprintRecord.md)).
+
 ## A supplier's goods — `SupplierGoods`
 
 The supplier pages' **Terjual** (with the last order) and **Siap** (with the last restock) for a supplier on the supplier
@@ -3058,6 +3216,7 @@ keeps reading `OwnerStockHistory` on the same tab.
 | rows | `batch_logs ⋈ batches` of the owner's batches of that product, newest first; `balance` is the window `SUM(change) OVER (PARTITION BY warehouse ORDER BY id)` over the UNFILTERED ledger — the number `OwnerStockHistory` gives the same row |
 | **only the units** | `DiscoverMovement` = id, product, warehouse, kind, delta, balance, time — no price before/after, value change, batch, reason, reference (order key / restock receipt), person or override flag: the discover detail never shows another team's cost ([the-supplier-tab-names-the-store](../../technical/frontend/products_decision.md#the-supplier-tab-names-the-store)) and its columns are Waktu · Transaksi · Gudang · Perubahan · Sesudahnya ([the-discover-history-names-no-batch](../../technical/frontend/products_decision.md#the-discover-history-names-no-batch)). Pinned on the contract by `TestDiscoverStockHistory_CarriesNoMoneyNorAnythingElseOfTheOwners` |
 | no price correction | a `revaluation` row moved no unit and is only money, so it is left out — outside the window, so no balance changes. *(The build's default from the verdict's "what came in, what went out, and what was left".)* |
+| kinds | the product pages' — a cancel `RETURN`, a broken or a found unit `ADJUST` (`productPageKindOf`), never the warehouse's `CANCEL` / `BROKEN` / `FOUND` (#143, [the warehouse's kinds](#a-products-history-names-each-rows-batch-and-every-kind-backlog-142-143)). Pinned by `TestDiscoverStockHistory_KeepsItsKinds` |
 | unknown product | an empty page, as DiscoverStockByIds answers zeros |
 
 ```mermaid

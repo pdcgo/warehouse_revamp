@@ -40,7 +40,7 @@ const (
 const (
 	restockLogCreated   = "created"
 	restockLogEdited    = "edited"
-	restockLogArrived   = "signed for the box"
+	restockLogArrived   = "set arrived"
 	restockLogAccepted  = "accepted"
 	restockLogLost      = "given up as lost"
 	restockLogCancelled = "cancelled"
@@ -78,8 +78,6 @@ var (
 	errRestockPlacementMismatch = errors.New("the placements must add up to the good units")
 	// A line names each placement once.
 	errRestockPlacementDuplicate = errors.New("a line may name each placement only once")
-	// The courier's charge says what it was for (an-incidental-line-must-say-what-it-was-for).
-	errRestockCostNoteMissing = errors.New("the courier's charge needs a note")
 	// The store a line names must exist and be live when it is newly named (a-line-may-name-a-supplier-without-a-channel).
 	errRestockStoreMissing = errors.New("store not found")
 	// A store is always a supplier's store: a line naming one names its supplier too.
@@ -92,7 +90,7 @@ var (
 	errRestockProductNotOwned = errors.New("a restock carries only the team's own products")
 	// The warehouse signs for a box on its way, or one given up that turned up after all
 	// (a-late-lost-box-is-signed-for-as-arrived).
-	errRestockNotArrivable = errors.New("only a restock on its way, or given up as lost, can be signed for")
+	errRestockNotArrivable = errors.New("only a restock on its way, or given up as lost, can be set arrived")
 	// The selling team edits while the box is on its way or at the door, never after (the-lines-stay-editable-until-accepted).
 	errRestockNotEditable = errors.New("a restock is edited only while ongoing or arrived")
 	// Every restock names the account that paid (a-restock-names-its-paying-account).
@@ -443,7 +441,6 @@ func restockErr(err error) error {
 		errors.Is(err, errRestockLineNoPlace),
 		errors.Is(err, errRestockPlacementMismatch),
 		errors.Is(err, errRestockPlacementDuplicate),
-		errors.Is(err, errRestockCostNoteMissing),
 		errors.Is(err, errRestockProductTwice),
 		errors.Is(err, errRestockProductNotOwned),
 		errors.Is(err, errRestockAccountRequired),

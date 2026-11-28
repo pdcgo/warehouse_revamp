@@ -30,7 +30,7 @@ import { OrderReturnAcceptPage, description } from "./index";
 //   | ABorrowedLineShowsTheCodeToPrint        | the own code on the line, one label per sound unit                       |
 //   | TheAcceptPrintsTheBorrowedLabels        | accepted, the answer's labels print: the own code, one per sound unit    |
 //   | TheAcceptPrintsTheBorrowedLabelsOnAPhone | the phone: Print and Done are the header's icons                        |
-//   | TheCourierAskNeedsWhatItWasFor          | the courier's ask as today — a charge needs its note                     |
+//   | TheCourierAskNeedsNoNote                | the courier's ask — its note optional: a charge alone accepts           |
 //   | TheWrongWarehouseIsRefused              | not the return warehouse: "this return goes to Gudang Cabang", no Accept |
 //   | TheRefusalOpensTheOrder                 | its way on is the order, never an Accept                                 |
 //   | ATeamWithNoReturnWarehouse              | nobody can accept it                                                     |
@@ -500,8 +500,11 @@ export const TheAcceptPrintsTheBorrowedLabelsOnAPhone: Story = {
   },
 };
 
-/** THE COURIER'S ASK, AS TODAY (a-return-may-carry-the-couriers-ask): a charge with no note holds Accept; with one, both go. */
-export const TheCourierAskNeedsWhatItWasFor: Story = {
+/**
+ * THE COURIER'S ASK (a-return-may-carry-the-couriers-ask), ITS NOTE OPTIONAL (the-couriers-charge-note-is-optional —
+ * inverted from "a charge with no note holds Accept"): a charge alone leaves Accept free and goes with an empty note.
+ */
+export const TheCourierAskNeedsNoNote: Story = {
   play: async ({ canvasElement }) => {
     await pickRack(canvasElement, KAOS, 0, A_01_1);
     await pickRack(canvasElement, PUTIH, 0, A_01_2);
@@ -509,11 +512,26 @@ export const TheCourierAskNeedsWhatItWasFor: Story = {
 
     const canvas = await loaded(canvasElement);
     await userEvent.type(canvas.getByTestId("return-accept-charge"), "15000", { delay: 40 });
-    await expect(await canvas.findByTestId("return-accept-charge-note-error")).toBeVisible();
-    await expect(await submitButton(canvasElement)).toBeDisabled();
+    await waitFor(() => expect(canvas.getByTestId("return-accept-ready")).toBeVisible(), { timeout: 5000 });
+    await expect(canvas.queryByTestId("return-accept-charge-note-error")).toBeNull();
+    await expect(canvas.getByTestId("return-accept-charge-note")).not.toBeRequired();
+    await expect(await submitButton(canvasElement)).toBeEnabled();
 
+    await accept(canvasElement);
+    await waitFor(() => expect(returnAcceptScenario.last).toMatchObject({ courierCharge: 15_000, courierChargeNote: "" }));
+  },
+};
+
+/** …and a note given still goes, trimmed, as before. */
+export const TheCourierAskKeepsItsNote: Story = {
+  play: async ({ canvasElement }) => {
+    await pickRack(canvasElement, KAOS, 0, A_01_1);
+    await pickRack(canvasElement, PUTIH, 0, A_01_2);
+    await pickRack(canvasElement, TOPI, 0, B_02_1);
+
+    const canvas = await loaded(canvasElement);
+    await userEvent.type(canvas.getByTestId("return-accept-charge"), "15000", { delay: 40 });
     await userEvent.type(canvas.getByTestId("return-accept-charge-note"), " ongkir retur J&T ", { delay: 20 });
-    await waitFor(() => expect(canvas.queryByTestId("return-accept-charge-note-error")).toBeNull());
 
     await accept(canvasElement);
     await waitFor(() =>

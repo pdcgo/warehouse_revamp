@@ -15,7 +15,7 @@ func (s *Service) WarehouseTransferArrive(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.WarehouseTransferArriveRequest],
 ) (*connect.Response[inventoryv1.WarehouseTransferArriveResponse], error) {
-	wire, err := s.transition(ctx, req.Msg.GetTransferId(), req.Msg.GetTeamId(), sideReceiver, "signed for",
+	wire, err := s.transition(ctx, req.Msg.GetTransferId(), req.Msg.GetTeamId(), sideReceiver, "set arrived",
 		[]models.TransferStatus{models.TransferShipped, models.TransferLost}, models.TransferArrived, "", nil)
 	if err != nil {
 		return nil, err

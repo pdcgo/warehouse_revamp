@@ -13,8 +13,9 @@ import (
 
 // TeamUpdate implements [teamv1connect.TeamServiceHandler].
 //
-// Scoped: an owner may rename their OWN team (the interceptor enforced that already). `type` and
-// `team_code` are immutable and are not in the request at all.
+// Scoped: an owner may rename their OWN team (the interceptor enforced that already). `type` is immutable and
+// `team_code` changes only through TeamCodeUpdate (team_code_update.go — its own, narrower policy, and it recomposes the
+// team's products); neither is in this request at all.
 func (s *Service) TeamUpdate(
 	ctx context.Context,
 	req *connect.Request[teamv1.TeamUpdateRequest],

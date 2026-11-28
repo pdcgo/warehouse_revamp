@@ -23,6 +23,7 @@ import { Role } from "../src/gen/warehouse/role_base/v1/role_pb";
 import { foundHeldHere } from "./foundRequestStub";
 import { opnameHeldHere } from "./opnameStub";
 import { allProducts, analyticSamplesHeldHere } from "./productStub";
+import { isFormerCode } from "./productCodeScenario";
 import { sessionScenario } from "./sessionScenario";
 
 const PICKERS = new Set<Role>([
@@ -61,7 +62,8 @@ export function warehouseProductSearch(req: WarehouseProductSearchRequest) {
   const held = heldHere(req.warehouseId);
   const rows = allProducts()
     .filter((p) => held.has(p.id))
-    .filter((p) => p.name.toLowerCase().includes(term) || p.productCode.toLowerCase().includes(term))
+    // The term on the name or the code now, or a FORMER code typed whole (product_term_clause.go, backlog #152).
+    .filter((p) => p.name.toLowerCase().includes(term) || p.productCode.toLowerCase().includes(term) || isFormerCode(term, p.id))
     .sort((a, b) => a.name.localeCompare(b.name) || a.productCode.localeCompare(b.productCode));
 
   const limit = Number(req.page?.limit ?? 10) || 10;

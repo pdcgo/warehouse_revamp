@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fromHere } from "../../lib/cameFrom";
-import { Badge, Button, Flex, HStack, Heading, Icon, Stack, Text } from "@chakra-ui/react";
-import { Archive, ArrowLeft, Plus } from "lucide-react";
+import { Badge, Box, Button, Flex, HStack, Heading, Icon, Stack, Text } from "@chakra-ui/react";
+import { Archive, ArrowLeft, Plus, Printer } from "lucide-react";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { useTeams } from "../../features/teams/queries";
@@ -18,6 +18,10 @@ import { idCodec, nullableCodec, oneOfCodec, optionalCodec, sortCodec, textCodec
 import { ChoiceFilter } from "../../components/pickers/ChoiceFilter";
 import { ProductStats } from "./components/ProductStats";
 import { ProductsTable } from "./components/ProductsTable";
+import { ProductTagFilter } from "../../features/products/tags/ProductTagFilter";
+import { NO_TAGS, TAGS_CODEC } from "../../features/products/tags/productTags";
+import { NO_PRODUCT_TAGS, useProductTagCatalogue } from "../../features/products/tags/tagQueries";
+import { REPRINT_LABELS_PATH } from "../product-reprint-labels";
 
 // The column the contract orders the catalogue by that the row shows first.
 const SORT_CODEC = nullableCodec(sortCodec(["name"] as const));
@@ -36,7 +40,15 @@ const AGE_CODEC = optionalCodec(oneOfCodec(AGE_FILTERS));
 //   a selling team   its CATALOGUE (CatalogueProductsPage) — what it sells, with the stock, cost and sales behind it
 //   a warehouse      WHAT IT HOLDS (WarehouseProductsPage) — a-warehouses-products-is-what-it-holds
 export function ProductsPage({ archived = false }: { archived?: boolean }) {
-  const { current } = useTeam();
+  const { current, ready } = useTeam();
+
+  // NOTHING UNTIL THE CURRENT TEAM IS SETTLED (`ready`, as StockForward waits for it): which screen this is depends on
+  // the team, and before the memberships answer `current` is null — read as "not a warehouse", so the catalogue's
+  // branch mounted for a beat under a warehouse, asked its lens's TeamList and said "no team" before the held list
+  // replaced it (#136). Drawn as WarehouseProductsPage draws a team it does not have yet: nothing.
+  if (!ready) {
+    return null;
+  }
 
   // A warehouse has no archive — it owns no products — so /products/archived is its held list too, where an archived
   // product it still holds is labelled.
@@ -59,24 +71,66 @@ export function ProductsPage({ archived = false }: { archived?: boolean }) {
 function WarehouseProductsPage() {
   const { current } = useTeam();
   const { t } = useTranslation();
-
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   if (!current) {
     return null;
   }
 
+  const title = (
+    <Stack gap="1" minW="0">
+      <HStack gap="card" wrap="wrap">
+        <Heading size="md">{t("products.heading")}</Heading>
+        <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
+      </HStack>
+      <Text color="fg.muted" fontSize="sm">
+        {t("inventory.stockLead")}
+      </Text>
+    </Stack>
+  );
+  const openReprint = () => navigate(REPRINT_LABELS_PATH);
+
+  // THE REPRINT ENTRY (backlog #151, the-team-code-and-product-tags-prototype-is-accepted, row *the reprint*) — *Cetak
+  // ulang kode (N)*, the products whose code changed and still wait for THIS warehouse's labels (the list's own read
+  // carries N); shown only while one waits, and never to a monitor, who prints nothing (products-have-their-own-tag-list,
+  // 🔄 what clears).
+  const heading = (reprintWaiting: number) => {
+    const waiting = canWrite(current) ? reprintWaiting : 0;
+
+    return waiting > 0 ? (
+        <Flex align="start" gap="card" wrap={isMobile ? "nowrap" : "wrap"}>
+          <Box flex="1 1 16rem" minW="0">
+            {title}
+          </Box>
+          {isMobile ? (
+            <CompactActions
+              menuLabel={t("products.table.actions")}
+              actions={[
+                {
+                  id: "reprint",
+                  label: t("products.reprint.open", { count: waiting }),
+                  icon: Printer,
+                  primary: true,
+                  testId: "open-reprint-labels",
+                  onClick: openReprint,
+                },
+              ]}
+            />
+          ) : (
+            <Button size="xs" colorPalette="brand" flexShrink={0} data-testid="open-reprint-labels" onClick={openReprint}>
+              <Icon as={Printer} boxSize="4" />
+              {t("products.reprint.open", { count: waiting })}
+            </Button>
+          )}
+        </Flex>
+      ) : (
+        title
+      );
+  };
+
   return (
     <Stack gap="section" animationStyle="enter" data-testid="warehouse-products-page">
-      <Stack gap="1" minW="0">
-        <HStack gap="card" wrap="wrap">
-          <Heading size="md">{t("products.heading")}</Heading>
-          <Badge colorPalette="brand">{current.teamName || `Team #${current.teamId}`}</Badge>
-        </HStack>
-        <Text color="fg.muted" fontSize="sm">
-          {t("inventory.stockLead")}
-        </Text>
-      </Stack>
-
-      <WarehouseStockList warehouseId={current.teamId} opensProduct />
+      <WarehouseStockList warehouseId={current.teamId} opensProduct heading={heading} />
     </Stack>
   );
 }
@@ -134,6 +188,11 @@ function CatalogueProductsPage({ archived }: { archived: boolean }) {
   // reach, so its lock says nothing.
   const [lock, setLock] = useUrlState<LockFilter | undefined>("lock", undefined, LOCK_CODEC);
   const [age, setAge] = useUrlState<AgeFilter | undefined>("age", undefined, AGE_CODEC);
+  // THE TAG FILTER (the-team-code-and-product-tags-prototype-is-accepted) — several tags, ANY of them, in the address
+  // (`?tag=1,2`), sent to the server (`tag_ids`), as the order lists' (the-order-tags-prototype-is-accepted). Its options
+  // are the products' one list, every team's — a picker feed, read once (ProductTagList).
+  const [tagIds, setTagIds] = useUrlState("tag", NO_TAGS, TAGS_CODEC);
+  const tagCatalogue = useProductTagCatalogue(current?.teamId).data ?? NO_PRODUCT_TAGS;
 
   // Typed, then settled — a word is one request, not one per key.
   const term = useDebounced(q.trim());
@@ -143,12 +202,14 @@ function CatalogueProductsPage({ archived }: { archived: boolean }) {
     warehouseId > 0n,
     !archived && lock !== undefined,
     !archived && age !== undefined,
+    tagIds.length > 0,
   ].filter(Boolean).length;
   const clearFilters = () => {
     setQ("");
     setWarehouseId(0n);
     setLock(undefined);
     setAge(undefined);
+    setTagIds(NO_TAGS);
   };
 
   // The figures describe the LIVE CATALOGUE, so only the live list carries them; their own query, so searching does not
@@ -270,6 +331,11 @@ function CatalogueProductsPage({ archived }: { archived: boolean }) {
           />
         </FilterField>
 
+        {/* THE TAG FILTER after the warehouse lens — any of the picked tags (the-team-code-and-product-tags-prototype-is-accepted). */}
+        <FilterField w="16rem" testId="product-tag-filter">
+          <ProductTagFilter tags={tagCatalogue} value={tagIds} onChange={setTagIds} />
+        </FilterField>
+
         {!archived && (
           <>
             {/* THE LOCK — the three ways, and the minimums in force right now (one-lock-three-ways,
@@ -322,6 +388,7 @@ function CatalogueProductsPage({ archived }: { archived: boolean }) {
         // THE DALAM TRANSFER COLUMN only while the strip's figure — this team, this lens — is above zero
         // (the-in-transit-column-shows-while-any-is-in-transit). The archive has no strip, so it keeps today's columns.
         inTransitColumn={!archived && (stats.data?.inTransit?.qty ?? 0n) > 0n}
+        tagIds={tagIds}
       />
     </Stack>
   );

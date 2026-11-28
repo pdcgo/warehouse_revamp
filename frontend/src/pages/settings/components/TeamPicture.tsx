@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Avatar, Button, FileUpload, HStack, Icon, Stack, Text } from "@chakra-ui/react";
 import { Camera } from "lucide-react";
 import { documentClient, rpcError } from "../../../api/clients";
@@ -19,6 +20,7 @@ import { isTeamManager } from "../../../lib/roles";
 // (the (use_scope) option), so with no current team there is nothing to scope to and the control
 // is disabled. The manager gate is UX only; the backend interceptor is the real boundary.
 export function TeamPicture() {
+  const { t } = useTranslation();
   const { current, refresh } = useTeam();
 
   const [busy, setBusy] = useState(false);
@@ -83,9 +85,9 @@ export function TeamPicture() {
       // Reflect the new picture in the team switcher too.
       await refresh();
 
-      toaster.create({ type: "success", title: "Team picture updated" });
+      toaster.create({ type: "success", title: t("account.teamPictureUpdated") });
     } catch (err) {
-      toaster.create({ type: "error", title: "Upload failed", description: rpcError(err) });
+      toaster.create({ type: "error", title: t("account.uploadFailed"), description: rpcError(err) });
     } finally {
       setBusy(false);
     }
@@ -122,17 +124,17 @@ export function TeamPicture() {
               data-testid="change-team-picture"
             >
               <Icon as={Camera} />
-              Change picture
+              {t("account.teamPictureChange")}
             </Button>
           </FileUpload.Trigger>
         </FileUpload.Root>
 
-        <Text color="fg.muted" fontSize="xs">
+        <Text color="fg.muted" fontSize="xs" data-testid="team-picture-hint">
           {noTeam
-            ? "Select a team first to change its picture."
+            ? t("account.teamPictureSelectTeam")
             : !canEdit
-              ? "Only a team owner or admin can change the picture."
-              : "JPG or PNG, shown across the app."}
+              ? t("account.teamPictureOnlyManagers")
+              : t("account.teamPictureHint")}
         </Text>
       </Stack>
     </HStack>

@@ -164,9 +164,47 @@ func TestStockHistory_ABatchsHistoryReadsAPriceCorrection(t *testing.T) {
 		t.Fatalf("ADJUST filter = %d rows, want none — a correction is not an adjust", len(got))
 	}
 
+	// The product's history without a batch reads the rack rows — and, since #143 (transaction.md given 4: *"each shown
+	// with its own kind: … price corrected"*), the price corrections, which write no rack row: on no rack, with the batch.
+	// A rack's own history never shows one.
+	var corrections []*inventoryv1.StockMovement
+
 	for _, m := range history(0, inventoryv1.MovementKind_MOVEMENT_KIND_UNSPECIFIED) {
 		if m.GetKind() == inventoryv1.MovementKind_MOVEMENT_KIND_REVALUATION {
-			t.Fatalf("the racks' history shows a correction: %+v", m)
+			corrections = append(corrections, m)
 		}
 	}
+
+	if len(corrections) != 1 || corrections[0].GetRackId() != 0 || corrections[0].GetBatchId() != b.ID ||
+		!san_money.Equal(corrections[0].GetPriceUnitAfter(), 12000) {
+		t.Fatalf("the product's history shows corrections %+v, want the one, on no rack, of batch %d", corrections, b.ID)
+	}
+
+	res, err := svc.RackHistory(ctxUser(1), connect.NewRequest(&inventoryv1.RackHistoryRequest{
+		TeamId: otWarehouse, Filter: &inventoryv1.RackHistoryFilter{RackId: rackOfFirstReceive(t, rows)}, Page: page1(),
+	}))
+	if err != nil {
+		t.Fatalf("RackHistory: %v", err)
+	}
+
+	for _, m := range rackHistoryRows(res.Msg) {
+		if m.GetKind() == inventoryv1.MovementKind_MOVEMENT_KIND_REVALUATION {
+			t.Fatalf("the rack's history shows a correction: %+v", m)
+		}
+	}
+}
+
+// rackOfFirstReceive is the rack a batch history's receive row moved on.
+func rackOfFirstReceive(t *testing.T, rows []*inventoryv1.StockMovement) uint64 {
+	t.Helper()
+
+	for _, m := range rows {
+		if m.GetKind() == inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE && m.GetRackId() != 0 {
+			return m.GetRackId()
+		}
+	}
+
+	t.Fatalf("no receive on a rack in %+v", rows)
+
+	return 0
 }

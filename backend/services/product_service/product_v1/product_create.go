@@ -2,8 +2,10 @@ package product_v1
 
 import (
 	"context"
+	"errors"
 
 	"connectrpc.com/connect"
+	"gorm.io/gorm"
 
 	productv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/services/product_service/product_service_models"
@@ -15,21 +17,21 @@ import (
 // The code is COMPOSED here (the-field-is-product-code-composed-on-write): the team sends its own part, and what is
 // stored is `<team_code>-<part>`, the team's code read from team_service. One unique index over every row refuses a
 // code already held — by an archived product too, which keeps its code.
+//
+// The team's code is read and the row inserted under the team's PRODUCT-CODE lock (lockTeamProductCodes, backlog #149):
+// a team code change recomposes the team's products under the same lock, so a create racing it either commits first and
+// is recomposed with the rest, or waits and composes from the new code — it never lands the old prefix.
 func (s *Service) ProductCreate(
 	ctx context.Context,
 	req *connect.Request[productv1.ProductCreateRequest],
 ) (*connect.Response[productv1.ProductCreateResponse], error) {
-	productCode, err := s.productCodeFor(ctx, req.Msg.GetTeamId(), req.Msg.GetProductCodePart())
-	if err != nil {
-		return nil, err
-	}
+	teamID := req.Msg.GetTeamId()
 
 	images := req.Msg.GetImages()
 	coverURL, coverThumb := coverOf(images)
 
 	product := &product_service_models.Product{
-		TeamID:                   req.Msg.GetTeamId(),
-		ProductCode:              productCode,
+		TeamID:                   teamID,
 		Name:                     req.Msg.GetName(),
 		Description:              req.Msg.GetDescription(),
 		CategoryID:               req.Msg.GetCategoryId(),
@@ -46,8 +48,26 @@ func (s *Service) ProductCreate(
 		Images: modelImages(images),
 	}
 
-	err = s.db.WithContext(ctx).Create(product).Error
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := lockTeamProductCodes(tx, teamID)
+		if err != nil {
+			return err
+		}
+
+		product.ProductCode, err = s.productCodeFor(ctx, teamID, req.Msg.GetProductCodePart())
+		if err != nil {
+			return err
+		}
+
+		return tx.Create(product).Error
+	})
 	if err != nil {
+		// productCodeFor's refusals are Connect errors already.
+		var connectErr *connect.Error
+		if errors.As(err, &connectErr) {
+			return nil, connectErr
+		}
+
 		return nil, dbError(err)
 	}
 

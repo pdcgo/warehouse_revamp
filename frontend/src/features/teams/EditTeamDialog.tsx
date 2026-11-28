@@ -16,11 +16,22 @@ import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { rpcError } from "../../api/clients";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
+import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { toaster } from "../../components/feedback/Toaster";
+import { canWrite, useTeam } from "../team/TeamContext";
 import { useUpdateTeam } from "./queries";
+import { editsTeamCode, TEAM_CODE_MAX, useTeamCodeChange } from "./teamCode";
+import { TeamCodeConfirm } from "./TeamCodeConfirm";
 
-// EditTeamDialog changes only name + description. `type` and `team_code` are immutable after
-// create — they are not in the request, so a rename can never violate the root-team invariant.
+// EditTeamDialog changes the name + description — and, for a SELLING team, its code (backlog #150,
+// the-team-code-and-product-tags-prototype-is-accepted, *Teams → Edit Team (root)*). `type` stays immutable after create;
+// it is not in any request, so a rename can never violate the root-team invariant.
+//
+// THE CODE goes through its OWN write (TeamCodeUpdate, whose policy is narrower than TeamUpdate's and which recomposes the
+// team's products), after the same ask and confirm Settings' *Kode tim* card has (features/teams/teamCode.ts). An
+// UNTOUCHED code is never sent — Save then saves the name and description exactly as before. A changed one is asked
+// first: refused in place when another team holds it or held it once, else the four-line confirm, then the code, then
+// the name and description. A warehouse's or an admin team's code stays fixed — its dialog keeps the "fixed" line.
 export function EditTeamDialog({
   team,
   open: openProp,
@@ -39,12 +50,12 @@ export function EditTeamDialog({
   onOpenChange?: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
+  const { current, platformRole } = useTeam();
   const isControlled = openProp !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = isControlled ? openProp : uncontrolledOpen;
 
   const save = useUpdateTeam();
-  const busy = save.isPending;
 
   function setOpen(next: boolean) {
     if (isControlled) {
@@ -59,11 +70,45 @@ export function EditTeamDialog({
   const [name, setName] = useState(team.name);
   const [description, setDescription] = useState(team.description);
 
+  // THE CODE FIELD — a SELLING team's, for whoever may change it: Root and the Administrator (their reach is the root
+  // team's), or the team's own Owner and Admin (TeamCodeUpdate's policy; UX only, the interceptor is the boundary).
+  const codeEditable =
+    team.type === TeamType.SELLING &&
+    canWrite(current) &&
+    (platformRole !== undefined || (current?.teamId === team.id && editsTeamCode(current.role)));
+  const [code, setCode] = useState(team.teamCode);
+  const newCode = code.trim();
+  const codeChanged = codeEditable && newCode !== team.teamCode;
+  const codeTooLong = [...newCode].length > TEAM_CODE_MAX;
+  const change = useTeamCodeChange(team.id);
+  const refused = change.refusal;
+  const busy = save.isPending || change.asking || change.saving;
+
   function submit(event: FormEvent) {
     event.preventDefault();
 
     setError("");
 
+    // An untouched code is never sent: the name and description save as they always did.
+    if (!codeChanged) {
+      saveDetails();
+      return;
+    }
+
+    if (newCode === "" || codeTooLong) return;
+
+    void change.ask(newCode);
+  }
+
+  // The code first — refused, nothing else is saved — then the name and description as before.
+  async function saveCode() {
+    const answer = await change.confirm();
+    if (!answer) return;
+
+    saveDetails();
+  }
+
+  function saveDetails() {
     // Fields are optional (presence): sending both is fine here since the form holds the current
     // values, and the backend never blanks what it does not receive.
     save.mutate(
@@ -120,9 +165,47 @@ export function EditTeamDialog({
                     />
                   </Field.Root>
 
-                  <Text fontSize="xs" color="fg.muted">
-                    {t("teams.typeCodeFixed", { code: team.teamCode })}
-                  </Text>
+                  {codeEditable ? (
+                    <>
+                      <Field.Root invalid={refused !== null || codeTooLong || change.error !== ""}>
+                        <Field.Label>{t("teams.teamCode")}</Field.Label>
+                        <Input
+                          value={code}
+                          fontFamily="mono"
+                          maxW="16rem"
+                          disabled={busy}
+                          data-testid="edit-team-code"
+                          onChange={(e) => {
+                            setCode(e.target.value);
+                            change.clear();
+                          }}
+                        />
+                        {refused ? (
+                          <Field.ErrorText data-testid="edit-team-code-refused">
+                            {refused.why === "taken"
+                              ? t("account.teamCode.taken", { code: refused.code, team: refused.holder })
+                              : t("account.teamCode.former", { code: refused.code })}
+                          </Field.ErrorText>
+                        ) : change.error ? (
+                          <Field.ErrorText data-testid="edit-team-code-error">{change.error}</Field.ErrorText>
+                        ) : codeTooLong ? (
+                          <Field.ErrorText data-testid="edit-team-code-too-long">
+                            {t("account.teamCode.tooLong", { max: TEAM_CODE_MAX })}
+                          </Field.ErrorText>
+                        ) : (
+                          <Field.HelperText data-testid="edit-team-code-help">{t("teams.codeEdit.help")}</Field.HelperText>
+                        )}
+                      </Field.Root>
+
+                      <Text fontSize="xs" color="fg.muted" data-testid="edit-team-type-fixed">
+                        {t("teams.codeEdit.typeFixed")}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text fontSize="xs" color="fg.muted">
+                      {t("teams.typeCodeFixed", { code: team.teamCode })}
+                    </Text>
+                  )}
                 </Stack>
               </Dialog.Body>
 
@@ -140,6 +223,19 @@ export function EditTeamDialog({
                 <CloseButton size="sm" />
               </Dialog.CloseTrigger>
             </form>
+
+            {change.confirming && (
+              <TeamCodeConfirm
+                open
+                onOpenChange={(next) => {
+                  if (!next) change.closeConfirm();
+                }}
+                oldTeamCode={team.teamCode}
+                newTeamCode={change.confirming.code}
+                figures={change.confirming.figures}
+                onConfirm={saveCode}
+              />
+            )}
           </Dialog.Content>
         </Dialog.Positioner>
       </Portal>

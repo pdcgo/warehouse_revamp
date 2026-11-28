@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { PRODUCT_DETAIL_META, loaded, openTab, sectionOf } from "./kit";
+import { PRODUCT_DETAIL_META, loaded, openTab } from "./kit";
 
 // PRODUCT DETAIL — one page of sections (the-product-page-is-one-page-of-sections): every one on the page and in the
-// nav, what cannot be shown yet marked, the sample rows, and a Batch row. The page's stories are grouped by the part of
-// the screen they are about (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
+// nav, nothing left marked, the tabs' rows, and a Batch row. The page's stories are grouped by the part of the screen
+// they are about (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
 const meta = {
   title: "Pages/Products/ProductDetail/Sections",
@@ -41,26 +41,25 @@ export const EverySectionIsOnThePage: Story = {
   },
 };
 
-/** WHAT THE PAGE CANNOT SHOW YET is marked where it would be — Derived products — and listed in the strip at the top.
- * The Pemasok and Keluar Masuk Harian tabs carry no mark: their rows are real (ProductSupplierGoods,
- * ./Suppliers.stories.tsx; ProductDailyMoves, ./Daily.stories.tsx). */
+/** NOTHING IS MARKED ANY MORE — every gap the page once marked is real: Pemasok and Keluar Masuk Harian
+ * (ProductSupplierGoods, ./Suppliers.stories.tsx; ProductDailyMoves, ./Daily.stories.tsx) and, since 2026-11-27, Produk
+ * Turunan (the return maps, ./Derived.stories.tsx) — so the strip at the top is gone with its last mark. */
 export const EveryGapIsMarked: Story = {
-  name: "Gaps marked",
+  name: "No gap left",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(canvas.getByTestId("not-implemented-summary")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("not-implemented-summary")).toBeNull();
     await expect(within(canvas.getByTestId("pd-tab-suppliers")).queryByTestId("not-implemented-suppliers")).toBeNull();
-    await expect(within(canvas.getByTestId("pd-section-derived")).getByTestId("not-implemented-derived")).toBeInTheDocument();
+    await expect(within(canvas.getByTestId("pd-section-derived")).queryByTestId("not-implemented-derived")).toBeNull();
     await expect(within(canvas.getByTestId("pd-tab-daily")).queryByTestId("not-implemented-daily")).toBeNull();
   },
 };
 
-/** SAMPLE ROWS, with their ⚠: the derived products — MANY, so the card holds the count and the first three as one line
- * each, and "See all" opens the whole list (owner: *"dia bisa banyak … kalau kepanjangan membingungkan"*). The
- * suppliers and the daily in and out, real now, still wait for their own tabs. */
+/** THE TABS' ROWS wait for their own tab: the suppliers and the daily in and out, each read only once opened. (The
+ * derived products, real since 2026-11-27, are ./Derived.stories.tsx.) */
 export const SamplesFillTheGaps: Story = {
-  name: "Samples",
+  name: "Tabs' rows",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
@@ -68,24 +67,6 @@ export const SamplesFillTheGaps: Story = {
     await expect(canvas.queryByTestId("pd-supplier-row-0")).toBeNull();
     const suppliers = await openTab(canvas, "suppliers");
     await waitFor(() => expect(suppliers.getByTestId("pd-supplier-row-0")).toBeInTheDocument());
-
-    const derived = await sectionOf(canvas, "derived");
-    await expect(derived.getByTestId("pd-derived-from-item")).toHaveTextContent("Toko Kenanga");
-    const count = Number(derived.getByTestId("pd-derived-count").textContent);
-    await expect(count).toBeGreaterThan(3);
-    await expect(derived.getByTestId("pd-derived-to-2")).toBeInTheDocument();
-    // A line reads "N pcs" — the derived product's READY stock, said by its tooltip — and carries no date.
-    await expect(derived.getByTestId("pd-derived-to-0-pcs")).toHaveTextContent(/^\d+ pcs$/);
-    await expect(derived.getByTestId("pd-derived-to-0-pcs")).toHaveAttribute("aria-label", expect.stringMatching(/pcs ready/));
-    await expect(derived.queryByTestId("pd-derived-to-3")).toBeNull();
-
-    await userEvent.click(derived.getByTestId("pd-derived-see-all"));
-    const dialog = await screen.findByTestId("pd-derived-dialog");
-    await waitFor(() => expect(dialog).toBeVisible());
-    await expect(within(dialog).getAllByTestId(/^pd-derived-row-/)).toHaveLength(count);
-    // Each with its picture (owner: *"produk turunan di modal ada gambarnya"*).
-    await expect(within(dialog).getByTestId("pd-derived-image-0")).toBeVisible();
-    await userEvent.keyboard("{Escape}");
 
     const daily = await openTab(canvas, "daily");
     await waitFor(() => expect(daily.getAllByTestId(/^pd-daily-row-/)).toHaveLength(14));

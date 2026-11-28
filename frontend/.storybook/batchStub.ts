@@ -118,6 +118,42 @@ export function productPlacesForStory(places: Record<string, [bigint, bigint][]>
   placesNow = new Map(Object.entries(places));
 }
 
+/** A row of a product's history read WITHOUT a batch, as the server sends it (#142/#143) — the fields a story sets. */
+export interface ProductHistoryRowForStory {
+  id: bigint;
+  kind: MovementKind;
+  delta: bigint;
+  balance: bigint;
+  rackId: bigint;
+  batchId: bigint;
+  actorUserId: bigint;
+  /** Minutes ago — the rows' times, newest first as given. */
+  minutesAgo: number;
+  reason?: string;
+  priceUnitBefore?: number;
+  priceUnitAfter?: number;
+  valueChange?: number;
+}
+
+// A product's history WITHOUT a batch for ONE story (`productHistoryForStory`) — the warehouse product page's Stock History
+// and Placement History: the rows as given, newest first, each naming its batch and kind as the server's do since #142/#143
+// (a price correction among them, on no rack). null = none: the stub otherwise serves a history only narrowed to a batch.
+let productHistoryNow: Map<string, ProductHistoryRowForStory[]> | null = null;
+
+/** For ONE story (its `beforeEach`): StockHistory without a batch answers these rows for this product in its warehouse. */
+export function productHistoryForStory(productId: bigint, rows: ProductHistoryRowForStory[]) {
+  (productHistoryNow ??= new Map()).set(productId.toString(), rows);
+}
+
+// A kind asked as a filter reaches what the server's does (ledger_history.go kindsWhere): ADJUST keeps the broken and the
+// found it reached before they had words of their own, RETURN the cancel.
+function kindReaches(asked: MovementKind, kind: MovementKind): boolean {
+  if (asked === kind) return true;
+  if (asked === MovementKind.ADJUST) return kind === MovementKind.BROKEN || kind === MovementKind.FOUND;
+  if (asked === MovementKind.RETURN) return kind === MovementKind.CANCEL;
+  return false;
+}
+
 /**
  * THE RACKS A BATCH'S PRODUCT SITS ON NOW in its warehouse, by code (the-expiry-report-is-the-batch-list) — as BatchList
  * serves them: none for a batch with nothing left; a story's `productPlacesForStory` racks holding units; none for a
@@ -151,6 +187,7 @@ export function resetBatchStub() {
   rows = structuredClone(BATCHES);
   leftEveryRack = new Set();
   placesNow = null;
+  productHistoryNow = null;
   // Koreksi Harga's corrections price these rows too — reset with them.
   resetBatchPriceScenario();
 }
@@ -405,6 +442,38 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
   },
 
   stockHistory(req) {
+    // Without a batch: the story's product history (productHistoryForStory), narrowed to a kind as the server narrows it.
+    if (!req.filter?.batchId) {
+      const asked = req.filter?.kind ?? MovementKind.UNSPECIFIED;
+      const mine = (productHistoryNow?.get((req.filter?.productId ?? 0n).toString()) ?? []).filter(
+        (m) => asked === MovementKind.UNSPECIFIED || kindReaches(asked, m.kind),
+      );
+      const { rows: page, pageInfo } = pageOf(mine, req.page);
+      const mapData: Record<string, object> = {};
+      for (const m of page) {
+        mapData[m.id.toString()] = {
+          id: m.id,
+          productId: req.filter?.productId ?? 0n,
+          warehouseId: req.warehouseId,
+          delta: m.delta,
+          balance: m.balance,
+          kind: m.kind,
+          reason: m.reason ?? "",
+          ref: "",
+          actorUserId: m.actorUserId,
+          createdAt: new Date(Date.now() - m.minutesAgo * 60_000).toISOString(),
+          rackId: m.rackId,
+          batchId: m.batchId,
+          isOverride: false,
+          priceUnitBefore: m.priceUnitBefore ?? 0,
+          priceUnitAfter: m.priceUnitAfter ?? 0,
+          valueChange: m.valueChange ?? 0,
+        };
+      }
+
+      return { items: [{ d: { case: "movement" as const, value: { mapData } } }], ids: page.map((m) => m.id), pageInfo };
+    }
+
     const b = rows.find((x) => x.id === req.filter?.batchId && x.warehouseId === req.warehouseId);
     const all = b ? movementsOf(b) : [];
     const from = req.filter?.fromUnix ?? 0n;

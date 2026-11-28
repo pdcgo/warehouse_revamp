@@ -52,6 +52,8 @@ func InitializeApp() (*App, error) {
 		// Which teams the admin team monitors — see team_kinds.go.
 		NewTeamKinds,
 		team_v1.NewService,
+		// team_service's ProductCodeRecomposer → product_service's set-based recompose, in the team code change's tx (#149).
+		NewProductCodeRecomposer,
 		shipment_v1.NewService,
 		product_v1.NewService,
 		// What product_service's Delete asks first — see product_history.go.

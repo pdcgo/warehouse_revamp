@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { asAdminTeam, asRole } from "../../../.storybook/sessionScenario";
 import { foundRequestsNoneWaiting, withFoundFromLostOrder } from "../../../.storybook/foundRequestStub";
+import { type HeldRpc, callsOf, holdRpc } from "../../../.storybook/holdRpc";
+import { productClient, teamClient, userClient } from "../../api/clients";
 import { FoundRequestStatus } from "../../gen/warehouse/inventory/v1/found_request_pb";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { FoundRequestsPage } from "./index";
@@ -404,5 +406,52 @@ export const NotForASellingRole: Story = {
       "Found stock is the warehouse's — its Owner, Admin and Staff read it.",
     );
     await expect(canvas.queryByTestId("found-requests-list")).toBeNull();
+  },
+};
+
+// WHAT A ROW NAMES IS READ SIDE BY SIDE (#134, the-speed-audits-old-findings-are-fixed-smallest-first) — who reported it,
+// whose goods and the product's picture each need only the page of requests, so they go out together; the owners and
+// the pictures used to wait for the people. The rows still arrive whole: never a row before its reporter's name.
+let peopleHeld: HeldRpc | undefined;
+
+export const WhatARowNamesIsReadSideBySide: Story = {
+  name: "Row names read side by side",
+  beforeEach: () => {
+    // The people answer late — the owners and the pictures go out meanwhile.
+    peopleHeld = holdRpc(userClient, "userByIDs");
+    const spies = [spyOn(teamClient, "teamByIds"), spyOn(productClient, "productByIds")];
+
+    return () => {
+      peopleHeld?.restore();
+      for (const spy of spies) spy.mockRestore();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(
+      () => {
+        expect(callsOf(teamClient.teamByIds).length).toBeGreaterThan(0);
+        expect(callsOf(productClient.productByIds).length).toBeGreaterThan(0);
+      },
+      { timeout: 5000 },
+    );
+    // No row without its people: the list is still its first load's shape.
+    await expect(canvas.getByTestId("found-requests-loading")).toBeInTheDocument();
+    await expect(canvas.queryByTestId("found-request-301")).toBeNull();
+
+    peopleHeld?.release();
+    const page = await loaded(canvasElement);
+    const beras = row(page, "301");
+
+    // Named, owned and pictured as it lands.
+    await expect(beras.getByTestId("found-request-reported-301")).toHaveTextContent("Budi Santoso");
+    await expect(beras.getByTestId("found-request-owner-301")).toHaveTextContent("Toko Melati");
+    await waitFor(() =>
+      expect(within(beras.getByTestId("product-list-item-74")).getByRole("img")).toHaveAttribute(
+        "src",
+        expect.stringMatching(/^data:image/),
+      ),
+    );
   },
 };

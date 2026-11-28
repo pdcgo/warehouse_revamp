@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { routedPage } from "../../../../.storybook/pageStory";
+import { callsOf } from "../../../../.storybook/holdRpc";
 import { rackStubScenario } from "../../../../.storybook/rackStub";
+import { rackClient } from "../../../api/clients";
 import { RackDetailPage } from "../index";
 import { RACK_DETAIL_META, loaded, openMove, openSample, pickRack, stock, type } from "./kit";
 
@@ -205,6 +207,40 @@ export const AnotherRackIsAFirstLoad: Story = {
     await expect(skeletons).toContain("rack-stock-loading");
     await expect(leaked).toBe(false);
     await expect(stock(canvas).queryByTestId("rack-stock-row-73")).toBeNull();
+  },
+};
+
+// ANOTHER RACK STARTS ON SEMUA, PAGE ONE (#134) — Riwayat's chip and pager belong to ONE rack. They are the page's now
+// (useRackLedger: the ledger is asked beside the rack, never after it), so the address changing to another rack must not
+// carry A-01-1's Hanya penempatan over to A-01-2 — as when the section mounted afresh under the new rack: its first read
+// is every movement.
+export const AnotherRackStartsOnSemua: Story = {
+  name: "Another rack starts on Semua",
+  render: () => <At41ThenAnother />,
+  beforeEach: () => {
+    const spy = spyOn(rackClient, "rackHistory");
+
+    return () => spy.mockRestore();
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    await userEvent.click(await canvas.findByTestId("rack-history-filter-placement"));
+    await expect(canvas.getByTestId("rack-history-filter-placement")).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(canvas.getByTestId("story-jump-42"));
+    await waitFor(() => expect(canvas.getByTestId("rack-info-code")).toHaveTextContent("A-01-2"));
+    await waitFor(() => expect(canvas.getByTestId("rack-history-filter-all")).toHaveAttribute("aria-pressed", "true"));
+
+    // Every read of A-01-2's ledger asked for every movement, from page one.
+    const asked = callsOf(rackClient.rackHistory)
+      .map(([req]) => req as { filter: { rackId: bigint; kinds: number[] }; page: { page: number } })
+      .filter((req) => req.filter.rackId === 42n);
+    await expect(asked.length).toBeGreaterThan(0);
+    for (const req of asked) {
+      await expect(req.filter.kinds).toEqual([]);
+      await expect(req.page.page).toBe(1);
+    }
   },
 };
 

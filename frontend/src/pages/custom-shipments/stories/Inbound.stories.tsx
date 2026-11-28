@@ -37,7 +37,7 @@ export const BesideTheOutbound: Story = {
     await expect(canvas.getByTestId("custom-shipment-row-in-901")).toHaveTextContent("for restock #503");
     await expect(canvas.getByTestId("inbound-value-901")).toHaveTextContent("Rp 130.000");
     await expect(within(canvas.getByTestId("custom-shipment-row-in-902")).getByTestId("inbound-status-arrived")).toBeVisible();
-    await expect(await canvas.findByTestId("custom-shipment-row-801", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-row-801")).toBeVisible(), { timeout: 4000 });
   },
 };
 
@@ -47,7 +47,7 @@ export const ARowOpensItsParcel: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByTestId("custom-shipment-row-in-901", {}, { timeout: 4000 }));
-    await expect(await canvas.findByTestId("inbound-detail-page", {}, { timeout: 3000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("inbound-detail-page")).toBeVisible(), { timeout: 3000 });
   },
 };
 

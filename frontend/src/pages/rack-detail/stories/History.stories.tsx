@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { FORMER_USER_ID } from "../../../../.storybook/fixtures";
+import { type HeldRpc, callsOf, holdRpc } from "../../../../.storybook/holdRpc";
 import { rackHistoryByForStory, rackSampleForStory } from "../../../../.storybook/rackStub";
+import { rackClient } from "../../../api/clients";
 import { RACK_DETAIL_META, loaded, openMove, openSample, pickRack, type } from "./kit";
 
 // RACK DETAIL — Riwayat, one ledger with two lenses: every movement, or Penempatan — what decided goods live here. Who
@@ -125,5 +127,36 @@ export const ASampleNamesWhoReceivedItOnAPhone: Story = {
     await expect(lines[0]).toHaveTextContent(/^given to Pak Budi$/);
     await expect(lines[0]).toBeVisible();
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  },
+};
+
+// RIWAYAT IS ASKED WITH THE RACK (#134, the-speed-audits-old-findings-are-fixed-smallest-first) — the ledger needs only
+// the address's rack, but its section mounts only once the rack itself is named, so its read waited for RackDetail. The
+// page asks it beside the rack and the shelf (useRackLedger); the page still draws once the rack is named.
+let rackHeld: HeldRpc | undefined;
+
+export const RiwayatIsAskedWithTheRack: Story = {
+  name: "Riwayat asked with the rack",
+  beforeEach: () => {
+    // The rack answers late — its ledger goes out meanwhile.
+    rackHeld = holdRpc(rackClient, "rackDetail");
+    const spy = spyOn(rackClient, "rackHistory");
+
+    return () => {
+      rackHeld?.restore();
+      spy.mockRestore();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(callsOf(rackClient.rackHistory)).toHaveLength(1), { timeout: 5000 });
+    await expect(canvas.getByTestId("rack-detail-loading")).toBeInTheDocument();
+
+    rackHeld?.release();
+    await loaded(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("rack-history-table")).toBeVisible(), { timeout: 5000 });
+    await expect(callsOf(rackClient.rackHistory)).toHaveLength(1);
   },
 };

@@ -25,6 +25,14 @@ export function kindLabel(t: ReturnType<typeof useTranslation>["t"], kind: Movem
       return t("warehouseProduct.kind.return");
     case MovementKind.SAMPLE:
       return t("warehouseProduct.kind.sample");
+    // An order's take put back, a broken unit, a found unit — each said by its own word (#143, docs/acceptances/
+    // inventory/transaction.md givens 2–3). They read Returned and Counted before.
+    case MovementKind.CANCEL:
+      return t("warehouseProduct.kind.cancel");
+    case MovementKind.BROKEN:
+      return t("warehouseProduct.kind.broken");
+    case MovementKind.FOUND:
+      return t("warehouseProduct.kind.found");
     // A price correction moved no unit — said as one on every screen (the-correct-price-prototype-is-accepted).
     case MovementKind.REVALUATION:
       return t("correctPrice.history.kind");
@@ -49,7 +57,13 @@ export function transactionLabel(t: ReturnType<typeof useTranslation>["t"], kind
       return t("inventory.transaction.transferOut");
     case MovementKind.ADJUST:
       return t("inventory.transaction.adjustment");
+    // The kinds #143 split out keep the product pages' words (the-product-history-names-the-transaction names no word
+    // of their own for them): a cancel is still Retur there, a broken or a found unit still Penyesuaian.
+    case MovementKind.BROKEN:
+    case MovementKind.FOUND:
+      return t("inventory.transaction.adjustment");
     case MovementKind.RETURN:
+    case MovementKind.CANCEL:
       return t("inventory.transaction.return");
     case MovementKind.MOVE:
       return t("inventory.transaction.move");

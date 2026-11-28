@@ -2,6 +2,7 @@ package inventory_v1
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	"gorm.io/gorm"
@@ -52,7 +53,7 @@ func (s *Service) RestockRequestLabels(
 		return nil, restockErr(errRestockNotAccepted)
 	}
 
-	sets, err := restockLabelSets(s.db.WithContext(ctx), warehouseID, []inventory_service_models.Restock{rr})
+	sets, err := s.restockLabelSets(ctx, s.db.WithContext(ctx), warehouseID, []inventory_service_models.Restock{rr})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -73,7 +74,14 @@ func (s *Service) RestockRequestLabels(
 //
 // The caller has read the restock rows and checked them (going to the warehouse, accepted); the label query re-states
 // both in its WHERE all the same, so a row that slipped through could never print another warehouse's goods.
-func restockLabelSets(
+//
+// A LABEL PRINTS THE PRODUCT'S LIVE CODE (backlog #151, scope141 ⚠1): a sticker is what a scan matches on the shelf
+// (the-label-qr-is-the-product-code), not a past line, so after a team code change Cetak Label of an older restock prints
+// the product's code as it is NOW — read through the product reader (ProductReader.Facts, one ProductByIds per 200
+// products) — never the copy on `restock_items`, which keeps the code the line was written with (🔄 *past lines keep
+// their code*). A product product_service does not answer for keeps the line's code.
+func (s *Service) restockLabelSets(
+	ctx context.Context,
 	db *gorm.DB,
 	warehouseID uint64,
 	accepted []inventory_service_models.Restock,
@@ -160,15 +168,30 @@ func restockLabelSets(
 		return nil, err
 	}
 
+	productIDs := make([]uint64, 0, len(rows))
+	for i := range rows {
+		productIDs = append(productIDs, rows[i].ProductID)
+	}
+
+	live, err := s.liveProductCodes(ctx, warehouseID, productIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	for i := range rows {
 		set := sets[rows[i].RestockID]
 		if set == nil {
 			continue
 		}
 
+		code := rows[i].ProductCode
+		if now := live[rows[i].ProductID]; now != "" {
+			code = now
+		}
+
 		set.Labels = append(set.Labels, &inventoryv1.RestockLabel{
 			ProductId:     rows[i].ProductID,
-			ProductCode:   rows[i].ProductCode,
+			ProductCode:   code,
 			Name:          rows[i].Name,
 			BatchId:       rows[i].BatchID,
 			Quantity:      rows[i].Quantity,
@@ -187,4 +210,35 @@ func restockLabelSets(
 	}
 
 	return sets, nil
+}
+
+// liveProductCodes is each product's code as it is NOW, by id — product_service's, through the product reader, asked as
+// the warehouse (`warehouseID`), whose label read already passed its policy. Distinct ids only; an id product_service
+// does not answer for is absent.
+func (s *Service) liveProductCodes(ctx context.Context, warehouseID uint64, productIDs []uint64) (map[uint64]string, error) {
+	seen := make(map[uint64]bool, len(productIDs))
+	ids := make([]uint64, 0, len(productIDs))
+
+	for _, id := range productIDs {
+		if !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+
+	codes := make(map[uint64]string, len(ids))
+	if len(ids) == 0 {
+		return codes, nil
+	}
+
+	facts, err := s.products.Facts(ctx, warehouseID, ids)
+	if err != nil {
+		return nil, fmt.Errorf("read the products' live codes: %w", err)
+	}
+
+	for id, fact := range facts {
+		codes[id] = fact.ProductCode
+	}
+
+	return codes, nil
 }

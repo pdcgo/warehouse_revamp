@@ -5,16 +5,17 @@ import { API_URL } from "./env";
 import { SUFFIX, api, login } from "./restock_helpers";
 
 // selling:all · warehouse:all wants to read an account's rows — the check behind
-// docs/acceptances/financial_account/account.md, section *accounts*, when *open account* (given 20). One test per role
+// docs/acceptances/financial_account/account.md, section *accounts*, when *open account* (given 28). One test per role
 // of each team type (selling owner/admin/cs, warehouse owner/admin/staff), each signed in as a person of that role,
 // opening the account from its row on the Akun list (/financial-accounts → /financial-accounts/<id>).
+// (Numbered 20 and 21 until hfrada's renumbering, aa6e65f6, 11-24 — the code keeps the old numbers in its keys.)
 //
-//   20 (bank BCA · opening Rp 500.000 · expense Rp 100.000 · withdrawal Rp 1.000.000)
+//   28 (bank BCA · opening Rp 500.000 · expense Rp 100.000 · withdrawal Rp 1.000.000)
 //      then: each row with its type, amount and balance after: Rp 500.000, Rp 400.000, Rp 1.400.000 — the statement
 //            (account-log-table) holds exactly those three rows, newest first (the-log-says-balance-after):
 //            Withdrawal +Rp 1.000.000 → Rp 1.400.000 · Expense −Rp 100.000 → Rp 400.000 · Opening balance
 //            +Rp 500.000 → Rp 500.000; the page's balance reads Rp 1.400.000
-//   21 (bank BCA · opening, 2 expenses, 1 withdrawal · type: expense) — when *filter account rows*: on the account's
+//   29 (bank BCA · opening, 2 expenses, 1 withdrawal · type: expense) — when *filter account rows*: on the account's
 //      page, Expense picked in the statement's type filter (account-log-type-filter → account-log-type-option-1)
 //      then: only the 2 expense rows — the statement narrows from four rows to the two Expense rows, newest first
 //            (−Rp 50.000, −Rp 100.000); the read that answers carries the filter (`changeTypes` = [EXPENSE]), so the
@@ -66,7 +67,7 @@ const OPENING = 500_000;
 const EXPENSE = 100_000;
 const WITHDRAWAL = 1_000_000;
 
-// Given 21's account, in the order its rows land: the opening, an expense, the withdrawal, the second expense.
+// Given 29's account, in the order its rows land: the opening, an expense, the withdrawal, the second expense.
 const OPENING21 = 500_000;
 const EXPENSES21 = [100_000, 50_000];
 const WITHDRAWAL21 = 1_000_000;
@@ -85,7 +86,7 @@ const MELATI = `E2E Melati Baris ${SUFFIX}`;
 const ORPHAN_SHOP = String(40_000_000 + Number(SUFFIX.slice(-5)) * 10 + 1);
 // The warehouse's expense: an expense id no expense has.
 const ORPHAN_EXPENSE = String(40_000_000 + Number(SUFFIX.slice(-5)) * 10 + 2);
-// Given 21: its own account, its own shop (Mawar), and for the warehouse its own orphan shop and expense ids.
+// Given 29: its own account, its own shop (Mawar), and for the warehouse its own orphan shop and expense ids.
 const bca21Name = (s: Side) => `E2E BCA Jenis ${tag(s)} ${SUFFIX}`;
 const MAWAR = `E2E Mawar Jenis ${SUFFIX}`;
 const ORPHAN_SHOP21 = String(40_000_000 + Number(SUFFIX.slice(-5)) * 10 + 3);
@@ -322,7 +323,7 @@ test.beforeAll(async ({ browser }) => {
       "FINANCIAL_ACCOUNT_CHANGE_TYPE_OPENING_BALANCE",
     ]);
 
-    // Given 21's account: its opening, an expense, the withdrawal, the second expense — each landed before the next.
+    // Given 29's account: its opening, an expense, the withdrawal, the second expense — each landed before the next.
     const bca21 = String(
       (
         await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
@@ -451,7 +452,7 @@ test.describe(`acct wants to read an account's rows (${C20})`, () => {
   }
 });
 
-// Given 21's two expense rows as the filtered statement draws them, newest first: [type, change].
+// Given 29's two expense rows as the filtered statement draws them, newest first: [type, change].
 const EXPECTED21: [string, string][] = [...EXPENSES21].reverse().map((amount) => ["Expense", rp(-amount)]);
 
 test.describe(`acct wants to read an account's rows (${C21})`, () => {

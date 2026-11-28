@@ -10,9 +10,10 @@ import (
 )
 
 // TeamCodes reads a team's code — the prefix every product code of that team is composed from
-// (the-field-is-product-code-composed-on-write). The code is team_service's, and immutable after the team is created,
-// so a code composed from it never goes stale. The composition root answers it through team_service; this service never
-// reads team_service's table (HARD RULE 3).
+// (the-field-is-product-code-composed-on-write). The code is team_service's, and it CAN change
+// (a-team-code-change-recomposes-its-product-codes): every caller reads it under the team's product-code lock
+// (lockTeamProductCodes), which the change's recompose takes too, so a code composed from it is never left stale. The
+// composition root answers it through team_service, uncached; this service never reads team_service's table (HARD RULE 3).
 //
 // An unknown or deleted team answers "" and no error — the caller refuses on that.
 type TeamCodes interface {

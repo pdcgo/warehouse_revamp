@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
-import { categoryClient, inventoryClient, orderClient, productClient } from "../../api/clients";
+import {
+  categoryClient,
+  inventoryClient,
+  orderClient,
+  productClient,
+  teamReturnConfigurationClient,
+} from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
 import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
 import {
@@ -14,6 +20,8 @@ import { teamsByIdsQuery } from "../teams/queries";
 import {
   activityFromByIds,
   batchesFromList,
+  derivedFromMaps,
+  derivedProductIds,
   discoverMovementData,
   discoverMovementsFromList,
   discoverStockFromResponse,
@@ -34,7 +42,7 @@ import {
   productsFromByIds,
   productsFromList,
 } from "./adapt";
-import type { DiscoverStockRow, OwnerStockRow, ProductActivityRow } from "./adapt";
+import type { DerivedProducts, DiscoverStockRow, OwnerStockRow, ProductActivityRow } from "./adapt";
 import { withCorrections } from "../inventory/priceChange";
 
 // The product screens' reads (#176). Hooks live beside their screens, per api/queryClient.ts.
@@ -61,6 +69,11 @@ interface ProductListArgs {
   lock?: ProductLockPick;
   /** THE STOCK'S AGE — at least this many whole days on a shelf (the-dates-read-as-ages). Narrowed on the server. */
   minStockAgeDays?: number;
+  /**
+   * THE TAG FILTER — products carrying ANY of these product tags (the-team-code-and-product-tags-prototype-is-accepted).
+   * Narrowed on the server inside the list's one count and page (`tag_ids`); empty = any tag or none.
+   */
+  tagIds?: bigint[];
 }
 
 /** The list's Kunci picks: the three ways of the lock, and "a minimum in force right now". */
@@ -92,6 +105,7 @@ export function useProducts({
   sort = null,
   lock,
   minStockAgeDays = 0,
+  tagIds = [],
 }: ProductListArgs) {
   return useQuery({
     // `status` is in the key because the two tabs are two different answers: caching the archived
@@ -105,6 +119,7 @@ export function useProducts({
       sort: sort ? `${sort.by}:${sort.dir}` : "",
       lock: lock ?? "",
       age: minStockAgeDays,
+      tag: tagIds.map(String).join(","),
     }),
     ...listQuery,
     enabled: teamId !== undefined,
@@ -116,6 +131,7 @@ export function useProducts({
           status,
           lock: lock ? LOCK_FILTER[lock] : ProductLockFilter.UNSPECIFIED,
           stockAgeMinDays: minStockAgeDays,
+          tagIds,
         },
         // The lens is the building the age is read in; the lock never reads it (a minimum reads every warehouse).
         stockWarehouseId: warehouseId,
@@ -578,6 +594,83 @@ export function useDiscoverStockByWarehouse(args: { teamId: bigint | undefined; 
       );
     },
   });
+}
+
+// PRODUK TURUNAN — the return map, read both ways and across teams (produk-turunan-is-the-return-map): Turunan dari, the
+// other teams' products this one was mapped FROM, and Turunannya, every team's own product mapped from it — named.
+//
+// ONE queryFn, so every name is asked the moment the maps answer, with no render between (#134/#138): the maps
+// (ProductDerivedList, the one new read), then SIDE BY SIDE the products' records (ProductByIds — name, SKU, cover, and
+// each borrowed product's owner) and their ready stock (DiscoverStockByIds, every warehouse — the Discover card's own
+// figure), and the teams' names (TeamByIds, through the shared team-name cache). A Turunan dari line names its borrowed
+// product's OWNER, which only that product's record says — so when there is one, the names wait for the records;
+// otherwise they go out beside them. Each is a read the Discover detail already makes.
+//
+// The page asks it from the id in its address, beside the product's own read — never from inside the section, which
+// mounts only once the product has loaded. On the plain always-fresh default: ready stock is stock (HARD RULE 10), and a
+// by-id read keyed on a new product is a different subject, never `listQuery`.
+export function useProductDerived(args: { teamId: bigint | undefined; productId: bigint }) {
+  const { teamId, productId } = args;
+  const client = useQueryClient();
+
+  return useQuery({
+    queryKey: key.products(teamId, { derived: productId.toString() }),
+    enabled: teamId !== undefined && productId > 0n,
+    queryFn: async (): Promise<DerivedProducts> => {
+      const maps = await teamReturnConfigurationClient.productDerivedList({ teamId: teamId!, filter: { productId } });
+      const ids = derivedProductIds(maps);
+      if (ids.length === 0) return derivedFromMaps(maps, new Map(), new Map(), {});
+
+      // A Turunannya line's team is its map's own; a Turunan dari line's is its product's owner.
+      const mapTeams = maps.derivedTo.map((m) => m.teamId);
+      const namesNow = maps.derivedFrom.length === 0;
+      const [records, stock, earlyNames] = await Promise.all([
+        derivedRecords(teamId!, ids),
+        derivedStock(teamId!, ids),
+        namesNow ? derivedTeamNames(client, mapTeams) : null,
+      ]);
+      const teams = earlyNames ?? (await derivedTeamNames(client, [...mapTeams, ...[...records.values()].map((p) => p.teamId)]));
+
+      return derivedFromMaps(maps, records, stock, teams);
+    },
+  });
+}
+
+// The by-ids reads take at most 200 ids; a product's maps name up to 400 products (200 a direction) — so a read is
+// asked once per 200, side by side.
+const BY_IDS_MAX = 200;
+
+function inChunks<T>(xs: T[]): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < xs.length; i += BY_IDS_MAX) out.push(xs.slice(i, i + BY_IDS_MAX));
+  return out;
+}
+
+async function derivedRecords(teamId: bigint, ids: bigint[]) {
+  const answers = await Promise.all(
+    inChunks(ids).map((chunk) =>
+      productClient.productByIds({ teamId, filter: { ids: chunk }, dataRequest: productByIdsRowData() }),
+    ),
+  );
+
+  return new Map(answers.flatMap((res) => productsFromByIds(res)).map((p) => [p.id.toString(), p]));
+}
+
+async function derivedStock(teamId: bigint, ids: bigint[]) {
+  const answers = await Promise.all(
+    inChunks(ids).map((chunk) => inventoryClient.discoverStockByIds({ teamId, productIds: chunk, warehouseId: 0n })),
+  );
+
+  return new Map<string, DiscoverStockRow>(answers.flatMap((res) => [...discoverStockFromResponse(res)]));
+}
+
+// Best-effort, as every owner name is (ownerNames): a team name is a label, so a failed lookup leaves the line its
+// `#id` rather than failing the section.
+async function derivedTeamNames(client: QueryClient, teamIds: bigint[]): Promise<{ [id: string]: string }> {
+  const unique = [...new Set(teamIds.filter((id) => id > 0n).map(String))].map((id) => BigInt(id));
+  const parts = await Promise.all(inChunks(unique).map((chunk) => ownerNames(client, chunk)));
+
+  return Object.assign({}, ...parts);
 }
 
 // ── The detail page's three ROW-level reads (#232) ──────────────────────────────────────────────

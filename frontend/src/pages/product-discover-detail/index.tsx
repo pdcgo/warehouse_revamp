@@ -28,7 +28,6 @@ import { NotImplemented } from "../../features/pending/NotImplemented";
 import { NotImplementedSummary } from "../../features/pending/NotImplementedSummary";
 import { DailySection } from "../../features/products/DailySection";
 import { DerivedSection } from "../../features/products/DerivedSection";
-import { sampleDerived } from "../../features/products/derivedSample";
 import { DiscoverBadges } from "../../features/products/DiscoverBadges";
 import { ownPriceOf } from "../../features/products/discoverSample";
 import { FigureRows, type FigureRow } from "../../features/products/FigureRows";
@@ -46,6 +45,7 @@ import {
   useDiscoverStockByWarehouse,
   useOwnerStockByWarehouse,
   useProductActivity,
+  useProductDerived,
 } from "../../features/products/queries";
 import { StockHighlight } from "../../features/products/StockHighlight";
 import { SuppliersSection } from "../../features/products/SuppliersSection";
@@ -102,7 +102,7 @@ function parseProductId(raw: string | undefined): bigint {
 //
 //   Info               the pictures (the whole gallery), how much is ready (every shelf, summed), the team, the category,
 //                      the cross price
-//   Produk Turunan ⚠   the owner's page's, beside it — no Penjualan Tim Lain: the lock is the title's badge
+//   Produk Turunan     the owner's page's, beside it — no Penjualan Tim Lain: the lock is the title's badge
 //   Harga per Gudang   every warehouse's ready stock and cross price — where the owner's page has Batch, never lensed
 //   Per Gudang         the owner's page's warehouse card WITHOUT Harga Modal (owner: *"per gudang itu masukkan ke detail
 //                      discover ini dengan tanpa harga modal"*, the-discover-detail-has-the-warehouse-zone): the picker,
@@ -130,6 +130,9 @@ export function DiscoverProductDetailPage() {
   const product = query.data?.product ?? null;
   const categories = query.data?.categories ?? [];
   const own = product !== null && product.teamId === teamId;
+  // PRODUK TURUNAN — the owner's page's section and its read: the return maps both ways, across teams, named
+  // (produk-turunan-is-the-return-map). Asked from the id in the address, beside the record's own read.
+  const derived = useProductDerived({ teamId, productId: id });
 
   // Three reads beside the record, each failing on its own: a missing owner name or warehouse figure
   // must never blank the product.
@@ -495,12 +498,15 @@ export function DiscoverProductDetailPage() {
     </Grid>,
   );
 
-  // ── PRODUK TURUNAN — the owner's page's section, its sample rows and all (owner: *"produk turunan juga
-  // ditampilkan"*). ──────────────────────────────────────────────────────────────────────────────────────────────────
+  // ── PRODUK TURUNAN — the owner's page's section, real rows and all (owner: *"produk turunan juga ditampilkan"*): what
+  // this product was mapped from, and every team's own product mapped from it. A refusal costs the section alone. ─────
   const derivedSection = section(
     "derived",
-    <DerivedSection derived={sampleDerived(product.id, product.name, product.productCode, product.defaultImageThumbnailUrl || cover)} />,
-    mark("derived"),
+    <DerivedSection
+      derived={derived.data}
+      loading={derived.isPending}
+      error={derived.isError ? rpcError(derived.error) : undefined}
+    />,
   );
 
   // ── HARGA PER GUDANG — every warehouse's ready stock and its cross price there (each-warehouse-says-ready-and-its-

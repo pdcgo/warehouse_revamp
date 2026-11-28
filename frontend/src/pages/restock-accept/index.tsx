@@ -184,10 +184,9 @@ export function RestockAcceptPage() {
 
   // On Tidak ada, there is no charge, whatever was typed before.
   const courierCharge = chargeAsked ? toRupiah(charge) : 0;
-  // On Ada, the amount and the note are both required (the-courier-is-paid-once-per-restock); the note's error shows once
-  // there is an amount, so a fresh Ada is not all red.
+  // On Ada, the amount is required (the-courier-is-paid-once-per-restock); what it was for is optional
+  // (the-couriers-charge-note-is-optional), so Terima never waits for it.
   const chargeAmountMissing = chargeAsked && courierCharge <= 0;
-  const chargeNoteMissing = chargeAsked && courierCharge > 0 && chargeNote.trim() === "";
   // Who owes the charge back — named in the charge's text (the-cod-paid-is-said-in-its-own-section).
   const requester = useTeamDetail({ teamId: request?.requestingTeamId ?? 0n, enabled: (request?.requestingTeamId ?? 0n) > 0n });
   const sellingTeam =
@@ -214,7 +213,6 @@ export function RestockAcceptPage() {
       .filter((l) => !l.st.ready)
       .map((l) => ({ id: `line-${l.item.productId}`, label: t(lineBlocker(l.st), { name: l.item.name }) })),
     chargeAmountMissing && { id: "chargeAmount", label: t("restock.accept.missing.chargeAmount") },
-    chargeNoteMissing && { id: "chargeNote", label: t("restock.accept.missing.chargeNote") },
     // A PHOTO STILL ON ITS WAY — Terima would send the count without it. Only a photo that will be sent: the broken
     // units' on a line with broken units, the slip with a charge.
     ...lines
@@ -401,7 +399,6 @@ export function RestockAcceptPage() {
             amount={charge}
             charge={courierCharge}
             note={chargeNote}
-            noteMissing={chargeNoteMissing}
             onAmount={setCharge}
             onNote={setChargeNote}
             photo={shownChargePhoto}

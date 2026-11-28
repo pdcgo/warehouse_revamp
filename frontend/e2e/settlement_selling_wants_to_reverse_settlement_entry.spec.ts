@@ -88,7 +88,8 @@ test.describe("selling:all wants to undo a wrong entry — reverse settlement en
     // Every order's Estimate is posted by the order's listener — wait for each account to open on it.
     const detail = (p: Page, orderId: string) => api(p, "settlement.v1.SettlementService/OrderSettlementDetail", { teamId: g.team, orderId });
     for (const orderId of Object.values(ground.order)) {
-      await expect.poll(async () => Number((await detail(page, orderId)).settlement?.initialTotal ?? 0), { timeout: 30_000 }).toBe(SALE);
+      // 404 "no settlement account" until the listener ran — caught, or expect.poll stops on the throw.
+      await expect.poll(async () => Number((await detail(page, orderId).catch(() => ({ settlement: { initialTotal: -1 } }))).settlement?.initialTotal ?? 0), { timeout: 30_000 }).toBe(SALE);
     }
     await page.close();
 

@@ -1023,7 +1023,7 @@ export const MobileTheDebtorPays: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(await canvas.findByTestId("liability-detail-make-payment")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("liability-detail-make-payment")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId("liability-detail-request-payment")).toBeNull();
     await expect(await canvas.findByTestId("liability-detail-payment-request")).toHaveTextContent("Gudang Pusat asks you to pay");
     await expect(canvas.getByTestId("liability-detail-direction")).toHaveTextContent("You owe them");

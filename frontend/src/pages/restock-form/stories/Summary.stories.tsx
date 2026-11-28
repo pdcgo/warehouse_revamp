@@ -38,7 +38,7 @@ async function pickCourier(canvas: Canvas, code: string) {
 
 // THE CHECKS RUN IN THE FORM'S ORDER (owner: *"untuk urutan validasi restocknya mulai dari produk, gudang, rekening,
 // resi"*, *"di produk perlu cek semuanya punya supplier dulu"*, the-checks-run-products-warehouse-account-resi) — the line
-// by Buat Restok names one thing at a time: the products, a supplier and a total on every one, the warehouse, the paying account
+// by Buat Restok names one thing at a time: the products, a total on every one (a supplier is optional — restock.md given 15), the warehouse, the paying account
 // (a-restock-names-its-paying-account), the courier (the-courier-is-required-on-the-form), the resi — and while the resi
 // is being checked, that it is (a-reference-in-use-stops-the-restock-form); then the ready mark, and Buat Restok saves.
 export const TheChecksRunProductsWarehouseAccountResi: Story = {
@@ -50,11 +50,10 @@ export const TheChecksRunProductsWarehouseAccountResi: Story = {
 
     await first("lines");
     await pickProducts(canvas, [BERAS]);
-    await first("supplier");
-    await expect(canvas.getByTestId("restock-line-0-supplier-required")).toBeVisible();
-
-    await userEvent.click(canvas.getByTestId("restock-line-0-picker-trigger"));
-    await connectSupplier("restock-line-0-picker", "Cahaya", CAHAYA.id, CAHAYA_STORE);
+    // No supplier is picked, and none is asked for: a supplier is OPTIONAL (owner 2026-11-27,
+    // the-supplier-popup-points-to-create-supplier-when-none-exists) — the line carries no required mark, and the restock
+    // below is created without one (restock.md given 15, *restock created without a supplier*).
+    await expect(canvas.queryByTestId("restock-line-0-supplier-required")).toBeNull();
     // The count starts at 1; the TOTAL must be typed (the-count-and-total-are-required).
     await first("total");
     await expect(canvas.getByTestId("restock-total-required-0")).toBeVisible();

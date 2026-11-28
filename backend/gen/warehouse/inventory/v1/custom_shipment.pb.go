@@ -3074,7 +3074,8 @@ type CustomShipmentArriveRequest struct {
 	// The warehouse — must be the parcel's; the owning team and any other warehouse read NotFound.
 	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	Id     uint64 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
-	// The courier's charge at the door, noted — optional, 0 = none; its note REQUIRED above 0, as a restock's. Kept and
+	// The courier's charge at the door, noted — optional, 0 = none; its note optional too, as a restock's
+	// (the-couriers-charge-note-is-optional). Kept and
 	// shown; Terima's figure is final and replaces it. No money here.
 	DoorCharge     float64 `protobuf:"fixed64,3,opt,name=door_charge,json=doorCharge,proto3" json:"door_charge,omitempty"`
 	DoorChargeNote string  `protobuf:"bytes,4,opt,name=door_charge_note,json=doorChargeNote,proto3" json:"door_charge_note,omitempty"`
@@ -3263,7 +3264,7 @@ type CustomShipmentReceiveRequest struct {
 	TeamId uint64                        `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	Id     uint64                        `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
 	Lines  []*CustomShipmentReceivedLine `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
-	// The courier's charge at the door, FINAL — it replaces Tiba's, never adds to it; its note required above 0. The
+	// The courier's charge at the door, FINAL — it replaces Tiba's, never adds to it; its note optional. The
 	// selling team owes it to the warehouse through Team Balance (custom_shipment_fee, keyed by the parcel).
 	DoorCharge     float64 `protobuf:"fixed64,4,opt,name=door_charge,json=doorCharge,proto3" json:"door_charge,omitempty"`
 	DoorChargeNote string  `protobuf:"bytes,5,opt,name=door_charge_note,json=doorChargeNote,proto3" json:"door_charge_note,omitempty"`

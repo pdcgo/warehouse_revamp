@@ -124,24 +124,42 @@ test("Restock create: tick two products in the picker and save (#165)", async ({
   await page.getByTestId("restock-finance-account").click();
   await page.getByTestId(`restock-finance-account-option-${accountId}`).click();
 
-  // Every product names its supplier, and the restock its resi (the-checks-run-products-warehouse-account-resi) — the
-  // supplier set ONCE for both lines, from the card's supplier part (one-supplier-for-all-in-two-steps). It sells from
-  // no store, so "no store" is chosen for it and Connect is live at once.
-  await expect(page.getByTestId("restock-form-missing-supplier")).toBeVisible();
-  await page.getByTestId("restock-all-supplier-picker-trigger").click();
-  await page.getByTestId("restock-all-supplier-picker-search").fill(supplierName);
-  await page.getByTestId(`restock-all-supplier-picker-supplier-${supplierId}`).click();
-  await page.getByTestId("restock-all-supplier-picker-confirm").click();
-  await expect(page.getByTestId("restock-line-1-supplier-shown")).toContainText(supplierName);
+  // A SUPPLIER IS OPTIONAL (#144 — restock.md given 15, *restock created without a supplier*; the 🔄 on
+  // the-checks-run-products-warehouse-account-resi): with the account set, the ready line asks for the courier next and
+  // never for a supplier, and a product's *Bought from* carries no required mark — while the total beside it does (the
+  // same mark, so the absence below is not a selector finding nothing).
+  await expect(page.getByTestId("restock-form-missing-courier")).toBeVisible();
+  await expect(page.getByTestId("restock-form-missing-supplier")).toHaveCount(0);
+  await expect(page.getByTestId("restock-line-0-supplier-required")).toHaveCount(0);
+  const line0 = page.getByTestId("restock-line-0");
+  const requiredMark = ".chakra-field__requiredIndicator";
+  await expect(page.getByTestId("restock-total-required-0")).toHaveClass(/chakra-field__requiredIndicator/);
+  await expect(page.getByTestId("restock-total-required-0")).toHaveText("*");
+  const boughtFrom = line0.locator("label", { hasText: "Bought from" });
+  await expect(boughtFrom).toHaveText("Bought from");
+  await expect(boughtFrom.locator(requiredMark)).toHaveCount(0);
 
   // The courier (the-courier-is-required-on-the-form) — JNE, which the shipment catalogue's first migration seeds.
-  await expect(page.getByTestId("restock-form-missing-courier")).toBeVisible();
   await page.getByTestId("restock-courier").getByRole("combobox").click();
   await page.getByTestId("shipment-channel-option-jne").click();
 
   // The resi, which no other restock holds (a-reference-in-use-stops-the-restock-form) — asked of the list's search.
   await expect(page.getByTestId("restock-form-missing-receipt")).toBeVisible();
   await page.getByTestId("restock-receipt").fill(`E2E-RESI-${whCode}`);
+
+  // Ready with NO supplier on either product — the form would save as it stands.
+  await expect(page.getByTestId("restock-line-0-supplier-shown")).toHaveText("Not chosen yet");
+  await expect(page.getByTestId("restock-line-1-supplier-shown")).toHaveText("Not chosen yet");
+  await expect(page.getByTestId("restock-form-ready")).toBeVisible();
+  await expect(page.getByTestId("submit-restock")).toBeEnabled();
+
+  // The supplier, when there is one, is still set ONCE for both lines, from the card's supplier part
+  // (one-supplier-for-all-in-two-steps). It sells from no store, so "no store" is chosen for it and Connect is live at once.
+  await page.getByTestId("restock-all-supplier-picker-trigger").click();
+  await page.getByTestId("restock-all-supplier-picker-search").fill(supplierName);
+  await page.getByTestId(`restock-all-supplier-picker-supplier-${supplierId}`).click();
+  await page.getByTestId("restock-all-supplier-picker-confirm").click();
+  await expect(page.getByTestId("restock-line-1-supplier-shown")).toContainText(supplierName);
 
   await expect(page.getByTestId("restock-form-ready")).toBeVisible();
   await expect(page.getByTestId("submit-restock")).toBeEnabled();

@@ -25,7 +25,7 @@ import { EmptyHint } from "../../../components/feedback/EmptyHint";
 import { ListSkeleton } from "../../../components/feedback/ListSkeleton";
 import { useIsMobile } from "../../../layouts/shell";
 import { useCanWrite } from "../../../features/team/TeamContext";
-import { useShopGrants } from "../queries";
+import type { ShopGrantsRead } from "../queries";
 
 // ShopUsersSection manages who may work on a shop (#86). It lists the granted users (resolving the
 // opaque ids to names via UserByIDs), adds one via the shared UserSelect SCOPED TO THE TEAM — a shop is
@@ -46,21 +46,23 @@ export function ShopUsersSection({
   teamId,
   shopId,
   primaryUserId,
+  grants,
   onChanged,
 }: {
   teamId: bigint;
   shopId: bigint;
   primaryUserId: bigint;
+  /** The page's read of this shop's grants (useShopGrants) — read beside the shop, never after it (#134). */
+  grants: ShopGrantsRead;
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   // Who may work on the shop is READ while the admin team monitors the team — no add, no primary, no remove.
   const writable = useCanWrite();
-  // THE GRANTS AND THEIR NAMES — one query (useShopGrants, #122). A write here re-reads it and waits for the answer
+  // THE GRANTS AND THEIR NAMES — one query (useShopGrants, #122), the page's. A write here re-reads it and waits for the answer
   // (the button keeps its spinner meanwhile), with the rows it had kept on screen rather than blanked; a failed read
   // says so and lists nobody, as before.
-  const grants = useShopGrants({ teamId, shopId });
   const userIds = grants.isError ? [] : (grants.data?.ids ?? []);
   const users = grants.data?.users ?? {};
   const loading = grants.isPending;

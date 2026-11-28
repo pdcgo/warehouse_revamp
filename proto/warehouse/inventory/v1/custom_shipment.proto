@@ -790,7 +790,8 @@ message CustomShipmentArriveRequest {
     (warehouse.role_base.v1.use_scope) = true
   ];
   uint64 id = 2 [(buf.validate.field).uint64.gt = 0];
-  // The courier's charge at the door, noted — optional, 0 = none; its note REQUIRED above 0, as a restock's. Kept and
+  // The courier's charge at the door, noted — optional, 0 = none; its note optional too, as a restock's
+  // (the-couriers-charge-note-is-optional). Kept and
   // shown; Terima's figure is final and replaces it. No money here.
   double door_charge = 3 [(buf.validate.field).double = {
     gte: 0
@@ -837,7 +838,7 @@ message CustomShipmentReceiveRequest {
     min_items: 1
     max_items: 200
   }];
-  // The courier's charge at the door, FINAL — it replaces Tiba's, never adds to it; its note required above 0. The
+  // The courier's charge at the door, FINAL — it replaces Tiba's, never adds to it; its note optional. The
   // selling team owes it to the warehouse through Team Balance (custom_shipment_fee, keyed by the parcel).
   double door_charge = 4 [(buf.validate.field).double = {
     gte: 0

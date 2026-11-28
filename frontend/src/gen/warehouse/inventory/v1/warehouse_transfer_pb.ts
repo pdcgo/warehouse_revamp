@@ -358,7 +358,7 @@ export type WarehouseTransfer = Message<"warehouse.inventory.v1.WarehouseTransfe
   warehouseAdditionalCost: number;
 
   /**
-   * Required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for).
+   * What the charge was for — optional, "" = none (the-couriers-charge-note-is-optional).
    *
    * @generated from field: string warehouse_additional_cost_note = 15;
    */
@@ -1143,8 +1143,8 @@ export type WarehouseTransferAcceptRequest = Message<"warehouse.inventory.v1.War
   lines: WarehouseTransferCountedLine[];
 
   /**
-   * The courier's charge at B's door, rupiah; 0 = none. Its note is required when it is above 0 — the handler
-   * checks.
+   * The courier's charge at B's door, rupiah; 0 = none. Its note is optional (the-couriers-charge-note-is-optional): a
+   * charge with no note is accepted.
    *
    * @generated from field: double warehouse_additional_cost = 4;
    */

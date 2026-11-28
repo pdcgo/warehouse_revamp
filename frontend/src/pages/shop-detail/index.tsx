@@ -18,6 +18,7 @@ import { ShopStatusBadge } from "../../features/shops/ShopStatusBadge";
 import { isShopClosed } from "../../features/shops/status";
 import { formatUnixDate } from "../../lib/datetime";
 import { ShopUsersSection } from "./components/ShopUsersSection";
+import { useShopGrants } from "./queries";
 import { WithdrawalAccountCard } from "./components/WithdrawalAccountCard";
 
 function parseShopId(raw: string | undefined): bigint {
@@ -77,6 +78,8 @@ export function ShopDetailPage() {
   const teamId = current?.teamId;
 
   const query = useShop({ teamId, shopId: id });
+  // Who may work on it — the access panel's read, asked beside the shop's own (useShopGrants, #134).
+  const grants = useShopGrants({ teamId, shopId: id });
   const reopenShop = useReopenShop();
 
   const shop = query.data ?? null;
@@ -283,6 +286,7 @@ export function ShopDetailPage() {
           teamId={current.teamId}
           shopId={shop.id}
           primaryUserId={shop.primaryUserId}
+          grants={grants}
           onChanged={() => void query.refetch()}
         />
       </Grid>

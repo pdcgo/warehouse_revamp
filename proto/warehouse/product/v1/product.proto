@@ -5,6 +5,8 @@ package warehouse.product.v1;
 import "buf/validate/validate.proto";
 import "warehouse/common/v1/list.proto";
 import "warehouse/common/v1/page.proto";
+import "warehouse/product/v1/product_log.proto";
+import "warehouse/product/v1/product_tag.proto";
 import "warehouse/role_base/v1/role.proto";
 
 option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1;productv1";
@@ -62,6 +64,57 @@ service ProductService {
   // ProductDelete removes a product for good — ONLY one with no history: never in a stock movement, an order line or a
   // restock line. It strands nothing, because nothing ever pointed at it. Refused otherwise: archive it instead.
   rpc ProductDelete(ProductDeleteRequest) returns (ProductDeleteResponse);
+
+  // ── PRODUCT TAGS (backlog #147, products-have-their-own-tag-list; messages in product_tag.proto) ──────────────────
+  //
+  // The products' OWN tag list — apart from the orders' and the restocks' — one for every team, system and custom tags,
+  // and the app's locked `need_reprint_code`.
+  //
+  // The products' list, every team's — both Products lists' Tag filter and the product page's add box.
+  rpc ProductTagList(ProductTagListRequest) returns (ProductTagListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // The admins' Kelola tag produk: each tag with how many products carry it.
+  rpc ProductTagManageList(ProductTagManageListRequest) returns (ProductTagManageListResponse) {
+    // A READ — it writes nothing.
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // The tags of known products, each side only its own — the warehouse's product page.
+  rpc ProductTagsByIds(ProductTagsByIdsRequest) returns (ProductTagsByIdsResponse) {
+    // A READ — no row, no event, no file.
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // A custom tag; a name already on the products' list answers that tag, never a twin.
+  rpc ProductTagCreate(ProductTagCreateRequest) returns (ProductTagCreateResponse);
+  // A system tag, by an admin; the same one-name-one-tag answer.
+  rpc ProductTagSystemCreate(ProductTagSystemCreateRequest) returns (ProductTagSystemCreateResponse);
+  // Rename, the admins' alone — never the app's tag.
+  rpc ProductTagRename(ProductTagRenameRequest) returns (ProductTagRenameResponse);
+  // Delete, the admins' alone — off every product too; never the app's tag.
+  rpc ProductTagDelete(ProductTagDeleteRequest) returns (ProductTagDeleteResponse);
+  // A custom tag on / off a product — its writers in the owning team.
+  rpc ProductTagAdd(ProductTagAddRequest) returns (ProductTagAddResponse);
+  rpc ProductTagRemove(ProductTagRemoveRequest) returns (ProductTagRemoveResponse);
+  // An admin's system tag on / off a product — never the app's tag.
+  rpc ProductSystemTagAdd(ProductSystemTagAddRequest) returns (ProductSystemTagAddResponse);
+  rpc ProductSystemTagRemove(ProductSystemTagRemoveRequest) returns (ProductSystemTagRemoveResponse);
+
+  // ── THE PRODUCT'S HISTORY (backlog #149; messages in product_log.proto) ───────────────────────────────────────────
+  //
+  // A product's history lines, newest first — today the code it took when its team's code changed (old → new, who,
+  // when): the product page's Riwayat Produk card.
+  rpc ProductLogList(ProductLogListRequest) returns (ProductLogListResponse) {
+    // A READ — no row, no event, no file.
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // The codes that still find known products — each one's code now and every former code (backlog #152): the pick pages'
+  // item scan, once per page. Each side only its own, as ProductTagsByIds.
+  rpc ProductCodesByIds(ProductCodesByIdsRequest) returns (ProductCodesByIdsResponse) {
+    // A READ — no row, no event, no file.
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 message Product {
@@ -69,7 +122,9 @@ message Product {
   uint64 team_id = 2;
   // The product's ONE code, as stored — `<team_code>-<the team's part>`, composed by product_service on write and globally
   // unique over every row, archived ones included (the-field-is-product-code-composed-on-write). What the sticker and the
-  // scan carry. Read-only: a write sends the team's part (ProductCreateRequest.product_code_part).
+  // scan carry. Read-only: a write sends the team's part (ProductCreateRequest.product_code_part). When the team's code
+  // changes, it takes the new one (TeamCodeUpdate, a-team-code-change-recomposes-its-product-codes) and its history keeps
+  // the old (ProductLogList).
   string product_code = 3;
   string name = 4;
   string description = 5;
@@ -99,6 +154,11 @@ message Product {
 
   // RESERVED — see ProductCreateRequest.reserved_stock. Units held back from selling; 0 = none.
   uint32 reserved_stock = 13;
+
+  // ITS TAGS (products-have-their-own-tag-list, product_tag.proto) — from the products' own list, the system's first,
+  // then by name. Filled by ProductDetail ONLY — the owning team's read (its 🔄 *who sees*); every other read of a Product
+  // (ProductByIds, the writes' answers) leaves it empty. `product_count` is 0 here.
+  repeated ProductTag tags = 14;
 }
 
 // ProductImage is one catalogue image: the full public URL and (best-effort) its thumbnail. Both
@@ -260,6 +320,17 @@ message ProductListFilter {
   // ago (the-dates-read-as-ages). 0 = no narrowing. A product with nothing on a shelf has no age and never matches. Read
   // in ProductListRequest.stock_warehouse_id when it is set, else across every warehouse. ProductList only.
   uint32 stock_age_min_days = 4 [(buf.validate.field).uint32.lte = 3650];
+
+  // THE TAG FILTER (the-team-code-and-product-tags-prototype-is-accepted: several tags, ANY of them) — only products
+  // carrying at least one of these product tags. Empty = any tag or none. Narrows inside the list's one count and page, so
+  // `total_items` and the paging describe the narrowed list. ProductList only: ProductDiscover refuses it
+  // (INVALID_ARGUMENT — other teams see no tags, so they filter by none).
+  repeated uint64 tag_ids = 5 [(buf.validate.field).repeated = {
+    max_items: 50
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
 }
 
 // ProductLockFilter narrows a product list by its LOCK — the two fields a product already has, cross_locked and
@@ -320,6 +391,12 @@ message ProductRowItem {
   // The hold-back buffer in units. On the row because a list is where "which products am I holding
   // stock back on, and how much" is actually asked — one product at a time would never surface it.
   uint32 reserved_stock = 12;
+
+  // ITS TAGS (products-have-their-own-tag-list, the-team-code-and-product-tags-prototype-is-accepted: the list's Tag
+  // column) — the system's first, then by name. Filled by ProductList ONLY, the owning team's list: ProductDiscover shares
+  // this row and leaves it empty (its 🔄 *who sees*: other teams on Discover see no tags), as do the by-ids rows.
+  // `product_count` is 0 here.
+  repeated ProductTag tags = 13;
 }
 
 message ProductRowMapItem {

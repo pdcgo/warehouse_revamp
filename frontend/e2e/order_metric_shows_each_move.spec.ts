@@ -135,6 +135,9 @@ const GIVENS: {
   },
 ];
 
+// Given 14 has a second then beside its `completed 1` (stored verbatim — acceptance_mark.py matches the literal text).
+const DISPUTES_RESOLVED_THEN = "then: disputes resolved 1";
+
 const username = (key: string) => `e2eum${key}${SUFFIX}`;
 
 const ground = {
@@ -300,8 +303,10 @@ for (const g of GIVENS) {
           });
         }
         if (g.id === 14) {
-          await test.step("regression: the resolve is also its own Disputes resolved (1)", async () => {
-            await expect.soft(cell("disputes_resolved_count")).toHaveText("1");
+          // Given 14's second then (hfrada, 224a7915): the resolve is also its own Disputes resolved — read on the same
+          // row once the fold that made Completed 1 has landed.
+          await test.step(DISPUTES_RESOLVED_THEN, async () => {
+            await expect(cell("disputes_resolved_count")).toHaveText("1", { timeout: 10_000 });
           });
         }
       });

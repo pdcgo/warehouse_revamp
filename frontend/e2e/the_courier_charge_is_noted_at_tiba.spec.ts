@@ -9,14 +9,18 @@ import { SUFFIX, api } from "./restock_helpers";
 // Postgres, document storage and the liability ledger (backlog #76):
 //
 //   the-courier-charge-is-noted-at-tiba-and-final-at-terima (docs/business/inventory/restock_decision.md) — the charge
-//     at the door, its note (and the slip's photo) can be SET when the box is signed for and EDITED at Terima: what Tiba
+//     at the door, its note (and the slip's photo) can be SET when the box is set arrived (an-arrival-is-set-arrived —
+//     the act was *Sign for Box*) and EDITED at Terima: what Tiba
 //     sets is kept and shown, Terima opens with it, and its figure is final — it REPLACES Tiba's, never adds to it. The
 //     money (the selling team owing the warehouse) moves only at Terima;
 //   the-courier-is-paid-once-per-restock — one debt per restock, whichever act noted the charge;
 //   the-cod-can-be-noted-when-the-box-arrives (docs/technical/frontend/restock_decision.md) — the sign dialog asks for it.
 //
 // The people: SARI owns the selling team that raises the restock (she reads its liability with the warehouse); DEDI, the
-// warehouse's STAFF, signs for the box and counts it in. Root only seeds the ground, on a page of its own.
+// warehouse's STAFF, sets the box arrived and counts it in. Root only seeds the ground, on a page of its own.
+//
+// The note is OPTIONAL since #146 (the-couriers-charge-note-is-optional): this file types one each time and still
+// proves it kept; a charge with NO note is the_couriers_charge_note_is_optional.spec.ts.
 //
 // ⚠ NOT PINNED: how the "noted" line is worded beyond its opening (*Noted by …* — not asked, the build's default), and the
 // broken units' rack (waits on the owner).
@@ -235,7 +239,7 @@ test.describe("the courier's charge typed at Tandai Tiba is kept, and Terima's f
     await expect(door.getByTestId("restock-detail-page")).toBeVisible();
     await expect(door.getByTestId("restock-detail-courier-charge")).toContainText("8.000");
     await expect(door.getByTestId("restock-detail-courier-charge-note")).toHaveText(NOTE);
-    await expect(door.getByTestId("restock-detail-courier-charge-owed")).toContainText("Noted by this warehouse when the box was signed for");
+    await expect(door.getByTestId("restock-detail-courier-charge-owed")).toContainText("Noted by this warehouse when the box was set arrived");
     await expect(door.getByTestId("restock-detail-courier-photo")).toBeVisible();
     await opensWhole(door, "restock-detail-courier-photo");
 
@@ -246,7 +250,7 @@ test.describe("the courier's charge typed at Tandai Tiba is kept, and Terima's f
     await expect(card.getByTestId("restock-detail-courier-charge")).toContainText("8.000");
     await expect(card.getByTestId("restock-detail-courier-charge-note")).toHaveText(NOTE);
     await expect(card.getByTestId("restock-detail-courier-charge-owed")).toContainText("Noted by");
-    await expect(card.getByTestId("restock-detail-courier-charge-owed")).toContainText("when the box was signed for");
+    await expect(card.getByTestId("restock-detail-courier-charge-owed")).toContainText("when the box was set arrived");
     await expect(card.getByTestId("restock-detail-courier-photo")).toBeVisible();
 
     // ── NO MONEY AT TIBA: the selling team's ledger with the warehouse holds nothing for this restock ─────────────────

@@ -7,12 +7,39 @@ Users & Role System, Documents, region, shipping, expense.
 
 ---
 
+## 2026-11-28 · team code and product tags tested
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Team code and product tags are tested** | the tester ran everything from #144 and #147–#152 green: a selling team can change its code, its products follow, each warehouse holding them reprints the labels, an old sticker still scans, and products carry tags; the restock form points to what is missing |
+
+**Next:** **Next:** the warehouse product page's two history bugs the tester found (#157, #158); the commit waits on your go.
+
+## 2026-11-27 · produk turunan, commit
+
+| What shipped | What it means for a person |
+| --- | --- |
+| **Produk Turunan shows real products** | on a product's page and on another team's product in Discover, *Produk Turunan* now lists the real links a return made: the product it came back as at another team, and every team's own product made from it, with team, SKU and ready stock — no more sample rows |
+| **A warehouse with no hours set no longer reads closed** | orders to a warehouse whose receiving hours were never entered (every staging warehouse) no longer warn *closed*; a holiday closure still warns. The warehouse's owner and admin can now set its hours, holidays and location on their own Settings page, with a reminder until the hours are set |
+| **A warehouse product's Stock History names the batch and the real kind** | each movement now says which batch it came from (a dash only where the records cannot be sure, as for some moves between racks); a cancelled order reads as a cancel, a damaged unit as broken, a found one as found, and price corrections are listed. The page also opens about twice as fast |
+| **Set Arrived instead of Sign for Box; the courier's note is optional** | a delivery's arrival is now called Set Arrived (Tandai Tiba) everywhere — restocks, transfers and reshipping — and the courier's charge can be saved without writing what it was for, at every arrival and accept |
+| **Product tags, the backend** | products can now carry tags on the server — the team's own tags and the app's locked `need_reprint_code` — and both Products lists can be filtered by tag; nobody sees it on screen yet, the screens come next (#148) |
+| **A team code can change — the server side** | the server can now change a selling team's code: every product of the team takes the new code at once, each keeps its old code in its history, products sitting on a shelf get the `need_reprint_code` tag, and a code once used is never given to another team; the screens come next (#150) |
+| **Product tags are on screen** | a product page now has a Tag card (the app's `need_reprint_code` locked, the team's own tags added and removed there), the warehouse sees a product's tags read-only, and both Products lists have a Tag column and a Tag filter; admins rename and delete tags in *Kelola tag produk* |
+| **A team code can be changed on screen** | a selling team's owner or admin changes the team code in Settings (root in Edit Team): before saving, the confirm says how many products take the new code, with an example, and which warehouses must reprint; a code another team uses or once used is refused with that team's name; each product's page shows its old → new code in a Riwayat Produk card |
+| **The reprint clears the tag** | after a team code change each warehouse holding the products sees *Cetak ulang kode (N)* on its Products list; its page prints one label per shelf spot with the new code, and once every warehouse holding stock has printed, `need_reprint_code` comes off by itself; a transfer into another warehouse adds that warehouse to the reprint, and a restock's Cetak Label now always prints the current code |
+| **An old sticker still scans** | after a team code change the pick pages accept a product's old code as well as its new one, so picking never stops before the reprint, and the Products lists' search finds a product by its old code; Settings' team picture words are in Indonesian too |
+
 ## 2026-11-26 · supplier statistics year limit, order create typing
 
 | What shipped | What it means for a person |
 | --- | --- |
 | **The supplier Statistics tab says *a year at most*** | picking more than a year on a supplier's Statistics tab (or opening such a link) says so and shows no figures, as the other reports already do — before, it asked the server and got an error |
 | **Typing on the new-order form does less work** | each key now redraws only the box being typed in (about 480 parts of the page instead of 3,800–4,200), so the form stays quicker on slower phones; nothing on the screen changed |
+| **Seven lists stop asking the server the same thing twice** | the orders, shops and both restock lists, a user's page, a batch and a warehouse product each send one request fewer when they open (the names of people, a product's racks); the rows, names and filters still appear together |
+| **Detail pages ask for their data at once instead of one piece after another** | a batch's page went from seven rounds of waiting to three, a warehouse product's from five to two, and found stock, a count, a warehouse order, Analytic and a shop from three to two; the pages look the same |
+| **A rack's shelf asks for the owners' names sooner** | on a rack's page the goods' owners are asked for as soon as the product names are in, so the owners' names land about 90 ms sooner; the batch list and a batch's page were already as quick as the browser allows |
+| **The warehouse's product list opens without a stray request** | while it worked out which team is signed in, the product list briefly drew the selling teams' catalogue and asked the server for a list it never showed; it now waits that moment out, and looks the same |
 
 ## 2026-11-22 · a range over a year
 

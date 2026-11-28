@@ -33,6 +33,22 @@ type StockNarrower interface {
 	// only) — the set a Stok siap range from 0 drops, asked as the complement because that range keeps products with no
 	// stock row at all.
 	ProductsReadyAbove(ctx context.Context, ceiling int64) ([]ShelvedProduct, error)
+	// HeldAmong returns, of `productIDs`, those the warehouse `warehouseID` has held — a batch there, ever, at 0 too (the
+	// set its Products list shows, a-warehouses-products-is-what-it-holds). ProductTagsByIds asks it: a warehouse reads
+	// the tags of a product it holds (products-have-their-own-tag-list, its 🔄 *who sees*). Not a list filter — the one
+	// read of this seam that answers who may SEE, so a team that is not a warehouse gets nothing back.
+	HeldAmong(ctx context.Context, warehouseID uint64, productIDs []uint64) ([]uint64, error)
+	// StockSitsAmong returns, of `productIDs`, each product with every warehouse holding units of it on a shelf NOW (a
+	// product with nothing on a shelf anywhere is absent), read on the CALLER'S transaction `tx`. The team code change asks
+	// it (RecomposeTeamCodes, backlog #149): those products are tagged `need_reprint_code` and wait for each such
+	// warehouse's reprint. Not a list filter — it writes nothing, and it is the only read of this seam inside a write.
+	StockSitsAmong(ctx context.Context, tx *gorm.DB, productIDs []uint64) ([]ShelvedIn, error)
+}
+
+// ShelvedIn is one product and one warehouse holding units of it on a shelf now — see inventory_v1.ShelvedIn.
+type ShelvedIn struct {
+	ProductID   uint64
+	WarehouseID uint64
 }
 
 // ShelfAsk is one ask of the shelves — see inventory_v1.ShelfAsk, which it is handed to unchanged: the warehouse (0 =
