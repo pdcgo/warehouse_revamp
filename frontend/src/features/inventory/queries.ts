@@ -42,6 +42,7 @@ import type {
   ProductPlace,
   StockBatch,
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
+import { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { type Product, ProductSchema } from "../../gen/warehouse/product/v1/product_pb";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import type { Costs } from "../orders/lines";
@@ -801,8 +802,10 @@ export function useBatchPlacements(args: {
   batchId: bigint;
   page: number;
   pageSize: number;
+  /** False holds the read — Sesuaikan Stok's racks are read only while its dialog is open. Default true. */
+  enabled?: boolean;
 }) {
-  const { warehouseId, batchId, page, pageSize } = args;
+  const { warehouseId, batchId, page, pageSize, enabled = true } = args;
 
   return useQuery({
     queryKey: key.inventory(warehouseId, {
@@ -810,7 +813,7 @@ export function useBatchPlacements(args: {
       page,
       pageSize,
     }),
-    enabled: warehouseId !== undefined && batchId > 0n,
+    enabled: enabled && warehouseId !== undefined && batchId > 0n,
     queryFn: async () => {
       const res = await inventoryClient.batchPlacementList({
         teamId: warehouseId!,
@@ -834,8 +837,11 @@ export function useBatchHistory(args: {
   // Date range over the movement timestamp; 0n = open on that end (#218 history date filter).
   fromUnix: bigint;
   toUnix: bigint;
+  // ONE kind of movement, as StockHistory's filter takes it — UNSPECIFIED (the default) is every kind (owner: *"pakai
+  // kindnya"*, riwayat-filters-by-one-kind).
+  kind?: MovementKind;
 }) {
-  const { warehouseId, productId, batchId, page, pageSize, fromUnix, toUnix } = args;
+  const { warehouseId, productId, batchId, page, pageSize, fromUnix, toUnix, kind = MovementKind.UNSPECIFIED } = args;
 
   return useQuery({
     queryKey: key.inventory(warehouseId, {
@@ -844,12 +850,13 @@ export function useBatchHistory(args: {
       pageSize,
       from: fromUnix.toString(),
       to: toUnix.toString(),
+      kind,
     }),
     enabled: warehouseId !== undefined && productId > 0n && batchId > 0n,
     queryFn: async () => {
       const res = await inventoryClient.stockHistory({
         warehouseId: warehouseId!,
-        filter: { productId, batchId, fromUnix, toUnix },
+        filter: { productId, batchId, fromUnix, toUnix, kind },
         dataRequest: stockHistoryRowData(),
         page: { page, limit: pageSize },
       });

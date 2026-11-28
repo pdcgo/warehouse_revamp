@@ -21,8 +21,8 @@ import { useDocumentLink } from "../../documents/queries";
 import type { ReceiptValue } from "../../../components/orders/ReceiptUpload";
 import { ShipmentChannelSelect } from "../../../components/pickers/ShipmentChannelSelect";
 import type { LabelResult } from "../../shipment/receiptCheck";
-import { ImagePreview } from "./ImagePreview";
-import type { PreviewTarget } from "./ImagePreview";
+import { ImagePreview } from "../../../components/feedback/ImagePreview";
+import type { PreviewTarget } from "../../../components/feedback/ImagePreview";
 
 // THE RECEIPT FILE COMES FIRST, AND THE TWO NUMBERS IT CARRIES SIT BESIDE IT (owner).
 //

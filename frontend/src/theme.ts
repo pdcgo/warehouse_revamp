@@ -422,7 +422,7 @@ const customConfig = defineConfig({
       // every row of an order's lines read as a hole punched in the card it sits in.
       //
       // Transparent is the fix that works in both places: on this form the row is the card's colour,
-      // on a list screen it is the page canvas's. Hover and selection are unaffected — they paint
+      // on a list screen it is the page's ground. Hover and selection are unaffected — they paint
       // their own background on top of this one.
       //
       // ⚠ THE OVERRIDE HAS TO NAME THE VARIANT. Chakra sets `row: { bg: "bg" }` inside `variant.line`

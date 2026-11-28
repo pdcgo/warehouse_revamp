@@ -15,7 +15,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export const description =
-  "A pager for lists that know only whether ANOTHER page exists — no total. Every page already opened gets a number, so going back to any of them is one click; › at the end opens the next new page and the numbers grow (owner: `the-accounts-pager-grows-with-the-pages-opened`). The trail lives in the component, so a refresh or leaving the screen forgets it, and a `resetKey` change (a filter, a tab, a sort) starts it over. The current page is filled in the main tone. One page reads ‹ [1] › with both arrows off — it is always on screen. On a phone the buttons are centred and the per-page selector is not drawn. `compact` draws the current page alone, ‹ [2] › — a dialog's pager (`a-dialog-pager-is-one-number`).";
+  "A pager for lists that know only whether ANOTHER page exists — no total. Every page already opened gets a number, so going back to any of them is one click; › at the end opens the next new page and the numbers grow (owner: `the-accounts-pager-grows-with-the-pages-opened`). The trail lives in the component, so a refresh or leaving the screen forgets it, and a `resetKey` change (a filter, a tab, a sort) starts it over. The current page is filled in the main tone. One page reads ‹ [1] › with both arrows off — it is always on screen, unless given the list's `total`: then on page 1 a list no longer than the smallest page size draws no pager at all. On a phone the buttons are centred and the per-page selector is not drawn. `compact` draws the current page alone, ‹ [2] › — a dialog's pager (`a-dialog-pager-is-one-number`).";
 
 export interface GrowingPagerProps {
   /** The current page, 1-based. */
@@ -37,8 +37,40 @@ export interface GrowingPagerProps {
    * (a-dialog-pager-is-one-number): a quick pass over a small window, where a trail of numbers is more than it needs.
    */
   compact?: boolean;
+  /**
+   * The list's TOTAL, when its read gives one. With it the pager STEPS ASIDE while it has nothing to do — on page 1, the
+   * whole list no longer than the SMALLEST page size offered (`pageSizeOptions`, else `pageSize`): one page whatever the
+   * size, so neither the numbers nor the size picker can change what is shown (owner, on a batch's page: *"sembunyikan
+   * kalau pagenya page 1 dan itemnya tidak lebih dari samadengan yang terkecil di perpage"*,
+   * the-batch-page-hides-a-pager-that-fits). Omit it and the pager is always on screen (the-pager-is-always-on-screen).
+   */
+  total?: number;
   testId?: string;
 }
+
+/**
+ * Whether a pager told its `total` STEPS ASIDE — page 1, the whole list no longer than the smallest page size offered
+ * (the-batch-page-hides-a-pager-that-fits). The pager asks it of itself; a page asks it too, to end its table bare.
+ */
+export function pagerStepsAside(args: {
+  page: number;
+  total: number | undefined;
+  pageSize?: number;
+  pageSizeOptions?: number[];
+}): boolean {
+  const { page, total, pageSize = 20, pageSizeOptions } = args;
+  if (total === undefined || page !== 1) return false;
+  const smallest = pageSizeOptions && pageSizeOptions.length > 0 ? Math.min(...pageSizeOptions) : pageSize;
+
+  return total <= smallest;
+}
+
+/**
+ * A TABLE WITH NO PAGER UNDER IT ENDS BARE — no rule under its last row (owner: *"tabel yang tidak ada paginasi, border
+ * line paling bawah tidak perlu ada"*, the-batch-page-hides-a-pager-that-fits). The line closed the rows off from the
+ * pager; with nothing under them it is a stray rule over the card's own edge. Spread on a `Table.Root`'s `css`.
+ */
+export const ENDS_BARE = { "& tbody tr:last-of-type td": { borderBottomWidth: "0" } } as const;
 
 // THE PAGES OPENED SO FAR, AND WHETHER THE FURTHEST HAD MORE. Without a total, a page can only be reached by
 // stepping onto it, so every page from 1 to the furthest one opened is known to exist — and one more, while
@@ -58,6 +90,7 @@ export function GrowingPager({
   pageSizeOptions,
   onPageSizeChange,
   compact = false,
+  total,
   testId = "growing-pager",
 }: GrowingPagerProps) {
   const { t } = useTranslation();
@@ -102,6 +135,10 @@ export function GrowingPager({
   // The page you are on, in the main tone (a-chosen-option-is-in-the-main-tone) — its border too, so the filled box is
   // the same size as the outlined ones beside it.
   const onPage = { bg: "brand.solid", borderColor: "brand.solid", color: "brand.contrast", _hover: { bg: "brand.solid" } };
+
+  // NOTHING TO DO, NOTHING DRAWN — given a total, page 1 holding the whole list at the smallest size offered. After every
+  // hook, so the trail is kept while it is hidden.
+  if (pagerStepsAside({ page, total, pageSize, pageSizeOptions })) return null;
 
   return (
     <Flex justify={phone ? "center" : "flex-end"} align="center" gap="3" wrap="wrap" w="full" data-testid={testId}>

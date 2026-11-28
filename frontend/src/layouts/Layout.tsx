@@ -17,7 +17,8 @@ import { useIsMobile } from "./shell";
 //   | menu = the sidebar | menu = a full-screen sheet behind the More tab       |
 //
 // What they SHARE is everything that thinks: [nav.ts] builds the menu from the team's type and your
-// role and answers "where am I", and [shell.ts] owns the breakpoint and the page canvas. A rule that
+// role and answers "where am I", and [shell.ts] owns the breakpoint (no page has a canvas of its own —
+// every-page-is-on-one-canvas). A rule that
 // lived in one shell would be a rule the other one broke.
 //
 // ⚠ EXACTLY ONE MOUNTS — see the note on `useIsMobile`. This component has no story of its own for

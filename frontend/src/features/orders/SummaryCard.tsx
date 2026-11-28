@@ -59,6 +59,7 @@ export function SummaryCard({
   line,
   note,
   keepNote = false,
+  noteLines = 1,
   muted = false,
   emphasis = false,
   wide = false,
@@ -83,6 +84,11 @@ export function SummaryCard({
   note?: ReactNode;
   /** The note is DATA, not how the figure is made — a date a phone splits off its count — so a phone keeps it. */
   keepNote?: boolean;
+  /**
+   * How many lines the note may take before it is cut — 1 by default. 2 for a strip whose notes are a sentence the owner
+   * wrote out, cut on one line at a fifth of the row (a batch's lifecycle, ready-leads-and-each-figure-says-what-it-counts).
+   */
+  noteLines?: 1 | 2;
   /** Grey the figure — a pile the contract cannot count. */
   muted?: boolean;
   /**
@@ -148,7 +154,14 @@ export function SummaryCard({
       )}
 
       {note !== undefined && (keepNote || !phone) && (
-        <Text fontSize="xs" color="fg.subtle" lineClamp={1} data-testid={testId ? `${testId}-note` : undefined}>
+        <Text
+          fontSize="xs"
+          color="fg.subtle"
+          lineClamp={noteLines}
+          // Whole on hover, wherever a narrow row still cuts it.
+          title={typeof note === "string" ? note : undefined}
+          data-testid={testId ? `${testId}-note` : undefined}
+        >
           {note}
         </Text>
       )}

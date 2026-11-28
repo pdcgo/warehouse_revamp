@@ -10,8 +10,12 @@ import { useTranslation } from "react-i18next";
 // ⚠ THE TITLE IS THE PRODUCT'S NAME, by instruction — so the dialog says WHICH product is being
 // looked at. A picture on its own is the one thing that cannot say that.
 //
-// It lives in the prototype rather than in `components/feedback/` for now: the pattern is being
-// reviewed, and promoting it later is a file move plus its own story.
+// IN THE DESIGN SYSTEM NOW (owner: *"gambar kecil kedepannya bisa preview"*, a-small-picture-opens-its-preview) — it
+// lived in the order form's prototype until a small picture opening big became a rule for every screen: a product's
+// cover, a team's avatar, a label. Moved, as its note said it would be, with its own story.
+
+export const description =
+  "A small picture, opened big — a dialog titled with what is being looked at (a product's name, a team's, a file's), the image at the dialog's width, and a caption under it (a product code). One piece of state on the caller: `target` null shuts it, so one dialog previews whichever picture was clicked.";
 
 export interface PreviewTarget {
   src: string;

@@ -802,7 +802,7 @@ frontend/
   src/
     layouts/          the shell — TWO of them, and exactly one mounts (see below)
       Layout.tsx      the picker: a breakpoint chooses desktop or mobile
-      shell.ts        the breakpoint + the page canvas — both shells read them
+      shell.ts        the breakpoint — both shells read it
       nav.ts          the menu, the "where am I" match, the bottom bar — SHARED
       TeamSwitcher.tsx  shared: the sidebar's card, and the phone tab bar's centre bubble
       desktop/        DesktopLayout (sidebar beside the page, no top bar), Sidebar
@@ -829,8 +829,9 @@ shell names the screen over the page: the page's own title does, and the lit men
   renders both: two `<Outlet/>`s (every page mounted twice), two `navigation` landmarks, and two of
   every `data-testid` the e2e reach for.
 - **Everything that THINKS is shared**: `nav.ts` builds the menu from the team's type and your role,
-  answers "where am I" (longest-prefix), and decides the bottom bar; `shell.ts` owns the breakpoint and
-  the grey page canvas. A rule living in one shell is a rule the other one breaks.
+  answers "where am I" (longest-prefix), and decides the bottom bar; `shell.ts` owns the breakpoint. No page
+  has a background of its own ([every-page-is-on-one-canvas](docs/technical/frontend/context_decision.md#every-page-is-on-one-canvas)).
+  A rule living in one shell is a rule the other one breaks.
 - **The bottom bar's three tabs are a DECISION, filtered against the real menu** (`bottomBarFor`) — a
   tab is never offered for a screen this team's menu does not contain.
 - Each shell is reviewed and tested directly in Storybook (`Layouts/Desktop/*`, `Layouts/Mobile/*`);
@@ -878,7 +879,7 @@ to see what exists; `graphify query "what shared components exist for <the thing
 | `datetime/` | 6 | the date/time family — the pickers, plus `PeriodGrainPicker`, the resolution a range is read at |
 | `entity/` | 6 | show a product / a team / a shop / a person the same way everywhere |
 | `badges/` | 6 | a status or a kind, in its ONE standard colour |
-| `feedback/` | 6 | what the app says back — `ConfirmDialog`, `EmptyHint`, `ListSkeleton`, `ReadyLine` (by a save button: the first thing missing, or ✓ ready), `RefreshOverlay`, `Toaster` |
+| `feedback/` | 7 | what the app says back — `ConfirmDialog`, `EmptyHint`, `ImagePreview` (a small picture opened big — [a-small-picture-opens-its-preview](docs/technical/frontend/context_decision.md#a-small-picture-opens-its-preview)), `ListSkeleton`, `ReadyLine` (by a save button: the first thing missing, or ✓ ready), `RefreshOverlay`, `Toaster` |
 | `chrome/` | 9 | app furniture — `FilterBar`, `FilterChips`, `GrowingPager`, `SortableHeader`, `CompactActions` (a phone header's actions), `CopyText`, `Logo`, `Pagination`, `ColorModeToggle` |
 | `inputs/` | 3 | a typed value, formatted or masked — money, a password, a quantity |
 | `charts/` | 1 | a graph — `LineGraph`, on Chakra's `@chakra-ui/charts` ([a-chart-is-chakras-chart](docs/technical/frontend/context_decision.md#a-chart-is-chakras-chart)); a screen never draws Recharts itself |

@@ -9,7 +9,7 @@ when it applies one of these.
 | [a-list-summary-is-the-order-lists-card-strip](#a-list-summary-is-the-order-lists-card-strip) | a list's figures are the order list's `SummaryStrip` of `SummaryCard`s | [settlement](order_settlement_decision.md#the-settlement-list-summary-is-the-order-lists-cards) |
 | [a-date-range-filter-is-the-order-lists-picker](#a-date-range-filter-is-the-order-lists-picker) | a date filter is the order list's `DateRangePicker`, naming which date it filters | [settlement](order_settlement_decision.md#the-settlement-list-filters-what-the-contract-can) |
 | [a-table-sorts-from-its-headings](#a-table-sorts-from-its-headings) | a sortable column sorts from its heading — largest first, then flips; two states | [settlement](order_settlement_decision.md#the-settlement-list-sorts-by-its-headings) |
-| [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) | the pager stays on screen on one page and on none, per page beside it | [settlement](order_settlement_decision.md#the-settlement-list-always-shows-its-pager) |
+| [the-pager-is-always-on-screen](#the-pager-is-always-on-screen) | the pager stays on screen on one page and on none, per page beside it — 🔄 not on a batch's page, where it steps aside while the list fits the smallest page size, [the-batch-page-hides-a-pager-that-fits](batches_decision.md#the-batch-page-hides-a-pager-that-fits) | [settlement](order_settlement_decision.md#the-settlement-list-always-shows-its-pager) |
 | [one-context-per-column-and-never-three-lines](#one-context-per-column-and-never-three-lines) | pairing is only for one fact read twice — it REPLACES the six-paired-cells decision | order screens |
 | [the-phone-header-is-one-row](#the-phone-header-is-one-row) | on a phone the sticky block is the number, the stage and `⋯` — plus the section chips | order screens |
 | [a-phone-reads-each-line-as-a-block](#a-phone-reads-each-line-as-a-block) | the item table becomes one block per line below `md` | order screens |
@@ -106,6 +106,8 @@ when it applies one of these.
 | [every-screen-says-product-code](#every-screen-says-product-code) | no screen says "SKU" — it is *Kode produk* / *Product code*, on the product screens and every other | the product form, restock statistics, Cetak Label, the product picker — 2026-11-09 |
 | [the-yearly-statement-opens-on-five-years](#the-yearly-statement-opens-on-five-years) | picking Tahunan on the daily statement opens this year and the 4 before it | owner, as recommended, 2026-11-15 |
 | [no-global-store-every-read-is-a-query-hook](#no-global-store-every-read-is-a-query-hook) | no Redux or Zustand — server data in TanStack, sign-in and team in two contexts, filters in the address; every read a query hook, a many-field form one reducer | owner, as recommended, 2026-11-21 |
+| [every-page-is-on-one-canvas](#every-page-is-on-one-canvas) | no page has a background of its own — both shells leave the content area unpainted; the batch page's grey canvas, chosen by route, is gone | the batch page, 2026-11-27 |
+| [a-small-picture-opens-its-preview](#a-small-picture-opens-its-preview) | from now on a small picture — a product's cover, a team's avatar — opens big on a click, in `ImagePreview`; initials and the placeholder open nothing | a batch's product card, 2026-11-27 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -619,7 +621,7 @@ before                                          now
 | gone | the desktop top bar, whole: the breadcrumb (team › screen), the search box and the notifications bell — neither was wired to a service, and the bell carried a dot that announced nothing |
 | why it is not missed | the team is the sidebar's switcher, the screen its lit item — the breadcrumb said both a second time |
 | gone with it | the hamburger and the sidebar's off-canvas drawer and backdrop. The desktop shell mounts only at 768px and wider, where the hamburger was hidden — the drawer could not be opened |
-| stays | the sidebar, the non-member strip ([a-non-member-root-acts-under-a-strip](../../business/user/context_decision.md#a-non-member-root-acts-under-a-strip)), the page canvas chosen by route |
+| stays | the sidebar, the non-member strip ([a-non-member-root-acts-under-a-strip](../../business/user/context_decision.md#a-non-member-root-acts-under-a-strip)), the page canvas chosen by route — 🔄 since gone, [every-page-is-on-one-canvas](#every-page-is-on-one-canvas) |
 | the phone | unchanged — its compact top bar (team chip, screen name, notifications) is not a breadcrumb |
 | a page with no heading of its own | **Produk** (`products`) and **Restok** (`restock-selling`) leaned on the breadcrumb for their name, and now have none on a desktop — not changed here |
 
@@ -2447,3 +2449,52 @@ Stated with the options he picked from: from then on a read is a query hook, and
 ✅ Built 2026-11-21 (#122, the other pages) — every page that read from its own effect reads through a query hook: the warehouse edit page (`useTeamDetail` + `useWarehouseInfo`, features/warehouse/queries.ts — ONE `key.warehouseInfo(warehouse)` entry for its form, its closures list and the team page's Gudang section), the product form (`useProductRecord`), the profile (`useProfileDetail`, keyed by the signed-in identity), the restock form's covers (`useProductsByIds`), the shop's users (`useShopGrants`), the team page's shops (`useTeamShops`), the address picker's levels and a saved address's names (`useRegionChildren`, `useRegionResolve`, on `referenceQuery`), the order form's team default (`useTeamDetail`, still a one-shot fill — #123 owns the rest of that form) and its attached receipt's link (`useDocumentLink`, features/documents/queries.ts — reused only within the link's own life, less a minute); a download link fetched on a click, an upload, an import stream and the password change stay calls. The hand-rolled keys moved onto the helper: `team-by-ids` → `useTeamsByIds` (`key.teams`, `referenceQuery`), `user-by-ids` → `usersByIdsQuery` (`key.users`, `referenceQuery` — the rack history's entry), `warehouseReceiving` and the closures' own key → `key.warehouseInfo(warehouse, …)` (a closure write re-reads that warehouse's profile and its receiving state), the analytic report → `key.analytic(team, …)`; the dead `useRack` / `useRackStock` are gone. A FORM SEEDED FROM A READ takes it ONCE per record, from the answer given since it opened (`lib/useSeedOnce.ts`; the restock form keeps its own `seededFor`), so a re-read never overwrites what is typed — a story on each of the four forms; the warehouse edit and product forms' reads sit still while their own save runs (`enabled` over `isMutating`). Kept: every loading, not-found and error state and every test id; the shop's users list keeps its rows while a write re-reads it rather than blanking to the skeleton. The speed audit (`san audit frontend --files`, 10 screens, counts only beside a live tester run): 0 to fix — warehouse-edit requests 3 → 2, duplicates 1 → 0 (WarehouseInfoDetail), chain 2 → 1; every other count unchanged (rack-detail's and shop-detail's 3-deep chains already in the baseline, order-create's chain its declared unstable link).
 
 ✅ Built 2026-11-21 (#123, order create's reducer) — `/orders/new` keeps its form in ONE `useReducer`: `pages/order-create/formState.ts` holds the reducer (`orderFormReducer`), its state (`OrderForm`) and its actions, unit-tested in `formState.test.ts` (`npm run test:unit`). In it: the buyer and the address, the marketplace side (the shop, the storefront's ref, the sell price), the warehouse, the courier, the receipt and what its file said, the note, the lines or the bundles, the dates, what the form was seeded from, the leave guard's "nothing changed" and where Create stands (the lock, the duplicate-ref and checks dialogs, Try Again) — 27 of the page's 30 `useState` and its three seed refs; the preset's one-render-late capture is gone, and only the rail's compact switch and the delete-draft confirm, pure screen toggles, stay `useState`. The seeds are dispatched actions that take their read ONCE, the guard in the reducer: the draft (`seedDraft`, once per draft), the product a product page opened it with (`seedPreset`, once per product, its "nothing changed" taken in the same action), the team's default warehouse (`defaultWarehouse`, once per team, only into an untouched field) and the receipt file (`scanned`, once per attached file, filling only what is empty, nothing for a file already replaced); every query hook, the fieldset's `inert` and the tab-close guard are as they were. Kept: the screen, every test id and every behaviour — the form lock, the duplicate-ref and Try Again warnings, the checks, the credit and closed-shop warnings, items or bundles, the return map hold, Create's held reasons, the leave guard, the phone layout; three new stories pin the seeds (a re-read of the draft keeps what was typed, a re-read of the product keeps the line as changed, what is typed after a label stays). The speed audit (`san audit frontend --files`, order-create, counts only beside a live tester run): 0 to fix — requests 12 → 12 (shell 3 · screen 9), duplicates 0 → 0, chain 2 → 2, after the save 8 → 8, typing unchanged (buyer name 1 commit · 3826 components a key · 0 trailing, address 2 · 4213 · 0, quantity 1 · 4079 · 2). A key still re-renders the whole form: memoised cards are not this row.
+
+## every-page-is-on-one-canvas
+
+> Owner, in chat (2026-11-27): *"kenapa latar belakang di batch detail beda sendiri?"* — there was no reason: a
+> route-chosen grey canvas from the repo's first commit (2026-08-19), named by no decision — then *"kerjakan"*.
+
+```
+before                                              now
+/inventories/batches/5031   ░░ gray.100 ░░          /inventories/batches/5031   the app's own ground
+/inventories/racks/41       the app's own ground    /inventories/racks/41       the app's own ground
+/products/74                the app's own ground    /products/74                the app's own ground
+```
+
+| | |
+| --- | --- |
+| the rule | no page has a background of its own: both shells leave `<main>` unpainted, so every page sits on the app's ground, in light and in dark |
+| why | the batch page was painted `gray.100` by its ROUTE alone (`usesGreyCanvas` in `layouts/shell.ts`, its comment *"Batch detail is the only one so far"*) — none followed, and since [a-batch-page-is-one-page-of-sections](batches_decision.md#a-batch-page-is-one-page-of-sections) it is the rack's and the product's shape, both white. One page a different ground read as a different app |
+| gone | `usesGreyCanvas` and `GREY_CANVAS` (`layouts/shell.ts`), their use in `DesktopLayout` and `MobileLayout` |
+| a page that wants a ground | asks for it here first — a new rule for every page, not a route named in the shell |
+| pinned by | `Layouts/Desktop` and `Layouts/Mobile` *Every page on one canvas* — at the batch page, `<main>` paints no background |
+
+What it replaces: the route-chosen page canvas of the shell, and the *page canvas chosen by route* that
+[the-desktop-shell-has-no-top-bar](#the-desktop-shell-has-no-top-bar) kept.
+## a-small-picture-opens-its-preview
+
+> Owner, in chat (2026-11-27), on a batch's product card: *"gambar kecil kedepannya bisa preview, untuk di halaman sekarang
+> adalah produk dan gambar tim"*.
+
+```
+[img] Beras Pandan Wangi 5kg          [TM] Toko Melati
+  ↓ a click on the picture
+┌ Beras Pandan Wangi 5kg ─────────────────────── × ┐
+│                                                   │
+│              (the cover, the dialog's width)      │
+│                                                   │
+│ SKU-BERAS-5K                                      │
+└───────────────────────────────────────────────────┘
+```
+
+| | |
+| --- | --- |
+| the rule | **from now on**, a small picture opens big on a click — a product's cover, a team's avatar, a label — on every screen as it is next worked on |
+| the dialog | `components/feedback/ImagePreview` — titled with WHAT is looked at (a product's name, a team's), the picture at the dialog's width, a caption under it (a product code); one piece of state on the page, so one dialog previews whichever picture was clicked. It lived in the order form's prototype and moved into the design system with its own story |
+| the picture | a real button, named for what it opens (*Lihat gambar …*), the pointer a zoom — `ProductListItem`'s `onImageClick` and `TeamItem`'s new one |
+| nothing to open | initials and the package placeholder are no button — the click would open nothing |
+| applied | a batch's product card: the product's cover and the owner's avatar |
+| pinned by | `Components/Feedback/ImagePreview` *Opens and shuts* · `Components/Entity/TeamItem` *Its picture opens* · BatchDetail `Product card` (the cover opens; Toko Melati's initials are no button) |
+
+What it replaces: small pictures that could not be opened, outside the order form.

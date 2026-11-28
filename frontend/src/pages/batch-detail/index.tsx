@@ -2,30 +2,44 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Badge, Box, Button, Flex, Grid, Heading, Icon, Span, Stack, Table, Text, useBreakpointValue } from "@chakra-ui/react";
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Flex,
+  Grid,
+  Heading,
+  Icon,
+  Span,
+  Stack,
+  StackSeparator,
+  Table,
+  Text,
+  useBreakpointValue,
+} from "@chakra-ui/react";
 import { History, Pencil, Tag, Warehouse } from "lucide-react";
 
 import { rpcError } from "../../api/clients";
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
-import { BatchOrigin } from "../../gen/warehouse/inventory/v1/inventory_pb";
+import { BatchOrigin, MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { isExpiringSoon } from "../../lib/expiry";
 import { formatRupiah } from "../../lib/money";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
 import { MovementTable } from "../../features/inventory/MovementTable";
-import { BatchExplainer } from "../../features/inventory/BatchExplainer";
 import { BatchSource } from "../../features/inventory/BatchSource";
 import { ExpiryCell } from "../../features/inventory/ExpiryCell";
 import { useBatchDetail, useBatchHistory, useBatchPlacements } from "../../features/inventory/queries";
-import { useRackCodes } from "../../features/racks/queries";
+import { useRackCodes, useRacks } from "../../features/racks/queries";
 import { AdjustStockDialog } from "../../features/inventory/AdjustStockDialog";
 import { CorrectPriceDialog } from "../../features/inventory/CorrectPriceDialog";
 import { canCorrectPrice } from "../../features/inventory/priceChange";
 import { ProductStickyStrip } from "../../features/products/ProductTitleRow";
 import { SummaryCard, SummaryStrip } from "../../features/orders/SummaryCard";
 import { CompactActions } from "../../components/chrome/CompactActions";
-import { Fact, Section } from "../../components/chrome/DetailSection";
+import { Section } from "../../components/chrome/DetailSection";
 import { FilterSearch } from "../../components/chrome/FilterBar";
-import { GrowingPager } from "../../components/chrome/GrowingPager";
+import { ENDS_BARE, GrowingPager, pagerStepsAside } from "../../components/chrome/GrowingPager";
 import { SectionNav } from "../../components/chrome/SectionNav";
 import { ALL_DATES, DateRangePicker, resolveRange } from "../../components/datetime/DateRangePicker";
 import { EmptyHint } from "../../components/feedback/EmptyHint";
@@ -34,11 +48,16 @@ import { ProductListItem } from "../../components/products/ProductListItem";
 import { TeamItem } from "../../components/entity/TeamItem";
 import { useIsMobile } from "../../layouts/shell";
 import { cameFrom } from "../../lib/cameFrom";
+import { enterStep } from "../../lib/motion";
 import { formatUnixDateShort, formatUnixDateTimeShort } from "../../lib/datetime";
-import { dateRangeCodec, textCodec, useUrlState } from "../../lib/urlState";
+import { dateRangeCodec, enumCodec, textCodec, useUrlState } from "../../lib/urlState";
+import { LEDGER_KINDS, MovementKindSelect } from "../../features/inventory/MovementKindSelect";
 import { useScrollSpy } from "../../lib/useScrollSpy";
 import { useStickyTitle } from "../../lib/useStickyTitle";
 import { BatchTitleRow } from "./components/BatchTitleRow";
+import { ImagePreview, type PreviewTarget } from "../../components/feedback/ImagePreview";
+import { InfoFact } from "./components/InfoFact";
+import { LastCountBadge } from "./components/LastCountBadge";
 import {
   BATCH_MAIN_SECTIONS,
   BATCH_SECTION_KEYS,
@@ -61,11 +80,6 @@ function parseId(raw: string | undefined): bigint {
   }
 }
 
-// A shelf's count reads amber once its last opname is more than two weeks old — overdue for a re-count.
-// Same rule as the warehouse product's placement tab.
-function isStaleOpname(unix: bigint): boolean {
-  return Number(unix) * 1000 < Date.now() - 14 * 24 * 60 * 60 * 1000;
-}
 
 // BatchDetailPage is one batch's living detail (#209) — drilled into from the Batches list or a
 // delivery on the warehouse product's Batches tab. A batch = one product's units from one delivery,
@@ -79,7 +93,7 @@ function isStaleOpname(unix: bigint): boolean {
 //   │ Info    │      [img] Beras Pandan Wangi 5kg · SKU-BERAS-5K      [TM] Toko Melati
 //   └ Riwayat ┘      [ⓘ Apa itu batch?]
 //                 [Tiba 10] [Rusak 2] [Hilang 1] [Terpakai 0] [Siap 7]
-//                 ┌ Ditaruh Saat Diterima ── Tempat · Ditaruh · Opname ┐   ┌ Info Batch ── Dari · Diterima oleh ┐
+//                 ┌ Penempatan ── Tempat · Ditaruh · Opname ┐              ┌ Info Batch ── Dari · Diterima oleh ┐
 //                 ┌ Riwayat ── (Tiba · semua tanggal) ─────────────────┐   │ Harga satuan · Kedaluwarsa         │
 //
 // The nav on the left (Section, SectionNav, useScrollSpy); the heading sticks once it scrolls away; on a phone the
@@ -105,6 +119,9 @@ export function BatchDetailPage() {
   const product = data?.product ?? null;
 
   const [adjusting, setAdjusting] = useState(false);
+  // THE PICTURE OPENED BIG — the product's cover or the owner's avatar, whichever was clicked
+  // (a-small-picture-opens-its-preview). One piece of state, one dialog.
+  const [preview, setPreview] = useState<PreviewTarget | null>(null);
 
   // KOREKSI HARGA (the-correct-price-prototype-is-accepted). This is the warehouse's page: the warehouse holding the batch
   // never corrects its price, it READS each correction in Riwayat (the-owning-team-revalues-with-a-reason), so the button
@@ -129,6 +146,15 @@ export function BatchDetailPage() {
   const shelves = placementsQuery.data?.shelves ?? [];
   const placementsTotal = Number(placementsQuery.data?.pageInfo?.totalItems ?? 0n);
 
+  // THE BATCH'S RACKS, WHOLE, FOR SESUAIKAN STOK — its rack picker offers only these (owner: *"racknya jangan tampil
+  // semua, sesuai dengan rack batchnya"*, the-adjust-dialog-leads-with-what-it-adjusts). Penempatan above is paged, so the
+  // dialog reads the list in one page of its own (a batch sits on a handful) — only while it is open, never on load.
+  const batchRacksQuery = useBatchPlacements({ warehouseId, batchId, page: 1, pageSize: 200, enabled: adjusting });
+  const batchRackIds = useMemo(
+    () => [...new Set((batchRacksQuery.data?.shelves ?? []).map((s) => s.rackId))],
+    [batchRacksQuery.data],
+  );
+
   // The history pages on its own (#218), independent of the detail aggregate above, and filters
   // by a date range on the movement timestamp — server-side, so it narrows the whole ledger, not just
   // the loaded page. Changing either bound resets to page 1.
@@ -136,6 +162,12 @@ export function BatchDetailPage() {
   const [historyPageSize, setHistoryPageSize] = useState(20);
   const [historyRange, setHistoryRange] = useUrlState("range", ALL_DATES, dateRangeCodec);
   const { fromUnix: historyFromUnix, toUnix: historyToUnix } = resolveRange(historyRange);
+  // …and by ONE kind of movement, server-side as the range is (owner: *"pakai kindnya"*, riwayat-filters-by-one-kind).
+  const [historyKind, setHistoryKind] = useUrlState(
+    "kind",
+    MovementKind.UNSPECIFIED,
+    enumCodec([MovementKind.UNSPECIFIED, ...LEDGER_KINDS]),
+  );
   const historyQuery = useBatchHistory({
     warehouseId,
     productId: batch?.productId ?? 0n,
@@ -144,6 +176,7 @@ export function BatchDetailPage() {
     pageSize: historyPageSize,
     fromUnix: historyFromUnix,
     toUnix: historyToUnix,
+    kind: historyKind,
   });
   const historyMovements = historyQuery.data?.movements ?? [];
 
@@ -151,7 +184,29 @@ export function BatchDetailPage() {
   // (useRackCodes). Riwayat names the rack each movement touched and Ditaruh the racks the accept put it on, and the
   // product may have LEFT those racks since: ProductPlaces (the aggregate's codes) lists only where it sits now.
   const warehouseRackCodes = useRackCodes({ warehouseId: warehouseId ?? 0n, enabled: warehouseId !== undefined });
+  // …and their NAMES, for Penempatan's rows (owner: *"data rak tidak ada namanya?"*, a-placement-names-its-rack) — the
+  // same RackList read, one cache entry, so no second request.
+  const warehouseRacks = useRacks({ warehouseId: warehouseId ?? 0n, enabled: warehouseId !== undefined });
+  const rackNames = useMemo(
+    () => new Map((warehouseRacks.data ?? []).map((rack) => [rack.id.toString(), rack.name])),
+    [warehouseRacks.data],
+  );
   const historyTotal = Number(historyQuery.data?.pageInfo?.totalItems ?? 0n);
+
+  // WHICH PAGER HAS NOTHING TO DO — page 1 holding the whole list at the smallest size — so it steps aside and its table
+  // ends bare (the-batch-page-hides-a-pager-that-fits). The pager asks the same of itself; one rule, asked twice.
+  const placementsPagerAside = pagerStepsAside({
+    page: placementPage,
+    total: placementsTotal,
+    pageSize: placementPageSize,
+    pageSizeOptions: PAGE_SIZE_OPTIONS,
+  });
+  const historyPagerAside = pagerStepsAside({
+    page: historyPage,
+    total: historyTotal,
+    pageSize: historyPageSize,
+    pageSizeOptions: PAGE_SIZE_OPTIONS,
+  });
 
   // ── The layout's own state, before the early returns: hooks may not be conditional. ─────────────────────────────────
   // Info beside the rest where there is room beside the nav — Chakra's `xl`, as a rack's Info.
@@ -177,11 +232,17 @@ export function BatchDetailPage() {
     return warehouseRackCodes.data?.[key] ?? data?.rackCodes.get(key) ?? `#${key}`;
   };
 
-  // Placements filtered by the rack-name search — matched on the resolved place label, so a search hits
-  // the painted code the operator actually reads, not the internal id.
+  // A rack's name, under its code — empty for the unplaced pile and a rack that has none.
+  const placeName = (rackId: bigint): string => (rackId === 0n ? "" : (rackNames.get(rackId.toString()) ?? ""));
+
+  // Placements filtered by the rack search — matched on the code the operator reads off the shelf AND the rack's name,
+  // never the internal id.
   const rackQuery = rackSearch.trim().toLowerCase();
   const filteredShelves = shelves.filter(
-    (s) => rackQuery === "" || placeLabel(s.rackId).toLowerCase().includes(rackQuery),
+    (s) =>
+      rackQuery === "" ||
+      placeLabel(s.rackId).toLowerCase().includes(rackQuery) ||
+      placeName(s.rackId).toLowerCase().includes(rackQuery),
   );
 
   const back = () => navigate(backTo);
@@ -232,9 +293,12 @@ export function BatchDetailPage() {
   const correctedFrom = data?.priceCorrected ? data.priceCorrectedFrom : undefined;
   const isReturn = batch.origin === BatchOrigin.RETURN;
   const productName = product?.name ?? batch.name;
+  // The cover at its full size for the preview — the thumbnail only when there is no full one.
+  const productImage = product?.defaultImageUrl || product?.defaultImageThumbnailUrl || "";
 
-  // Koreksi carries its icon — on a phone, and in the sticky bar, its icon alone (a-phone-header-action-is-an-icon). It
-  // acts on THIS batch via the shared stock dialog (#218). Not while the admin team monitors the warehouse
+  // Sesuaikan (was *Koreksi* — owner: *"koreksi jadi sesuaikan"*, the-batch-page-adjusts-its-own-batch: the word the
+  // product page's button and the dialog's own title use) carries its icon — on a phone, and in the sticky bar, its icon
+  // alone (a-phone-header-action-is-an-icon). It acts on THIS batch via the shared stock dialog (#218). Not while the admin team monitors the warehouse
   // (the-admin-team-monitors-read-only). The bar's copy suffixes its test id `-sticky`, so a test finds the page's once.
   const actions = (compact: boolean, suffix = "") =>
     !canWrite(current) ? null : compact ? (
@@ -307,61 +371,122 @@ export function BatchDetailPage() {
     />
   );
 
-  // THE HEADING — the title row, then what it is a batch OF and whose, then what a batch is. Watched whole by the sticky
-  // bar: it shows once the product line has gone too, so the product is never on screen twice.
+  // THE HEADING — the title row, then what it is a batch OF and whose. Watched whole by the sticky bar: it shows once the
+  // product card has gone too, so the product is never on screen twice.
+  //
+  // NO *APA ITU BATCH?* HERE (owner: *"apa itu batch tidak usah ada di detail"*, what-a-batch-is-said-on-the-list-only) —
+  // somebody on a batch's page already opened a batch; the answer stays on the batch list, where the word is met first.
+  //
+  // THE PRODUCT IS ONE FULL-WIDTH CARD (owner: *"buat 1 kartu panjang penuh, ada info yang sudah tampil … terlalu banyak
+  // whitespace"*, the-batch-product-is-one-full-card) — the same facts, its picture, name, code and owner, held in a card
+  // the width of the figures under it. They were a loose line under the title, indented and floating, the rest of the
+  // row empty.
+  //
+  //   ←  Batch #5031  [Restok] [Kedaluwarsa 17 Des]                                [✎ Koreksi]
+  //   ┌────────────────────────────────────────────────────────────────────────────────────┐
+  //   │ [img]  Beras Pandan Wangi 5kg                                Pemilik               │
+  //   │        SKU-BERAS-5K ⧉                                        [TM] Toko Melati      │
+  //   └────────────────────────────────────────────────────────────────────────────────────┘
+  //   [Tiba 10] [Rusak 2] [Hilang 1] [Terpakai 0] [Siap 7]
   const heading = (
     <Stack gap="2" ref={stick.title}>
       {titleRow(false)}
-      <Stack gap="1" ps={isMobile ? "0" : "10"}>
-        <Flex align="center" gap="card" wrap="wrap">
-          <Box data-testid="batch-detail-product-name">
-            {/* The product code copies (sku-is-copyable). */}
-            <ProductListItem
-              productCodeCopyable
-              product={
-                product ? { ...product, teamId: undefined } : { id: batch.productId, name: batch.name, productCode: batch.productCode }
-              }
-            />
-          </Box>
-          {/* The owning team — whose goods these are (#142): always a selling team, so the small avatar and the name
-              alone (a-team-of-a-known-type-shows-no-badge). */}
-          {data?.owner && (
-            <Box data-testid="batch-detail-owner" minW="0">
-              <TeamItem
-                size="xs"
-                team={{
-                  teamId: data.owner.id,
-                  teamName: data.owner.name,
-                  teamType: data.owner.type,
-                  imageUrl: data.owner.imageUrl,
-                }}
+      <Card.Root data-testid="batch-detail-product-card">
+        <Card.Body>
+          {/* TWO HALVES THAT WEIGH THE SAME (owner: *"secara besar tidak balance, pemilik terlihat kecil"*,
+              the-owner-weighs-the-same-as-its-product) — the product and its owner at one size, a thin line between them;
+              on a phone the owner under the product. */}
+          <Flex direction={isMobile ? "column" : "row"} align={isMobile ? "stretch" : "center"} gap="card">
+            <Box data-testid="batch-detail-product-name" flex="1" minW="0">
+              {/* The product code copies (sku-is-copyable). Large where there is room — it is the subject of the card. */}
+              <ProductListItem
+                productCodeCopyable
+                size={isMobile ? "md" : "lg"}
+                product={
+                  product ? { ...product, teamId: undefined } : { id: batch.productId, name: batch.name, productCode: batch.productCode }
+                }
+                // Its cover opens big — only when it has one (a-small-picture-opens-its-preview).
+                onImageClick={
+                  productImage
+                    ? () => setPreview({ src: productImage, title: productName, caption: product?.productCode ?? batch.productCode })
+                    : undefined
+                }
               />
             </Box>
-          )}
-        </Flex>
-        <Box ms="-1">
-          <BatchExplainer />
-        </Box>
-      </Stack>
+            {/* The owning team — whose goods these are (#142): always a selling team, so no type badge
+                (a-team-of-a-known-type-shows-no-badge) — at the product's own size, *Pemilik* where the product has its
+                code. */}
+            {data?.owner && (
+              <Box
+                data-testid="batch-detail-owner"
+                minW="0"
+                flexShrink={0}
+                {...(isMobile
+                  ? { borderTopWidth: "1px", pt: "card" }
+                  : { borderStartWidth: "1px", ps: "section", minW: "16rem" })}
+              >
+                <TeamItem
+                  size={isMobile ? "md" : "lg"}
+                  caption={t("batchDetail.owner")}
+                  team={{
+                    teamId: data.owner.id,
+                    teamName: data.owner.name,
+                    teamType: data.owner.type,
+                    imageUrl: data.owner.imageUrl,
+                  }}
+                  // Its picture opens big, as the product's does; initials have nothing to open.
+                  onImageClick={() =>
+                    data.owner?.imageUrl && setPreview({ src: data.owner.imageUrl, title: data.owner.name })
+                  }
+                />
+              </Box>
+            )}
+          </Flex>
+        </Card.Body>
+      </Card.Root>
     </Stack>
   );
 
   // THE LIFECYCLE, the card strip (a-list-summary-is-the-order-lists-card-strip) — Tiba = Rusak + Hilang + Terpakai
-  // + Siap (#218); each figure's value under it, at the batch's frozen cost. What is left leads. Under the heading, over
-  // the sections: the whole batch's.
+  // + Siap (#218); each figure's value under it, at the batch's frozen cost. Under the heading, over the sections: the
+  // whole batch's.
+  //
+  // SIAP LEADS, AND EVERY FIGURE SAYS WHAT IT COUNTS (owner: *"pindahkan, sama per stat itu kasih keterangan agar mudah
+  // dikenali, tidak judul saja"*, ready-leads-and-each-figure-says-what-it-counts) — what is left of the batch is what
+  // somebody on this page came for, and the lit card leads as on every strip; on a phone it was alone on the third row.
+  // Each card's note says what its units are, in the owner's words (*"Siap, stok di rak, bisa untuk transaksi …"*), on up
+  // to two lines — one line at a fifth of the row cut the longer two (a phone drops the note, a-phone-card-shows-no-note):
+  //
+  //   [Siap 7]                     [Tiba 10]                   [Rusak 2]                [Hilang 1]           [Terpakai 0]
+  //    Stok di rak, bisa untuk      Stok yang diterima di       Stok yang mengalami      Stok yang tidak      Stok yang telah
+  //    transaksi                    batch ini                   kerusakan                sampai atau hilang   ditransaksikan
+  //
+  // WHAT IT IS WORTH, UNDER THE COUNT — AND TIBA'S DATE IN INFO (owner, after trying it beside the count, bold and
+  // labelled, then lighter: *"di bawahnya aja, seperti sebelumnya, bedanya diterimanya tetap di info"*,
+  // tiba-keeps-its-date-in-info) — the price is the small line under each count it always was; only Tiba's date, once
+  // wedged after its Rp, has left the card for Info's *Tiba pada*.
+  //
+  //   Siap
+  //   7
+  //   Rp 463.169
+  const valueOf = (amount: ReactNode, key: string) => <Span data-testid={`batch-detail-${key}-amount`}>{amount}</Span>;
   const figures = (
     <SummaryStrip testId="batch-detail-lifecycle">
       <SummaryCard
+        emphasis
+        label={t("batchDetail.ready")}
+        value={<Span data-testid="batch-detail-ready">{batch.ready.toString()}</Span>}
+        line={valueOf(cost(batch.readyValue), "ready")}
+        note={t("batchDetail.readyNote")}
+        noteLines={2}
+        testId="batch-detail-ready-card"
+      />
+      <SummaryCard
         label={t("batchDetail.arrived")}
+        note={t("batchDetail.arrivedNote")}
+        noteLines={2}
         value={<Span data-testid="batch-detail-arrived">{batch.arrived.toString()}</Span>}
-        // The batch is minted AT acceptance, so its created_at IS the arrival date.
-        line={
-          <>
-            {cost(batch.lineCost)}
-            {" · "}
-            <Span data-testid="batch-detail-arrived-date">{formatUnixDateTimeShort(batch.createdAtUnix)}</Span>
-          </>
-        }
+        line={valueOf(cost(batch.lineCost), "arrived")}
         testId="batch-detail-arrived-card"
       />
       <SummaryCard
@@ -371,7 +496,9 @@ export function BatchDetailPage() {
             {batch.broken.toString()}
           </Span>
         }
-        line={cost(figureValue.broken)}
+        line={valueOf(cost(figureValue.broken), "broken")}
+        note={t("batchDetail.brokenNote")}
+        noteLines={2}
         testId="batch-detail-broken-card"
       />
       <SummaryCard
@@ -381,52 +508,52 @@ export function BatchDetailPage() {
             {batch.lost.toString()}
           </Span>
         }
-        line={cost(figureValue.lost)}
+        line={valueOf(cost(figureValue.lost), "lost")}
+        note={t("batchDetail.lostNote")}
+        noteLines={2}
         testId="batch-detail-lost-card"
       />
       <SummaryCard
         label={t("batchDetail.used")}
         value={<Span data-testid="batch-detail-used">{batch.used.toString()}</Span>}
-        line={cost(figureValue.used)}
+        line={valueOf(cost(figureValue.used), "used")}
+        note={t("batchDetail.usedNote")}
+        noteLines={2}
         testId="batch-detail-used-card"
-      />
-      <SummaryCard
-        emphasis
-        label={t("batchDetail.ready")}
-        value={<Span data-testid="batch-detail-ready">{batch.ready.toString()}</Span>}
-        line={cost(batch.readyValue)}
-        testId="batch-detail-ready-card"
       />
     </SummaryStrip>
   );
 
   /** A section card, keyed by its entry in `sections.ts` — its id, icon and title come from there. */
-  const section = (key: BatchSectionKey, children: ReactNode, testId: string) => {
+  const section = (key: BatchSectionKey, children: ReactNode, testId: string, description?: ReactNode) => {
     const entry = batchSection(key);
 
     return (
-      <Section id={batchSectionDomId(key)} icon={entry.icon} title={t(entry.titleKey)} testId={testId}>
+      <Section id={batchSectionDomId(key)} icon={entry.icon} title={t(entry.titleKey)} description={description} testId={testId}>
         {children}
       </Section>
     );
   };
 
-  // DITARUH SAAT DITERIMA — the shelves the accept put this batch on (a-batch-shows-the-racks-it-was-put-on).
+  // PENEMPATAN — the shelves the accept put this batch on (a-batch-shows-the-racks-it-was-put-on). Its title is the one
+  // word, and what it means is the line under it (owner: *"Ditaruh Saat Diterima, jadi Penempatan — kata ditaruh saat
+  // diterima bisa diperpanjang jadi sub judul"*, placement-is-one-word-its-meaning-a-line): the racks it was PUT ON, which
+  // is history — where the product sits now is the product's page.
   const placements = section(
     "placements",
     <Stack gap="card">
-      {/* Rack search — client-side over the loaded page (a batch sits on a handful of shelves); its × clears it. */}
-      <Box maxW="xs">
-        <FilterSearch
-          value={rackSearch}
-          onChange={(value) => {
-            setRackSearch(value);
-            setPlacementPage(1);
-          }}
-          placeholder={t("batchDetail.searchRack")}
-          testId="batch-detail-rack-search"
-        />
-      </Box>
+      {/* Rack search — client-side over the loaded page (a batch sits on a handful of shelves); its × clears it. The
+          section's full width (owner: *"filter rak full"*). */}
+      <FilterSearch
+        value={rackSearch}
+        onChange={(value) => {
+          setRackSearch(value);
+          setPlacementPage(1);
+        }}
+        placeholder={t("batchDetail.searchRack")}
+        testId="batch-detail-rack-search"
+        full
+      />
 
       {placementsQuery.isPending ? (
         <ListSkeleton rows={2} testId="batch-detail-placements-loading" />
@@ -440,7 +567,13 @@ export function BatchDetailPage() {
         />
       ) : (
         <Box overflowX="auto" w="full" maxW="full" minW="0">
-          <Table.Root size="sm" data-testid="batch-detail-placements-table">
+          {/* With no pager under it, no line under its last row (the-batch-page-hides-a-pager-that-fits). */}
+          <Table.Root
+            size="sm"
+            css={placementsPagerAside ? ENDS_BARE : undefined}
+            data-testid="batch-detail-placements-table"
+            data-ends-bare={placementsPagerAside || undefined}
+          >
             <Table.Header>
               <Table.Row>
                 <Table.ColumnHeader>{t("batchDetail.place")}</Table.ColumnHeader>
@@ -451,16 +584,20 @@ export function BatchDetailPage() {
             <Table.Body>
               {filteredShelves.map((s) => (
                 <Table.Row key={s.rackId.toString()} css={LIGHTS_UP} data-testid={`batch-detail-shelf-${s.rackId}`}>
-                  <Table.Cell fontWeight="bold">{placeLabel(s.rackId)}</Table.Cell>
+                  {/* The code painted on the shelf, its name under it — one rack, read twice. */}
+                  <Table.Cell data-testid={`batch-detail-shelf-place-${s.rackId}`}>
+                    <Stack gap="0">
+                      <Span fontWeight="bold">{placeLabel(s.rackId)}</Span>
+                      {placeName(s.rackId) && (
+                        <Span fontSize="xs" color="fg.muted" data-testid={`batch-detail-shelf-name-${s.rackId}`}>
+                          {placeName(s.rackId)}
+                        </Span>
+                      )}
+                    </Stack>
+                  </Table.Cell>
                   <Table.Cell textAlign="end">{s.qty.toString()}</Table.Cell>
                   <Table.Cell>
-                    {s.lastOpnameUnix > 0n ? (
-                      <Text color={isStaleOpname(s.lastOpnameUnix) ? "warning.fg" : undefined}>
-                        {formatUnixDateShort(s.lastOpnameUnix)}
-                      </Text>
-                    ) : (
-                      <Text color="fg.muted">{t("batchDetail.neverCounted")}</Text>
-                    )}
+                    <LastCountBadge unix={s.lastOpnameUnix} testId={`batch-detail-shelf-opname-${s.rackId}`} />
                   </Table.Cell>
                 </Table.Row>
               ))}
@@ -469,6 +606,9 @@ export function BatchDetailPage() {
         </Box>
       )}
 
+      {/* Out of the way while it has nothing to do — page 1 holding every rack at the smallest size, 10 (owner:
+          *"sembunyikan kalau pagenya page 1 dan itemnya tidak lebih dari samadengan yang terkecil di perpage"*,
+          the-batch-page-hides-a-pager-that-fits). */}
       <GrowingPager
         page={placementPage}
         onPageChange={setPlacementPage}
@@ -476,6 +616,8 @@ export function BatchDetailPage() {
         resetKey={[rackQuery, placementPageSize].join("|")}
         pageSize={placementPageSize}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
+        total={placementsTotal}
+        testId="batch-detail-placements-pager"
         onPageSizeChange={(size) => {
           setPlacementPageSize(size);
           setPlacementPage(1);
@@ -483,40 +625,51 @@ export function BatchDetailPage() {
       />
     </Stack>,
     "batch-placements-panel",
+    t("batchDetail.placementsLine"),
   );
 
   // INFO — the batch's own record: where it came from, as a way there (a-batch-opens-where-it-came-from), who took it in,
-  // what one unit cost, and when it expires.
+  // what one unit cost, and when it expires. Each a quiet label over its value in bold, a thin line between them — the
+  // owner's drawing (the-batch-info-reads-label-over-value, InfoFact).
   const info = section(
     "info",
-    <Stack gap="card">
-      <Fact label={t("batchDetail.source")}>
+    <Stack gap="4" separator={<StackSeparator />}>
+      <InfoFact label={t("batchDetail.source")}>
         <BatchSource batch={batch} testId={isReturn ? "batch-detail-return" : "batch-detail-order"} />
-      </Fact>
+      </InfoFact>
       {/* Who accepted the delivery — resolved best-effort (#142); a dash when it could not be. */}
-      <Fact label={t("batchDetail.acceptedBy")}>
+      <InfoFact label={t("batchDetail.acceptedBy")}>
         {data?.acceptedByName ? (
           <Text as="span" data-testid="batch-detail-received-by">
             {data.acceptedByName}
           </Text>
         ) : undefined}
-      </Fact>
+      </InfoFact>
+      {/* When it arrived — the batch is minted AT acceptance, so its created_at IS the arrival. It was wedged after Tiba's
+          Rp on the card (tiba-keeps-its-date-in-info). */}
+      <InfoFact label={t("batchDetail.arrivedAt")}>
+        <Text as="span" data-testid="batch-detail-arrived-date">
+          {formatUnixDateTimeShort(batch.createdAtUnix)}
+        </Text>
+      </InfoFact>
       {/* The frozen cost every figure above is priced at — the same number as a rack's *Harga satuan*. */}
-      <Fact label={t("batchDetail.unitCost")}>
+      <InfoFact label={t("batchDetail.unitCost")}>
         <Text as="span" data-testid="batch-detail-unit-cost">
           {cost(batch.unitCost)}
         </Text>
-        {/* A corrected price says what it was — the newest correction's price before it. */}
+        {/* A corrected price says what it was — the newest correction's price before it; a note, so not bold. */}
         {correctedFrom !== undefined && (
-          <Text fontSize="xs" color="fg.muted" data-testid="batch-detail-unit-cost-corrected">
+          <Text fontSize="xs" fontWeight="normal" color="fg.muted" data-testid="batch-detail-unit-cost-corrected">
             {t("correctPrice.info.correctedFrom", { from: formatRupiah(correctedFrom) })}
           </Text>
         )}
-      </Fact>
+      </InfoFact>
       {/* The day and how long is left, as the list says it (an-expiry-says-how-long-is-left); a dash when it has none. */}
-      <Fact label={t("batchDetail.expiry")}>
-        <ExpiryCell inline fontSize="md" unix={batch.expiresOnUnix} testId="batch-detail-expiry" />
-      </Fact>
+      <InfoFact label={t("batchDetail.expiry")}>
+        {/* At the size of the facts above it, how long is left a badge (owner: *"kadaluarsa ukurannya sama dengan
+            atasnya, hari tersisa buat jadi badge"*, the-expiry-left-is-a-badge). */}
+        <ExpiryCell inline leftAsBadge fontSize="inherit" unix={batch.expiresOnUnix} testId="batch-detail-expiry" />
+      </InfoFact>
     </Stack>,
     "batch-info-panel",
   );
@@ -525,8 +678,17 @@ export function BatchDetailPage() {
   const history = section(
     "history",
     <Stack gap="card">
-      {/* Date range over the movement timestamp (#218/#224) — server-side, so it narrows the whole ledger. */}
-      <Flex>
+      {/* Date range over the movement timestamp (#218/#224) and the kind (riwayat-filters-by-one-kind) — both server-side,
+          so they narrow the whole ledger. Together the section's full width, as Penempatan's search (owner: *"filter
+          tanggal full width"*): the date four parts of the row, Kegiatan three beside it — narrower than the date (owner:
+          *"buat lebih kecil juga daripada tanggal"*), but not the 14rem slot that was *"terlalu kecil"*; one under the
+          other on a phone — two full-width rows, not the ragged strip a sheet exists for. Each has its × back to
+          everything (owner: *"ada closeable … tanggal ada closeable juga"*). */}
+      <Grid
+        templateColumns={isMobile ? "minmax(0, 1fr)" : "minmax(0, 4fr) minmax(0, 3fr)"}
+        gap={isMobile ? "2" : "card"}
+        data-testid="batch-detail-history-filters"
+      >
         <DateRangePicker
           value={historyRange}
           onChange={(r) => {
@@ -534,8 +696,18 @@ export function BatchDetailPage() {
             setHistoryPage(1);
           }}
           testId="batch-detail-date"
+          full
+          clearable
         />
-      </Flex>
+        <MovementKindSelect
+          value={historyKind}
+          onChange={(kind) => {
+            setHistoryKind(kind);
+            setHistoryPage(1);
+          }}
+          testId="batch-detail-kind"
+        />
+      </Grid>
       {historyQuery.isPending && batch.productId > 0n ? (
         <ListSkeleton rows={3} testId="batch-detail-history-loading" />
       ) : (
@@ -547,20 +719,29 @@ export function BatchDetailPage() {
           testId="batch-detail-history"
           columns={["place"]}
           rackLabel={placeLabel}
+          // The rack's name under its code, as Penempatan's (owner: *"tempatnya pakai nama"*); the kind a badge in its
+          // colour (owner: *"kegiatan pakai badge"*, a-movement-kind-is-a-badge).
+          rackName={placeName}
+          kindBadge
+          // With no pager under it, no line under its last row (the-batch-page-hides-a-pager-that-fits).
+          endsBare={historyPagerAside}
           afterLabel={t("batchDetail.after")}
           emptyText={t("batchDetail.noHistory")}
           emptyIcon={History}
           emptyDescription={t("batchDetail.noHistoryHint")}
         />
       )}
-      {/* Always on screen, an empty history included (the-pager-is-always-on-screen). */}
+      {/* Out of the way while it has nothing to do, as Penempatan's — an empty or short history on page 1 draws none
+          (the-batch-page-hides-a-pager-that-fits; it was always on screen, the-pager-is-always-on-screen). */}
       <GrowingPager
         page={historyPage}
         onPageChange={setHistoryPage}
         hasNext={historyPage * historyPageSize < historyTotal}
-        resetKey={[dateRangeCodec.encode(historyRange), historyPageSize].join("|")}
+        resetKey={[dateRangeCodec.encode(historyRange), historyKind, historyPageSize].join("|")}
         pageSize={historyPageSize}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
+        total={historyTotal}
+        testId="batch-detail-history-pager"
         onPageSizeChange={(size) => {
           setHistoryPageSize(size);
           setHistoryPage(1);
@@ -568,16 +749,21 @@ export function BatchDetailPage() {
       />
     </Stack>,
     "batch-history-panel",
+    // What the ledger holds, as Penempatan says what it holds (owner: *"riwayat kasih subjudul"*).
+    t("batchDetail.historyLine"),
+  );
+
+  // THE PAGE ARRIVES IN ORDER (owner: *"tambah animasi"*, the-batch-page-arrives-in-order) — each block its own `enter`,
+  // one step after the block above it: the heading (and the nav beside it), the figures, then the sections down the
+  // column. The root carries none — a rise inside a rise reads as 16px (motion-is-small-quick-and-shared).
+  const arrives = (step: number, node: ReactNode, testId: string) => (
+    <Box minW="0" {...enterStep(step)} data-testid={testId} data-enter-step={step}>
+      {node}
+    </Box>
   );
 
   return (
-    // The page arrives — a fade and a short rise (motion-is-small-quick-and-shared).
-    <Stack
-      gap="section"
-      animationStyle="enter"
-      data-testid="batch-detail-page"
-      style={{ ["--detail-header-h" as string]: `${stick.height}px` }}
-    >
+    <Stack gap="section" data-testid="batch-detail-page" style={{ ["--detail-header-h" as string]: `${stick.height}px` }}>
       {/* THE STICKY STRIP — the section chips on a phone (always), and the title bar under them, drawn over the page once
           the heading has gone behind it. */}
       <ProductStickyStrip
@@ -594,47 +780,66 @@ export function BatchDetailPage() {
       {/* THE NAVIGATION, THEN THE SECTIONS. ⚠ `minmax(0, 1fr)` so a wide table scrolls in its own box. */}
       <Grid templateColumns={isMobile ? "minmax(0, 1fr)" : "13rem minmax(0, 1fr)"} gap="section" alignItems="start">
         {!isMobile && (
-          <Box position="sticky" top="calc(var(--detail-header-h, 0px) + 1rem)">
+          <Box position="sticky" top="calc(var(--detail-header-h, 0px) + 1rem)" {...enterStep(0)}>
             <SectionNav sections={navSections} ariaLabel={t("batchDetail.navLabel")} active={active} onSelect={scrollTo} />
           </Box>
         )}
 
         {/* THE PUT-AWAY AND THE LEDGER IN THE MAIN COLUMN, INFO BESIDE IT where there is room — in the nav's order in one column
-            otherwise. A JS branch, so no card exists twice. */}
+            otherwise. A JS branch, so no card exists twice. Each block a step in the page's arrival. */}
         {wide ? (
           <Stack gap="section" minW="0" w="full">
-            {heading}
-            {figures}
+            {arrives(0, heading, "batch-detail-enter-heading")}
+            {arrives(1, figures, "batch-detail-enter-figures")}
             <Grid templateColumns="minmax(0, 1fr) 20rem" gap="section" alignItems="start" minW="0">
               <Stack gap="section" minW="0">
-                {placements}
-                {history}
+                {arrives(2, placements, "batch-detail-enter-placements")}
+                {arrives(3, history, "batch-detail-enter-history")}
               </Stack>
               <Stack gap="section" minW="0">
-                {info}
+                {/* Beside Penempatan, so it arrives with it. */}
+                {arrives(2, info, "batch-detail-enter-info")}
               </Stack>
             </Grid>
           </Stack>
         ) : (
           <Stack gap="section" minW="0" w="full">
-            {heading}
-            {figures}
-            {placements}
-            {info}
-            {history}
+            {arrives(0, heading, "batch-detail-enter-heading")}
+            {arrives(1, figures, "batch-detail-enter-figures")}
+            {arrives(2, placements, "batch-detail-enter-placements")}
+            {arrives(3, history, "batch-detail-enter-history")}
+            {/* The lowest of the three, so the last on a narrow screen (info-batch-comes-last). */}
+            {arrives(4, info, "batch-detail-enter-info")}
           </Stack>
         )}
       </Grid>
+
+      <ImagePreview target={preview} onClose={() => setPreview(null)} />
 
       {warehouseId !== undefined && product && (
         <AdjustStockDialog
           warehouseId={warehouseId}
           product={product}
-          currentOnHand={batch.ready}
+          // The dialog's *Tersedia* is the PRODUCT's units here — the sum of where it sits now. It was given this batch's
+          // Siap, a different number under the product's name; the batch's own is *Tersisa*, under it.
+          currentOnHand={(data?.places ?? []).reduce((sum, p) => sum + p.onHand, 0n)}
           open={adjusting}
           onOpenChange={setAdjusting}
           // The page's own ProductPlaces answer — mounted closed, the dialog's read of its own was the same one again (#133).
           places={data?.places}
+          // Rusak and Hilang take THIS batch — never asked again on its own page (owner: *"kenapa di sesuaikan stok harus
+          // pilih batch lagi?"*, the-batch-page-adjusts-its-own-batch); the dialog says it at the top with its units
+          // left, and offers only its racks — none until they have been read, never the whole warehouse meanwhile.
+          fixedBatch={{
+            id: batch.id,
+            ready: batch.ready,
+            source: isReturn
+              ? t("batches.fromReturn")
+              : batch.deliveryId > 0n
+                ? t("batches.fromRestock", { id: batch.deliveryId.toString() })
+                : "",
+            rackIds: batchRackIds,
+          }}
         />
       )}
 

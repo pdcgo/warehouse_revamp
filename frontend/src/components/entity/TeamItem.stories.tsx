@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button, Stack } from "@chakra-ui/react";
-import { expect, within } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 
 import { TeamType } from "../../gen/warehouse/team/v1/team_pb";
 import { TeamItem, description } from "./TeamItem";
@@ -49,6 +49,62 @@ export const Small: Story = {
     await expect(canvas.getByText("Toko Melati")).toBeInTheDocument();
     await expect(canvas.queryByText("Selling")).toBeNull();
     await expect(canvasElement.querySelector(".chakra-avatar__root")!.getBoundingClientRect().height).toBeLessThanOrEqual(24);
+  },
+};
+
+// AT A PRODUCT'S SIZE (the-owner-weighs-the-same-as-its-product) — beside a `ProductListItem` in one card, the team's
+// avatar and name are the product's own (`lg`: 64px and 18px; `md`: 40px), a caption under the name where the product has
+// its code, and no type badge.
+export const AtAProductsSize: Story = {
+  name: "At a product's size",
+  render: () => (
+    <Stack gap="4">
+      <TeamItem size="lg" caption="Owner" team={{ teamName: "Toko Melati", teamType: TeamType.SELLING, teamId: 12n }} />
+      <TeamItem size="md" caption="Owner" team={{ teamName: "Toko Kenanga", teamType: TeamType.SELLING, teamId: 13n }} />
+    </Stack>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [large, medium] = [...canvasElement.querySelectorAll<HTMLElement>(".chakra-avatar__root")];
+
+    await expect(Math.round(large!.getBoundingClientRect().height)).toBe(64);
+    await expect(Math.round(medium!.getBoundingClientRect().height)).toBe(40);
+    await expect(canvas.getAllByText("Owner")).toHaveLength(2);
+    await expect(canvas.queryByText("Selling")).toBeNull();
+  },
+};
+
+// ITS PICTURE OPENS (a-small-picture-opens-its-preview) — with `onImageClick`, a team's picture is a real button, named
+// for the team; a team with initials only has nothing to open, and stays a plain avatar.
+export const ItsPictureOpens: Story = {
+  name: "Its picture opens",
+  args: { onImageClick: fn() },
+  render: (args) => (
+    <Stack gap="4">
+      <TeamItem
+        size="lg"
+        caption="Owner"
+        onImageClick={args.onImageClick}
+        team={{
+          teamName: "Toko Melati",
+          teamType: TeamType.SELLING,
+          teamId: 12n,
+          imageUrl:
+            "data:image/svg+xml;utf8," +
+            encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#f43f5e"/></svg>'),
+        }}
+      />
+      <TeamItem size="lg" caption="Owner" onImageClick={args.onImageClick} team={{ teamName: "Toko Kenanga", teamType: TeamType.SELLING, teamId: 13n }} />
+    </Stack>
+  ),
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const picture = canvas.getByTestId("team-item-image-12");
+    await expect(picture).toHaveAccessibleName("View the picture of Toko Melati");
+    await userEvent.click(picture);
+    await expect(args.onImageClick).toHaveBeenCalledTimes(1);
+    await expect(canvas.queryByTestId("team-item-image-13")).toBeNull();
   },
 };
 

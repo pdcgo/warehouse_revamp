@@ -1,9 +1,8 @@
 import { Suspense } from "react";
 import { Box, Flex, Spinner } from "@chakra-ui/react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { NotMemberStrip } from "../NotMemberStrip";
 
-import { GREY_CANVAS, usesGreyCanvas } from "../shell";
 import { Sidebar } from "./Sidebar";
 
 // THE DESKTOP SHELL: the persistent left [Sidebar] beside the routed page — and nothing above the page.
@@ -20,11 +19,6 @@ import { Sidebar } from "./Sidebar";
 // ⚠ IT ONLY EVER MOUNTS ON A WIDE SCREEN ([Layout] picks by breakpoint) — a phone gets [MobileLayout] instead,
 // which is a different shell rather than this one squeezed.
 export function DesktopLayout() {
-  const location = useLocation();
-
-  // The page canvas is chosen by ROUTE, in [shell.ts] — both shells paint the same screens.
-  const greyCanvas = usesGreyCanvas(location.pathname);
-
   return (
     <Flex minH="100dvh">
       <Sidebar />
@@ -33,8 +27,8 @@ export function DesktopLayout() {
         {/* Root or the Administrator acting in a team they are not in (a-non-member-root-acts-under-a-strip). */}
         <NotMemberStrip />
 
-        {/* The content area stays WHITE by default (so a freshly-built component isn't tinted grey);
-            a page opts INTO the grey canvas by route — see `usesGreyCanvas`.
+        {/* The content area is UNPAINTED — every page on the app's own ground, none on a canvas of its own
+            (every-page-is-on-one-canvas, shell.ts).
 
             ⚠ `overflowX="clip"`, NEVER `overflow="auto"`. This shell lets the WINDOW scroll (the sidebar sticks to
             it), so <main> grows with the page and never scrolls itself — but `overflow: auto` still made it a scroll
@@ -42,7 +36,7 @@ export function DesktopLayout() {
             stuck (owner, on the product page: *"di halaman asli yang heading stickynya tidak muncul"*; the order
             detail's header, the stock count's and Accept Delivery's had the same fault). `clip` still keeps a page from
             scrolling sideways, without becoming a scroll container. */}
-        <Box as="main" flex="1" overflowX="clip" p="page" bg={greyCanvas ? GREY_CANVAS : undefined}>
+        <Box as="main" flex="1" overflowX="clip" p="page">
           {/* Each route's page is code-split (React.lazy in router.tsx); this boundary shows a
               spinner for the brief moment its chunk is fetched. */}
           <Suspense fallback={<Spinner colorPalette="brand" />}>

@@ -328,18 +328,17 @@ export const MoreIsLitWhenNoTabOwnsTheScreen: Story = {
   },
 };
 
-// THE SHELL OWNS THE SURFACE, and it decides by ROUTE — the same `usesGreyCanvas` the desktop shell
-// reads (shell.ts). Two shells deciding a page's background separately is how the same screen ends up
-// two colours depending on the device it is opened on.
-export const ThePageCanvasIsChosenByTheShell: Story = {
+// EVERY PAGE IS ON ONE CANVAS (every-page-is-on-one-canvas) — on a phone too: the batch page, the one a route once
+// painted grey, sits on the app's own ground as every other page does.
+export const EveryPageIsOnOneCanvas: Story = {
+  name: "Every page on one canvas",
   render: () => <AtBatchDetail />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     await waitFor(() => expect(canvas.getByTestId("at-batch-detail")).toBeInTheDocument());
-    const main = canvas.getByRole("main");
-    // gray.100 — GREY_CANVAS in shell.ts.
-    await expect(window.getComputedStyle(main).backgroundColor).toBe("rgb(243, 244, 246)");
+    // <main> draws no background: what shows is the app's ground, the same under every route.
+    await expect(window.getComputedStyle(canvas.getByRole("main")).backgroundColor).toBe("rgba(0, 0, 0, 0)");
   },
 };
 

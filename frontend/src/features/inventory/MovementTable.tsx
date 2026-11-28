@@ -1,14 +1,15 @@
 import type { ElementType, ReactNode } from "react";
-import { HStack, Stack, Table, Text } from "@chakra-ui/react";
+import { Badge, HStack, Stack, Table, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { EmptyHint } from "../../components/feedback/EmptyHint";
+import { ENDS_BARE } from "../../components/chrome/GrowingPager";
 import { ActorName, RootTeamBadge } from "../../components/entity/ActorName";
 import { useIsMobile } from "../../layouts/shell";
 import type { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { formatRfc3339DateTimeShort } from "../../lib/datetime";
 import { formatRupiah, formatSignedRupiah } from "../../lib/money";
-import { kindLabel, transactionLabel } from "./movementKind";
+import { kindLabel, kindPalette, transactionLabel } from "./movementKind";
 
 // THE stock ledger. One movement reads identically wherever it is shown — a warehouse product's
 // history, a shelf's history, a batch's history — because it is one component, not three copies.
@@ -145,6 +146,23 @@ export interface MovementTableProps {
    * harusnya"*, the-product-history-names-the-transaction).
    */
   wording?: "warehouse" | "transaction";
+  /**
+   * OPT-IN: the kind as a BADGE in its colour (`kindPalette` — in green, out orange, a move blue, a correction grey), so a
+   * page of movements is read by colour before a word (owner, on a batch's Riwayat: *"kegiatan pakai badge"*,
+   * a-movement-kind-is-a-badge). Without it the kind is its plain word, as every other ledger has it.
+   */
+  kindBadge?: boolean;
+  /**
+   * OPT-IN, with the `place` column: the rack's NAME under its code — one rack read twice (owner, on a batch's Riwayat:
+   * *"tempatnya pakai nama"*, a-placement-names-its-rack). Empty for a rack with none, and the code stands alone.
+   */
+  rackName?: (rackId: bigint) => string;
+  /**
+   * OPT-IN: no line under the last row — a ledger with no pager under it (owner: *"tabel yang tidak ada paginasi, border
+   * line paling bawah tidak perlu ada"*, the-batch-page-hides-a-pager-that-fits). The table's last row and a phone's last
+   * block alike.
+   */
+  endsBare?: boolean;
 }
 
 export function MovementTable({
@@ -161,6 +179,9 @@ export function MovementTable({
   productLabel,
   striped,
   wording = "warehouse",
+  kindBadge = false,
+  rackName,
+  endsBare = false,
 }: MovementTableProps) {
   const { t } = useTranslation();
   const kindWord = (kind: MovementKind) => (wording === "transaction" ? transactionLabel(t, kind) : kindLabel(t, kind));
@@ -172,6 +193,24 @@ export function MovementTable({
       : m.countCorrection
         ? t("receivedCount.history.kind")
         : kindWord(m.kind);
+  // The kind as the screen shows it: a badge in its colour where asked (`kindBadge`), its word otherwise. A price or a
+  // count put right is a correction, grey, whatever its stored kind.
+  const kindShown = (m: MovementRow, bold = false) =>
+    kindBadge ? (
+      <Badge
+        colorPalette={m.priceChange || m.countCorrection ? "gray" : kindPalette(m.kind)}
+        variant="subtle"
+        data-testid={`${testId}-row-${m.id}-kind`}
+      >
+        {kindOf(m)}
+      </Badge>
+    ) : bold ? (
+      <Text as="span" fontWeight="bold">
+        {kindOf(m)}
+      </Text>
+    ) : (
+      kindOf(m)
+    );
   const isMobile = useIsMobile();
   // A reworked screen's ledger — the hint, the lit rows and the phone's lines come together (see `emptyIcon`).
   const reworked = emptyIcon !== undefined;
@@ -184,7 +223,8 @@ export function MovementTable({
     warehouse: t("inventory.movement.warehouse"),
   };
 
-  function cell(column: MovementContextColumn, m: MovementRow) {
+  /** `inline` — inside a phone's line, where a block cannot go: the rack's name follows its code after a dot. */
+  function cell(column: MovementContextColumn, m: MovementRow, inline = false): ReactNode {
     switch (column) {
       case "by": {
         // A movement the system made on its own has no actor, and an em dash says that better than
@@ -200,10 +240,24 @@ export function MovementTable({
       case "batch":
         // A batch-less shelf recount lands on the oldest batch by FIFO but names none (#211).
         return m.batchId > 0n ? `#${m.batchId}` : "—";
-      case "place":
+      case "place": {
         // A price correction touched no rack (revaluation-and-opname-are-transaction-types: no rack row).
         if (m.rackId === undefined || m.priceChange) return "—";
-        return rackLabel ? rackLabel(m.rackId) : `#${m.rackId}`;
+        const code = rackLabel ? rackLabel(m.rackId) : `#${m.rackId}`;
+        const name = rackName?.(m.rackId) ?? "";
+        if (!name) return code;
+        if (inline) return `${code} · ${name}`;
+
+        // The code painted on the shelf, its name under it (a-placement-names-its-rack).
+        return (
+          <Stack gap="0">
+            <Text as="span">{code}</Text>
+            <Text as="span" fontSize="xs" color="fg.muted" data-testid={`${testId}-row-${m.id}-rack-name`}>
+              {name}
+            </Text>
+          </Stack>
+        );
+      }
       case "product":
         return productLabel ? productLabel(m.productId) : `#${m.productId}`;
       case "warehouse":
@@ -282,20 +336,20 @@ export function MovementTable({
             py="2"
             borderBottomWidth="1px"
             borderColor="border.muted"
+            // The last block's line too, with no pager under it (endsBare).
+            _last={endsBare ? { borderBottomWidth: "0" } : undefined}
             data-testid={`${testId}-row-${m.id}`}
           >
             <HStack justify="space-between" gap="2" fontSize="sm">
               <Text truncate minW="0">
-                <Text as="span" fontWeight="bold">
-                  {kindOf(m)}
-                </Text>
+                {kindShown(m, true)}
                 {/* A price correction touched no rack — its block leaves the place out rather than say "—". */}
                 {columns
                   .filter((c) => !(m.priceChange && c === "place"))
                   .map((c) => (
                     <Text as="span" key={c} color="fg.muted">
                       {" · "}
-                      {cell(c, m)}
+                      {cell(c, m, true)}
                     </Text>
                   ))}
               </Text>
@@ -339,7 +393,7 @@ export function MovementTable({
 
   return (
     <Stack gap="card">
-      <Table.Root size="sm" striped={striped} data-testid={`${testId}-table`}>
+      <Table.Root size="sm" striped={striped} css={endsBare ? ENDS_BARE : undefined} data-testid={`${testId}-table`}>
         <Table.Header>
           <Table.Row>
             <Table.ColumnHeader>{t("inventory.movement.when")}</Table.ColumnHeader>
@@ -370,24 +424,24 @@ export function MovementTable({
                 {m.priceChange ? (
                   <Stack gap="0">
                     <Text as="span">
-                      {kindOf(m)} · {priceLine(m.priceChange, `${testId}-row-${m.id}`)}
+                      {kindShown(m)} · {priceLine(m.priceChange, `${testId}-row-${m.id}`)}
                     </Text>
                     {whyLine(m.priceChange, `${testId}-row-${m.id}`)}
                   </Stack>
                 ) : m.countCorrection ? (
                   <Stack gap="0">
                     <Text as="span">
-                      {kindOf(m)} · {countLine(m.countCorrection, `${testId}-row-${m.id}`)}
+                      {kindShown(m)} · {countLine(m.countCorrection, `${testId}-row-${m.id}`)}
                     </Text>
                     {whyLine(m.countCorrection, `${testId}-row-${m.id}`)}
                   </Stack>
                 ) : m.recipient ? (
-                  <Stack gap="0">
-                    <Text as="span">{kindOf(m)}</Text>
+                  <Stack gap="0" align="flex-start">
+                    <Text as="span">{kindShown(m)}</Text>
                     {recipientLine(m)}
                   </Stack>
                 ) : (
-                  kindOf(m)
+                  kindShown(m)
                 )}
               </Table.Cell>
               {columns.map((c) => (

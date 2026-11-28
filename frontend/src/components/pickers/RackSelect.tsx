@@ -37,6 +37,12 @@ export interface RackSelectProps {
    * taken — freeing the other row frees it.
    */
   takenRackIds?: string[];
+  /**
+   * The ONLY racks that are an answer — a batch's own racks, when Sesuaikan Stok is opened from the batch (owner: *"racknya
+   * jangan tampil semua, sesuai dengan rack batchnya"*, the-adjust-dialog-leads-with-what-it-adjusts). The rest of the
+   * warehouse is left out, as `excludeRackId` leaves one out. Omit it for every rack.
+   */
+  onlyRackIds?: bigint[];
   /** The trigger's testid. Defaults to "rack-select"; a dialog with one picker per line gives each its own. */
   testId?: string;
 }
@@ -60,7 +66,7 @@ export interface RackSelectProps {
 // it. Select models it directly: an empty value array IS "nothing selected", so the hack is gone
 // while the semantics are identical.
 export const description =
-  "Place picker for a warehouse (Chakra Select over RackList): the racks plus a selectable \"Unplaced\" pile (allowUnplaced={false} leaves it out — a restock accept; excludeRackId leaves one rack out — a move's source; takenRackIds shows racks a sibling picker already holds, disabled). Emits \"\" (unanswered) | \"unplaced\" | a rack id string; unanswered is the placeholder, never a pickable option.";
+  "Place picker for a warehouse (Chakra Select over RackList): the racks plus a selectable \"Unplaced\" pile (allowUnplaced={false} leaves it out — a restock accept; excludeRackId leaves one rack out — a move's source; onlyRackIds offers only those racks — a batch's own; takenRackIds shows racks a sibling picker already holds, disabled). Emits \"\" (unanswered) | \"unplaced\" | a rack id string; unanswered is the placeholder, never a pickable option.";
 
 export function RackSelect({
   warehouseId,
@@ -71,6 +77,7 @@ export function RackSelect({
   allowUnplaced = true,
   excludeRackId,
   takenRackIds,
+  onlyRackIds,
   testId = "rack-select",
 }: RackSelectProps) {
   const { t } = useTranslation();
@@ -82,16 +89,19 @@ export function RackSelect({
   const error = query.isError;
   // A stable key for the memo: a new array of the same ids every render must not rebuild the collection.
   const takenKey = (takenRackIds ?? []).join(",");
+  // …and the same for the racks it is narrowed to; undefined (every rack) is not "" (none).
+  const onlyKey = onlyRackIds === undefined ? undefined : onlyRackIds.join(",");
 
   const collection = useMemo(() => {
     const taken = new Set(takenKey === "" ? [] : takenKey.split(","));
+    const only = onlyKey === undefined ? null : new Set(onlyKey === "" ? [] : onlyKey.split(","));
 
     return createListCollection({
       items: [
         // Rendered even when the rack list failed to load: "unplaced" is answerable without it.
         ...(allowUnplaced ? [{ label: t("racks.select.unplaced"), value: UNPLACED, disabled: false }] : []),
         ...racks
-          .filter((rack) => rack.id !== excludeRackId)
+          .filter((rack) => rack.id !== excludeRackId && (only === null || only.has(rack.id.toString())))
           .map((rack) => ({
             label: rack.name ? `${rack.code} — ${rack.name}` : rack.code,
             value: rack.id.toString(),
@@ -100,7 +110,7 @@ export function RackSelect({
           })),
       ],
     });
-  }, [racks, t, allowUnplaced, excludeRackId, takenKey, value]);
+  }, [racks, t, allowUnplaced, excludeRackId, takenKey, onlyKey, value]);
 
   return (
     <Select.Root

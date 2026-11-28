@@ -211,6 +211,12 @@ export interface FilterSearchProps {
   onChange: (value: string) => void;
   placeholder?: string;
   testId?: string;
+  /**
+   * The box ALONE, the width of what holds it — not a row's flexing member (owner, on a batch's Penempatan: *"filter rak
+   * full width bukan height juga"*). Off, it grows into a row up to `sm`; on, it takes the full width at its own height —
+   * the row's `flex` in a column stretched it DOWN, its 14rem basis read as a height.
+   */
+  full?: boolean;
 }
 
 // The free-text box, and the only control in the bar that flexes: it grows into whatever space is
@@ -225,17 +231,18 @@ export interface FilterSearchProps {
 //
 // The × fades in when the first letter is typed (`a-filter-answers-as-it-changes`), and gives the box its focus back,
 // so the next word is typed without reaching for it again.
-export function FilterSearch({ value, onChange, placeholder, testId }: FilterSearchProps) {
+export function FilterSearch({ value, onChange, placeholder, testId, full = false }: FilterSearchProps) {
   const { t } = useTranslation();
   const [input, setInput] = useState<HTMLInputElement | null>(null);
 
   return (
     <InputGroup
-      flex="1 1 14rem"
+      flex={full ? "none" : "1 1 14rem"}
+      w={full ? "full" : undefined}
       // It may shrink below its own content: on a narrow phone the row is the search, Filter and a page's icon actions,
       // and an input that would not give way pushed the last one off the screen.
       minW="0"
-      maxW="sm"
+      maxW={full ? "none" : "sm"}
       startElement={<Icon as={Search} boxSize="4" color="fg.subtle" />}
       endElement={
         value !== "" ? (

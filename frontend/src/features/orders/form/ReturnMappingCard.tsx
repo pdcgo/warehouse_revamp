@@ -11,8 +11,8 @@ import { ProductSelect } from "../../../components/products/ProductSelect";
 import type { PickedProduct } from "../../../components/products/ProductSelect";
 import { mockProductImage } from "./mockImages";
 import { useCreateProductReturnMap } from "../queries";
-import { ImagePreview } from "./ImagePreview";
-import type { PreviewTarget } from "./ImagePreview";
+import { ImagePreview } from "../../../components/feedback/ImagePreview";
+import type { PreviewTarget } from "../../../components/feedback/ImagePreview";
 
 // WHERE A RETURN OF SOMEBODY ELSE'S GOODS LANDS.
 //

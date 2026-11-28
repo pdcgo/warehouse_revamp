@@ -4,9 +4,12 @@
 // scrolls to; the icon is the card's and the nav item's.
 //
 // Where the batch was put WHEN IT WAS ACCEPTED first — fixed at the accept, never where it sits now: a rack counts per
-// product, not per batch (a-batch-shows-the-racks-it-was-put-on) — then the batch's own record, then what has happened to
-// it. The put-away is its own section, not Riwayat's first rows: the owner, *"riwayat itu beda konteks"*. Info is short,
-// so on a wide screen it is a card beside the rest, as a rack's is.
+// product, not per batch (a-batch-shows-the-racks-it-was-put-on) — then what has happened to it, then the batch's own
+// record. The put-away is its own section, not Riwayat's first rows: the owner, *"riwayat itu beda konteks"*.
+//
+// INFO IS THE LOWEST, SO IT IS LAST (owner: *"secara prioritas info batch paling rendah, jadi kalau di layar kecil dia
+// paling bawah"*, info-batch-comes-last) — on a narrow screen under Riwayat, and last in the nav. On a wide one it is the
+// card beside the rest, as a rack's is.
 import type { LucideIcon } from "lucide-react";
 import { FileText, History, Warehouse } from "lucide-react";
 
@@ -14,8 +17,8 @@ export type BatchSectionKey = "placements" | "info" | "history";
 
 export const BATCH_SECTIONS: { key: BatchSectionKey; titleKey: string; icon: LucideIcon }[] = [
   { key: "placements", titleKey: "batchDetail.tabPlacements", icon: Warehouse },
-  { key: "info", titleKey: "batchDetail.tabInfo", icon: FileText },
   { key: "history", titleKey: "batchDetail.tabHistory", icon: History },
+  { key: "info", titleKey: "batchDetail.tabInfo", icon: FileText },
 ];
 
 /** Every key, in order — the stable list `useScrollSpy` reads. */

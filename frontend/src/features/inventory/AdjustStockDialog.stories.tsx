@@ -2,9 +2,10 @@ import { useState } from "react";
 import { create } from "@bufbuild/protobuf";
 import { Text } from "@chakra-ui/react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { reportScenario } from "../../../.storybook/foundRequestStub";
+import { inventoryClient } from "../../api/clients";
 import { type Product, ProductSchema } from "../../gen/warehouse/product/v1/product_pb";
 import { AdjustStockDialog, description } from "./AdjustStockDialog";
 
@@ -20,12 +21,25 @@ const BERAS = create(ProductSchema, { id: 74n, teamId: 12n, productCode: "SKU-BE
 const GULA = create(ProductSchema, { id: 73n, teamId: 13n, productCode: "SKU-GULA-1K", name: "Gula Pasir 1kg" });
 const KOPI = create(ProductSchema, { id: 71n, teamId: 11n, productCode: "SKU-KOPI-250", name: "Kopi Arabika 250g" });
 
-function Open({ product }: { product: Product }) {
+function Open({
+  product,
+  fixedBatch,
+}: {
+  product: Product;
+  fixedBatch?: { id: bigint; ready: bigint; source: string; rackIds?: bigint[] };
+}) {
   const [open, setOpen] = useState(true);
 
   return (
     <>
-      <AdjustStockDialog warehouseId={11n} product={product} currentOnHand={8n} open={open} onOpenChange={setOpen} />
+      <AdjustStockDialog
+        warehouseId={11n}
+        product={product}
+        currentOnHand={8n}
+        open={open}
+        onOpenChange={setOpen}
+        fixedBatch={fixedBatch}
+      />
       {!open && <Text data-testid="adjust-closed">closed</Text>}
     </>
   );
@@ -36,7 +50,7 @@ const meta = {
   component: AdjustStockDialog,
   parameters: { docs: { description: { component: description } } },
   args: { warehouseId: 11n, product: BERAS, currentOnHand: 8n, open: true, onOpenChange: () => {} },
-  render: (args) => <Open product={args.product} />,
+  render: (args) => <Open product={args.product} fixedBatch={args.fixedBatch} />,
 } satisfies Meta<typeof AdjustStockDialog>;
 
 export default meta;
@@ -87,8 +101,20 @@ export const FoundWaitsForApproval: Story = {
     await expect(screen.getByTestId("adjust-amount")).toHaveValue("1");
     await amount("4");
     await userEvent.type(screen.getByTestId("adjust-reason"), "Behind the cartons", { delay: 20 });
-    // Nothing moves now, so there is no before → after.
-    await expect(screen.queryByTestId("adjust-delta")).toBeNull();
+    // It has its preview too (owner: *"ditemukan ada pratinjaunya"*) — B-02-1's 2, Found +4, and the total it comes to
+    // once approved, since nothing moves until then (the-adjust-preview-shows-its-working).
+    await expect(screen.getByTestId("adjust-delta-before")).toHaveTextContent(/^2$/);
+    await expect(screen.getByTestId("adjust-delta-reason")).toHaveTextContent(/^\+4$/);
+    await expect(screen.getByTestId("adjust-delta-diff")).toHaveTextContent(/^Increased\s*\+4$/);
+    await expect(screen.getByTestId("adjust-delta")).toHaveTextContent("Total once approved");
+    await expect(screen.getByTestId("adjust-delta-total")).toHaveTextContent(/^6$/);
+    // …and its line sits UNDER the preview, not in the form (owner: *"kasih di bawah pratinjau saja"*).
+    await expect(notice.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      screen.getByTestId("adjust-delta").getBoundingClientRect().bottom,
+    );
+    await expect(notice.getBoundingClientRect().left).toBeGreaterThan(
+      screen.getByTestId("adjust-amount").getBoundingClientRect().right,
+    );
 
     const submit = screen.getByTestId("submit-adjust");
     await expect(submit).toHaveTextContent("Send for Approval");
@@ -137,6 +163,145 @@ export const DamagedStillNamesItsBatch: Story = {
     await waitFor(() => expect(input).toHaveValue("#7 · 3 ready"));
     await amount("1");
     await expect(screen.getByTestId("submit-adjust")).toBeEnabled();
+  },
+};
+
+// IT LEADS WITH WHAT IT ADJUSTS (owner: *"dari atas, kasih aja info produk, tersedia berapa unit keseluruhan"*,
+// the-adjust-dialog-leads-with-what-it-adjusts) — on a product's page the product and its units here, no batch.
+export const ItLeadsWithTheProduct: Story = {
+  name: "It leads with the product",
+  play: async () => {
+    const subject = within(await screen.findByTestId("adjust-subject"));
+    await expect(subject.getByText("Beras Pandan Wangi 5kg")).toBeVisible();
+    await expect(subject.getByText("SKU-BERAS-5K")).toBeVisible();
+    await expect(subject.getByText("Available")).toBeVisible();
+    await expect(subject.getByTestId("adjust-available")).toHaveTextContent("8 units");
+    await expect(screen.queryByTestId("adjust-batch-fixed")).toBeNull();
+  },
+};
+
+// OPENED FROM A BATCH'S PAGE, IT IS THAT BATCH (owner: *"kenapa di sesuaikan stok harus pilih batch lagi?"*,
+// the-batch-page-adjusts-its-own-batch; *"kalau di batch seperti sekarang, tampilkan batchnya dan tersisa berapa unit"*,
+// the-adjust-dialog-leads-with-what-it-adjusts) — said at the top with its units left, its racks the only ones offered,
+// and Damaged opens nothing: the page's batch is the one sent.
+export const ABatchPageAdjustsItsOwnBatch: Story = {
+  name: "A batch page's own batch",
+  args: { fixedBatch: { id: 7n, ready: 3n, source: "Restock #503", rackIds: [43n] } },
+  beforeEach: () => {
+    const spy = spyOn(inventoryClient, "stockAdjust");
+
+    return () => spy.mockRestore();
+  },
+  play: async () => {
+    const fixed = await screen.findByTestId("adjust-batch-fixed");
+    await expect(within(screen.getByTestId("adjust-subject")).getByTestId("adjust-batch-fixed")).toBe(fixed);
+    await expect(fixed).toHaveTextContent("Batch #7");
+    await expect(fixed).toHaveTextContent("Restock #503");
+    await expect(fixed).toHaveTextContent("Left");
+    await expect(screen.getByTestId("adjust-batch-left")).toHaveTextContent("3 units");
+
+    // Only the batch's racks (owner: *"racknya jangan tampil semua, sesuai dengan rack batchnya"*).
+    const trigger = screen.getByTestId("rack-select");
+    const root = trigger.closest<HTMLElement>('[data-scope="select"][data-part="root"]')!;
+    await userEvent.click(trigger);
+    await waitFor(() => expect(within(root).getByTestId("rack-select-option-43")).toBeVisible());
+    await expect(within(root).queryByTestId("rack-select-option-41")).toBeNull();
+    await expect(within(root).queryByTestId("rack-select-option-42")).toBeNull();
+    await userEvent.click(within(root).getByTestId("rack-select-option-43"));
+
+    // Damaged opens nothing — no batch to pick.
+    await pickReason("damaged");
+    await expect(screen.queryByTestId("adjust-batch")).toBeNull();
+
+    await amount("1");
+    await expect(screen.getByTestId("submit-adjust")).toBeEnabled();
+    await userEvent.click(screen.getByTestId("submit-adjust"));
+    await screen.findByTestId("adjust-closed");
+    const calls = (inventoryClient.stockAdjust as unknown as { mock: { calls: [{ batchId: bigint; quantity: bigint }][] } })
+      .mock.calls;
+    await expect(calls.at(-1)?.[0]).toMatchObject({ batchId: 7n, quantity: 1n });
+  },
+};
+
+// From a batch's page a reason opens nothing but Found's line (owner: *"alasan sudah tidak buka keterangan apapun,
+// kecuali ditemukan"*).
+export const ABatchPageReasonsOpenNothingButFound: Story = {
+  name: "A batch page's reasons open nothing but Found",
+  args: { fixedBatch: { id: 7n, ready: 3n, source: "Restock #503", rackIds: [43n] } },
+  play: async () => {
+    await screen.findByTestId("adjust-dialog");
+    for (const reason of ["recount", "damaged", "lost"] as const) {
+      await pickReason(reason);
+      await expect(screen.queryByTestId("adjust-batch")).toBeNull();
+      await expect(screen.queryByTestId("adjust-found-waits")).toBeNull();
+    }
+    await pickReason("found");
+    await expect(screen.getByTestId("adjust-found-waits")).toBeVisible();
+  },
+};
+
+// THE PREVIEW IS A RECEIPT AT THE FORM'S RIGHT (owner: *"pratinjau kasih di kanannya … tidak perlu perhitungan kasih aja
+// Hilang/rusak/dsb, lalu bawahnya selisih ada totalnya"*, the-adjust-preview-shows-its-working) — on screen from the start,
+// dashes until a rack is picked; then B-02-1's 2 Beras: a recount up, the same, and down; Damaged as its units out.
+export const ThePreviewShowsItsWorking: Story = {
+  name: "The preview shows its working",
+  play: async () => {
+    await screen.findByTestId("adjust-dialog");
+
+    // Beside the form, where there is room.
+    const preview = screen.getByTestId("adjust-delta");
+    await expect(screen.getByTestId("adjust-layout")).toHaveAttribute("data-layout", "side");
+    await expect(preview.getBoundingClientRect().left).toBeGreaterThan(
+      screen.getByTestId("adjust-amount").getBoundingClientRect().right,
+    );
+    await expect(within(preview).getByText("Preview")).toBeVisible();
+    await expect(screen.getByTestId("adjust-delta-before")).toHaveTextContent(/^—$/);
+    await expect(screen.getByTestId("adjust-delta-total")).toHaveTextContent(/^—$/);
+
+    await pickRack(43n);
+    await amount("5");
+    await expect(screen.getByTestId("adjust-delta-before")).toHaveTextContent(/^2$/);
+    // No calculation — the reason itself, and what it does (a recount: the figure counted).
+    await expect(preview).toHaveTextContent("Recount");
+    await expect(screen.getByTestId("adjust-delta-reason")).toHaveTextContent(/^5$/);
+    await expect(screen.getByTestId("adjust-delta-diff")).toHaveTextContent(/^Increased\s*\+3$/);
+    await expect(screen.getByTestId("adjust-delta-badge")).toHaveAttribute("data-direction", "up");
+    await expect(screen.getByTestId("adjust-delta-total")).toHaveTextContent(/^5$/);
+
+    await amount("2");
+    await expect(screen.getByTestId("adjust-delta-diff")).toHaveTextContent(/^Unchanged\s*0$/);
+    await expect(screen.getByTestId("adjust-delta-badge")).toHaveAttribute("data-direction", "same");
+    await expect(screen.getByTestId("adjust-delta-total")).toHaveTextContent(/^2$/);
+
+    await amount("1");
+    await expect(screen.getByTestId("adjust-delta-diff")).toHaveTextContent(/^Decreased\s*−1$/);
+    await expect(screen.getByTestId("adjust-delta-badge")).toHaveAttribute("data-direction", "down");
+
+    // Damaged — its units out, then the difference and the total under it.
+    await pickReason("damaged");
+    const input = screen.getByTestId("adjust-batch");
+    await userEvent.click(input);
+    const option = await screen.findByTestId("adjust-batch-option-7");
+    await waitFor(() => expect(option).toBeVisible());
+    await userEvent.click(option);
+    await amount("1");
+    await expect(preview).toHaveTextContent("Damaged");
+    await expect(screen.getByTestId("adjust-delta-reason")).toHaveTextContent(/^−1$/);
+    await expect(screen.getByTestId("adjust-delta-diff")).toHaveTextContent(/^Decreased\s*−1$/);
+    await expect(screen.getByTestId("adjust-delta-total")).toHaveTextContent(/^1$/);
+  },
+};
+
+// ON A PHONE THE PREVIEW COMES AFTER THE NOTE — one column, the same nodes (the-adjust-preview-shows-its-working).
+export const OnAPhoneThePreviewIsUnderTheNote: Story = {
+  name: "On a phone the preview is under the note",
+  globals: { viewport: { value: "mobile1" } },
+  play: async () => {
+    await screen.findByTestId("adjust-dialog");
+    await expect(screen.getByTestId("adjust-layout")).toHaveAttribute("data-layout", "stacked");
+    await expect(screen.getByTestId("adjust-delta").getBoundingClientRect().top).toBeGreaterThan(
+      screen.getByTestId("adjust-reason").getBoundingClientRect().bottom,
+    );
   },
 };
 

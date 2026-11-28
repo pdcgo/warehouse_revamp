@@ -62,6 +62,27 @@ export function transactionLabel(t: ReturnType<typeof useTranslation>["t"], kind
   }
 }
 
+// THE KIND'S COLOUR, for a ledger that shows it as a badge (owner, on a batch's Riwayat: *"kegiatan pakai badge"*,
+// a-movement-kind-is-a-badge). A kind is a CATEGORY, not good or bad, so a hue — and the hues group the kinds by which way
+// the units went, so a page of them reads at a glance: IN green, OUT orange, a move between racks blue, a correction grey.
+export function kindPalette(kind: MovementKind): "green" | "orange" | "blue" | "gray" {
+  switch (kind) {
+    case MovementKind.RECEIVE:
+    case MovementKind.TRANSFER_IN:
+    case MovementKind.RETURN:
+      return "green";
+    case MovementKind.PICK:
+    case MovementKind.TRANSFER_OUT:
+    case MovementKind.SAMPLE:
+      return "orange";
+    case MovementKind.MOVE:
+      return "blue";
+    default:
+      // ADJUST and REVALUATION — a count or a price put right, which way it went is its number's.
+      return "gray";
+  }
+}
+
 // THE PUT-AWAYS — the movements that decided goods LIVE somewhere, as opposed to the ones that merely
 // changed a count (#197).
 //

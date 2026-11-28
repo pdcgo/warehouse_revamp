@@ -25,8 +25,8 @@ import type { BundleDraft, PickedBundle, SlotDraft } from "./bundles";
 import { slotCap, slotFilled } from "./bundles";
 import { BundlePicker } from "./BundlePicker";
 import { coverFor } from "./mockImages";
-import { ImagePreview } from "./ImagePreview";
-import type { PreviewTarget } from "./ImagePreview";
+import { ImagePreview } from "../../../components/feedback/ImagePreview";
+import type { PreviewTarget } from "../../../components/feedback/ImagePreview";
 
 // BUNDLES, AND THE SLOTS THAT CAN BE FILLED WITH SOMETHING ELSE.
 //

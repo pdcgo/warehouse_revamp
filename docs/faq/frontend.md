@@ -228,8 +228,9 @@ renders both: two `<Outlet/>`s (every page mounted twice), two `navigation` land
 every `data-testid` the e2e reach for.
 
 **Everything that thinks is shared**: `nav.ts` builds the menu from the team's type and your role,
-answers "where am I" (longest-prefix) and decides the bottom bar; `shell.ts` owns the breakpoint and
-the page canvas. A rule living in one shell is a rule the other one breaks.
+answers "where am I" (longest-prefix) and decides the bottom bar; `shell.ts` owns the breakpoint. No page has
+a background of its own ([every-page-is-on-one-canvas](../technical/frontend/context_decision.md#every-page-is-on-one-canvas)).
+A rule living in one shell is a rule the other one breaks.
 
 ---
 

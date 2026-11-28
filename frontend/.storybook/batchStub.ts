@@ -40,6 +40,10 @@ const DAY = 86_400n;
 const now = () => BigInt(Math.floor(Date.now() / 1000));
 const daysFromNow = (n: number) => now() + BigInt(n) * DAY;
 
+// When each rack was last counted, in days — Penempatan's opname badge has all three (last-count-is-a-badge): A-01-1 a
+// fresh count, B-02-1 one past the 14 days that make it overdue, A-01-2 never.
+const LAST_COUNTED_DAYS_AGO: Record<string, number> = { "41": 3, "43": 30 };
+
 interface BatchFixture {
   id: bigint;
   warehouseId: bigint;
@@ -399,7 +403,10 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
     const b = visible(req.teamId, req.filter?.batchId ?? 0n);
     const { rows: page, pageInfo } = pageOf(b.shelves, req.page);
     const mapData: Record<string, { rackId: bigint; qty: bigint; lastOpnameUnix: bigint }> = {};
-    for (const [rackId, qty] of page) mapData[rackId.toString()] = { rackId, qty, lastOpnameUnix: 0n };
+    for (const [rackId, qty] of page) {
+      const counted = LAST_COUNTED_DAYS_AGO[rackId.toString()];
+      mapData[rackId.toString()] = { rackId, qty, lastOpnameUnix: counted === undefined ? 0n : daysFromNow(-counted) };
+    }
 
     return { items: [{ d: { case: "shelf" as const, value: { mapData } } }], ids: page.map(([rackId]) => rackId), pageInfo };
   },
@@ -409,9 +416,11 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
     const all = b ? movementsOf(b) : [];
     const from = req.filter?.fromUnix ?? 0n;
     const to = req.filter?.toUnix ?? 0n;
+    // One kind, as the server's filter takes it — 0 (unspecified) is every kind (a batch's Riwayat's Kegiatan).
+    const kind = req.filter?.kind ?? 0;
     const inRange = all.filter((m) => {
       const at = BigInt(Math.floor(Date.parse(m.createdAt) / 1000));
-      return (!from || at >= from) && (!to || at <= to);
+      return (!from || at >= from) && (!to || at <= to) && (!kind || m.kind === kind);
     });
     const { rows: page, pageInfo } = pageOf(inRange, req.page);
     const mapData: Record<string, (typeof all)[number]> = {};
@@ -436,8 +445,21 @@ export const batchStubService: Partial<ServiceImpl<typeof InventoryService>> = {
         continue;
       }
       const held = !leftEveryRack.has(productId.toString());
+      // Every rack of the warehouse is listed (the batch page's labels), each holding what this warehouse's batches of
+      // the product have LEFT on it — a batch's units left fill its shelves in put-away order. So a figure read from it,
+      // the Adjust dialog's *n on hand across every place*, agrees with the page's Siap; it was 0 on every rack.
+      const left = new Map<string, bigint>();
+      for (const b of rows.filter((x) => held && x.warehouseId === req.warehouseId && x.productId === productId)) {
+        let rest = readyNow(b);
+        for (const [rackId, qty] of b.shelves) {
+          if (rest <= 0n) break;
+          const take = qty < rest ? qty : rest;
+          left.set(rackId.toString(), (left.get(rackId.toString()) ?? 0n) + take);
+          rest -= take;
+        }
+      }
       for (const r of racks.filter((x) => held && x.warehouseId === req.warehouseId)) {
-        mapData[r.id.toString()] = { productId, rackId: r.id, rackCode: r.code, onHand: 0n };
+        mapData[r.id.toString()] = { productId, rackId: r.id, rackCode: r.code, onHand: left.get(r.id.toString()) ?? 0n };
       }
       items[productId.toString()] = { items: [{ d: { case: "place" as const, value: { mapData } } }] };
     }

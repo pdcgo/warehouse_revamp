@@ -172,19 +172,17 @@ export const TheShellHasNoTopBar: Story = {
   },
 };
 
-// THE SHELL OWNS THE SURFACE, and it decides by ROUTE. The content area is white by default so a
-// freshly-built screen is not tinted by something it never asked for; a page that wants the grey
-// canvas is named in the shell rather than painting its own background — otherwise two screens end
-// up drawing the same "page" two slightly different colours.
-export const ThePageCanvasIsChosenByTheShell: Story = {
+// EVERY PAGE IS ON ONE CANVAS (every-page-is-on-one-canvas) — the shell paints no page a ground of its own. The batch
+// page, the one a route once painted grey, sits on the app's own ground as every other page does.
+export const EveryPageIsOnOneCanvas: Story = {
+  name: "Every page on one canvas",
   render: () => <AtBatchDetail />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     await waitFor(() => expect(canvas.getByTestId("at-batch-detail")).toBeInTheDocument());
-    const main = canvas.getByRole("main");
-    // gray.100 — GREY_CANVAS in shell.ts.
-    await expect(window.getComputedStyle(main).backgroundColor).toBe("rgb(243, 244, 246)");
+    // <main> draws no background: what shows is the app's ground, the same under every route.
+    await expect(window.getComputedStyle(canvas.getByRole("main")).backgroundColor).toBe("rgba(0, 0, 0, 0)");
   },
 };
 

@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { Box, Card, Flex, Heading, Icon, Spacer, Stack, Text } from "@chakra-ui/react";
 
 export const description =
-  "One section of a detail page, as a card: an icon and a title (the same icon its `SectionNav` item shows), the ⚠ marks beside the title, an action at the far edge, then the content. `SectionEmpty` is what a section says when it has nothing — a sentence, never a blank card; `Fact` is a labelled value that shows — when absent. A detail page is one page of these, with a SectionNav beside them, never tabs.";
+  "One section of a detail page, as a card: an icon and a title (the same icon its `SectionNav` item shows), the ⚠ marks beside the title, an action at the far edge, an optional `description` line under the title, then the content. `SectionEmpty` is what a section says when it has nothing — a sentence, never a blank card; `Fact` is a labelled value that shows — when absent. A detail page is one page of these, with a SectionNav beside them, never tabs.";
 
 // ONE SECTION OF A DETAIL PAGE, AS A CARD — the order detail first, then the product's page (owner: *"untuk detail
 // kurang lebih aku ingin mirip dengan order detail"*), which is when it moved here from the order detail's folder.
@@ -23,6 +23,7 @@ export function Section({
   id,
   icon,
   title,
+  description,
   marks,
   action,
   children,
@@ -33,6 +34,11 @@ export function Section({
   /** The section's icon — the same one its nav item shows. */
   icon?: LucideIcon;
   title: string;
+  /**
+   * A line under the title saying what the section holds, where its short title does not (a batch's *Penempatan*: the
+   * racks it was put on when accepted, not where it is now).
+   */
+  description?: ReactNode;
   /**
    * The ⚠ build-status marks for this section — drawn RIGHT BESIDE the title, the way the order form
    * and the order list place them. Pushed to the card's far edge they read as belonging to nothing,
@@ -60,13 +66,20 @@ export function Section({
     >
       <Card.Body>
         <Stack gap="card">
-          <Flex align="center" gap="2">
-            {icon && <Icon as={icon} boxSize="4" color="fg.muted" />}
-            <Heading size="sm">{title}</Heading>
-            {marks}
-            <Spacer />
-            {action}
-          </Flex>
+          <Stack gap="1">
+            <Flex align="center" gap="2">
+              {icon && <Icon as={icon} boxSize="4" color="fg.muted" />}
+              <Heading size="sm">{title}</Heading>
+              {marks}
+              <Spacer />
+              {action}
+            </Flex>
+            {description && (
+              <Text fontSize="sm" color="fg.muted" data-testid={testId ? `${testId}-description` : undefined}>
+                {description}
+              </Text>
+            )}
+          </Stack>
 
           {children}
         </Stack>

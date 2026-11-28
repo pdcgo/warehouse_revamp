@@ -1,10 +1,9 @@
 import { Suspense, useCallback, useState } from "react";
 import { Box, Flex, Spinner } from "@chakra-ui/react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import { NotMemberStrip } from "../NotMemberStrip";
 
 import { TeamSwitcher } from "../TeamSwitcher";
-import { GREY_CANVAS, usesGreyCanvas } from "../shell";
 import { BottomNav } from "./BottomNav";
 import { MenuSheet } from "./MenuSheet";
 
@@ -32,7 +31,6 @@ import { MenuSheet } from "./MenuSheet";
 // `the-phone-shell-has-no-top-bar`), as the desktop has none (`the-desktop-shell-has-no-top-bar`). It named the screen
 // and only that, right above the page's own title naming it again; where you are is the lit tab and the page's title.
 export function MobileLayout() {
-  const location = useLocation();
   // The More sheet. Owned HERE for the same reason the desktop drawer is: the control that opens it
   // is in the tab bar, and the things that close it (a link, the backdrop, Escape) are in the sheet.
   const [menuOpen, setMenuOpen] = useState(false);
@@ -47,16 +45,9 @@ export function MobileLayout() {
           ⚠ THE BOTTOM IS DEEPER (owner: *"mobile app, paginasinya ketutupan"*, `the-phone-page-clears-the-bubble`): the
           workspace bubble rises 28px out of the tab bar, over the end of this scroll region — and a page's last thing
           is often centred under it (the pager). `pb="12"` (48px) is that rise plus a gap, so the end always scrolls
-          clear of the bubble. */}
-      <Box
-        as="main"
-        flex="1"
-        minH="0"
-        overflow="auto"
-        p="card"
-        pb="12"
-        bg={usesGreyCanvas(location.pathname) ? GREY_CANVAS : undefined}
-      >
+          clear of the bubble.
+          Unpainted, as the desktop's — no page has a canvas of its own (every-page-is-on-one-canvas, shell.ts). */}
+      <Box as="main" flex="1" minH="0" overflow="auto" p="card" pb="12">
         <Suspense fallback={<Spinner colorPalette="brand" />}>
           <Outlet />
         </Suspense>

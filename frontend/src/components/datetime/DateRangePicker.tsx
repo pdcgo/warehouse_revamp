@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Box, Button, Flex, Icon, Popover, Portal, Stack, Text, useBreakpointValue } from "@chakra-ui/react";
+import { Box, Button, CloseButton, Flex, Icon, Popover, Portal, Stack, Text, useBreakpointValue } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 import { Calendar, ChevronDown, X } from "lucide-react";
 import { parseLocalDate } from "../../lib/datetime";
@@ -77,7 +77,7 @@ export function isAllDates(range: DateRange): boolean {
 }
 
 export const description =
-  "Grafana-style date range picker (#224): a Popover with quick relative ranges (\"Last 7 days\" up to two weeks, then 1, 3 and 6 months and 1 year, counted on the calendar — live/rolling) beside an absolute From–To picked on a month-grid RangeCalendar. Emits a DateRange union — a relative range stays live because it stores the day count, not resolved dates. `resolveRange(value)` turns it into a unix-seconds {fromUnix,toUnix} window. Pass `fields` and the panel opens on a Date row of radio pills (e.g. Created vs Arrived) above the two panes, and the trigger reads \"Arrived · Last 7 days\" — one control, one panel, picks BOTH which timestamp and which window. Picking a date type keeps the panel open.";
+  "Grafana-style date range picker (#224): a Popover with quick relative ranges (\"Last 7 days\" up to two weeks, then 1, 3 and 6 months and 1 year, counted on the calendar — live/rolling) beside an absolute From–To picked on a month-grid RangeCalendar. Emits a DateRange union — a relative range stays live because it stores the day count, not resolved dates. `resolveRange(value)` turns it into a unix-seconds {fromUnix,toUnix} window. Pass `fields` and the panel opens on a Date row of radio pills (e.g. Created vs Arrived) above the two panes, and the trigger reads \"Arrived · Last 7 days\" — one control, one panel, picks BOTH which timestamp and which window. Picking a date type keeps the panel open. Pass `clearable` and an × on the trigger, once a window is set, empties it back to every date.";
 
 /** One selectable date type for the panel's Date row — e.g. `{ value: ARRIVED, label: "Arrived" }`. */
 export interface DateField<T extends string | number = string> {
@@ -101,6 +101,14 @@ export interface DateRangePickerProps<T extends string | number = string> {
   onFieldChange?: (value: T) => void;
   disabled?: boolean;
   testId?: string;
+  /** The trigger the width of what holds it — a section's own filter on a detail page (a batch's Riwayat). */
+  full?: boolean;
+  /**
+   * An × ON THE TRIGGER once a window is set, back to every date in one click — as a search select's × (owner, on a
+   * batch's Riwayat: *"tanggal ada closeable juga"*, riwayat-filters-by-one-kind). Omit it and the only way back is the
+   * panel's *Hapus*, as on every screen that has not asked.
+   */
+  clearable?: boolean;
 }
 
 // DateRangePicker is the shared, Grafana-shaped date filter (#224). The trigger reads back the
@@ -125,8 +133,12 @@ export function DateRangePicker<T extends string | number = string>({
   onFieldChange,
   disabled,
   testId,
+  full = false,
+  clearable = false,
 }: DateRangePickerProps<T>) {
   const { t, i18n } = useTranslation();
+  // The trigger's × — only while a window narrows something.
+  const showClear = clearable && !disabled && !isAllDates(value);
   const [open, setOpen] = useState(false);
   // A PHONE GETS THE PANEL STACKED, AT THE SCREEN'S WIDTH (owner: *"ternyata yang tanggal kepotong di mobile"*,
   // a-date-range-panel-fits-a-phone) — the two panes side by side are ~29rem, wider than a phone, so the quick ranges and
@@ -268,20 +280,49 @@ export function DateRangePicker<T extends string | number = string>({
       onOpenChange={(e) => openChange(e.open)}
       positioning={{ placement: "bottom-start" }}
     >
-      <Popover.Trigger asChild>
-        <Button variant="outline" disabled={disabled} data-testid={testId} minW="52" justifyContent="start">
-          <Icon as={Calendar} boxSize="4" />
-          <Text truncate>
-            {chosen ? (
-              <Box as="span" color="fg.muted" data-testid={testId ? `${testId}-field-label` : undefined}>
-                {chosen.label} ·{" "}
-              </Box>
-            ) : null}
-            {triggerLabel()}
-          </Text>
-          <Icon as={ChevronDown} boxSize="4" ml="auto" color="fg.muted" />
-        </Button>
-      </Popover.Trigger>
+      {/* The × sits BESIDE the trigger, over its right end — a button inside the trigger button would be a button in a
+          button, and a click on it would open the panel too. */}
+      <Box position="relative" display={full ? "block" : "inline-block"} w={full ? "full" : undefined}>
+        <Popover.Trigger asChild>
+          <Button
+            variant="outline"
+            disabled={disabled}
+            data-testid={testId}
+            minW="52"
+            w={full ? "full" : undefined}
+            justifyContent="start"
+          >
+            <Icon as={Calendar} boxSize="4" />
+            {/* Room for the × between the label and the chevron — × then ⌄, as a search select's — so the label never
+                runs under it. */}
+            <Text truncate me={showClear ? "8" : undefined}>
+              {chosen ? (
+                <Box as="span" color="fg.muted" data-testid={testId ? `${testId}-field-label` : undefined}>
+                  {chosen.label} ·{" "}
+                </Box>
+              ) : null}
+              {triggerLabel()}
+            </Text>
+            <Icon as={ChevronDown} boxSize="4" ml="auto" color="fg.muted" />
+          </Button>
+        </Popover.Trigger>
+        {showClear && (
+          <CloseButton
+            size="2xs"
+            variant="ghost"
+            color="fg.muted"
+            position="absolute"
+            top="50%"
+            translate="0 -50%"
+            right="8"
+            // It fades in when a window is set, as every filter's × (`a-filter-answers-as-it-changes`).
+            animationStyle="appear"
+            aria-label={t("dateRange.clear")}
+            data-testid={testId ? `${testId}-reset` : undefined}
+            onClick={() => onChange(ALL_DATES)}
+          />
+        )}
+      </Box>
 
       {/* Portalled so the panel escapes any clipping/stacking ancestor — an overflow container or a
           table below it would otherwise crop the calendar (a filter popover renders above content). */}

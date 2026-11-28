@@ -38,12 +38,37 @@ The owner: *"inisiasi dan kasih keterangan batch itu apa"*. Both batch screens f
 - The batch page's history and placements reads are query hooks already, but the detail aggregate (`useBatchDetail`)
   is five reads behind one query — unchanged.
 - A batch's *Koreksi* opens the shared stock dialog for the product, not for this batch alone — unchanged.
-- ⚠ NOT FINISHED (2026-11-11) — **a batch's page is the only one on a grey canvas.** `usesGreyCanvas` in
-  `layouts/shell.ts` paints `/inventories/batches/…` `gray.100`; it came with the repo's first commit (2026-08-19) and no
-  decision names it. Every other detail page — a rack's, a product's — is white, and the batch page is their shape since
-  [a-batch-page-is-one-page-of-sections](../../technical/frontend/batches_decision.md#a-batch-page-is-one-page-of-sections).
-  Recommended to the owner: drop it, and the mechanism with it (`usesGreyCanvas`, `GREY_CANVAS`, and the two layout
-  stories that pin it). Asked, not answered — the owner said *"commit aja, tandai belum selesai"*.
+- ✅ DONE 2026-11-27 — the batch page was the only one on a grey canvas (`usesGreyCanvas` in `layouts/shell.ts`, from
+  the repo's first commit, no decision). The owner: *"kerjakan"*. The canvas and its mechanism are gone; every page sits
+  on the app's own ground ([every-page-is-on-one-canvas](../../technical/frontend/context_decision.md#every-page-is-on-one-canvas)),
+  pinned by `Layouts/Desktop` and `Layouts/Mobile` *Every page on one canvas*.
+- ✅ DONE 2026-11-27 — a batch's page shows its product as ONE full-width card (picture, name, code, Pemilik and the
+  owner), between the title row and the figures ([the-batch-product-is-one-full-card](../../technical/frontend/batches_decision.md#the-batch-product-is-one-full-card)),
+  and no *Apa itu batch?* — the list keeps it ([what-a-batch-is-said-on-the-list-only](../../technical/frontend/batches_decision.md#what-a-batch-is-said-on-the-list-only)).
+  BatchDetail's `What is a batch` story became `Product card`.
+- ✅ DONE 2026-11-27, the rest of the day's pass on a batch's page (all in [batches_decision.md](../../technical/frontend/batches_decision.md)):
+  the owner at the product's size (`TeamItem` `md`/`lg` + `caption`); Siap leads the strip, each card a note in the owner's
+  words on up to two lines (`SummaryCard` `noteLines`); Tiba's date moved to Info's *Tiba pada*, the Rp stays under each
+  count; *Penempatan* (was *Ditaruh Saat Diterima*) with a line under its title (`Section` `description`), a full-width
+  rack search (`FilterSearch` `full`), each rack's name under its code (`useRacks`), *Opname terakhir* a badge
+  (`LastCountBadge`); Riwayat with a line, a full-width date (`DateRangePicker` `full`), kinds as badges and racks named
+  (`MovementTable` `kindBadge` / `rackName`, opt-in); Info Batch as label-over-bold-value with rules (`InfoFact`) and LAST
+  in the order, its *Kedaluwarsa* at the facts' size with how long is left a badge (`ExpiryCell` `leftAsBadge`, opt-in);
+  the page arrives block by block, 50ms apart (`enterStep` in `lib/motion.ts`; this page only); *Koreksi* is
+  *Sesuaikan*, and its dialog's Rusak/Hilang take the page's batch (`AdjustStockDialog` `fixedBatch`); the dialog leads
+  with the product and its units, the batch and its units left under it, offers only the batch's racks (`RackSelect`
+  `onlyRackIds`, the page's `BatchPlacementList` read while it is open), and its preview sits at the form's right as a
+  receipt — before · the reason's units · difference with a Berkurang/Bertambah badge · total, Ditemukan's too with its
+  approval line under it — the product's page gets the same top block and preview; Riwayat filters by Kegiatan beside
+  the date (`MovementKindSelect`, a combobox of the kinds' badges, one kind, `?kind=`, `useBatchHistory` `kind`), each
+  filter with its × (`DateRangePicker` `clearable`, opt-in); both pagers step aside on page 1 while the list fits the
+  smallest page size, 10 (`GrowingPager` `total`, opt-in), and their tables end with no line under the last row
+  (`ENDS_BARE`, `MovementTable` `endsBare`) — this page only, which contradicts the-pager-is-always-on-screen: asked;
+  the cover and the owner's avatar open big (`ImagePreview`, moved to `components/feedback/`, and
+  `TeamItem` `onImageClick` — a rule for every screen from now on, [a-small-picture-opens-its-preview](../../technical/frontend/context_decision.md#a-small-picture-opens-its-preview)).
+- ⚠ The acceptance spec `e2e/batch_warehouse_wants_to_see_a_batch.spec.ts` (given 9) looks for *"Put Away at Accept"* (now
+  *Placement*) and an exact rack code in Penempatan's first cell (now code + name) — reported to the owner, not edited: the
+  acceptance loop owns it.
 - When Koreksi's *Ditemukan* is sent from a batch's page, the units do not necessarily go back into THAT batch — the
   approval picks (the oldest open loss, else a new batch). The dialog does not say so but on the waiting line's hover;
   raised with the owner, not answered.

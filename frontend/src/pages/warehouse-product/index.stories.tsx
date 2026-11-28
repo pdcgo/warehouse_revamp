@@ -78,7 +78,7 @@ export const TheRacksAreReadOnce: Story = {
     await userEvent.click(canvas.getByTestId("wp-action-adjust"));
     await waitFor(() => expect(screen.getByTestId("adjust-dialog")).toBeVisible());
 
-    // A-01-1 reads the page's figure: a recount to 3 is 5 → 3.
+    // A-01-1 reads the page's figure: a recount to 3 is 5 before, down 2 (the-adjust-preview-shows-its-working).
     const trigger = screen.getByTestId("rack-select");
     const root = trigger.closest<HTMLElement>('[data-scope="select"][data-part="root"]')!;
     await userEvent.click(trigger);
@@ -86,7 +86,8 @@ export const TheRacksAreReadOnce: Story = {
     await userEvent.click(within(root).getByTestId("rack-select-option-41"));
     await userEvent.clear(screen.getByTestId("adjust-amount"));
     await userEvent.type(screen.getByTestId("adjust-amount"), "3", { delay: 40 });
-    await waitFor(() => expect(screen.getByTestId("adjust-delta")).toHaveTextContent("5 → 3"));
+    await waitFor(() => expect(screen.getByTestId("adjust-delta-before")).toHaveTextContent(/^5$/));
+    await expect(screen.getByTestId("adjust-delta-diff")).toHaveTextContent(/^Decreased\s*−2$/);
 
     await expect((inventoryClient.productPlaces as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(1);
   },

@@ -13,11 +13,14 @@ function Harness({
   pageSize: initialSize = 20,
   sizes = false,
   compact = false,
+  told = false,
 }: {
   total?: number;
   pageSize?: number;
   sizes?: boolean;
   compact?: boolean;
+  /** Tell the pager the total — the read gives one — so it can step aside while it fits. */
+  told?: boolean;
 }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialSize);
@@ -46,6 +49,7 @@ function Harness({
         resetKey={`${filter}|${pageSize}`}
         pageSize={pageSize}
         compact={compact}
+        total={told ? total : undefined}
         pageSizeOptions={sizes ? [10, 20, 50] : undefined}
         onPageSizeChange={
           sizes
@@ -99,7 +103,7 @@ export const Mobile: Story = {
   },
 };
 
-/** One page of data: ‹ [1] ›, both arrows off — always on screen. */
+/** One page of data: ‹ [1] ›, both arrows off — always on screen while the pager is not told the total. */
 export const OnePage: Story = {
   args: { total: 7 },
   play: async ({ canvasElement }) => {
@@ -107,6 +111,33 @@ export const OnePage: Story = {
     await expect(numbers(canvas)).toEqual(["1"]);
     await expect(canvas.getByTestId("growing-pager-prev")).toBeDisabled();
     await expect(canvas.getByTestId("growing-pager-next")).toBeDisabled();
+  },
+};
+
+/**
+ * GIVEN ITS TOTAL, IT STEPS ASIDE WHILE IT FITS (owner, on a batch's page: *"sembunyikan kalau pagenya page 1 dan itemnya
+ * tidak lebih dari samadengan yang terkecil di perpage"*, the-batch-page-hides-a-pager-that-fits) — 10 rows, the smallest
+ * size 10: one page whatever is picked, so no pager at all, the size picker with it.
+ */
+export const StepsAsideWhenItFits: Story = {
+  name: "Steps aside when it fits",
+  args: { total: 10, sizes: true, told: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId("harness-page")).toHaveTextContent("Page 1");
+    await expect(canvas.queryByTestId("growing-pager")).toBeNull();
+    await expect(canvas.queryByTestId("growing-pager-size")).toBeNull();
+  },
+};
+
+/** One row past the smallest size, the size picker can split it — the pager stays. */
+export const StaysPastTheSmallestSize: Story = {
+  name: "Stays past the smallest size",
+  args: { total: 11, sizes: true, told: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId("growing-pager")).toBeVisible();
+    await expect(canvas.getByTestId("growing-pager-size")).toBeVisible();
   },
 };
 

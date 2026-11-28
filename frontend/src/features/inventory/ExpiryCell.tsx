@@ -1,10 +1,13 @@
 import { useTranslation } from "react-i18next";
-import { Span, Stack, Text } from "@chakra-ui/react";
+import { Badge, HStack, Span, Stack, Text } from "@chakra-ui/react";
 
 import { daysUntilUnix, formatUnixDate, formatUnixDateShort } from "../../lib/datetime";
 
 // The "expiring soon" window the server uses — 30 days.
 const SOON_DAYS = 30;
+
+// The band as a badge's palette — the same three the words are coloured by.
+const BADGE_PALETTE = { past: "error", soon: "warning", later: "gray" } as const;
 
 /** How near an expiry is: past, within the soon window, or later. */
 function band(days: number): { color: string; key: "past" | "soon" | "later" } {
@@ -28,12 +31,18 @@ export function ExpiryCell({
   unix,
   inline = false,
   fontSize = "xs",
+  leftAsBadge = false,
   testId,
 }: {
   unix: bigint;
   inline?: boolean;
-  /** 12px beside a table's *Tiba*; a batch's Info reads it at a fact's size. */
-  fontSize?: "xs" | "sm" | "md";
+  /** 12px beside a table's *Tiba*; a batch's Info reads it at its facts' own size — `inherit`. */
+  fontSize?: "xs" | "sm" | "md" | "inherit";
+  /**
+   * How long is left as a BADGE in its band's colour, beside the day — a batch's Info (owner: *"hari tersisa buat jadi
+   * badge"*, the-expiry-left-is-a-badge). The list keeps its coloured words.
+   */
+  leftAsBadge?: boolean;
   testId?: string;
 }) {
   if (unix <= 0n) {
@@ -49,7 +58,17 @@ export function ExpiryCell({
       {formatUnixDateShort(unix)}
     </Span>
   );
-  const remaining = <ExpiryLeft unix={unix} testId={testId ? `${testId}-left` : undefined} />;
+  const remaining = <ExpiryLeft unix={unix} asBadge={leftAsBadge} testId={testId ? `${testId}-left` : undefined} />;
+
+  // The day, and the badge beside it — no dot between: the badge's own edge parts them.
+  if (inline && leftAsBadge) {
+    return (
+      <HStack as="span" display="inline-flex" gap="2" fontSize={fontSize} verticalAlign="middle">
+        {date}
+        {remaining}
+      </HStack>
+    );
+  }
 
   if (inline) {
     return (
@@ -74,7 +93,7 @@ export function ExpiryCell({
  * window, red once past, quiet beyond; an-expiry-says-how-long-is-left). ExpiryCell draws it under the day; a form that
  * already shows the day (the restock accept's expiry picker) draws it beside the picker. Its size is the parent's.
  */
-export function ExpiryLeft({ unix, testId }: { unix: bigint; testId?: string }) {
+export function ExpiryLeft({ unix, asBadge = false, testId }: { unix: bigint; asBadge?: boolean; testId?: string }) {
   const { t } = useTranslation();
   const days = daysUntilUnix(unix);
   const { color, key } = band(days);
@@ -84,6 +103,15 @@ export function ExpiryLeft({ unix, testId }: { unix: bigint; testId?: string }) 
       : days === 0
         ? t("batches.expiry.today")
         : t("batches.expiry.left", { count: days });
+
+  // AS A BADGE (the-expiry-left-is-a-badge) — a status, so its colour is the band's ROLE: red past, amber soon, grey later.
+  if (asBadge) {
+    return (
+      <Badge colorPalette={BADGE_PALETTE[key]} variant="subtle" whiteSpace="nowrap" data-testid={testId} data-band={key}>
+        {left}
+      </Badge>
+    );
+  }
 
   return (
     <Span color={color} whiteSpace="nowrap" data-testid={testId} data-band={key}>

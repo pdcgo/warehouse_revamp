@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 
-// The two facts BOTH shells need, and neither owns.
+// The fact BOTH shells need, and neither owns: `useIsMobile` decides which one mounts. It lives out here because a copy
+// in each shell is a copy that drifts — and the second one drifting is invisible, since you only ever see one shell at a
+// time.
 //
-// `useIsMobile` decides which one mounts; `usesGreyCanvas` decides what the content area is painted.
-// They live out here because a copy in each shell is a copy that drifts — and the second one drifting
-// is invisible, since you only ever see one shell at a time.
+// ⚠ NO PAGE HAS A CANVAS OF ITS OWN (owner, on the batch page: *"kenapa latar belakang di batch detail beda sendiri?"*,
+// then *"kerjakan"*, every-page-is-on-one-canvas). A route-chosen grey canvas (`usesGreyCanvas`) painted the batch page
+// alone, from the repo's first commit and no decision; every other detail page is white, and the batch page is their
+// shape. Both shells leave <main> unpainted, so every page sits on the app's own ground.
 
 // The breakpoint the shell splits on — Chakra's `md` (48em), minus a hair, so this and a `hideFrom`
 // /`hideBelow` inside a page can never disagree about which side of it we are on.
@@ -38,23 +41,3 @@ export function useIsMobile(): boolean {
 
   return mobile;
 }
-
-/**
- * Pages that opt into the grey page canvas rather than the default white content area.
- *
- * THE SHELL OWNS THE SURFACE, and it decides by ROUTE — a page painting its own background is how
- * two screens end up drawing the same "page" two slightly different colours. Batch detail is the
- * only one so far; its detail route is /inventories/batches/:batchId.
- */
-export function usesGreyCanvas(pathname: string): boolean {
-  return pathname.startsWith("/inventories/batches/");
-}
-
-// The grey canvas itself, as a Chakra `bg` value — a step of the palette's gray (theme.ts), one below
-// the white cards that sit on it.
-//
-// ⚠ THE LIGHT SIDE IS `base`, NOT `_light`. As an INLINE condition, `_light` composes to
-// `.css-x:root .css-x` — a selector that can never match — so the grey canvas was silently missing in
-// light mode and appeared only in dark. (`_light` in theme.ts is fine and stays: a semantic token is
-// emitted at `:root` scope, not nested under an element's own class.)
-export const GREY_CANVAS = { base: "gray.100", _dark: "gray.950" };
