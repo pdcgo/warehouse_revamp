@@ -199,6 +199,7 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:all` wants to find products to sell · [open discover product detail](product/cross.md#discover-product) (5 thens: ⬜ 5)
 - `selling:owner` · `selling:admin` wants to buy from a new supplier · [create supplier](supplier/manage.md#create) (5 thens: ⬜ 5)
 - `selling:owner` · `selling:admin` wants to keep a supplier's details right · [edit supplier](supplier/manage.md#edit) (4 thens: ⬜ 4)
+
 - `selling:owner` · `selling:admin` wants to stop using a product · [archive product](product/catalogue.md#archive-and-delete) (3 thens: ⬜ 3)
 - `selling:owner` · `selling:admin` wants to use a product again · [restore product](product/catalogue.md#archive-and-delete) (1 then: ⬜ 1)
 - `selling:owner` · `selling:admin` wants to remove a product made by mistake · [delete product](product/catalogue.md#archive-and-delete) (3 thens: ⬜ 3)
@@ -209,3 +210,7 @@ Every action, under the day it was discussed. The counts are the statuses today 
 - `selling:cs` wants to fix a bundle · [edit bundle](product/bundle.md#set-up) (5 thens: ⬜ 5)
 - `selling:owner` · `selling:admin` wants to remove a bundle · [delete bundle](product/bundle.md#set-up) (2 thens: ⬜ 2)
 - `selling:all` wants to create an order · [add bundle to order](product/bundle.md#order) (4 thens: ⬜ 4)
+
+## 2026-11-27
+
+- `selling:owner` · `selling:admin` wants to stop buying from a supplier · [delete supplier](supplier/manage.md#delete) (6 thens: ⬜ 6)
