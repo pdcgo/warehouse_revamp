@@ -6,7 +6,8 @@ import { storedRestockForStory } from "../../../features/restock/storyRestock";
 import { RestockRequestStatus } from "../../../gen/warehouse/inventory/v1/restock_request_pb";
 import { At504, WAREHOUSE_DETAIL_META, actionsIn, loaded, trailRows } from "./kit";
 
-// RESTOCK WAREHOUSE DETAIL — Sign for Box — its dialog, and the move to arrived, from ongoing and from lost.
+// RESTOCK WAREHOUSE DETAIL — Set Arrived (an-arrival-is-set-arrived) — its dialog, and the move to arrived, from ongoing
+// and from lost.
 // The page's stories are grouped by the part of the screen they are about
 // (stories-are-grouped-by-the-part-of-the-screen); what they share is ./kit.tsx.
 
@@ -34,12 +35,14 @@ export const SignForBoxMovesItToArrived: Story = {
     await userEvent.click(canvas.getByTestId("restock-action-sign-501"));
     const confirm = await screen.findByTestId("confirm-action");
     await waitFor(() => expect(confirm).toBeVisible());
+    await expect(confirm).toHaveTextContent("Set Arrived");
     await userEvent.click(confirm);
 
     await expectStatus(canvas, RestockRequestStatus.ARRIVED);
     await waitFor(() => expect(actionsIn(canvasElement)).toEqual(["restock-action-accept-501", "restock-action-labels-501"]));
     await waitFor(() => expect(trailRows(canvasElement)).toHaveLength(2));
-    await expect(trailRows(canvasElement)[1]).toHaveTextContent("Signed for the box");
+    await expect(trailRows(canvasElement)[1]).toHaveTextContent("Set arrived");
+    await expect(trailRows(canvasElement)[1]).not.toHaveTextContent(/signed for/i);
     await expect(canvas.getByTestId("restock-detail-arrived-at")).not.toHaveTextContent("—");
   },
 };
@@ -81,7 +84,7 @@ export const TheChargeNotedAtTheDoorIsShown: Story = {
     await waitFor(() => expect(within(delivery).getByTestId("restock-detail-courier-charge")).toHaveTextContent("Rp 15.000"));
     await expect(within(delivery).getByTestId("restock-detail-courier-charge-note")).toHaveTextContent("Biaya COD");
     await expect(within(delivery).getByTestId("restock-detail-courier-charge-owed")).toHaveTextContent(
-      "Noted by this warehouse when the box was signed for — final when it is accepted",
+      "Noted by this warehouse when the box was set arrived — final when it is accepted",
     );
   },
 };

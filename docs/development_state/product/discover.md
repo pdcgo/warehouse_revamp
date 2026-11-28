@@ -1,5 +1,12 @@
 # Development state — product discover
 
+> 🔀 **2026-11-27 — the detail's Produk Turunan is real** (backlog #140;
+> [produk-turunan-is-the-return-map](../../business/product/context_decision.md#produk-turunan-is-the-return-map)):
+> `TeamReturnConfigurationService.ProductDerivedList` (selling) reads the return maps both ways across teams — *Turunan
+> dari* the maps landing on this product, *Turunannya* every team's map from it — named with ProductByIds, TeamByIds and
+> DiscoverStockByIds, the same `DerivedSection` as the product's own page ([context.md](context.md)); selling 00056 indexes
+> both columns. `derivedSample.ts` is gone. `pending.ts` left: `division`.
+
 > 🔀 **2026-11-21 — the detail's Keluar Masuk Harian tab is real** (backlog #114;
 > [the-discover-detail-has-the-warehouse-zone](../../technical/frontend/products_decision.md#the-discover-detail-has-the-warehouse-zone),
 > [stock-history-is-everyones](../../technical/frontend/products_decision.md#stock-history-is-everyones)): `InventoryService.ProductDailyMoves`, the same shared
@@ -180,7 +187,7 @@ carries only the cover).
 | ~~`gallery`~~ | ✅ real 2026-11-16 | ProductByIds' IMAGES slice — mark gone |
 | ~~`ongoing`~~ | ✅ real 2026-11-14 | DiscoverStockByIds (every warehouse and each), the card's read — mark gone |
 | ~~`crossPrice`~~ | ✅ real 2026-11-14 | DiscoverStockByIds' cross range, per warehouse too; the cost never sent — mark gone |
-| `derived` | sample | the link a return to another team makes is recorded nowhere — the product page's `sampleDerived` |
+| ~~`derived`~~ | ✅ real 2026-11-27 | ProductDerivedList — the return maps both ways across teams (#140) — mark gone |
 | ~~`suppliers`~~ | ✅ real 2026-11-21 | ProductSupplierGoods — the owner's restock batches per supplier and store, in the lens; no cost here — mark gone |
 | ~~`daily`~~ | ✅ real 2026-11-21 | ProductDailyMoves — the owner's last fourteen days from the daily fold, in the lens; units only — mark gone |
 

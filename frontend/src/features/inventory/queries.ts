@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { personName } from "../../lib/users";
 import {
@@ -44,10 +45,12 @@ import type {
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { type Product, ProductSchema } from "../../gen/warehouse/product/v1/product_pb";
+import { WarehouseStockListDataType } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { Team } from "../../gen/warehouse/team/v1/team_pb";
 import type { Costs } from "../orders/lines";
 import { useDebounced } from "../../lib/useDebounced";
-import { withCorrections } from "./priceChange";
+import { priceChangeOf, withCorrections } from "./priceChange";
+import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 
 // The inventory screens' reads (#176).
 
@@ -78,19 +81,29 @@ export function useWarehouseStock(args: {
   q: string;
   page: number;
   pageSize: number;
+  /** THE TAG FILTER — held products carrying ANY of these product tags, narrowed on the server (`tag_ids`); empty = any. */
+  tagIds?: bigint[];
+  /**
+   * Also how many products wait for this warehouse's reprint of changed codes (`reprintWaiting`) — the warehouse's own
+   * Products list's *Cetak ulang kode (N)* (backlog #151), riding on this read rather than a read of its own. The
+   * root/admin Inventory asks none.
+   */
+  withReprint?: boolean;
 }) {
-  const { warehouseId, q, page, pageSize } = args;
+  const { warehouseId, q, page, pageSize, tagIds = [], withReprint = false } = args;
   const client = useQueryClient();
 
   return useQuery({
     ...listQuery,
-    queryKey: key.inventory(warehouseId, { stock: "held", q, page, pageSize }),
+    queryKey: key.inventory(warehouseId, { stock: "held", q, page, pageSize, tag: tagIds.map(String).join(","), reprint: withReprint }),
     enabled: warehouseId !== undefined,
     queryFn: async () => {
       const res = await inventoryClient.warehouseStockList({
         warehouseId: warehouseId!,
-        filter: { q },
-        dataRequest: warehouseStockListRowData(),
+        filter: { q, tagIds },
+        dataRequest: withReprint
+          ? [...warehouseStockListRowData(), WarehouseStockListDataType.REPRINT_WAITING]
+          : warehouseStockListRowData(),
         page: { page, limit: pageSize },
       });
 
@@ -104,13 +117,16 @@ export function useWarehouseStock(args: {
           productCode: product.productCode,
           name: product.name,
           archived: product.archived,
+          // Its tags — every warehouse holding the product sees them (products-have-their-own-tag-list, 🔄 who sees),
+          // on the row the list already reads (WarehouseProductSearchItem.tags), never a read per row.
+          tags: product.tags,
         }),
         ownerName: owners[product.teamId.toString()] ?? "",
         archived: product.archived,
         onHand,
       }));
 
-      return { rows, totalItems: Number(res.pageInfo?.totalItems ?? 0n) };
+      return { rows, totalItems: Number(res.pageInfo?.totalItems ?? 0n), reprintWaiting: res.reprintWaiting };
     },
   });
 }
@@ -139,34 +155,42 @@ export function useWarehouseProduct(args: {
     queryKey: key.inventory(warehouseId, { productId: productId.toString() }),
     enabled: warehouseId !== undefined && productId > 0n,
     queryFn: async () => {
+      // EVERY READ STARTS AS SOON AS ITS OWN INPUT IS KNOWN (#134, the-speed-audits-old-findings-are-fixed-smallest-first)
+      // — the product's own reads and the rack registry need only the address, so they go out together; the owner's
+      // name waits for the product alone, the people for the ledger alone. They were one after another: the speed audit
+      // measured ProductByIds → StockHistory → TeamByIds → RackList → UserByIDs, five round trips where two are needed.
+      // Still ONE answer, committed together, so the page draws as before.
+      //
       // A warehouse may read a product it does not own BY ID (#138's rule): a person standing at a
       // shelf must be able to read the label on the box sitting on it.
-      const found = await productClient.productByIds({
-        teamId: warehouseId!,
-        filter: { ids: [productId] },
-        dataRequest: productByIdsRowData(),
-      });
-      const product = productsFromByIds(found)[0] ?? null;
-
-      const [placesRes, costRes, opnameRes, historyRes, moveRes] = await Promise.all([
-        inventoryClient.productPlaces({
-          warehouseId: warehouseId!,
-          filter: { ids: [productId] },
-          dataRequest: productPlacesRowData(),
-        }),
-        inventoryClient.stockCost({
+      const productRead = productClient
+        .productByIds({
           teamId: warehouseId!,
-          filter: { warehouseId: warehouseId!, ids: [productId] },
-          dataRequest: stockCostRowData(),
-        }),
-        // The LAST stock-take. Filtered server-side (#158) — page one of an unfiltered ledger would
-        // report "never counted" the moment the last one scrolled off it.
-        inventoryClient.stockHistory({
-          warehouseId: warehouseId!,
-          filter: { productId, kind: adjustKind },
-          dataRequest: stockHistoryRowData(),
-          page: { page: 1, limit: 1 },
-        }),
+          filter: { ids: [productId] },
+          dataRequest: productByIdsRowData(),
+        })
+        .then((found) => productsFromByIds(found)[0] ?? null);
+
+      // Who owns the catalogue entry — a warehouse holds other teams' products (#142). Best-effort:
+      // an unknown or soft-deleted id is OMITTED from the map, so this is a presence check rather
+      // than a blind index, and a deleted owning team leaves the badge off rather than showing blank.
+      const ownerRead = productRead.then(async (product) => {
+        if (!product || product.teamId <= 0n) return "";
+        try {
+          const teams = teamsByIds(
+            await teamClient.teamByIds({
+              filter: { ids: [product.teamId] },
+              dataRequest: teamByIdsRowData(),
+            }),
+          );
+          return teams[product.teamId.toString()]?.name ?? "";
+        } catch {
+          return "";
+        }
+      });
+
+      // The two history tabs' ledgers — the people who made them are named once both are in.
+      const ledgerRead = Promise.all([
         inventoryClient.stockHistory({
           warehouseId: warehouseId!,
           filter: { productId },
@@ -179,67 +203,94 @@ export function useWarehouseProduct(args: {
           dataRequest: stockHistoryRowData(),
           page: { page: 1, limit: 50 },
         }),
-      ]);
+      ]).then(([historyRes, moveRes]) => ({
+        // The map response, rebuilt into ordered rows once, then read below.
+        historyRows: movementsFromList(historyRes),
+        moveRows: movementsFromList(moveRes),
+      }));
 
-      // The map response, rebuilt into ordered rows once, then read below.
-      const opnameRows = movementsFromList(opnameRes);
-      const historyRows = movementsFromList(historyRes);
-      const moveRows = movementsFromList(moveRes);
-
-      // Who owns the catalogue entry — a warehouse holds other teams' products (#142). Best-effort:
-      // an unknown or soft-deleted id is OMITTED from the map, so this is a presence check rather
-      // than a blind index, and a deleted owning team leaves the badge off rather than showing blank.
-      let ownerName = "";
-      if (product && product.teamId > 0n) {
-        try {
-          const teams = teamsByIds(
-            await teamClient.teamByIds({
-              filter: { ids: [product.teamId] },
-              dataRequest: teamByIdsRowData(),
-            }),
-          );
-          ownerName = teams[product.teamId.toString()]?.name ?? "";
-        } catch {
-          ownerName = "";
+      // The two history tabs show a "By" and a rack CODE per event (#209): the actor's name from user_service, once the
+      // ledger is in hand, and the rack code from the warehouse's rack registry (which covers shelves the product has
+      // since LEFT, unlike `places`) — that one needs no ledger. Both are best-effort — an unknown id falls back to "#id",
+      // never a blank.
+      const actorsRead = ledgerRead.then(async ({ historyRows, moveRows }) => {
+        const actorNames = new Map<string, string>();
+        // The people themselves too: a price correction's own lines name who corrected it (priceChangeOf).
+        const people = new Map<string, PublicUser>();
+        const events = [...historyRows, ...moveRows];
+        const actorIds = [...new Set(events.map((m) => m.actorUserId).filter((id) => id > 0n))];
+        if (actorIds.length > 0) {
+          try {
+            const users = publicUsersByIds(await userClient.userByIDs({ filter: { ids: actorIds }, dataRequest: userByIdsRowData() }));
+            for (const [id, u] of Object.entries(users)) {
+              actorNames.set(id, personName(u));
+              people.set(id, u);
+            }
+          } catch {
+            // leave the map empty — the By column falls back to "#id".
+          }
         }
-      }
+        return { actorNames, people };
+      });
+
+      const racksRead = (async () => {
+        const rackCodes = new Map<string, string>();
+        try {
+          const racks = await rackClient.rackList({
+            teamId: warehouseId!,
+            dataRequest: rackListRowData(),
+            page: { page: 1, limit: 200 },
+          });
+          for (const r of racksFromList(racks.items, racks.ids)) {
+            rackCodes.set(r.id.toString(), r.code);
+          }
+        } catch {
+          // leave the map empty — the Place column falls back to "#id".
+        }
+        return rackCodes;
+      })();
+
+      const [product, ownerName, placesRes, costRes, opnameRes, { historyRows, moveRows }, { actorNames, people }, rackCodes] =
+        await Promise.all([
+          productRead,
+          ownerRead,
+          inventoryClient.productPlaces({
+            warehouseId: warehouseId!,
+            filter: { ids: [productId] },
+            dataRequest: productPlacesRowData(),
+          }),
+          inventoryClient.stockCost({
+            teamId: warehouseId!,
+            filter: { warehouseId: warehouseId!, ids: [productId] },
+            dataRequest: stockCostRowData(),
+          }),
+          // The LAST stock-take. Filtered server-side (#158) — page one of an unfiltered ledger would
+          // report "never counted" the moment the last one scrolled off it.
+          inventoryClient.stockHistory({
+            warehouseId: warehouseId!,
+            filter: { productId, kind: adjustKind },
+            dataRequest: stockHistoryRowData(),
+            page: { page: 1, limit: 1 },
+          }),
+          ledgerRead,
+          actorsRead,
+          racksRead,
+        ]);
+
+      const opnameRows = movementsFromList(opnameRes);
 
       // ABSENT means the cost is UNKNOWN, not zero (#74). A valuation computed over an unknown cost
       // would read as "these goods are worth nothing", which is a different claim entirely.
       const cost = stockCostLines(costRes)[0];
 
-      // The two history tabs show a "By" and a rack CODE per event (#209). Resolve both after the
-      // ledger is in hand: the rack code from the warehouse's rack registry (which covers shelves the
-      // product has since LEFT, unlike `places`), and the actor's name from user_service. Both are
-      // best-effort — an unknown id falls back to "#id", never a blank.
-      const events = [...historyRows, ...moveRows];
-
-      const rackCodes = new Map<string, string>();
-      try {
-        const racks = await rackClient.rackList({
-          teamId: warehouseId!,
-          dataRequest: rackListRowData(),
-          page: { page: 1, limit: 200 },
-        });
-        for (const r of racksFromList(racks.items, racks.ids)) {
-          rackCodes.set(r.id.toString(), r.code);
-        }
-      } catch {
-        // leave the map empty — the Place column falls back to "#id".
-      }
-
-      const actorNames = new Map<string, string>();
-      const actorIds = [...new Set(events.map((m) => m.actorUserId).filter((id) => id > 0n))];
-      if (actorIds.length > 0) {
-        try {
-          const users = publicUsersByIds(await userClient.userByIDs({ filter: { ids: actorIds }, dataRequest: userByIdsRowData() }));
-          for (const [id, u] of Object.entries(users)) {
-            actorNames.set(id, personName(u));
-          }
-        } catch {
-          // leave the map empty — the By column falls back to "#id".
-        }
-      }
+      // A PRICE CORRECTION on Stock History reads as one — *Price corrected · from → to*, why and who (#143,
+      // docs/acceptances/inventory/transaction.md given 4: *"each shown with its own kind: … price corrected"*), as the
+      // batch's own history says it (the-correct-price-prototype-is-accepted). Its person is among the ledger's, named
+      // by the one read above — no read is added.
+      const history = historyRows.map((m) => {
+        const priceChange = priceChangeOf(m, people);
+        return priceChange ? { ...m, priceChange } : m;
+      });
 
       return {
         product,
@@ -248,7 +299,7 @@ export function useWarehouseProduct(args: {
         unitCost: cost?.unitCost ?? 0,
         costKnown: cost !== undefined,
         lastOpname: opnameRows[0] ?? null,
-        history: historyRows,
+        history,
         placementHistory: moveRows,
         rackCodes,
         actorNames,
@@ -628,13 +679,14 @@ export function useWarehouseBatches(args: {
 }
 
 // One batch's living detail (#209) — its identity, where its ready units sit now, and its own history.
-// Five reads behind one query so the whole page renders or fails together:
+// The reads behind the page's head, drawn together so the whole page renders or fails together:
 //   • BatchDetail          — the batch itself (lifecycle, frozen cost, dates).
 //   • productByIds+teamByIds — WHOSE goods these are (#142): a warehouse holds other teams' stock, so
 //                            the owner is resolved through the product, best-effort.
 //   • productPlaces        — the rack CODE per rack_id, so shelves read "A-01-3", not "#7".
-//   • BatchPlacementList   — where the ready units sit right now.
-//   • StockHistory(batchId) — this batch's ledger; a batch-less recount (batch_id 0) drops out.
+//   • supplierByIds, userByIDs — who delivered it, and who accepted it (#218).
+// BatchPlacementList (where the ready units sit right now) and StockHistory(batchId) (this batch's ledger; a batch-less
+// recount, batch_id 0, drops out) are their own paged reads below.
 export interface BatchDetail {
   batch: StockBatch | null;
   // The catalogue entry, for the header's Move / Adjust dialogs (they take a full Product). Best-effort.
@@ -667,76 +719,87 @@ export interface BatchDetail {
   priceCorrectedFrom: number;
 }
 
-export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId: bigint }) {
+/** What the reads around a batch answer — everything of BatchDetail that is not the batch's own record. */
+type BatchSurroundings = Pick<
+  BatchDetail,
+  "product" | "ownerName" | "owner" | "rackCodes" | "places" | "supplierName" | "acceptedByName"
+>;
+
+/** The batch page's head, as the page reads a query: one answer, pending until all of it is in, failed if any part is. */
+export interface BatchDetailRead {
+  data: BatchDetail | undefined;
+  isPending: boolean;
+  isError: boolean;
+  error: Error | null;
+  /** The batch's product the moment BatchDetail answers (0 before) — Riwayat's read needs nothing else. */
+  productId: bigint;
+}
+
+// TWO QUERIES, ONE ANSWER (#134, the-speed-audits-old-findings-are-fixed-smallest-first). BatchDetail first — everything
+// else names something written on it: the product, the supplier, the person who accepted it — then those reads SIDE BY
+// SIDE, the owning team after its product (it is the product's). They ran one after another inside one query function,
+// and Riwayat's read, which needs only the batch's product, waited for all of them: the speed audit measured BatchDetail →
+// ProductPlaces → ProductByIds → TeamByIds → SupplierByIds → UserByIDs → StockHistory, seven round trips where three are
+// needed. The batch's own answer is now its own entry, so Riwayat starts the moment it lands (`productId`), and the page
+// still draws once everything is in — or fails with either half, as the one query did.
+export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId: bigint }): BatchDetailRead {
   const { warehouseId, batchId } = args;
 
-  return useQuery<BatchDetail>({
+  const head = useQuery({
     queryKey: key.inventory(warehouseId, { batch: batchId.toString() }),
     enabled: warehouseId !== undefined && batchId > 0n,
+    queryFn: () => inventoryClient.batchDetail({ teamId: warehouseId!, batchId }),
+  });
+  const batch = head.data?.batch ?? null;
+  const productId = batch?.productId ?? 0n;
+  const supplierId = batch?.supplierId ?? 0n;
+  // Who accepted the delivery — the batch's creator when no accept was recorded.
+  const actorId = batch ? (batch.acceptedBy > 0n ? batch.acceptedBy : batch.createdBy) : 0n;
+
+  const around = useQuery<BatchSurroundings>({
+    queryKey: key.inventory(warehouseId, {
+      batchAround: batchId.toString(),
+      productId: productId.toString(),
+      supplierId: supplierId.toString(),
+      actorId: actorId.toString(),
+    }),
+    enabled: warehouseId !== undefined && batch !== null,
     queryFn: async () => {
-      const detail = await inventoryClient.batchDetail({ teamId: warehouseId!, batchId });
-      const batch = detail.batch ?? null;
-      if (!batch) {
-        return {
-          batch: null,
-          product: null,
-          ownerName: "",
-          owner: null,
-          rackCodes: new Map(),
-          places: [],
-          supplierName: "",
-          acceptedByName: "",
-          returnedQty: 0n,
-          lastReturnUnix: 0n,
-          brokenValue: 0,
-          lostValue: 0,
-          usedValue: 0,
-          priceCorrected: false,
-          priceCorrectedFrom: 0,
-        };
-      }
-
-      const placesRes = await inventoryClient.productPlaces({
-        warehouseId: warehouseId!,
-        filter: { ids: [batch.productId] },
-        dataRequest: productPlacesRowData(),
-      });
-
-      const places = productPlacesFlat(placesRes);
-      const rackCodes = new Map<string, string>();
-      for (const p of places) {
-        rackCodes.set(p.rackId.toString(), p.rackCode);
-      }
+      // Where the PRODUCT sits now. Not best-effort: a page that cannot name its shelves fails, as it always did.
+      const placesRead = inventoryClient
+        .productPlaces({
+          warehouseId: warehouseId!,
+          filter: { ids: [productId] },
+          dataRequest: productPlacesRowData(),
+        })
+        .then(productPlacesFlat);
 
       // WHOSE goods these are (#142) — resolved through the product's owning team, best-effort: an
       // unknown or deleted owner leaves the badge off rather than showing a blank. The product itself is
       // kept for the header's Move / Adjust dialogs.
-      let product: Product | null = null;
-      let ownerName = "";
-      let owner: Team | null = null;
-      try {
-        const found = await productClient.productByIds({
-          teamId: warehouseId!,
-          filter: { ids: [batch.productId] },
-          dataRequest: productByIdsRowData(),
-        });
-        product = productsFromByIds(found)[0] ?? null;
-        const ownerTeamId = product?.teamId ?? 0n;
-        if (ownerTeamId > 0n) {
+      const ownedRead = (async (): Promise<{ product: Product | null; owner: Team | null }> => {
+        try {
+          const found = await productClient.productByIds({
+            teamId: warehouseId!,
+            filter: { ids: [productId] },
+            dataRequest: productByIdsRowData(),
+          });
+          const product = productsFromByIds(found)[0] ?? null;
+          const ownerTeamId = product?.teamId ?? 0n;
+          if (ownerTeamId <= 0n) return { product, owner: null };
+
           const teams = teamsByIds(
             await teamClient.teamByIds({
               filter: { ids: [ownerTeamId] },
               dataRequest: teamByIdsRowData(),
             }),
           );
-          owner = teams[ownerTeamId.toString()] ?? null;
-          ownerName = owner?.name ?? "";
+
+          return { product, owner: teams[ownerTeamId.toString()] ?? null };
+        } catch {
+          return { product: null, owner: null };
         }
-      } catch {
-        product = null;
-        ownerName = "";
-        owner = null;
-      }
+      })();
 
       // Restock info (#218): the supplier who delivered it, and who accepted it — names resolved
       // best-effort, an unknown id just leaves "".
@@ -744,54 +807,106 @@ export function useBatchDetail(args: { warehouseId: bigint | undefined; batchId:
       // SupplierByIds, not SupplierDetail: the vendor is a SELLING team's supplier read from the warehouse, and
       // it may have been deleted since the delivery — by-ids still answers with it, marked
       // (a-deleted-supplier-is-kept-for-its-figures), so a past batch keeps its vendor's name.
-      let supplierName = "";
-      if (batch.supplierId > 0n) {
+      const supplierRead = (async (): Promise<string> => {
+        if (supplierId <= 0n) return "";
         try {
           const found = suppliersFromByIds(
             await supplierClient.supplierByIds({
               teamId: warehouseId!,
-              filter: { ids: [batch.supplierId] },
+              filter: { ids: [supplierId] },
               dataRequest: supplierByIdsRowData(),
             }),
           );
-          supplierName = found.get(batch.supplierId.toString())?.name ?? "";
+          return found.get(supplierId.toString())?.name ?? "";
         } catch {
-          supplierName = "";
+          return "";
         }
-      }
+      })();
 
-      let acceptedByName = "";
-      const actorId = batch.acceptedBy > 0n ? batch.acceptedBy : batch.createdBy;
-      if (actorId > 0n) {
+      const acceptedByRead = (async (): Promise<string> => {
+        if (actorId <= 0n) return "";
         try {
           const users = publicUsersByIds(await userClient.userByIDs({ filter: { ids: [actorId] }, dataRequest: userByIdsRowData() }));
           const u = users[actorId.toString()];
           // "Name (username)"; fall back to the username alone when no display name is set.
-          acceptedByName = u ? (u.name ? `${u.name} (${u.username})` : personName(u)) : "";
+          return u ? (u.name ? `${u.name} (${u.username})` : personName(u)) : "";
         } catch {
-          acceptedByName = "";
+          return "";
         }
+      })();
+
+      const [places, owned, supplierName, acceptedByName] = await Promise.all([
+        placesRead,
+        ownedRead,
+        supplierRead,
+        acceptedByRead,
+      ]);
+
+      const rackCodes = new Map<string, string>();
+      for (const p of places) {
+        rackCodes.set(p.rackId.toString(), p.rackCode);
       }
 
       return {
-        batch,
-        product,
-        ownerName,
-        owner,
+        product: owned.product,
+        ownerName: owned.owner?.name ?? "",
+        owner: owned.owner,
         rackCodes,
         places,
         supplierName,
         acceptedByName,
-        returnedQty: detail.returnedQty,
-        lastReturnUnix: detail.lastReturnUnix,
-        brokenValue: detail.brokenValue,
-        lostValue: detail.lostValue,
-        usedValue: detail.usedValue,
-        priceCorrected: detail.priceCorrected,
-        priceCorrectedFrom: detail.priceCorrectedFrom,
       };
     },
   });
+
+  const detail = head.data;
+  const surroundings = around.data;
+  // ONE answer, built once per pair of answers — never a half: the batch without the names around it is not drawn.
+  const data = useMemo<BatchDetail | undefined>(() => {
+    if (detail === undefined) return undefined;
+    if (!detail.batch) {
+      return {
+        batch: null,
+        product: null,
+        ownerName: "",
+        owner: null,
+        rackCodes: new Map(),
+        places: [],
+        supplierName: "",
+        acceptedByName: "",
+        returnedQty: 0n,
+        lastReturnUnix: 0n,
+        brokenValue: 0,
+        lostValue: 0,
+        usedValue: 0,
+        priceCorrected: false,
+        priceCorrectedFrom: 0,
+      };
+    }
+    if (surroundings === undefined) return undefined;
+
+    return {
+      batch: detail.batch,
+      ...surroundings,
+      returnedQty: detail.returnedQty,
+      lastReturnUnix: detail.lastReturnUnix,
+      brokenValue: detail.brokenValue,
+      lostValue: detail.lostValue,
+      usedValue: detail.usedValue,
+      priceCorrected: detail.priceCorrected,
+      priceCorrectedFrom: detail.priceCorrectedFrom,
+    };
+  }, [detail, surroundings]);
+
+  const found = batch !== null;
+
+  return {
+    data,
+    isPending: head.isPending || (found && around.isPending),
+    isError: head.isError || (found && around.isError),
+    error: head.error ?? (found ? around.error : null),
+    productId,
+  };
 }
 
 // One batch's placements, PAGINATED (#218) — the Placements tab's own read, so it pages independently

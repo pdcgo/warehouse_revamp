@@ -38,14 +38,10 @@ func (s *Service) RestockRequestArrive(
 	ctx context.Context,
 	req *connect.Request[inventoryv1.RestockRequestArriveRequest],
 ) (*connect.Response[inventoryv1.RestockRequestArriveResponse], error) {
-	// THE COURIER'S CHARGE, checked as Terima checks it (RestockRequestAccept) — before anything is written: the note rule
-	// spans two fields, which protovalidate cannot express.
+	// THE COURIER'S CHARGE, taken as Terima takes it (RestockRequestAccept): its note — what it was for — is OPTIONAL
+	// (the-couriers-charge-note-is-optional), so an amount with no note is kept as it is; a note given is kept as typed.
 	courierCharge := req.Msg.GetWarehouseAdditionalCost()
 	courierNote := req.Msg.GetWarehouseAdditionalCostNote()
-
-	if courierCharge > 0 && courierNote == "" {
-		return nil, restockErr(errRestockCostNoteMissing)
-	}
 
 	// THE COURIER'S SLIP, optional (the-courier-slip-has-an-optional-photo) — kept beside the charge it belongs to, so
 	// only with a charge: with none there is no slip, and a photo sent anyway is dropped, as at Terima.

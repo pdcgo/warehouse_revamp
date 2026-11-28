@@ -62,6 +62,12 @@ async function gotoList(page: Page, query = "") {
   await expect(page.getByTestId(`product-row-${state.code}`)).toBeVisible();
 }
 
+// The wide list's cells, by index (#148 put the Tag column right after the product): Product 0 · Tag 1 · Cross 2 ·
+// Price range 3 · Lock 4 · Siap 5 · Dikirim 6 · [In transit 7] · Stock age · Actions — 9 headers with no In transit.
+const READY = 5;
+const IN_TRANSIT = 7;
+const HEADERS_WITHOUT_IN_TRANSIT = 9;
+
 const tile = (page: Page) => page.getByTestId("products-in-transit-stock-value");
 const header = (page: Page) => page.getByTestId("products-in-transit-header");
 const cell = (page: Page) => page.getByTestId(`in-transit-${state.code}`);
@@ -131,10 +137,10 @@ test("No transfer: the list has no Dalam transfer column, and the tile reads 0 p
   await expect(tile(page)).toHaveText("0 pcs");
   await expect(page.getByTestId("products-in-transit-stock")).toContainText("Rp 0 · between warehouses, at cost");
   // The row's Siap is there, so the table has drawn — and no column beside it.
-  await expect(page.getByTestId(`product-row-${state.code}`).getByRole("cell").nth(4)).toHaveText(/^10 pcs/);
+  await expect(page.getByTestId(`product-row-${state.code}`).getByRole("cell").nth(READY)).toHaveText(/^10 pcs/);
   await expect(header(page)).toHaveCount(0);
   await expect(cell(page)).toHaveCount(0);
-  await expect(page.getByTestId("products-table").getByRole("columnheader")).toHaveCount(8);
+  await expect(page.getByTestId("products-table").getByRole("columnheader")).toHaveCount(HEADERS_WITHOUT_IN_TRANSIT);
 });
 
 test("A transfer of 4 shipped from A to B: the column, the tile and the product page show its 4 units", async ({ page }) => {
@@ -163,8 +169,8 @@ test("A transfer of 4 shipped from A to B: the column, the tile and the product 
   await expect(cell(page)).toHaveAttribute("title", "Rp 40.000");
   // Never in Siap: A's rack holds the 6 left.
   const cells = page.getByTestId(`product-row-${state.code}`).getByRole("cell");
-  await expect(cells.nth(4)).toHaveText(/^6 pcs/);
-  await expect(cells.nth(6)).toHaveText("4 pcs");
+  await expect(cells.nth(READY)).toHaveText(/^6 pcs/);
+  await expect(cells.nth(IN_TRANSIT)).toHaveText("4 pcs");
 
   // The product page: beside Dikirim in the highlight, and the Overview's row for every warehouse.
   await page.goto(`/products/${state.product}`);
@@ -197,7 +203,7 @@ test("B's lens (the receiver) shows the 4; A's lens (the sender) does not, and i
   await expect(cell(page)).toHaveText("4 pcs");
 
   await gotoList(page, `?warehouse=${state.whA}`);
-  await expect(page.getByTestId(`product-row-${state.code}`).getByRole("cell").nth(4)).toHaveText(/^6 pcs/);
+  await expect(page.getByTestId(`product-row-${state.code}`).getByRole("cell").nth(READY)).toHaveText(/^6 pcs/);
   await expect(tile(page)).toHaveText("0 pcs");
   await expect(header(page)).toHaveCount(0);
   await expect(cell(page)).toHaveCount(0);
@@ -234,11 +240,11 @@ test("B accepts it: the figure goes to 0 and the column disappears", async ({ pa
 
   await gotoList(page);
   // The 4 are on B's shelf now: Siap back to 10, nothing in transit, no column.
-  await expect(page.getByTestId(`product-row-${state.code}`).getByRole("cell").nth(4)).toHaveText(/^10 pcs/);
+  await expect(page.getByTestId(`product-row-${state.code}`).getByRole("cell").nth(READY)).toHaveText(/^10 pcs/);
   await expect(tile(page)).toHaveText("0 pcs");
   await expect(header(page)).toHaveCount(0);
   await expect(cell(page)).toHaveCount(0);
-  await expect(page.getByTestId("products-table").getByRole("columnheader")).toHaveCount(8);
+  await expect(page.getByTestId("products-table").getByRole("columnheader")).toHaveCount(HEADERS_WITHOUT_IN_TRANSIT);
 
   await page.goto(`/products/${state.product}`);
   await expect(page.getByTestId("pd-highlight-line")).toContainText("+0 pcs in transit");

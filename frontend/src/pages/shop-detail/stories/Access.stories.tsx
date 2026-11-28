@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
+import { type HeldRpc, callsOf, holdRpc } from "../../../../.storybook/holdRpc";
+import { shopClient } from "../../../api/clients";
 import { AtStore, SHOP_DETAIL_META, loaded } from "./kit";
 
 // SHOP DETAIL — who may work on it — the primary CS, Make Primary, the picker, removing a grant. The page's stories are grouped by the part of the screen they are about
@@ -150,5 +152,36 @@ export const RemovingThePrimaryLeavesNone: Story = {
     await waitFor(() => expect(canvas.queryByTestId("shop-user-row-ani")).toBeNull());
     await waitFor(() => expect(canvas.getByTestId("shop-no-primary")).toBeVisible());
     await expect(canvas.getByTestId("shop-user-row-budi")).toBeVisible();
+  },
+};
+
+// WHO MAY WORK ON IT IS ASKED WITH THE SHOP (#134, the-speed-audits-old-findings-are-fixed-smallest-first) — the grants
+// need only the address's shop, but the access panel mounts only once the shop is drawn, so its read waited for
+// ShopDetail. The page asks it beside the shop; the panel draws that answer and asks nothing of its own.
+let shopHeld: HeldRpc | undefined;
+
+export const TheGrantsAreAskedWithTheShop: Story = {
+  name: "Grants asked with the shop",
+  beforeEach: () => {
+    // The shop answers late — its grants go out meanwhile.
+    shopHeld = holdRpc(shopClient, "shopDetail");
+    const spy = spyOn(shopClient, "shopUserList");
+
+    return () => {
+      shopHeld?.restore();
+      spy.mockRestore();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(callsOf(shopClient.shopUserList)).toHaveLength(1), { timeout: 5000 });
+    await expect(canvas.queryByTestId("shop-detail-page")).toBeNull();
+
+    shopHeld?.release();
+    const page = await loaded(canvasElement);
+
+    await waitFor(() => expect(page.getByTestId("shop-user-primary-ani")).toBeVisible());
+    await expect(callsOf(shopClient.shopUserList)).toHaveLength(1);
   },
 };

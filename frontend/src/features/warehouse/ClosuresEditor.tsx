@@ -4,19 +4,21 @@ import { Button, Card, Field, Flex, Heading, HStack, Icon, IconButton, Input, St
 import { Plus, Trash2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 
-import { rpcError, warehouseInfoClient } from "../../../api/clients";
-import type { WarehouseClosure } from "../../../gen/warehouse/warehouse/v1/warehouse_info_pb";
-import { useInvalidateWarehouseInfo } from "../../../features/warehouse/queries";
-import { ConfirmDialog } from "../../../components/feedback/ConfirmDialog";
-import { DatePicker } from "../../../components/datetime/DatePicker";
-import { toaster } from "../../../components/feedback/Toaster";
+import { rpcError, warehouseInfoClient } from "../../api/clients";
+import type { WarehouseClosure } from "../../gen/warehouse/warehouse/v1/warehouse_info_pb";
+import { useInvalidateWarehouseInfo } from "./queries";
+import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
+import { DatePicker } from "../../components/datetime/DatePicker";
+import { toaster } from "../../components/feedback/Toaster";
 
 // ONE-OFF CLOSURES (a-warehouse-records-its-holidays) — a holiday, a stock-take: whole days, both inclusive, with the
-// reason the order form's closed-day warning names. Edited by whoever edits the hours, here, one at a time — each is
-// saved on its own, so it sits outside the hours form's Save. It refuses nothing: it only changes the warning.
+// reason the order form's closed-day warning names. Edited by whoever edits the hours, one at a time — each is saved on
+// its own, so it sits outside the hours form's Save. It refuses nothing: it only changes the warning. ONE editor for
+// both doors (the-warehouse-sets-its-own-hours-in-settings): root's Teams → Edit warehouse, and the warehouse owner's and
+// admin's own Settings.
 //
-// THE LIST IS THE PAGE'S READ — `closures` comes from the edit page's WarehouseInfoDetail (useWarehouseInfo), the one
-// read of the warehouse's profile a load (#122; it used to ask for it again here). A write re-reads that profile AND the
+// THE LIST IS THE PAGE'S READ — `closures` comes from the page's WarehouseInfoDetail (useWarehouseInfo), the one read of
+// the warehouse's profile a load (#122; it used to ask for it again here). A write re-reads that profile AND the
 // warehouse's receiving state — both under its `warehouseInfo` key — so the list and the order form's closed-day warning
 // move together.
 export function ClosuresEditor({ warehouseId, closures }: { warehouseId: bigint; closures: WarehouseClosure[] }) {

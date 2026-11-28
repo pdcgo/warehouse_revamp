@@ -14,7 +14,8 @@ option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/war
 // a bare warehouse.role_base would resolve to warehouse.warehouse.role_base.
 service WarehouseInfoService {
   // A warehouse's profile. Any authenticated caller: a selling team legitimately needs to know when a warehouse can
-  // receive its orders. A warehouse with no profile yet reads as closed every day.
+  // receive its orders. A warehouse with no profile yet answers empty grids — its hours are not set, which is NOT
+  // closed (a-warehouse-with-no-hours-is-not-closed).
   rpc WarehouseInfoDetail(WarehouseInfoDetailRequest) returns (WarehouseInfoDetailResponse);
   // Replaces a warehouse's weekly hours and location. Warehouse managers edit their own.
   rpc WarehouseInfoUpdate(WarehouseInfoUpdateRequest) returns (WarehouseInfoUpdateResponse);
@@ -176,15 +177,21 @@ message WarehouseReceivingStatusRequest {
   }];
 }
 
-// WarehouseReceivingState — one warehouse's answer, NOW, in Asia/Jakarta.
+// WarehouseReceivingState — one warehouse's answer, NOW, in Asia/Jakarta. It is CLOSED when `closure_reason` is set,
+// or when `hours_set` and not `receiving_now`; a warehouse whose hours are not set is not closed
+// (a-warehouse-with-no-hours-is-not-closed) — only a closure warns for it.
 message WarehouseReceivingState {
   uint64 warehouse_id = 1;
   // Inside today's receiving slot and in no closure.
   bool receiving_now = 2;
-  // When it receives next, unix seconds — 0 while receiving now, or when no slot opens in the next 60 days.
+  // When it receives next, unix seconds — 0 while receiving now, when no slot opens in the next 60 days, or when its
+  // hours are not set.
   int64 next_opening_unix = 3;
-  // Set when a one-off closure is why it is closed — "Idul Fitri".
+  // Set when a one-off closure is why it is closed — "Idul Fitri" — set hours or not.
   string closure_reason = 4;
+  // Whether the warehouse has set its receiving hours: false with no profile, or with a grid that opens on no day. Not
+  // set is NOT closed: no warning, no badge — `receiving_now` and `next_opening_unix` then say nothing.
+  bool hours_set = 5;
 }
 
 message WarehouseReceivingStatusResponse {

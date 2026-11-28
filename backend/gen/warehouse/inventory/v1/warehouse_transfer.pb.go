@@ -683,7 +683,7 @@ type WarehouseTransfer struct {
 	FinanceAccountId uint64 `protobuf:"varint,13,opt,name=finance_account_id,json=financeAccountId,proto3" json:"finance_account_id,omitempty"`
 	// The courier's charge at B's door — B pays it, the team owes B. Entered at accept; 0 until then.
 	WarehouseAdditionalCost float64 `protobuf:"fixed64,14,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
-	// Required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for).
+	// What the charge was for — optional, "" = none (the-couriers-charge-note-is-optional).
 	WarehouseAdditionalCostNote string `protobuf:"bytes,15,opt,name=warehouse_additional_cost_note,json=warehouseAdditionalCostNote,proto3" json:"warehouse_additional_cost_note,omitempty"`
 	// The two legs; 0 = not yet written.
 	OutboundTransactionId uint64 `protobuf:"varint,16,opt,name=outbound_transaction_id,json=outboundTransactionId,proto3" json:"outbound_transaction_id,omitempty"`
@@ -2390,8 +2390,8 @@ type WarehouseTransferAcceptRequest struct {
 	TransferId uint64 `protobuf:"varint,2,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"`
 	// One entry per line, EVERY line exactly once — accepting IS the count.
 	Lines []*WarehouseTransferCountedLine `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
-	// The courier's charge at B's door, rupiah; 0 = none. Its note is required when it is above 0 — the handler
-	// checks.
+	// The courier's charge at B's door, rupiah; 0 = none. Its note is optional (the-couriers-charge-note-is-optional): a
+	// charge with no note is accepted.
 	WarehouseAdditionalCost     float64 `protobuf:"fixed64,4,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
 	WarehouseAdditionalCostNote string  `protobuf:"bytes,5,opt,name=warehouse_additional_cost_note,json=warehouseAdditionalCostNote,proto3" json:"warehouse_additional_cost_note,omitempty"`
 	unknownFields               protoimpl.UnknownFields

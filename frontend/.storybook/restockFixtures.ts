@@ -220,7 +220,7 @@ export const restockFixtures: RestockFixture[] = [
     ],
     logs: [
       log(1, NONE, ONGOING, 61n, "created", 4),
-      log(2, ONGOING, ARRIVED, 62n, "signed for the box", 1),
+      log(2, ONGOING, ARRIVED, 62n, "set arrived", 1),
       // The edit's row as the server writes it now: the bare word, and under it what changed — the count, and the note
       // saying why (the total stays: the two were a bonus).
       {
@@ -288,7 +288,7 @@ export const restockFixtures: RestockFixture[] = [
     ],
     logs: [
       log(1, NONE, ONGOING, 61n, "created", 9),
-      log(2, ONGOING, ARRIVED, 62n, "signed for the box", 6),
+      log(2, ONGOING, ARRIVED, 62n, "set arrived", 6),
       log(3, ARRIVED, ACCEPTED, 62n, "accepted — 2 broken, 1 missing; courier's charge Rp 5.000", 6),
     ],
   }),
@@ -364,7 +364,7 @@ export const restockFixtures: RestockFixture[] = [
     ],
     logs: [
       log(1, NONE, ONGOING, 61n, "created", 30),
-      log(2, ONGOING, ARRIVED, 62n, "signed for the box", 27),
+      log(2, ONGOING, ARRIVED, 62n, "set arrived", 27),
       log(3, ARRIVED, ACCEPTED, 62n, "accepted", 27),
     ],
   }),

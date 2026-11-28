@@ -26,6 +26,7 @@ and its references grepped (RULE 12), never quietly edited away. The open set is
 | [the-move-dialog-shows-stock-count-only-for-now](#the-move-dialog-shows-stock-count-only-for-now) | the Move dialog shows `stock_count` and *max = stock_count*, with no waiting note, like the rack screen | chat, 2026-10-12 — resolves [the-move-dialog-still-explains-waiting-units](./placement_clarify.md#the-move-dialog-still-explains-waiting-units), as recommended; amends the dialog row of [a-move-leaves-sold-units-on-their-rack](#a-move-leaves-sold-units-on-their-rack) |
 | [the-placement-prototype-is-accepted](#the-placement-prototype-is-accepted) | the Racks page and Rack detail as prototyped, with their contract, are the design to build, including the three choices left to the review | chat, 2026-10-12 — design_accept |
 | [a-placement-deletes-at-zero-stock](#a-placement-deletes-at-zero-stock) | a placement at 0 stock can be deleted; no check for a sold unit still waiting — staff and admin talk it over first | chat, 2026-10-16 — answers Q5, option b, against my a |
+| [a-moves-batch-is-named-only-when-certain](#a-moves-batch-is-named-only-when-certain) | Stock History names a movement's batch only when the records make it certain, `—` otherwise; a move still writes no batch row | owner, as recommended, 2026-11-27 |
 
 ---
 
@@ -727,3 +728,21 @@ flowchart LR
 
 🔄 *(2026-11-03)* **Amended by [a-rack-a-count-holds-cannot-be-deleted](./opname_decision.md#a-rack-a-count-holds-cannot-be-deleted)**: a rack an open count row names is refused too,
 at 0 or not, naming the count. ✅ Built 2026-11-03.
+
+---
+
+## a-moves-batch-is-named-only-when-certain
+
+> Owner (Heri), in `revamp_dev`'s desktop chat (2026-11-27): *"A"*, **as recommended** — to: on a warehouse product's Stock History each movement now names its batch (backlog #142, the tester's ❌ on [transaction.md](../../acceptances/inventory/transaction.md) given 1), but a move between racks records no batch ([a-move-writes-two-rack-rows-and-no-batch-row](#a-move-writes-two-rack-rows-and-no-batch-row)) and a rack does not know its batches, so the batch of a moved unit is not always known. A: name the batch only when it is certain — e.g. the warehouse has only ever held one batch of that product up to the move — and show `—` otherwise; B: record the batch when a move is saved (a schema and write-path change, a concurrency re-audit); C: guess it, oldest first (could name a wrong batch).
+
+**The verdict.** Stock History names a movement's batch **only when the records make it certain**, and shows `—` otherwise. Nothing is guessed, and a move still writes no batch row.
+
+| | |
+| --- | --- |
+| a rack row whose transaction wrote ONE batch row of the product, same side | names that batch |
+| several batch rows that add up to the rack row | one row per batch, as the batch filter already splits a movement over racks |
+| several that do not add up | the row stays whole and reads `—` |
+| a move between racks | its batch only when the warehouse had ever held a single batch of the product up to the move; else `—` |
+| what stays | [a-move-writes-two-rack-rows-and-no-batch-row](#a-move-writes-two-rack-rows-and-no-batch-row) — no write-path change |
+
+Built with backlog #142 (`inventory_v1/stock_history.go` `productHistory`, `ledger_history.go` `rackBatchJoin` / `moveBatchExpr`) — built, e2e pending.

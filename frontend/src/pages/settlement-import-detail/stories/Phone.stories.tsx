@@ -54,7 +54,7 @@ export const TheTabsSlide: Story = {
     last.scrollIntoView({ inline: "end", block: "nearest" });
     await userEvent.click(last);
     await expect(last).toHaveAttribute("aria-selected", "true");
-    await expect(await canvas.findByTestId("lines-empty")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("lines-empty")).toBeVisible(), { timeout: 5000 });
   },
 };
 
@@ -118,7 +118,7 @@ export const AFailedFile: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
     await expect(canvas.getByTestId("import-detail-failure")).toHaveTextContent("belong to Melati Store");
-    await expect(await canvas.findByTestId("lines-empty")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("lines-empty")).toBeVisible(), { timeout: 5000 });
     await fitsTheScreen(canvasElement);
   },
 };

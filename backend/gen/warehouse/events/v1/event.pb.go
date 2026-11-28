@@ -1553,7 +1553,8 @@ type OrderReturnAccepted struct {
 	TimelineLogId uint64 `protobuf:"varint,6,opt,name=timeline_log_id,json=timelineLogId,proto3" json:"timeline_log_id,omitempty"`
 	// What the courier asked at the door, exact rupiah; 0 = nothing, which posts nothing — the common case.
 	CourierCharge float64 `protobuf:"fixed64,7,opt,name=courier_charge,json=courierCharge,proto3" json:"courier_charge,omitempty"`
-	// What it was for (an-incidental-line-must-say-what-it-was-for). Set whenever the charge is.
+	// What it was for — optional (the-couriers-charge-note-is-optional): "" when none was given, and always "" with no
+	// charge.
 	CourierChargeNote string `protobuf:"bytes,8,opt,name=courier_charge_note,json=courierChargeNote,proto3" json:"courier_charge_note,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache

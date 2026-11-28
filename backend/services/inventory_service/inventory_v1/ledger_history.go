@@ -16,23 +16,32 @@ import (
 //
 // A rack's history reads `product_placement_logs` — it knows the rack, not the batch. A batch's and the owner's read
 // `batch_logs` — they know the batch, not the rack. No log row carries both (a-batch-shows-the-racks-it-was-put-on), so
-// a batch's history reads its rack from the rack rows of the same transaction (batchRackJoin).
+// a batch's history reads its rack from the rack rows of the same transaction (batchRackJoin), and a product's history
+// in a warehouse reads its rack rows' batch from the batch rows of the same transaction (rackBatchJoin, moveBatchExpr —
+// backlog #142), plus the price corrections, which write a batch row and no rack row.
 
 // kindOf names a log row the way the screens do. An order only ever takes, so its positive rows are its rollback — the
-// units coming back. A price correction is its own kind — it moved no unit (the-owning-team-revalues-with-a-reason).
-// Every other correction (a provisional adjustment, a problem, a found unit) reads as an adjust.
+// units coming back, a CANCEL (#143, transaction.md given 2: *"the cancelled order's units shown coming back, as a
+// cancel"*); a buyer's return is a RETURN. A price correction is its own kind — it moved no unit
+// (the-owning-team-revalues-with-a-reason). Units found broken and units found are each their own kind too (#143,
+// given 3: *"the damaged unit shown as broken"*, *"the found unit shown as found"*). Every other correction (a provisional
+// adjustment, a lost unit, a received-count correction) reads as an adjust.
 func kindOf(changeType string, change int64) inventoryv1.MovementKind {
 	switch changeType {
 	case "restock":
 		return inventoryv1.MovementKind_MOVEMENT_KIND_RECEIVE
 	case "order":
 		if change > 0 {
-			return inventoryv1.MovementKind_MOVEMENT_KIND_RETURN
+			return inventoryv1.MovementKind_MOVEMENT_KIND_CANCEL
 		}
 
 		return inventoryv1.MovementKind_MOVEMENT_KIND_PICK
 	case "return":
 		return inventoryv1.MovementKind_MOVEMENT_KIND_RETURN
+	case "broken":
+		return inventoryv1.MovementKind_MOVEMENT_KIND_BROKEN
+	case "found":
+		return inventoryv1.MovementKind_MOVEMENT_KIND_FOUND
 	case "sample":
 		return inventoryv1.MovementKind_MOVEMENT_KIND_SAMPLE
 	case "transfer_in":
@@ -48,14 +57,17 @@ func kindOf(changeType string, change int64) inventoryv1.MovementKind {
 	}
 }
 
-// correctionTypes are the change types that read as an adjust — units found broken, lost or found, and a received-count
-// correction's (KOREKSI JUMLAH TERIMA — a-wrong-stock-in-is-a-received-count-correction: "in the ledger it stays an
-// adjustment"). A price correction is not one: it reads as REVALUATION.
+// correctionTypes are the change types ADJUST reaches AS A FILTER — the provisional adjustments, units found broken,
+// lost or found, and a received-count correction's (KOREKSI JUMLAH TERIMA — a-wrong-stock-in-is-a-received-count-
+// correction: "in the ledger it stays an adjustment"). Since #143 a broken and a found row READ as BROKEN and FOUND
+// (kindOf), but the ADJUST filter keeps its reach, so every reader asking for it — the warehouse product page's last
+// stock-take among them — answers as before. A price correction is not one: it reads as REVALUATION.
 var correctionTypes = []string{"adjustment", "broken", "lost", "found", "restock_correction", "transfer_correction"}
 
 // kindsWhere is the SQL condition for log rows of any of `kinds`, over a log aliased `alias` whose signed change column
 // is `change`. Empty (and no args) when no kind is asked for. The kinds are a closed switch, so nothing a caller sends
-// reaches the SQL but `?` arguments.
+// reaches the SQL but `?` arguments. The kinds #143 split out (CANCEL, BROKEN, FOUND) find their own rows; the kinds
+// they were split from (RETURN, ADJUST) keep the reach they had, so no existing filter answers differently.
 func kindsWhere(alias, change string, kinds ...inventoryv1.MovementKind) (string, []any) {
 	var (
 		parts []string
@@ -91,6 +103,15 @@ func kindsWhere(alias, change string, kinds ...inventoryv1.MovementKind) (string
 		case inventoryv1.MovementKind_MOVEMENT_KIND_REVALUATION:
 			parts = append(parts, alias+".change_type = ?")
 			args = append(args, "revaluation")
+		case inventoryv1.MovementKind_MOVEMENT_KIND_CANCEL:
+			parts = append(parts, fmt.Sprintf("(%s.change_type = ? AND %s.%s > 0)", alias, alias, change))
+			args = append(args, "order")
+		case inventoryv1.MovementKind_MOVEMENT_KIND_BROKEN:
+			parts = append(parts, alias+".change_type = ?")
+			args = append(args, "broken")
+		case inventoryv1.MovementKind_MOVEMENT_KIND_FOUND:
+			parts = append(parts, alias+".change_type = ?")
+			args = append(args, "found")
 		}
 	}
 
@@ -257,6 +278,104 @@ var batchHistorySelect = `CASE WHEN COALESCE(rk.part, 1) = 1 THEN l.id ELSE ((rk
 	` + overrideExpr("l.transaction_id") + ` AS is_override,
 	` + recipientExpr("l.change_type", "l.transaction_id") + ` AS recipient, ` + priceExprs("l") + `,
 	CASE WHEN rk.exact THEN l.change_valuation * rk.part_change / l.change_count ELSE l.change_valuation END AS part_value`
+
+// rackBatchJoin gives each `product_placement_logs AS l` rack row THE BATCH ITS UNITS CAME FROM (backlog #142) — the
+// mirror of batchRackJoin. A rack row carries no batch, so the batch is read from the batch rows (`batch_logs`) its
+// transaction wrote for the same product in the same warehouse, of the same change type, on the same side — units in
+// for units in, out for out (a cancel's rows are its take's rows reversed under the same transaction, so only the side
+// tells them apart, a-rollback-reverses-its-log-rows). Grouped by batch:
+//
+//   - one batch: the row names it, whole (a take off one batch, a put-away over two racks);
+//   - several batches that add up to this rack row (`exact` — the transaction's only rack row of the product on that
+//     side: a take crossing from one batch into the next): ONE ROW PER BATCH, as a batch's history splits a movement
+//     over two racks — each part carries its batch's units and the rack's count after that part;
+//   - several batches that do not add up (several racks drawn by several batches — which rack fed which batch is not
+//     recorded): the row whole, batch 0, said as "—".
+//
+// A row under no transaction, one that moved no unit (a rack an exact recount found right — batch-less, #211) and a move
+// (it writes no batch row — moveBatchExpr) find none.
+//
+// ONE pass over the product's batch rows in the warehouse, grouped per transaction, change type, side and batch, hash
+// joined to its rack rows — not a lookup per rack row: a lookup per row ran for every row of the product before the
+// page was cut (3 201 probes, ~90 ms on a 5 000-row product). Its two arguments: the warehouse, the product.
+const rackBatchJoin = `LEFT JOIN (
+	SELECT g.transaction_id, g.change_type, g.side, g.batch_id,
+	       g.change AS part_change,
+	       ROW_NUMBER() OVER upto AS part,
+	       COUNT(*) OVER side AS batches,
+	       SUM(g.change) OVER side AS total,
+	       (SUM(g.change) OVER side - SUM(g.change) OVER upto)::bigint AS later_change
+	FROM (
+		SELECT bl.transaction_id, bl.change_type, SIGN(bl.change_count) AS side, bl.batch_id,
+		       SUM(bl.change_count)::bigint AS change, MIN(bl.id) AS first_id
+		FROM batch_logs bl
+		JOIN batches bb ON bb.id = bl.batch_id
+		WHERE bl.warehouse_id = ? AND bb.product_id = ?
+		  AND bl.transaction_id <> 0 AND bl.change_count <> 0
+		GROUP BY bl.transaction_id, bl.change_type, SIGN(bl.change_count), bl.batch_id
+	) g
+	-- side: the transaction's batches on one side; upto: those up to this one, first drawn first (later = the rest).
+	WINDOW side AS (PARTITION BY g.transaction_id, g.change_type, g.side),
+	       upto AS (PARTITION BY g.transaction_id, g.change_type, g.side ORDER BY g.first_id)
+) bk ON bk.transaction_id = l.transaction_id
+	AND bk.change_type = l.change_type
+	AND bk.side = SIGN(l.stock_change)
+	AND l.transaction_id <> 0
+	AND l.stock_change <> 0
+	AND (bk.part = 1 OR (bk.total = l.stock_change AND bk.batches > 1))`
+
+// rackRowSplit is whether a rack row reads as one part per batch (rackBatchJoin's second case: its batches add up to it).
+const rackRowSplit = "(bk.total = l.stock_change AND bk.batches > 1)"
+
+// placementBatchSelect reads `product_placement_logs AS l` + rackBatchJoin as a product's history rows (#142): the rack,
+// its batch — or one part per batch — and the keys the page orders by. A part past the first is keyed by the rack row's
+// id with its part number above bit 48, as batchHistorySelect keys its parts. No price: a rack row carries none.
+var placementBatchSelect = `CASE WHEN COALESCE(bk.part, 1) = 1 THEN l.id ELSE ((bk.part - 1) << 48) | l.id END AS id,
+	l.product_id, l.warehouse_id, l.team_id, l.placement_id,
+	CASE WHEN bk.batches = 1 OR ` + rackRowSplit + ` THEN bk.batch_id ELSE 0 END AS batch_id,
+	l.change_type, l.transaction_id,
+	CASE WHEN ` + rackRowSplit + ` THEN bk.part_change ELSE l.stock_change END AS change,
+	CASE WHEN ` + rackRowSplit + ` THEN l.stock_after - bk.later_change ELSE l.stock_after END AS after,
+	l.description, l.actor_id, l.created_at,
+	0::double precision AS price_unit_before, 0::double precision AS price_unit_after, 0::double precision AS value_change,
+	0 AS src, l.id AS row_id, COALESCE(bk.part, 1)::bigint AS part`
+
+// priceCorrectionSelect reads `batch_logs AS l JOIN batches AS b` price corrections as a product's history rows (#143,
+// transaction.md given 4: *"each shown with its own kind: … price corrected"*): a correction writes a batch row and NO
+// rack row (revaluation-and-opname-are-transaction-types), so the rack rows alone never show it. Rack 0, its batch, the
+// batch's units left as the count after, and its price before and after (priceExprs). Keyed above bit 47 — a batch row's
+// id is not a rack row's, and the two share one page.
+var priceCorrectionSelect = `(1::bigint << 47) | l.id AS id,
+	b.product_id, l.warehouse_id, b.team_id, 0::bigint AS placement_id, l.batch_id,
+	l.change_type, l.transaction_id,
+	l.change_count AS change, l.stock_count_after AS after,
+	l.description, l.actor_id, l.created_at,
+	` + priceExprs("l") + `,
+	1 AS src, l.id AS row_id, 1::bigint AS part`
+
+// productHistoryOrder is a product's history newest first — by time, since its rows come from two logs whose ids do not
+// compare; within one instant a price correction above the rack rows, the rack rows by id, a row split over batches by
+// its parts, newest first too.
+const productHistoryOrder = "created_at DESC, src DESC, row_id DESC, part DESC"
+
+// moveBatchExpr is a MOVE's batch (#142), over the page's row `h`. A move writes no batch row and a rack never knows its
+// batches (product_placements never knows a batch), so which batch's units were carried is recorded nowhere. It is known
+// only when the warehouse had ever held ONE batch of the product up to the move — its owner's batches here minted at or
+// before it: then every unit on any of its racks was that batch's. Otherwise 0. One probe on batches_last_price_idx per
+// move on the page; every other row keeps the batch rackBatchJoin read.
+func moveBatchExpr(h string) string {
+	return `CASE WHEN ` + h + `.change_type = 'move' AND ` + h + `.batch_id = 0 THEN COALESCE((
+		SELECT CASE WHEN COUNT(*) = 1 THEN MIN(o.id) ELSE 0 END
+		FROM (
+			SELECT bm.id FROM batches bm
+			WHERE bm.warehouse_id = ` + h + `.warehouse_id
+			  AND bm.team_id = ` + h + `.team_id
+			  AND bm.product_id = ` + h + `.product_id
+			  AND bm.created_at <= ` + h + `.created_at
+			LIMIT 2
+		) o), 0)
+		ELSE ` + h + `.batch_id END`
+}
 
 // labelCountCorrections sets the KOREKSI JUMLAH TERIMA label on every history row a received-count correction wrote —
 // *Jumlah terima dikoreksi · from → to*, why, and the restock or transfer (a-wrong-stock-in-is-a-received-count-

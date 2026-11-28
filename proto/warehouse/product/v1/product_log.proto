@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package warehouse.product.v1;
+
+import "buf/validate/validate.proto";
+import "warehouse/common/v1/list.proto";
+import "warehouse/common/v1/page.proto";
+import "warehouse/role_base/v1/role.proto";
+
+option go_package = "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/product/v1;productv1";
+
+// THE PRODUCT'S HISTORY (backlog #149, #141 P2a) — the lines its page's Riwayat Produk card draws
+// (the-team-code-and-product-tags-prototype-is-accepted: "the old → new code line as its own Riwayat Produk card … who,
+// when"). Today one kind: the team code edit recomposed its code (a-team-code-change-recomposes-its-product-codes) —
+// ABC-SHOE-42 → XYZ-SHOE-42, by whom and when. The kind is there for later lines.
+
+enum ProductLogKind {
+  PRODUCT_LOG_KIND_UNSPECIFIED = 0;
+  // The product took a new code because its team's code changed — `old_code` → `new_code`.
+  PRODUCT_LOG_KIND_CODE_CHANGED = 1;
+}
+
+// One line of a product's history.
+message ProductLog {
+  uint64 id = 1;
+  uint64 product_id = 2;
+  ProductLogKind kind = 3;
+  // The code it carried before, and the code it took — whole, as stored (`<team_code>-<the team's part>`).
+  string old_code = 4;
+  string new_code = 5;
+  // The opaque user_service id of whoever changed the team code; resolved to a name at read time, never snapshotted.
+  uint64 actor_id = 6;
+  // THIS LINE'S ACTOR WAS AN OVERRIDE — Root or the Administrator changed the code of a team they hold no role in
+  // (an-override-is-stamped-in-every-service); the screen shows the shared "by Root team" badge beside the person.
+  bool is_override = 7;
+  int64 created_at_unix = 8;
+}
+
+// A product's history, newest first, paged (HARD RULE 9: it grows with every code change). Read by the team that OWNS the
+// product — its Owner, Admin and CS — and Root / the Administrator; never a warehouse (its product page draws no history)
+// and never another team (Discover draws none). A product that is not the team's — or does not exist — is NotFound.
+message ProductLogListRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The product, archived or not — the team's own.
+  uint64 product_id = 2 [(buf.validate.field).uint64.gt = 0];
+  warehouse.common.v1.CommonPagination page = 3 [(buf.validate.field).required = true];
+}
+
+message ProductLogListResponse {
+  repeated ProductLog logs = 1;
+  warehouse.common.v1.PageInfo page_info = 2;
+}
+
+// THE CODES THAT STILL FIND A PRODUCT (backlog #152, #141 P4) — a-team-code-change-recomposes-its-product-codes, its 🔄 *an
+// old sticker scanned before the reprint* (owner Q1 "A"): a product's FORMER codes still find it. For each known product:
+// the code it carries now and every code it carried before (the `old_code` of its `code_changed` history lines). The pick
+// pages' item scan reads them ONCE per page — the order's or the parcel's products — so a unit still wearing the old
+// sticker counts on a new order, and the new sticker counts on an order placed before the change (its line keeps the old
+// code: 🔄 *past lines keep their code*). Never a read per scan.
+//
+// Each side reads only its own, as ProductTagsByIds does: the scoped team's OWN products and, for a WAREHOUSE, the products
+// it has held — a batch there, ever, at 0 too (a-warehouses-products-is-what-it-holds; inventory knows it, asked
+// in-process). Any other id — another team's product, an unknown id — is ABSENT, never refused, so one id the caller may
+// not see never blanks the rest. A READ.
+message ProductCodesByIdsRequest {
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS,
+      ROLE_WAREHOUSE_OWNER,
+      ROLE_WAREHOUSE_ADMIN,
+      ROLE_WAREHOUSE_STAFF
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+  // The caller supplies the set, so the answer can never exceed it (ProductByIds' cap).
+  repeated uint64 product_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    items: {
+      uint64: {gt: 0}
+    }
+  }];
+}
+
+// One product's codes.
+message ProductCodes {
+  // The code it carries now, as stored (Product.product_code).
+  string product_code = 1;
+  // Every code it carried before, newest first, each once (compared case-insensitively) and never its code now — empty
+  // when its code never changed.
+  repeated string former_codes = 2;
+}
+
+message ProductCodesByIdsResponse {
+  // Keyed by product id: every id the caller may read; the rest absent.
+  map<uint64, ProductCodes> items = 1;
+}

@@ -16,7 +16,7 @@
 //                                                           team's active accounts, operational or not (activeAccountRefusal,
 //                                                           the server's words); an edit judges only a CHANGED one.
 //   the-shipping-expense-reaches-the-account-by-event       the cost is editable until accepted.
-//   the-on-site-charge-is-paid-by-b-at-accept               a charge above 0 needs its note.
+//   the-on-site-charge-is-paid-by-b-at-accept               a charge above 0, its note optional (the-couriers-charge-note-is-optional).
 //   the-system-fills-a-transfers-prices                     line totals and problem prices are worked out here.
 //   every-transfer-status-change-is-logged                  every status change appends a trail row.
 //   the-received-count-prototype-is-accepted                Koreksi Jumlah Terima: B's Owner or Admin (or Root, stamped)
@@ -460,7 +460,7 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
   warehouseTransferArrive(req) {
     const r = comingTo(req.teamId, req.transferId);
     if (r.status !== S.SHIPPED && r.status !== S.LOST) {
-      throw precondition("a box is signed for only while shipped or lost");
+      throw precondition("a box is set arrived only while shipped or lost");
     }
 
     r.arrivedByUserId = SELF_ID;
@@ -474,9 +474,6 @@ export const warehouseTransferService: Partial<ServiceImpl<typeof WarehouseTrans
     const r = comingTo(req.teamId, req.transferId);
     if (r.status !== S.SHIPPED && r.status !== S.ARRIVED) {
       throw precondition("a transfer is accepted only from shipped or arrived");
-    }
-    if (req.warehouseAdditionalCost > 0 && req.warehouseAdditionalCostNote.trim() === "") {
-      throw invalid("warehouse_additional_cost_note: required when the charge is above 0");
     }
 
     // EVERY line exactly once — accepting is the count.

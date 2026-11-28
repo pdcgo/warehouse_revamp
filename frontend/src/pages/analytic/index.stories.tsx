@@ -1,10 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { dayKey } from "../../../.storybook/fixtures";
 import { settlementWindowCalls } from "../../../.storybook/settlementAnalyticStub";
 import { closeShopForStory } from "../../../.storybook/shopStub";
+import { type HeldRpc, callsOf, holdRpc } from "../../../.storybook/holdRpc";
+import { orderAnalyticClient, shopClient } from "../../api/clients";
+import { GroupType as PbGroupType } from "../../gen/warehouse/analytic_base/v1/analytic_pb";
 import { METRICS, catalogueMetrics, metricById, tableGroups, TABLE_GROUPS } from "../../features/analytic/catalogue";
 import { AnalyticPage } from "./index";
 
@@ -638,5 +641,64 @@ export const SaysAsOfWhen: Story = {
     const canvas = await loaded(canvasElement);
 
     await expect(await canvas.findByTestId("analytic-as-of")).toHaveTextContent("14:04 WIB");
+  },
+};
+
+// THE HEADLINE IS ASKED WITH THE SEARCH (#134, the-speed-audits-old-findings-are-fixed-smallest-first) — a service's
+// SUMMARY needs no keys, so it goes out beside the search that ranks the rows, not after it; the rows' own figures still
+// wait for the search's keys.
+let searchHeld: HeldRpc | undefined;
+const metricDataGroups = () =>
+  callsOf(orderAnalyticClient.metricData).map(([req]) => (req as { groupBy: PbGroupType }).groupBy);
+
+export const TheHeadlineIsAskedWithTheSearch: Story = {
+  name: "Headline asked with the search",
+  render: () => <OrdersByShopAllRows />,
+  beforeEach: () => {
+    // The search answers late — the headline goes out meanwhile.
+    searchHeld = holdRpc(orderAnalyticClient, "metricSearch");
+    const spy = spyOn(orderAnalyticClient, "metricData");
+
+    return () => {
+      searchHeld?.restore();
+      spy.mockRestore();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(metricDataGroups()).toEqual([PbGroupType.SUMMARY]), { timeout: 5000 });
+
+    searchHeld?.release();
+    const canvas = await loaded(canvasElement);
+
+    await expect(metricDataGroups()).toEqual([PbGroupType.SUMMARY, PbGroupType.SHOP]);
+    await expect(canvas.getByTestId("analytic-headline-created_count")).toBeVisible();
+  },
+};
+
+// THE ROWS' NAMES ARE ASKED WITH THE SEARCH (#134) — a shop's name needs only the page's keys, which the search gives, so
+// ShopByIds goes out beside the figures for those keys, not after them; the rows then find their names already read, and
+// nothing asks them again.
+let figuresHeld: HeldRpc | undefined;
+
+export const TheRowNamesAreAskedWithTheSearch: Story = {
+  name: "Row names asked with the search",
+  render: () => <OrdersByShopAllRows />,
+  beforeEach: () => {
+    // The figures answer late — the rows' names go out meanwhile.
+    figuresHeld = holdRpc(orderAnalyticClient, "metricData");
+    const spy = spyOn(shopClient, "shopByIds");
+
+    return () => {
+      figuresHeld?.restore();
+      spy.mockRestore();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(callsOf(shopClient.shopByIds)).toHaveLength(1), { timeout: 5000 });
+
+    figuresHeld?.release();
+    await loaded(canvasElement);
+
+    await expect(callsOf(shopClient.shopByIds)).toHaveLength(1);
   },
 };

@@ -212,7 +212,7 @@ message WarehouseTransfer {
   uint64 finance_account_id = 13;
   // The courier's charge at B's door — B pays it, the team owes B. Entered at accept; 0 until then.
   double warehouse_additional_cost = 14;
-  // Required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for).
+  // What the charge was for — optional, "" = none (the-couriers-charge-note-is-optional).
   string warehouse_additional_cost_note = 15;
 
   // The two legs; 0 = not yet written.
@@ -598,8 +598,8 @@ message WarehouseTransferAcceptRequest {
   uint64 transfer_id = 2 [(buf.validate.field).uint64.gt = 0];
   // One entry per line, EVERY line exactly once — accepting IS the count.
   repeated WarehouseTransferCountedLine lines = 3 [(buf.validate.field).repeated.min_items = 1];
-  // The courier's charge at B's door, rupiah; 0 = none. Its note is required when it is above 0 — the handler
-  // checks.
+  // The courier's charge at B's door, rupiah; 0 = none. Its note is optional (the-couriers-charge-note-is-optional): a
+  // charge with no note is accepted.
   double warehouse_additional_cost = 4 [(buf.validate.field).double = {
     gte: 0
     finite: true

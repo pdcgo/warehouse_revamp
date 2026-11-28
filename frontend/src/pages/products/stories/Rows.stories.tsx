@@ -58,8 +58,8 @@ export const TheCostRangeReadsAsARange: Story = {
   name: "Cost range",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    // Product, Cross, then the cost (the-cross-price-rides-under-the-markup).
-    const costOf = (productCode: string) => within(canvas.getByTestId(`product-row-${productCode}`)).getAllByRole("cell")[2]!;
+    // Product, its Tags, Cross, then the cost (the-cross-price-rides-under-the-markup).
+    const costOf = (productCode: string) => within(canvas.getByTestId(`product-row-${productCode}`)).getAllByRole("cell")[3]!;
 
     // The cost is the cell's first line; the cross price is the line under it.
     const rangeOf = (productCode: string) => costOf(productCode).querySelector("p")!;
@@ -88,7 +88,7 @@ export const TheCrossPriceRidesUnderTheCost: Story = {
     await expect(canvas.getByTestId("cross-SL-03-ANG-001")).toHaveTextContent(/^12\.5%$/);
 
     // The cross price sits in the COST's cell, under the range.
-    const costCell = within(canvas.getByTestId("product-row-SL-03-ANG-001")).getAllByRole("cell")[2]!;
+    const costCell = within(canvas.getByTestId("product-row-SL-03-ANG-001")).getAllByRole("cell")[3]!;
     await waitFor(() =>
       expect(within(costCell).getByTestId("cross-price-SL-03-ANG-001")).toHaveTextContent(/^Rp 51\.412,5 – Rp 53\.100$/),
     );

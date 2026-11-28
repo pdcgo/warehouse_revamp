@@ -75,7 +75,7 @@ export const TheChargeNotedAtTibaIsShown: Story = {
     await expect(within(delivery).getByTestId("restock-detail-courier-charge")).toHaveTextContent("Rp 15.000");
     await expect(within(delivery).getByTestId("restock-detail-courier-charge-note")).toHaveTextContent("Biaya COD");
     await expect(within(delivery).getByTestId("restock-detail-courier-charge-owed")).toHaveTextContent(
-      "Noted by this warehouse when the box was signed for — final when it is accepted",
+      "Noted by this warehouse when the box was set arrived — final when it is accepted",
     );
     const slip = await within(delivery).findByTestId("restock-detail-courier-photo", {}, { timeout: 4000 });
     await userEvent.click(within(slip).getByTestId("restock-detail-courier-photo-open"));

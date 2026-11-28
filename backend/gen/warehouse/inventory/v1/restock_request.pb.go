@@ -4284,8 +4284,8 @@ type RestockRequestArriveRequest struct {
 	TeamId    uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
 	RequestId uint64 `protobuf:"varint,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	// THE COURIER'S CHARGE AT THE DOOR, NOTED AS THE BOX IS SIGNED FOR (the-courier-charge-is-noted-at-tiba-and-final-at-terima):
-	// optional, 0 = none — the same three fields as Terima's, under the same rules. Its note is REQUIRED when it is above 0
-	// (an-incidental-line-must-say-what-it-was-for) — the handler checks, as Accept's does. Kept on the restock in the
+	// optional, 0 = none — the same three fields as Terima's, under the same rules. Its note is optional
+	// (the-couriers-charge-note-is-optional), as Accept's is. Kept on the restock in the
 	// columns Terima writes, and shown; Terima opens with it and its figure is FINAL, replacing this one, never adding to it
 	// (the-courier-is-paid-once-per-restock). No money moves here: the selling team owes the warehouse only from Terima.
 	WarehouseAdditionalCost     float64 `protobuf:"fixed64,3,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
@@ -4414,9 +4414,8 @@ type RestockRequestAcceptRequest struct {
 	RequestId uint64 `protobuf:"varint,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	// One entry per line, EVERY line exactly once — accepting IS the count.
 	Lines []*RestockRequestReceivedLine `protobuf:"bytes,3,rep,name=lines,proto3" json:"lines,omitempty"`
-	// The courier's charge at the door; 0 = none (the-courier-is-paid-once-per-restock). Its note is REQUIRED when it
-	// is above 0 — the handler checks, since a rule across two fields cannot be written here
-	// (an-incidental-line-must-say-what-it-was-for).
+	// The courier's charge at the door; 0 = none (the-courier-is-paid-once-per-restock). Its note is optional
+	// (the-couriers-charge-note-is-optional): a charge with no note is accepted.
 	WarehouseAdditionalCost     float64 `protobuf:"fixed64,6,opt,name=warehouse_additional_cost,json=warehouseAdditionalCost,proto3" json:"warehouse_additional_cost,omitempty"`
 	WarehouseAdditionalCostNote string  `protobuf:"bytes,7,opt,name=warehouse_additional_cost_note,json=warehouseAdditionalCostNote,proto3" json:"warehouse_additional_cost_note,omitempty"`
 	// A PHOTO OF THE COURIER'S SLIP, optional (the-courier-slip-has-an-optional-photo): the document id of this warehouse's

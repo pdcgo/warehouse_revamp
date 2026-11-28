@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
@@ -25,7 +26,7 @@ import {
   tableGroups,
 } from "../../features/analytic/catalogue";
 import { useAnalyticPeople } from "../../features/analytic/people";
-import { EMPTY_REPORT, type ReportSort, answeredFields, loadReport } from "../../features/analytic/provider";
+import { EMPTY_REPORT, type ReportKey, type ReportSort, answeredFields, loadReport } from "../../features/analytic/provider";
 import {
   DEFAULT_RANGE,
   PAGE_SIZES,
@@ -46,7 +47,7 @@ import { PlainSelect } from "./components/PlainSelect";
 import { ReportGraphs } from "./components/ReportGraphs";
 import { ReportHeadline } from "./components/ReportHeadline";
 import { ReportTable } from "./components/ReportTable";
-import { fieldLabel, keyLabel, useKeyNames } from "./format";
+import { fieldLabel, keyLabel, useKeyNames, useKeyNamesAhead } from "./format";
 import { MAX_PERIOD_DAYS, spanDays } from "../../lib/period";
 import { formatUnixDateTimeShort } from "../../lib/datetime";
 
@@ -125,6 +126,12 @@ export function AnalyticPage() {
   // same table, so the previous rows stay on screen behind the overlay while the next ones load (HARD RULE 10).
   // ⚠ Not while the range is refused (`listQueryWhile(valid)`, backlog #130): over a year nothing is sent, and the last
   // window's headline, rows and as-of kept under it would read as that window's — the report is not loaded.
+  //
+  // THE ROWS' NAMES ARE ASKED THE MOMENT THE SEARCH ANSWERS (#134, the-speed-audits-old-findings-are-fixed-smallest-first):
+  // they need only the page's keys, which the search gives — not the figures for those keys, which come after it. Heard
+  // through `onKeys` and asked by useKeyNamesAhead beside the figures; they used to wait for the whole report (the speed
+  // audit's MetricSearch → MetricData → ShopByIds).
+  const [searched, setSearched] = useState<{ group: TableGroup; keys: ReportKey[] } | null>(null);
   const query = useQuery({
     ...listQueryWhile(valid),
     // The URL is the state: one string covers every input, and `from`/`to` move with the clock on a relative range.
@@ -134,8 +141,10 @@ export function AnalyticPage() {
       loadReport(
         { groupBy: state.groupBy, metricIds: state.metricIds, filters, sort: sort!, page: state.page, pageSize: state.pageSize },
         teamId!,
+        (keys) => setSearched({ group: state.groupBy, keys }),
       ),
   });
+  useKeyNamesAhead(searched?.group, searched?.keys ?? [], teamId);
   const report = query.data ?? EMPTY_REPORT;
   // THE ROWS' OWN GROUP (#43). While a new group loads, the last answer stays on screen behind the overlay (HARD RULE 10)
   // — its keys are the OLD group's: warehouse ids under a page that already says Monthly. They are named and drawn by

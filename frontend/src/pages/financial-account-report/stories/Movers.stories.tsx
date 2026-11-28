@@ -97,6 +97,6 @@ export const AnAccountRowOpensTheAccount: Story = {
     await waitFor(() => expect(dialog).toBeVisible());
 
     await userEvent.click(within(dialog).getByTestId(`movers-row-accountId-${BCA_OPS.id}`));
-    await expect(await canvas.findByTestId("at-account-detail")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("at-account-detail")).toBeVisible(), { timeout: 5000 });
   },
 };

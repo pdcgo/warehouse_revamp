@@ -304,6 +304,6 @@ export const ASellingTeam: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByTestId("batches-not-warehouse", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("batches-not-warehouse")).toBeVisible(), { timeout: 4000 });
   },
 };

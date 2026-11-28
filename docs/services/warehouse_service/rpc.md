@@ -46,6 +46,9 @@ The warehouse profile — both weekly grids, the location, the one-off closures 
 ([the-warehouse-profile-lives-in-warehouse-service](../../business/teams/warehouse/context_decision.md#the-warehouse-profile-lives-in-warehouse-service)). The order form asks, for the warehouse on screen,
 whether it receives orders NOW; a closed one is MARKED and the order is created as usual
 ([a-closed-day-warns-and-never-refuses](../../business/teams/warehouse/context_decision.md#a-closed-day-warns-and-never-refuses)).
+A warehouse whose receiving hours are NOT SET is not closed
+([a-warehouse-with-no-hours-is-not-closed](../../business/teams/warehouse/context_decision.md#a-warehouse-with-no-hours-is-not-closed)): the answer says
+so in `hours_set`, and only a closure warns for it.
 
 ```mermaid
 sequenceDiagram
@@ -54,14 +57,17 @@ sequenceDiagram
   participant DB as warehouse_infos, warehouse_closures
   UI->>W: WarehouseReceivingStatus — the warehouse ids on screen
   W->>DB: the receiving grids, and the closures whose last day is today or later
-  W->>W: now in Asia/Jakarta — in a closure? inside today's slot?
-  W-->>UI: per warehouse — receiving now, or the next opening and the closure's reason
-  UI->>UI: a warning under the picker, a Closed badge on the option — Save stays on
+  W->>W: now in Asia/Jakarta — hours set? in a closure? inside today's slot?
+  W-->>UI: per warehouse — hours_set, receiving now, or the next opening and the closure's reason
+  UI->>UI: closed = a closure, or hours set and not receiving — a warning under the picker, a Closed badge on the option — Save stays on
 ```
 
 | | |
 | --- | --- |
-| in a closure today | closed, its reason, and the first slot of the grid after every closure day |
+| hours not set | no `warehouse_infos` row, or a receiving grid that opens on no day: `hours_set` false, never receiving, no next opening — and **not closed**: no warning, no badge |
+| in a closure today | closed, its reason, and the first slot of the grid after every closure day — set hours or not (with none set there is no slot to name, so the warning names the reason alone) |
 | inside today's slot | receiving now — `open_time` inclusive, `close_time` exclusive |
 | otherwise | closed, and the next slot that falls on no closure day — within 60 days, else none |
 | refuses | nothing — no order is ever refused for the hours |
+| who sets the hours | the warehouse's Owner and Admin on its own Settings, and root and the administrator on Teams → Edit warehouse — the same editors, the same `WarehouseInfoUpdate` / `WarehouseClosureAdd` / `WarehouseClosureDelete` ([the-warehouse-sets-its-own-hours-in-settings](../../business/teams/warehouse/context_decision.md#the-warehouse-sets-its-own-hours-in-settings)) |
+| performance | unchanged by `hours_set` (#145): the same two reads — the grids by warehouse id, the closures by warehouse id and day — and the flag is worked out from the grid already read |

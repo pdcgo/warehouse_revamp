@@ -12,13 +12,19 @@ import (
 )
 
 // ProductSearchAmong is one search among a KNOWN set of products: those of `IDs` whose name or product code contains
-// `Q` (case-insensitive, anywhere), one window of them by name, and how many match in all. An EMPTY `Q` lists the whole
-// set — still only `IDs`, never the rest of the catalogue.
+// `Q` (case-insensitive, anywhere) — or which carried `Q` whole as a FORMER code (productTermClause, backlog #152) — one
+// window of them by name, and how many match in all. An EMPTY `Q` lists the whole
+// set — still only `IDs`, never the rest of the catalogue. `TagIDs` keeps those carrying ANY of the product tags (the
+// warehouse's Products list's Tag filter, the-team-code-and-product-tags-prototype-is-accepted); `WithTags` fills each
+// row's tags — the warehouse's list asks for them (products-have-their-own-tag-list, its 🔄 *who sees*: every warehouse
+// holding the product), the picker does not.
 type ProductSearchAmong struct {
-	IDs    []uint64
-	Q      string
-	Offset int
-	Limit  int
+	IDs      []uint64
+	Q        string
+	TagIDs   []uint64
+	WithTags bool
+	Offset   int
+	Limit    int
 }
 
 // SearchAmong answers a warehouse's product picker (a-warehouse-picks-only-what-it-has-held) and its Stock screen
@@ -56,12 +62,14 @@ func (s *Service) SearchAmong(
 		Model(&product_service_models.Product{}).
 		Where("id = ANY(CAST(? AS bigint[]))", idArray(search.IDs))
 
-	// No term: the whole set, listed. A term: those of it whose name or code holds it.
+	// No term: the whole set, listed. A term: those of it whose name or code holds it, or which carried it as a former code
+	// (productTermClause, backlog #152).
 	if q != "" {
-		pattern := "%" + escapeLike(q) + "%"
-
-		query = query.Where("name ILIKE ? OR product_code ILIKE ?", pattern, pattern)
+		query = productTermClause(query, q)
 	}
+
+	// The Tag filter, inside the same statement as the window and its count — the total counts the narrowed set.
+	query = tagFilterClause(query, search.TagIDs)
 
 	var found []searchAmongRow
 
@@ -95,6 +103,15 @@ func (s *Service) SearchAmong(
 	rows := make([]*productv1.ProductRowItem, 0, len(found))
 	for i := range found {
 		rows = append(rows, productRowItem(&found[i].Product))
+	}
+
+	if search.WithTags {
+		// Every row here is a product the asking warehouse holds (the ids are inventory's), so its tags are the warehouse's
+		// to read.
+		err = withRowTags(s.db.WithContext(ctx), rows)
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return rows, total, nil

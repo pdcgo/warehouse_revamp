@@ -12,8 +12,6 @@ import {
 } from "../../gen/warehouse/inventory/v1/found_request_pb";
 import type { PublicUser } from "../../gen/warehouse/user/v1/user_pb";
 import { canWrite, useTeam } from "../../features/team/TeamContext";
-import { useTeamsByIds } from "../../features/teams/queries";
-import { useProductsByIds } from "../../features/products/queries";
 import {
   useApproveFoundRequest,
   useFoundRequests,
@@ -86,10 +84,10 @@ export function FoundRequestsPage() {
 
   const list = useFoundRequests({ teamId: reader ? teamId : undefined, status, page, pageSize });
   const requests = list.data?.requests ?? [];
-  const teams = useTeamsByIds({ ids: requests.map((r) => r.teamId) });
-  // The pictures — one read for the page's products, any team's (a warehouse holds several sellers' goods). Best-effort:
-  // a product it cannot name keeps the report's snapshot and the package placeholder.
-  const products = useProductsByIds({ teamId, productIds: requests.map((r) => r.productId) });
+  // Each row's owner and picture come with the rows (useFoundRequests, #134), read beside their people. Best-effort: a
+  // product it cannot name keeps the report's snapshot and the package placeholder.
+  const teams = list.data?.teams;
+  const products = list.data?.products;
   const approve = useApproveFoundRequest();
   const reject = useRejectFoundRequest();
 
@@ -215,8 +213,8 @@ export function FoundRequestsPage() {
                   // ONE REQUEST A ROW, its Rincian behind a click (the-found-list-is-a-table).
                   <FoundRequestTable
                     requests={requests}
-                    products={products.data}
-                    teams={teams.data}
+                    products={products}
+                    teams={teams}
                     nameOf={nameOf}
                     showDecided={tab !== "waiting"}
                     canApprove={writable && decider}
@@ -248,8 +246,8 @@ export function FoundRequestsPage() {
 
       <FoundRequestDetail
         request={opened}
-        product={opened ? products.data?.get(opened.productId.toString()) : undefined}
-        team={opened ? teams.data?.[opened.teamId.toString()] : undefined}
+        product={opened ? products?.get(opened.productId.toString()) : undefined}
+        team={opened ? teams?.[opened.teamId.toString()] : undefined}
         nameOf={nameOf}
         onClose={() => setOpenedId(null)}
         canApprove={writable && decider}

@@ -68,13 +68,19 @@ test.describe("selling:all wants to see how the margin adds up — open margin b
     expect(ground.totalCost).toBeGreaterThan(0);
 
     // The sale (Estimate) is posted by the order's listener — wait for both accounts to open on it before adding rows.
+    // Until the listener has run the read answers 404 "this order has no settlement account": catch it and keep
+    // polling (expect.poll does not retry a callback that throws — the affected run of 26 Nov died on it in beforeAll).
     for (const orderId of [ground.arrived, ground.pending]) {
       await expect
         .poll(
-          async () =>
-            Number(
-              (await api(page, "settlement.v1.SettlementService/OrderSettlementDetail", { teamId: g.team, orderId })).settlement?.initialTotal ?? 0,
-            ),
+          async () => {
+            try {
+              const res = await api(page, "settlement.v1.SettlementService/OrderSettlementDetail", { teamId: g.team, orderId });
+              return Number(res.settlement?.initialTotal ?? 0);
+            } catch {
+              return -1;
+            }
+          },
           { timeout: 30_000 },
         )
         .toBe(SALE);

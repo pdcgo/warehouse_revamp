@@ -391,13 +391,41 @@ function clientOf(def: MetricDef): MetricClient {
 
 /**
  * The report for a team. `teamId` is the caller's SCOPE — what every served RPC is authorised in, and what decides
- * whose orders it reads (a-warehouse-reads-the-orders-it-ships).
+ * whose orders it reads (a-warehouse-reads-the-orders-it-ships). `onKeys` hears the page's keys the moment step 1 has
+ * them, before step 2 fills them — what the screen names its rows by needs nothing else (#134).
  */
-export async function loadReport(req: ReportRequest, teamId: bigint): Promise<ReportResult> {
+export async function loadReport(
+  req: ReportRequest,
+  teamId: bigint,
+  onKeys?: (keys: ReportKey[]) => void,
+): Promise<ReportResult> {
   const defs = req.metricIds.map(metricById).filter((d): d is MetricDef => d !== undefined);
   if (defs.length === 0) return EMPTY_REPORT;
 
   const offset = (req.page - 1) * req.pageSize;
+
+  const byService = new Map<string, MetricDef[]>();
+  for (const def of defs.filter((d) => d.schema)) byService.set(def.service, [...(byService.get(def.service) ?? []), def]);
+  const served = [...byService.values()];
+  const filters = wireFilters(req.filters);
+
+  // THE HEADLINES NEED NO KEYS (#134, the-speed-audits-old-findings-are-fixed-smallest-first) — each service's SUMMARY is
+  // asked at once, beside step 1's search, instead of after it. Awaited with step 2 below, so a failed headline still
+  // fails the report; handled here, so it is never an unhandled rejection while the search is out.
+  const headlines = Promise.all(
+    served.map((defsOf) => {
+      const rowsGroup = HEADLINE_OF_ROWS.has(defsOf[0]!.service) ? { rowsGroup: PB_GROUP[req.groupBy] } : {};
+
+      return clientOf(defsOf[0]!).metricData({
+        teamId,
+        groupBy: PbGroupType.SUMMARY,
+        filters,
+        metricIds: defsOf.map((d) => d.metricId),
+        ...rowsGroup,
+      });
+    }),
+  );
+  headlines.catch(() => undefined);
 
   // STEP 1 — one search, in the service that owns the sorted field. A time group sorted by its period asks no one.
   let keys: ReportKey[];
@@ -436,6 +464,8 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
     hasNext = false;
   }
 
+  onKeys?.(keys);
+
   // STEP 2 — every service fills the same keys, under the same filters. A sample answers here; a served service
   // answers every one of its metrics in one call per question (one-call-answers-every-asked-metric).
   const cells: ReportResult["cells"] = {};
@@ -447,34 +477,37 @@ export async function loadReport(req: ReportRequest, teamId: bigint): Promise<Re
   }
 
   const asOfs: bigint[] = [];
-  const byService = new Map<string, MetricDef[]>();
-  for (const def of defs.filter((d) => d.schema)) byService.set(def.service, [...(byService.get(def.service) ?? []), def]);
 
-  await Promise.all(
-    [...byService.values()].map(async (served) => {
-      const client = clientOf(served[0]!);
-      const metricIds = served.map((d) => d.metricId);
-      const filters = wireFilters(req.filters);
-
-      const rowsGroup = HEADLINE_OF_ROWS.has(served[0]!.service) ? { rowsGroup: PB_GROUP[req.groupBy] } : {};
-
-      const [headline, filled] = await Promise.all([
-        client.metricData({ teamId, groupBy: PbGroupType.SUMMARY, filters, metricIds, ...rowsGroup }),
+  const [heads, fills] = await Promise.all([
+    headlines,
+    Promise.all(
+      served.map((defsOf) =>
         keys.length > 0
-          ? client.metricData({ teamId, groupBy: PB_GROUP[req.groupBy], filters, keys: wireKeys(req.groupBy, keys), metricIds })
+          ? clientOf(defsOf[0]!).metricData({
+              teamId,
+              groupBy: PB_GROUP[req.groupBy],
+              filters,
+              keys: wireKeys(req.groupBy, keys),
+              metricIds: defsOf.map((d) => d.metricId),
+            })
           : undefined,
-      ]);
+      ),
+    ),
+  ]);
 
-      if (headline.asOfUnix > 0n) asOfs.push(headline.asOfUnix);
+  served.forEach((defsOf, s) => {
+    const headline = heads[s]!;
+    const filled = fills[s];
 
-      served.forEach((def, i) => {
-        summary[def.metricId] = answerOf(def.schema!, headline.metricDatas[i]!).summary ?? {};
+    if (headline.asOfUnix > 0n) asOfs.push(headline.asOfUnix);
 
-        const items = filled ? (answerOf(def.schema!, filled.metricDatas[i]!).items ?? {}) : {};
-        cells[def.metricId] = Object.fromEntries(keys.map((key) => [key, items[key] ?? {}]));
-      });
-    }),
-  );
+    defsOf.forEach((def, i) => {
+      summary[def.metricId] = answerOf(def.schema!, headline.metricDatas[i]!).summary ?? {};
+
+      const items = filled ? (answerOf(def.schema!, filled.metricDatas[i]!).items ?? {}) : {};
+      cells[def.metricId] = Object.fromEntries(keys.map((key) => [key, items[key] ?? {}]));
+    });
+  });
 
   const asOfUnix = asOfs.length > 0 ? asOfs.reduce((a, b) => (b < a ? b : a)) : undefined;
 

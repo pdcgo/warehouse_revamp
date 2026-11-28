@@ -57,7 +57,7 @@ export const MonitoringKeepsPrint: Story = {
 
 // Signing for the box confirms, and the row moves to arrived — leaving Accept.
 export const SignForBoxFromTheRow: Story = {
-  name: "Sign for box",
+  name: "Set arrived",
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 

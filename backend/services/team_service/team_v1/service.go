@@ -23,12 +23,16 @@ type Service struct {
 	// userClient grants the team owner at create time. It is a real RPC even though both
 	// services currently share a binary: the boundary is the point.
 	userClient userv1connect.UserServiceClient
+
+	// recomposer is how a team code change reaches the team's products, in the change's own transaction
+	// (product_code_recomposer.go) — product_service, joined at the composition root. nil refuses every TeamCodeUpdate.
+	recomposer ProductCodeRecomposer
 }
 
 var _ teamv1connect.TeamServiceHandler = (*Service)(nil)
 
-func NewService(db *gorm.DB, userClient userv1connect.UserServiceClient) *Service {
-	return &Service{db: db, userClient: userClient}
+func NewService(db *gorm.DB, userClient userv1connect.UserServiceClient, recomposer ProductCodeRecomposer) *Service {
+	return &Service{db: db, userClient: userClient, recomposer: recomposer}
 }
 
 // rootTeamID mirrors san_auth.RootTeamID. Deleting it would strand every super-admin bypass in

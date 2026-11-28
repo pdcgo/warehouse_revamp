@@ -42,16 +42,13 @@ func (s *Service) CustomShipmentReceive(
 	actor := actorFrom(ctx)
 	override := overrideFrom(ctx)
 
-	charge, note, err := doorCharge(msg.GetDoorCharge(), msg.GetDoorChargeNote())
-	if err != nil {
-		return nil, inboundErr(err)
-	}
+	charge, note := doorCharge(msg.GetDoorCharge(), msg.GetDoorChargeNote())
 
 	// Which restock the parcel settles — read before the locks (a parcel's restock never changes), so the restock row is
 	// locked FIRST.
 	var head models.CustomShipment
 
-	err = s.db.WithContext(ctx).
+	err := s.db.WithContext(ctx).
 		Select("id, restock_id, kind").
 		Where("id = ? AND warehouse_id = ?", msg.GetId(), warehouseID).
 		First(&head).

@@ -14,6 +14,8 @@ import { MovementTable, type MovementRow } from "./MovementTable";
 //   | WithContextColumns   | context columns sit between What and Change, in the given order  |
 //   | TheAfterLabelIsTheCallers | the balance column says WHICH number it is                  |
 //   | Empty                | the page's own sentence under the header                         |
+//   | EachKindByItsOwnWord | a cancel, a broken and a found unit each by its own word (#143)  |
+//   | TheProductPagesKeepTheirWords | the product pages say Return / Adjustment for them, as before |
 
 const row = (id: bigint, createdAt: string, kind: MovementKind, delta: bigint, balance: bigint, extra: Partial<MovementRow> = {}): MovementRow => ({
   id,
@@ -94,5 +96,36 @@ export const Empty: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId("ledger-empty")).toHaveTextContent("Nothing has moved here yet.");
+  },
+};
+
+// The kinds #143 split out (docs/acceptances/inventory/transaction.md givens 2–3): an order's take put back, a broken
+// unit, a found unit — they read Returned and Counted before.
+const splitOut: MovementRow[] = [
+  row(13n, "2026-10-03T09:00:00+07:00", MovementKind.CANCEL, 3n, 10n),
+  row(12n, "2026-10-02T09:00:00+07:00", MovementKind.BROKEN, -1n, 7n),
+  row(11n, "2026-10-01T09:00:00+07:00", MovementKind.FOUND, 1n, 8n),
+];
+
+/** On the warehouse's screens each says what happened at the shelf by its own word: Cancelled, Broken, Found. */
+export const EachKindByItsOwnWord: Story = {
+  args: { movements: splitOut },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId("ledger-row-13")).toHaveTextContent("Cancelled");
+    await expect(canvas.getByTestId("ledger-row-12")).toHaveTextContent("Broken");
+    await expect(canvas.getByTestId("ledger-row-11")).toHaveTextContent("Found");
+    await expect(canvas.getByTestId("ledger-table")).not.toHaveTextContent(/Returned|Counted/);
+  },
+};
+
+/** The product pages keep the words they had for them (the-product-history-names-the-transaction): Return, Adjustment. */
+export const TheProductPagesKeepTheirWords: Story = {
+  args: { movements: splitOut, wording: "transaction" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId("ledger-row-13")).toHaveTextContent("Return");
+    await expect(canvas.getByTestId("ledger-row-12")).toHaveTextContent("Adjustment");
+    await expect(canvas.getByTestId("ledger-row-11")).toHaveTextContent("Adjustment");
   },
 };

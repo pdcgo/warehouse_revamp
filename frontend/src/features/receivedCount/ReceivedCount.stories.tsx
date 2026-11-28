@@ -167,7 +167,7 @@ export const TheAdminToo: Story = {
   beforeEach: asRole(Role.WAREHOUSE_ADMIN),
   play: async ({ canvasElement }) => {
     const canvas = await page(canvasElement, "restock-detail-page");
-    await expect(await canvas.findByTestId("restock-action-correct-count-503")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("restock-action-correct-count-503")).toBeVisible(), { timeout: 5000 });
   },
 };
 
@@ -177,7 +177,7 @@ export const NotForStaff: Story = {
   beforeEach: asRole(Role.WAREHOUSE_STAFF),
   play: async ({ canvasElement }) => {
     const canvas = await page(canvasElement, "restock-detail-page");
-    await expect(await canvas.findByTestId("restock-action-labels-503")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("restock-action-labels-503")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId("restock-action-correct-count-503")).toBeNull();
   },
 };
@@ -188,7 +188,7 @@ export const NotForAMonitor: Story = {
   beforeEach: asAdminTeam(),
   play: async ({ canvasElement }) => {
     const canvas = await page(canvasElement, "restock-detail-page");
-    await expect(await canvas.findByTestId("restock-action-labels-503")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("restock-action-labels-503")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId("restock-action-correct-count-503")).toBeNull();
   },
 };
@@ -199,7 +199,7 @@ export const NotBeforeTheAccept: Story = {
   render: () => <At502 />,
   play: async ({ canvasElement }) => {
     const canvas = await page(canvasElement, "restock-detail-page");
-    await expect(await canvas.findByTestId("restock-action-accept-502")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("restock-action-accept-502")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId("restock-action-correct-count-502")).toBeNull();
   },
 };

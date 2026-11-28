@@ -5,6 +5,7 @@ import { PackageCheck, ScanLine } from "lucide-react";
 
 import type { OrderItem } from "../../gen/warehouse/selling/v1/order_pb";
 import { ScanInput } from "./ScanInput";
+import type { ScanCodes } from "./scanCodes";
 import { NotImplemented } from "../pending/NotImplemented";
 import { beep } from "../../lib/beep";
 // The barcode mark stays in the order pick page's pending list: that page's summary strip counts it too.
@@ -20,15 +21,26 @@ import { PICK_ORDER_PENDING } from "./pending";
 //
 // ⚠ PRODUCTS HAVE NO BARCODE (`barcode`, parked by the owner): an item is matched by its product code.
 //
+// A PRODUCT'S FORMER CODES STILL FIND IT (backlog #152 — a-team-code-change-recomposes-its-product-codes, its 🔄 *an old
+// sticker scanned before the reprint*, owner Q1 "A"): a scan (trimmed, case-insensitive, whole) matches a line by the
+// line's own code — kept as it was written (🔄 *past lines keep their code*) — the line product's code NOW, or any code
+// that product carried before (`codes`, read once by the page). So an order placed before the team's code changed takes
+// the new sticker, and one placed after takes a unit still wearing the old one; a code of another product stays unknown.
+// A code two lines' products both answer fills the first of them still short, then the next — the rule for one product on
+// two lines.
+//
 // SHARED BY BOTH PICK PAGES — the order's (pages/pick-order) and the custom shipment's (pages/custom-shipment-pick,
 // which reuses it as it is) — so it lives in features/picking, not under one page (CLAUDE.md: a component two pages use).
 export function ItemScan({
   items,
+  codes,
   setting,
   onSetPicked,
 }: {
   /** The order's lines — the detail read carries them. */
   items: OrderItem[];
+  /** Each line product's code now and former codes, by product id (readScanCodes) — absent: the line's own code alone. */
+  codes?: ScanCodes;
   /** Set Picked is on its way. */
   setting: boolean;
   onSetPicked: () => void;
@@ -42,10 +54,22 @@ export function ItemScan({
     [items, counts],
   );
 
+  // Every code each line takes, folded once: its own, then its product's code now and former codes.
+  const accepted = useMemo(
+    () =>
+      new Map(
+        items.map((item) => [
+          String(item.id),
+          [...new Set([item.productCode, ...(codes?.get(item.productId) ?? [])].map((code) => code.toLowerCase()))],
+        ]),
+      ),
+    [items, codes],
+  );
+
   function scan(code: string) {
-    const wanted = code.toLowerCase();
-    // A product listed on two lines fills the first one still short, then the next.
-    const lines = items.filter((line) => line.productCode.toLowerCase() === wanted);
+    const wanted = code.trim().toLowerCase();
+    // A product listed on two lines — or a code two lines' products answer — fills the first one still short, then the next.
+    const lines = items.filter((line) => accepted.get(String(line.id))?.includes(wanted));
 
     if (lines.length === 0) {
       beep("wrong");
@@ -108,6 +132,7 @@ export function ItemScan({
                   bg={exact ? "success.subtle" : "bg.subtle"}
                   data-testid={`pick-scan-line-${item.id}`}
                   data-code={item.productCode}
+                  data-scan-codes={accepted.get(String(item.id))?.join(" ")}
                   data-quantity={item.quantity}
                   data-exact={exact ? "true" : undefined}
                 >

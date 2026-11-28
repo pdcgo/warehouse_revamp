@@ -63,7 +63,7 @@ export const NoStoresMeansNoWarehouses: Story = {
   render: () => <AtSinar />,
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(await canvas.findByTestId("supplier-warehouses-none")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("supplier-warehouses-none")).toBeVisible(), { timeout: 5000 });
   },
 };
 

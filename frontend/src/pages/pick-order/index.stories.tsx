@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { reportScenario } from "../../../.storybook/foundRequestStub";
 import { asTeam, marker, routedPage } from "../../../.storybook/pageStory";
@@ -11,6 +11,8 @@ import {
   withOrdersInReturn,
 } from "../../../.storybook/sessionScenario";
 import { orderDetailFor, orders, teams } from "../../../.storybook/fixtures";
+import { type HeldRpc, callsOf, holdRpc } from "../../../.storybook/holdRpc";
+import { orderClient, shipmentChannelClient } from "../../api/clients";
 import { toaster } from "../../components/feedback/Toaster";
 import { OrderStatus } from "../../gen/warehouse/selling/v1/order_pb";
 import { PickOrderPage } from "./index";
@@ -44,6 +46,7 @@ import { PickOrderPage } from "./index";
 //   | AMonitorReadsThePickPageOnly    | a monitoring team reads the racks; no scan, no step          |
 //   | ALostOrdersParcelIsReportedFound | a LOST order's parcel back here: Report Found names the order |
 //   | NoReportFoundWhileShipping      | an order still on its way offers no Report Found             |
+//   | TheCourierIsAskedWithTheOrder   | the courier's name is read beside the order, never after it  |
 
 const WAREHOUSE = teams[0]!; // Gudang Pusat (11)
 const SELLER = teams[1]!; // Toko Melati (12)
@@ -468,5 +471,38 @@ export const NoReportFoundWhileShipping: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("pick-list-table")).toBeInTheDocument(), { timeout: 4000 });
     await expect(canvas.queryByTestId("pick-order-report-found")).toBeNull();
+  },
+};
+
+// THE COURIER IS ASKED WITH THE ORDER (#134, the-speed-audits-old-findings-are-fixed-smallest-first) — the courier
+// catalogue needs nothing from the order, but its badge mounts only once the order and its shelves are drawn, so its read
+// waited for both. The page asks it beside the order; the badge finds it answered and asks nothing again.
+let orderHeld: HeldRpc | undefined;
+
+export const TheCourierIsAskedWithTheOrder: Story = {
+  name: "Courier asked with the order",
+  beforeEach: () => {
+    asTeam(WAREHOUSE.id)();
+    // The order answers late — the courier catalogue goes out meanwhile.
+    orderHeld = holdRpc(orderClient, "orderDetail");
+    const spy = spyOn(shipmentChannelClient, "shipmentChannelList");
+
+    return () => {
+      orderHeld?.restore();
+      spy.mockRestore();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(callsOf(shipmentChannelClient.shipmentChannelList)).toHaveLength(1), { timeout: 5000 });
+    await expect(canvas.queryByTestId("pick-list-table")).toBeNull();
+
+    orderHeld?.release();
+    await waitFor(() => expect(canvas.getByTestId("pick-list-table")).toBeInTheDocument(), { timeout: 5000 });
+
+    // The badge draws its courier at once — no placeholder while a read of its own goes out — and asks nothing again.
+    await expect(canvas.queryByTestId("order-courier-loading")).toBeNull();
+    await expect(callsOf(shipmentChannelClient.shipmentChannelList)).toHaveLength(1);
   },
 };

@@ -108,6 +108,7 @@ when it applies one of these.
 | [no-global-store-every-read-is-a-query-hook](#no-global-store-every-read-is-a-query-hook) | no Redux or Zustand — server data in TanStack, sign-in and team in two contexts, filters in the address; every read a query hook, a many-field form one reducer | owner, as recommended, 2026-11-21 |
 | [every-page-is-on-one-canvas](#every-page-is-on-one-canvas) | no page has a background of its own — both shells leave the content area unpainted; the batch page's grey canvas, chosen by route, is gone | the batch page, 2026-11-27 |
 | [a-small-picture-opens-its-preview](#a-small-picture-opens-its-preview) | from now on a small picture — a product's cover, a team's avatar — opens big on a click, in `ImagePreview`; initials and the placeholder open nothing | a batch's product card, 2026-11-27 |
+| [an-arrival-is-set-arrived](#an-arrival-is-set-arrived) | a delivery's arrival is *Set Arrived* on every screen, never *Sign for Box*; the transfer's Indonesian *Terima Paket* becomes *Tandai Tiba* | owner, as recommended, 2026-11-27 |
 
 ## a-list-summary-is-the-order-lists-card-strip
 
@@ -2498,3 +2499,21 @@ What it replaces: the route-chosen page canvas of the shell, and the *page canva
 | pinned by | `Components/Feedback/ImagePreview` *Opens and shuts* · `Components/Entity/TeamItem` *Its picture opens* · BatchDetail `Product card` (the cover opens; Toko Melati's initials are no button) |
 
 What it replaces: small pictures that could not be opened, outside the order form.
+
+---
+
+## an-arrival-is-set-arrived
+
+> Owner (Heri), in `default`'s desktop chat (2026-11-27): *"in delivery accept, sign for box is ambigue, change set arrived"*.
+
+**The verdict.** A delivery's arrival — a restock's, a warehouse transfer's, a reshipping's — is called **Set Arrived** on every screen, never *Sign for Box* / *sign for*: the row and detail button, the dialog's title (*Set Arrived — Restock #503*), the toasts, the timeline step, the *waiting for the warehouse* line, the inbound list's subtitle, the lost messages (*if it turns up, the warehouse sets it arrived*), the courier-charge lines (*noted when the box was set arrived*), the accept page's summary.
+
+| | |
+| --- | --- |
+| English | *Sign for Box* → **Set Arrived**, and every *sign for* about an arrival with it (restock, `warehouseTransfer`, `restockResolution.inbound` keys) |
+| ⚠ my spec — Indonesian | already *Tandai Tiba* for a restock and a reshipping; the transfer's **Terima Paket** — *Terima* is also the accept — becomes **Tandai Tiba** too, and *Diterima di pintu* / *Paket diterima* / *Diterima di gudang penerima* say *ditandai tiba* |
+| unchanged | the status itself (*Arrived* / *Tiba*), the acceptance's when `mark arrived restock`, the RPC names |
+
+⛔ Not built — backlog #146.
+
+✅ Built 2026-11-27 (#146) — every *sign for* about an arrival says **Set Arrived** / *Tandai Tiba*: 20 English and 8 Indonesian VALUES in `frontend/src/i18n/locales/{en,id}.json` (no key, no test id renamed) — the restock's button, dialog title (*Set Arrived — Restock #503*), failure toast, timeline step and waiting line, the inbound subtitle, the lost message, the two courier-charge lines (*noted when the box was set arrived*), the accept summary (*Set arrived* / *Ditandai tiba*); the reshipping's dialog and resi line; the transfer's button and dialog (*Terima Paket* → *Tandai Tiba*), its lost messages, timeline step and both toasts (*Paket diterima* / *Diterima di gudang penerima* → *ditandai tiba*). The restock trail's stored step text for new rows is *set arrived* (`restockLogArrived`, was *signed for the box* — older rows keep theirs) and the arrival refusals say *set arrived*. Unchanged, not an arrival: the reshipping's count-in toast *Paket diterima* (an accept). Pinned by `SetArrivedNotesTheChargeWithNoNote`, `SetArrivedIsTheArrivalsName`, `TandaiTibaInIndonesian`, `SignForBoxMovesItToArrived`, `SetArrivedWithAChargeAndNoNote`.

@@ -33,6 +33,8 @@ import { PRESSABLE } from "../../../lib/motion";
 import { ProductLockControl } from "../../../features/products/ProductLock";
 import { QUIET_SALE_DAYS, STALE_STOCK_DAYS, daysAgo } from "../../../features/products/stockAge";
 import { useCanWrite } from "../../../features/team/TeamContext";
+import { tagsOfProduct } from "../../../features/products/tags/productTags";
+import { RestockTagChips } from "../../../features/restock/RestockTagChips";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -74,6 +76,8 @@ interface ProductsTableProps {
    * at zero the list is exactly as it was before the figure. The phone block's fact does not ask: it always shows.
    */
   inTransitColumn?: boolean;
+  /** The Tag filter's picks — products carrying ANY of them, narrowed on the server (`tag_ids`); empty = any tag or none. */
+  tagIds?: bigint[];
 }
 
 // ── The stock cells ──────────────────────────────────────────────────────────────────────────────
@@ -413,6 +417,7 @@ export function ProductsTable({
   onClearFilters,
   onCreate,
   inTransitColumn = false,
+  tagIds = [],
 }: ProductsTableProps) {
   const navigate = useNavigate();
   // The list as it stands — handed to the form, so its Back returns here with the filters kept (the-form-returns-where-it-was-opened).
@@ -427,7 +432,15 @@ export function ProductsTable({
 
   // A search, a lens or a sort is a new question, so it starts again at page one — the page is held WITH the question
   // it belongs to, and a different question reads page one without an effect to reset it.
-  const question = [mode, q, warehouseId.toString(), sort ? `${sort.by}:${sort.dir}` : "", lock ?? "", minStockAgeDays].join("|");
+  const question = [
+    mode,
+    q,
+    warehouseId.toString(),
+    sort ? `${sort.by}:${sort.dir}` : "",
+    lock ?? "",
+    minStockAgeDays,
+    tagIds.map(String).join(","),
+  ].join("|");
   const [paging, setPaging] = useState({ question, page: 1 });
   const page = paging.question === question ? paging.page : 1;
   const setPage = (next: number) => setPaging({ question, page: next });
@@ -447,12 +460,15 @@ export function ProductsTable({
     sort,
     lock,
     minStockAgeDays,
+    tagIds,
   });
   const archiveProduct = useArchiveProduct();
   const restoreProduct = useUnarchiveProduct();
   const deleteProduct = useDeleteProduct();
   const setLock = useSetProductLock();
 
+  // THE TAGS ride on the rows (`ProductRowItem.tags`, the owning team's list — products-have-their-own-tag-list), and the
+  // Tag filter narrows on the server inside the list's one count and page, so the pager counts the narrowed list.
   const products = query.data?.products ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   const error = query.isError ? rpcError(query.error) : "";
@@ -713,6 +729,9 @@ export function ProductsTable({
             >
               {productItem(product)}
 
+              {/* A LINE OF CHIPS under the product, as each phone block of the order lists — nothing when it has none. */}
+              <RestockTagChips tags={tagsOfProduct(product)} wrap testId={`product-row-tags-${product.productCode}`} />
+
               <SimpleGrid columns={2} columnGap="3" rowGap="2">
                 <Fact label={scoped(t("products.table.ready"))} wide>
                   <ReadyCell
@@ -786,6 +805,9 @@ export function ProductsTable({
               ) : (
                 <Table.ColumnHeader>{t("products.table.product")}</Table.ColumnHeader>
               )}
+              {/* THE TAG COLUMN right after the product (the-team-code-and-product-tags-prototype-is-accepted) — two chips
+                  and +N, two lines at most (one-context-per-column-and-never-three-lines), as the order lists' Tag column. */}
+              <Table.ColumnHeader data-testid="products-tag-header">{t("products.tags.column")}</Table.ColumnHeader>
               {/* CROSS FIRST, THEN THE COST (owner: *"cross taruh di sebelum hpp, lalu harga cross taruh bawahnya"*,
                   the-cross-price-rides-under-the-markup, then *"harga crossnya di bawah hpp"*, the-cross-price-rides-under-the-cost):
                   the markup, then what the units cost us — a low-to-high range across the warehouses — and under that what
@@ -831,6 +853,9 @@ export function ProductsTable({
                 onClick={() => openRow(product)}
               >
                 <Table.Cell>{productItem(product)}</Table.Cell>
+                <Table.Cell data-testid={`product-tags-cell-${product.productCode}`}>
+                  <RestockTagChips tags={tagsOfProduct(product)} testId={`product-row-tags-${product.productCode}`} />
+                </Table.Cell>
 
                 <Table.Cell textAlign="end" data-testid={`cross-${product.productCode}`}>
                   <CrossCell markupBps={product.crossMarkupBps} />

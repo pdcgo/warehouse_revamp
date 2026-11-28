@@ -212,6 +212,24 @@ export function isTeamManager(role: Role | undefined): boolean {
   }
 }
 
+// editsWarehouseProfile mirrors the policy on WarehouseInfoUpdate, WarehouseClosureAdd and WarehouseClosureDelete — the
+// warehouse's hours, location and closures: its Owner and Admin, plus global root/admin
+// (the-warehouse-sets-its-own-hours-in-settings). Warehouse Staff edit none of it, and see no editor.
+//
+// ⚠ UX ONLY, like isTeamManager above: the access interceptor is the boundary.
+export function editsWarehouseProfile(role: Role | undefined): boolean {
+  switch (role) {
+    case Role.ROOT:
+    case Role.ADMINISTRATOR:
+    case Role.WAREHOUSE_OWNER:
+    case Role.WAREHOUSE_ADMIN:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
 // canImportSettlement mirrors the policy on both settlement imports and their file list — the
 // settlement write set, CS and up, since every imported row posts under the uploader's token
 // (cs-and-up-import-daily).

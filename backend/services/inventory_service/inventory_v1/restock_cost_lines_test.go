@@ -147,14 +147,13 @@ func TestRestockAccept_TheCourierChargeReachesTheHPP(t *testing.T) {
 	}
 }
 
-// A CHARGE WITH NO NOTE IS REFUSED (an-incidental-line-must-say-what-it-was-for): an amount with no words beside it is a
-// number the team being charged cannot argue with.
+// A CHARGE WITH NO NOTE IS SAVED (the-couriers-charge-note-is-optional, which reverses
+// an-incidental-line-must-say-what-it-was-for): what the charge was for is optional, so an amount with no words beside
+// it is accepted and kept as it is — the restock counted in, the charge on it.
 //
-// ⚠ THE RULE MOVED BACK TO THE HANDLER, and this test moved with it. With cost lines it was unconditional and lived in
-// the proto as `min_len: 1`. With one charge it is conditional — the note is required only ABOVE 0 — which is a rule
-// across two fields that protovalidate cannot express, so the contract no longer refuses it and the handler does. The
-// test asserts both halves: the contract lets it through, the handler stops it.
-func TestRestockAccept_RefusesACostWithNoNote(t *testing.T) {
+// ⚠ INVERTED from "a charge with no note is refused", and kept as a test of both halves: the contract lets it through
+// (a rule across two fields was never the contract's), and the handler no longer stops it.
+func TestRestockAccept_AChargeWithNoNoteIsSaved(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithLiability(t, db, &recordingPoster{})
 
@@ -165,16 +164,18 @@ func TestRestockAccept_RefusesACostWithNoNote(t *testing.T) {
 		Lines:                   []*inventoryv1.RestockRequestReceivedLine{{ItemId: 1}},
 	})
 	if err != nil {
-		t.Fatalf("the contract refused a charge with no note (%v) — the rule is the handler's now", err)
+		t.Fatalf("the contract refused a charge with no note (%v) — the note is optional", err)
 	}
 
-	_, err = acceptWithCosts(t, db, svc, clProduct, 5000, "")
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("an unexplained charge = %v, want InvalidArgument", connect.CodeOf(err))
+	reqID, err := acceptWithCosts(t, db, svc, clProduct, 5000, "")
+	if err != nil {
+		t.Fatalf("a charge with no note = %v, want it accepted — the note is optional", err)
 	}
 
-	if !strings.Contains(err.Error(), "note") {
-		t.Fatalf("refused for %v, want a complaint about the note", err)
+	stored := storedRestock(t, db, reqID)
+	if stored.Status != "accepted" || stored.WarehouseAdditionalCost != 5000 || stored.WarehouseAdditionalCostNote != "" {
+		t.Fatalf("stored %q with charge %v %q, want accepted with 5000 and no note", stored.Status,
+			stored.WarehouseAdditionalCost, stored.WarehouseAdditionalCostNote)
 	}
 }
 
@@ -198,33 +199,26 @@ func TestRestockAccept_RefusesANegativeCharge(t *testing.T) {
 	}
 }
 
-// A REFUSED CHARGE LEAVES NOTHING BEHIND — the note check runs before the transaction, so a delivery is never
-// half-received because of a missing word on the charge.
-func TestRestockAccept_ARefusedCostLineReceivesNothing(t *testing.T) {
+// A CHARGE WITH NO NOTE STILL DOES BOTH THINGS (the-couriers-charge-note-is-optional): the delivery is counted onto
+// the rack, and the charge lands in the HPP the batch freezes — exactly as a charge with its note does.
+//
+// ⚠ INVERTED from "a refused charge leaves nothing behind": the missing note was the one charge refusal the handler made
+// itself, and it is gone, so the same request now receives the delivery whole.
+//
+//	(15.000 own freight + 5.000 courier's charge) / 10 units = 2.000 per unit
+//	500.000 / 10 = 50.000 goods per unit  →  52.000 HPP
+func TestRestockAccept_AChargeWithNoNoteReceivesTheDelivery(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := newServiceWithLiability(t, db, &recordingPoster{})
 
-	// The refusal the handler makes itself: a charge with no note.
-	reqID, err := acceptWithCosts(t, db, svc, clProduct, 5000, "")
-	if err == nil {
-		t.Fatal("the acceptance succeeded with an unusable charge on it")
-	}
-
-	var stored inventory_service_models.Restock
-
-	readErr := db.Where("id = ?", reqID).Take(&stored).Error
-	if readErr != nil {
-		t.Fatalf("read request: %v", readErr)
-	}
-
-	// ACCEPTED is still stored as `fulfilled`.
-	if stored.Status == "accepted" {
-		t.Fatal("the request was accepted despite the charge being refused")
+	_, err := acceptWithCosts(t, db, svc, clProduct, 5000, "")
+	if err != nil {
+		t.Fatalf("accept with a charge and no note: %v", err)
 	}
 
 	var levels int64
 
-	readErr = db.
+	readErr := db.
 		Model(&inventory_service_models.ProductPlacement{}).
 		Where("warehouse_id = ?", clWarehouse).
 		Count(&levels).
@@ -233,8 +227,21 @@ func TestRestockAccept_ARefusedCostLineReceivesNothing(t *testing.T) {
 		t.Fatalf("count stock: %v", readErr)
 	}
 
-	if levels != 0 {
-		t.Fatalf("%d rack rows landed on a refused acceptance", levels)
+	if levels == 0 {
+		t.Fatal("no rack rows landed — a charge with no note must receive the delivery")
+	}
+
+	cost, err := svc.StockCost(ctxUser(9), connect.NewRequest(&inventoryv1.StockCostRequest{
+		TeamId: clSellingTeam,
+		Filter: &inventoryv1.StockCostFilter{WarehouseId: clWarehouse, Ids: []uint64{clProduct}},
+	}))
+	if err != nil {
+		t.Fatalf("stock cost: %v", err)
+	}
+
+	lines := stockCostLines(cost.Msg)
+	if len(lines) != 1 || lines[0].GetUnitCost() != 52000 {
+		t.Fatalf("cost lines %v, want one at HPP 52000 — the charge counts with or without its note", lines)
 	}
 }
 

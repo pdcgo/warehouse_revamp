@@ -43,6 +43,8 @@ import {
   productSupplierCalls,
   resetProductListCalls,
 } from "./productListScenario";
+import { carriesAnyTag, productTagScenario, resetProductTagScenario, tagsOnWire } from "./productTagScenario";
+import { isFormerCode, resetProductCodeScenario } from "./productCodeScenario";
 import { sessionScenario } from "./sessionScenario";
 
 type Image = { url: string; thumbnailUrl: string };
@@ -199,6 +201,10 @@ function ownerBatchExpiry(batchId: bigint, acceptedAt: bigint): bigint {
 
 export function resetProductStub() {
   resetProductListCalls();
+  // The products' tags and what each list was filtered by (productTagScenario.ts) — the catalogue's, so reset with it.
+  resetProductTagScenario();
+  // The former codes a story set for the pick scan (productCodeScenario.ts, backlog #152) — read with the catalogue.
+  resetProductCodeScenario();
   extraSupplierRows = null;
   dailyRows = null;
   dailyMapping = "A";
@@ -242,6 +248,29 @@ export function fileProductsForStory(categoryId: bigint, count: number, opts: { 
       name: `Produk ${id}`,
       categoryId,
       archived: opts.archived ?? false,
+      images: [],
+    });
+  }
+}
+
+/**
+ * A STORY'S SETUP: products of teams the fixtures do not hold — another selling team's own product a return map points
+ * at (Produk Turunan), named by ProductByIds like any other. The next story's reset takes them away.
+ */
+export function productsForStory(...added: { id: bigint; teamId: bigint; productCode: string; name: string; imageUrl?: string }[]) {
+  for (const p of added) {
+    rows.push({
+      ...productFixtures[0]!,
+      id: p.id,
+      teamId: p.teamId,
+      productCode: p.productCode,
+      name: p.name,
+      defaultImageUrl: p.imageUrl ?? "",
+      defaultImageThumbnailUrl: p.imageUrl ?? "",
+      archived: false,
+      crossMarkupBps: 0,
+      crossLocked: false,
+      reservedStock: 0,
       images: [],
     });
   }
@@ -354,9 +383,13 @@ export const productService = {
   // keeps a product whose oldest READY batch in the lens (`stockWarehouseId`, 0 = every one) arrived at least N whole days
   // before now — the clock the Umur stok column reads, so the filter and the column agree. Each request is recorded
   // (productListScenario.ts).
+  //
+  // THE TAGS (product_tag.proto, products-have-their-own-tag-list): each row carries its product's tags — the owning
+  // team's list — and `tag_ids` keeps a product carrying ANY of them, inside the one count and page
+  // (productTagScenario.ts records what was asked).
   productList: (req: {
     teamId: bigint;
-    filter?: { q?: string; status?: ProductStatus; lock?: ProductLockFilter; stockAgeMinDays?: number };
+    filter?: { q?: string; status?: ProductStatus; lock?: ProductLockFilter; stockAgeMinDays?: number; tagIds?: bigint[] };
     stockWarehouseId?: bigint;
     sort?: { sortType?: CommonSortType; s?: { case?: string; value?: unknown } };
     page?: PageReq;
@@ -373,18 +406,28 @@ export const productService = {
       stockWarehouseId: lens,
       limit: Number(req.page?.limit ?? 0),
     });
+    const tagIds = [...(req.filter?.tagIds ?? [])];
+    productTagScenario.listTagIds.push(tagIds);
     const by = req.sort?.s?.case === "product" ? (req.sort.s.value as ProductRowSort) : ProductRowSort.UNSPECIFIED;
     const dir = req.sort?.sortType === CommonSortType.ASC ? 1 : -1;
     const list = rows
-      .filter((p) => p.teamId === req.teamId && p.archived === archived && matches(req.filter?.q, p.name, p.productCode))
+      // The term on the name or the code now, or a FORMER code typed whole (product_term_clause.go, backlog #152).
+      .filter(
+        (p) =>
+          p.teamId === req.teamId &&
+          p.archived === archived &&
+          (matches(req.filter?.q, p.name, p.productCode) || isFormerCode(req.filter?.q, p.id)),
+      )
       .filter((p) => inLockWay(p, lock) && agedAtLeast(p.id, days, lens))
+      .filter((p) => carriesAnyTag(p.id, tagIds))
       .sort((a, b) =>
         by === ProductRowSort.NAME
           ? a.name.localeCompare(b.name) * dir
           : by === ProductRowSort.PRODUCT_CODE
             ? a.productCode.localeCompare(b.productCode) * dir
             : 0,
-      );
+      )
+      .map((p) => ({ ...p, tags: tagsOnWire(p.id) }));
     return paged("product", list, (p) => p.id, req.page);
   },
 
@@ -501,7 +544,10 @@ export const productService = {
     return { items };
   },
 
-  productDetail: (req: { teamId: bigint; productId: bigint }) => ({ product: find(req.teamId, req.productId) }),
+  // The owning team's read of one product — with its tags (`Product.tags`), as only ProductDetail carries them.
+  productDetail: (req: { teamId: bigint; productId: bigint }) => ({
+    product: { ...find(req.teamId, req.productId), tags: tagsOnWire(req.productId) },
+  }),
 
   productCreate: (req: {
     teamId: bigint;

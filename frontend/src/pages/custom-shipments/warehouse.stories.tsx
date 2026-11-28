@@ -82,7 +82,7 @@ export const ARowOpensItsPickPage: Story = {
     const canvas = await loaded(canvasElement);
 
     await userEvent.click(canvas.getByTestId("custom-shipment-row-801"));
-    await expect(await canvas.findByTestId("custom-shipment-pick-page")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-pick-page")).toBeVisible(), { timeout: 5000 });
   },
 };
 

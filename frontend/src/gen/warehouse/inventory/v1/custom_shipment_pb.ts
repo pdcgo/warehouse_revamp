@@ -1485,7 +1485,8 @@ export type CustomShipmentArriveRequest = Message<"warehouse.inventory.v1.Custom
   id: bigint;
 
   /**
-   * The courier's charge at the door, noted — optional, 0 = none; its note REQUIRED above 0, as a restock's. Kept and
+   * The courier's charge at the door, noted — optional, 0 = none; its note optional too, as a restock's
+   * (the-couriers-charge-note-is-optional). Kept and
    * shown; Terima's figure is final and replaces it. No money here.
    *
    * @generated from field: double door_charge = 3;
@@ -1585,7 +1586,7 @@ export type CustomShipmentReceiveRequest = Message<"warehouse.inventory.v1.Custo
   lines: CustomShipmentReceivedLine[];
 
   /**
-   * The courier's charge at the door, FINAL — it replaces Tiba's, never adds to it; its note required above 0. The
+   * The courier's charge at the door, FINAL — it replaces Tiba's, never adds to it; its note optional. The
    * selling team owes it to the warehouse through Team Balance (custom_shipment_fee, keyed by the parcel).
    *
    * @generated from field: double door_charge = 4;

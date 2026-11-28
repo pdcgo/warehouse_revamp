@@ -15,6 +15,10 @@ import (
 // not know (or has deleted) is simply absent from the map.
 type TeamCodeLookup func(ctx context.Context, teamIDs []uint64) (map[uint64]string, error)
 
+// FormerCodeLookup reads many teams' FORMER codes at once — the codes each held once and moved on from (team_service's
+// team_former_codes, backlog #149). A team with none is absent. nil = no team has changed its code.
+type FormerCodeLookup func(ctx context.Context, teamIDs []uint64) (map[uint64][]string, error)
+
 // RecomposeReport is what a recompose did — printed by `san product recompose-codes`, and asserted on by its tests.
 type RecomposeReport struct {
 	// Recomposed rows took their team's code in front: SHOE-42 → ABC-SHOE-42.
@@ -24,6 +28,10 @@ type RecomposeReport struct {
 	AlreadyComposed int
 	// NoTeamCode lists the products whose team has no code to read (unknown or deleted): left as they were.
 	NoTeamCode []uint64
+	// UnderFormerCode lists the products whose code begins with one of their team's FORMER codes and a dash — a code that
+	// was composed once, under the code the team had then (a-team-code-change-recomposes-its-product-codes). Never a bare
+	// part: putting today's code in front would double the prefix (XYZ-ABC-SHOE-42). Left as they were, and named.
+	UnderFormerCode []uint64
 }
 
 // recomposeHold is the placeholder a row being recomposed holds for a moment, unique by its id — see RecomposeProductCodes.
@@ -38,10 +46,14 @@ const recomposeHold = "#recompose#"
 // changes nothing. ⚠ A row a person typed that way before composition existed reads as composed too — it is exactly the
 // string composition would have produced, so there is nothing to tell apart.
 //
+// ⚠ A team code can change now (backlog #149), and the change recomposes the team's products itself. A row still under one
+// of its team's FORMER codes (`former`) is therefore NOT a bare part — it is left alone and named (UnderFormerCode),
+// never given a second prefix.
+//
 // It is one transaction: every row is locked, every code is first parked on a placeholder unique by id and then set, so
 // two rows trading codes cannot trip the unique index halfway. A real collision — two products that would carry one code
 // — fails the whole run with both named, and nothing is written.
-func RecomposeProductCodes(ctx context.Context, db *gorm.DB, codes TeamCodeLookup) (RecomposeReport, error) {
+func RecomposeProductCodes(ctx context.Context, db *gorm.DB, codes TeamCodeLookup, former FormerCodeLookup) (RecomposeReport, error) {
 	var report RecomposeReport
 
 	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -81,6 +93,15 @@ func RecomposeProductCodes(ctx context.Context, db *gorm.DB, codes TeamCodeLooku
 			return fmt.Errorf("read the team codes: %w", err)
 		}
 
+		formerCodes := map[uint64][]string{}
+
+		if former != nil {
+			formerCodes, err = former(ctx, teamIDs)
+			if err != nil {
+				return fmt.Errorf("read the teams' former codes: %w", err)
+			}
+		}
+
 		next := map[uint64]string{}
 		holder := map[string]uint64{}
 
@@ -93,6 +114,9 @@ func RecomposeProductCodes(ctx context.Context, db *gorm.DB, codes TeamCodeLooku
 				holder[row.ProductCode] = row.ID
 			case strings.HasPrefix(row.ProductCode, teamCode+productCodeSeparator):
 				report.AlreadyComposed++
+				holder[row.ProductCode] = row.ID
+			case underAnyCode(row.ProductCode, formerCodes[row.TeamID]):
+				report.UnderFormerCode = append(report.UnderFormerCode, row.ID)
 				holder[row.ProductCode] = row.ID
 			default:
 				next[row.ID] = composeProductCode(teamCode, row.ProductCode)
@@ -152,3 +176,14 @@ func RecomposeProductCodes(ctx context.Context, db *gorm.DB, codes TeamCodeLooku
 }
 
 var errRecomposeCollision = errors.New("two products would carry one code")
+
+// underAnyCode reports whether `productCode` begins with one of `teamCodes` and the dash.
+func underAnyCode(productCode string, teamCodes []string) bool {
+	for _, code := range teamCodes {
+		if strings.HasPrefix(productCode, code+productCodeSeparator) {
+			return true
+		}
+	}
+
+	return false
+}

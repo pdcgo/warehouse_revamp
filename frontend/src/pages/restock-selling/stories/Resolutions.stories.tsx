@@ -99,7 +99,7 @@ export const SettledLeavesTheLostTab: Story = {
     await waitFor(() => expect(canvas.getByTestId("restock-settled-504")).toHaveTextContent("Settled"));
     await userEvent.click(canvas.getByTestId("restock-tab-lost"));
     await waitFor(() => expect(canvas.queryByTestId("restock-row-504")).toBeNull());
-    await expect(await canvas.findByTestId("restock-requests-empty", {}, { timeout: 3000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("restock-requests-empty")).toBeVisible(), { timeout: 3000 });
   },
 };
 

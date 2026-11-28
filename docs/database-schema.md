@@ -18,12 +18,13 @@ the database.
 ```mermaid
 erDiagram
     teams ||--o| team_infos : "has 1 to 1"
+    teams ||--o{ team_former_codes : "the codes it held once, ON DELETE CASCADE (00011)"
 
     teams {
         bigserial   id          PK
         text        type        "root admin warehouse or selling"
         text        name        "required"
-        text        team_code   UK "required unique"
+        text        team_code   UK "required unique - a SELLING team's changes through TeamCodeUpdate (#149)"
         text        description
         text        image_url   "compact team picture, empty if none"
         boolean     priority_product "granted by ROOT — the team's WHOLE catalogue is priority"
@@ -39,6 +40,12 @@ erDiagram
         text        contact_number "no bank — dropped by 00008, a team's bank is a financial account"
         timestamptz created_at
         timestamptz updated_at
+    }
+
+    team_former_codes {
+        text        team_code  PK "a code the team moved on from - never given to another team"
+        bigint      team_id    FK "-> teams(id), ON DELETE CASCADE - team_former_codes_team_idx"
+        timestamptz retired_at
     }
 
 ```
@@ -79,6 +86,14 @@ erDiagram
     may still choose another, and the server keeps refusing an order that names none. A server-side
     fallback would quietly undo that refusal — which exists so a warehouse-less order cannot reach the
     database at all.
+- **`team_former_codes`** (`00011`, backlog #149) — the codes a team **once held**
+  ([a-team-code-change-recomposes-its-product-codes](business/product/context_decision.md#a-team-code-change-recomposes-its-product-codes)):
+  a selling team's code can be edited (`TeamCodeUpdate`, which recomposes its products in the same transaction), and the
+  code it moved on from stays taken — *a team code once used is never given to another team*, so an old sticker can
+  only mean this team's product. `TeamCreate` and `TeamCodeUpdate` refuse a code another team holds (`teams.team_code`)
+  or once held (here), naming that team; the team may take its OWN former code back, and its row then leaves this table
+  (the code is current again — a code is never current and former at once). Keyed by the code; `team_former_codes_team_idx
+  (team_id)` serves `team_v1.FormerCodesOf`, the `san product recompose-codes` guard and `san seed`'s team lookup.
 - **`warehouse_infos`** — ⛔ **dropped** (`00010`): the warehouse profile moved to warehouse_service
   ([the-warehouse-profile-lives-in-warehouse-service](business/teams/warehouse/context_decision.md#the-warehouse-profile-lives-in-warehouse-service)).
 
@@ -275,6 +290,10 @@ erDiagram
     products ||--o{ product_images : "product_id"
     bundles ||--o{ bundle_products : "bundle_id"
     products ||--o{ bundle_products : "product_id"
+    products ||--o{ product_tag_links : "product_id, ON DELETE CASCADE (00010)"
+    product_tags ||--o{ product_tag_links : "tag_id, ON DELETE CASCADE (00010)"
+    products ||--o{ product_logs : "product_id, ON DELETE CASCADE (00011)"
+    products ||--o{ product_reprint_waits : "product_id, ON DELETE CASCADE (00011)"
 
     products {
         bigserial   id                          PK
@@ -320,6 +339,42 @@ erDiagram
         bigint    product_id FK "-> products(id)"
         int       quantity   "units in ONE bundle, 1 to 9999"
     }
+
+    product_tags {
+        bigserial   id                     PK
+        text        name                   "the products' ONE list: unique on lower(name); trimmed, inner spaces folded (CHECK), at most 60"
+        text        type                   "system / custom - CHECK"
+        text        app_task               "the app's task owning a SYSTEM tag; '' otherwise - unique where set, only on system (CHECK)"
+        bigint      created_by_user_id     "0 = the migration / the app"
+        boolean     created_by_is_override
+        timestamptz created_at
+        timestamptz updated_at             "a rename"
+    }
+
+    product_tag_links {
+        bigint      product_id           PK "FK products"
+        bigint      tag_id               PK "FK product_tags - also product_tag_links_tag_idx (tag_id, product_id)"
+        bigint      added_by_user_id     "who put it on; 0 = the app"
+        boolean     added_by_is_override "Root or the Administrator from outside"
+        timestamptz added_at
+    }
+
+    product_logs {
+        bigserial   id          PK
+        bigint      product_id  FK "-> products(id), ON DELETE CASCADE - product_logs_product_idx (product_id, id DESC)"
+        text        kind        "code_changed - CHECK"
+        text        old_code    "the code it carried, whole - product_logs_old_code_idx (lower(old_code)) (00012)"
+        text        new_code    "the code it took, whole"
+        bigint      actor_id    "who changed the team code, user_service id, no FK; 0 = none recorded"
+        boolean     is_override "Root or the Administrator from outside"
+        timestamptz created_at
+    }
+
+    product_reprint_waits {
+        bigint      product_id   PK "FK products, ON DELETE CASCADE"
+        bigint      warehouse_id PK "a warehouse team, opaque cross-service id, no FK - product_reprint_waits_warehouse_idx"
+        timestamptz since
+    }
 ```
 
 - **`products`** — a team's catalogue items. Every RPC is team-scoped (`team_id` carries
@@ -352,6 +407,40 @@ erDiagram
   `CHECK (quantity BETWEEN 1 AND 9999)`. Whose product it is comes from `products.team_id` — **no copy** on the line.
   `product_id` is a real FK (same service); a product is only ever archived, so the FK never blocks, and an archived
   product's line keeps naming it. `bundle_products_product_idx (product_id)` serves the search's join.
+- **`product_tags`** (`00010`, backlog #147) — **the products' own tag list**
+  ([products-have-their-own-tag-list](business/product/context_decision.md#products-have-their-own-tag-list)), apart
+  from the orders' (`order_tags`) and the restocks' (`tags`): one list for every team, the same rules —
+  `product_tags_name_key ON product_tags (lower(name))` makes a name one tag (a create is `INSERT … ON CONFLICT
+  ((lower(name))) DO NOTHING`, then the holder is read; a rename onto a taken name is AlreadyExists), and the name's
+  shape is a CHECK. **`need_reprint_code`** is seeded by `00010` with `app_task` `product.code.reprint`
+  (`product_tags_app_task_key`), found by its task, never by name, and locked for everyone — the app puts it on and
+  takes it off (backlog #149, #151).
+- **`product_tag_links`** — the pair is the key, so a tag is on a product once and a second put-on is no change
+  (`ON CONFLICT DO NOTHING`). Its PK leads with `product_id` (a page's tags in one read; the lists' `EXISTS (…
+  l.tag_id = ANY(…))` filter, ANY of — never a duplicated row); `product_tag_links_tag_idx (tag_id, product_id)` serves a
+  rare tag's filter, the admins' per-tag count and the delete's take-off. Both FKs cascade: a tag delete takes it off
+  every product, a `ProductDelete` (a never-used product) takes its links. A put-on holds the product and the tag `FOR
+  KEY SHARE`, so neither delete can slip between its check and its link (`product_tags_race_test.go`). No trail rows.
+- **`product_logs`** (`00011`, backlog #149) — a product's **history**, one line per change, append-only: today
+  `code_changed`, written for every product a team code change recomposes (`ABC-SHOE-42` → `XYZ-SHOE-42`, archived
+  ones too), with who changed it and whether they were an override
+  ([a-team-code-change-recomposes-its-product-codes](business/product/context_decision.md#a-team-code-change-recomposes-its-product-codes)).
+  `ProductLogList` reads it newest first, paged, by `product_logs_product_idx (product_id, id DESC)`; `old_code` is the
+  product's FORMER code: the pick pages' item scan takes it (`ProductCodesByIds`, #152) and the product search finds
+  it whole (`lower(old_code) = lower(q)`, by `product_logs_old_code_idx (lower(old_code))` — `00012`, a pure index,
+  [the audit](../audits/services/product_service/performances/ProductList.md)). `ProductDelete` (a never-used product)
+  takes its lines by the cascade.
+- **`product_reprint_waits`** (`00011`) — one row per (product, warehouse) whose shelves held units of the product at the
+  change (`product_placements.stock_count > 0`, read from inventory in the same transaction): its printed stickers no
+  longer match the code. While a product has a row, it carries `need_reprint_code`; #151's reprint deletes a warehouse's
+  row and the tag comes off with the last. A product on no shelf gets no row and no tag. A second change before the
+  reprint re-sets the rows to the warehouses holding stock then. `product_reprint_waits_warehouse_idx (warehouse_id,
+  product_id)` is #151's per-warehouse list and count.
+  **Built 2026-11-27 (#151):** inventory's `ProductReprintRecord` deletes the printing warehouse's rows for the products
+  printed with their LIVE code, then takes `need_reprint_code` off each that has no row left (`NOT EXISTS`, same
+  transaction); a transfer accepted while a product still has a row adds the receiving warehouse's (`INSERT … SELECT …
+  ON CONFLICT DO NOTHING`, only for lines that shelved units). Every writer of the rows — the code change, the record,
+  the arrival — takes the owning team's product-code advisory lock first, so they serialize per team. No migration.
 
 ---
 
@@ -1170,7 +1259,7 @@ erDiagram
         float8      subtotal           "00030: sum of line totals, written by every create and edit"
         float8      total              "00030: subtotal + shipment_cost, never the courier's charge"
         float8      warehouse_additional_cost "the courier's ONE charge at the door, CHECK >= 0; outside the total, inside the unit price"
-        text        warehouse_additional_cost_note "what the charge was for — required above 0 by the contract"
+        text        warehouse_additional_cost_note "what the charge was for — optional, '' = none"
         text        warehouse_additional_cost_file "the courier's slip photo (00052): the warehouse's document_service upload id, kept by the accept only beside a charge above 0; '' = none"
         text        payment_type       "RestockPaymentType as text (shopee_pay/bank_account); read-only history"
         text        note               "the selling team's note on the whole restock"
@@ -1609,7 +1698,7 @@ erDiagram
         float8      shipment_cost                  "the team's expense - CHECK 0 or an account"
         bigint      finance_account_id             "0 when the cost is 0"
         bigint      cost_revision                  "bumped by each edit that moves money - the edit's event id"
-        float8      warehouse_additional_cost      "the courier's charge at B - CHECK 0 or a note"
+        float8      warehouse_additional_cost      "the courier's charge at B - its note optional since 00065"
         text        warehouse_additional_cost_note
         bigint      outbound_transaction_id        FK "the transfer_out"
         bigint      inbound_transaction_id         FK "the transfer_in, NULL until accepted"
@@ -1696,6 +1785,10 @@ erDiagram
   reads a team's few open transfers, under the receiving warehouse with the lens; without it every read walked the
   team's whole transfer history, and the stat's sum scanned the table (4–5 ms → 1–2 ms at 10 000 transfers a team,
   [rpc.md](services/inventory_service/rpc.md#in-transit)).
+- **The courier's charge needs no note** (`00065`) — `warehouse_transfers_charge_has_note` (`00027`: a charge above 0
+  carried a note) is dropped: what the charge was for is optional
+  ([the-couriers-charge-note-is-optional](business/balance/context_decision.md#the-couriers-charge-note-is-optional)),
+  as on `restocks` and `custom_shipments`, whose note columns never had a CHECK.
 - **`warehouse_transfer_logs.is_override`** (`00034`) — that act's actor was Root or the Administrator with no role in
   the team the call was scoped to
   ([an-override-is-stamped-in-every-service](business/user/context_decision.md#an-override-is-stamped-in-every-service)).
@@ -3510,7 +3603,7 @@ erDiagram
 ```
 
 - **`warehouse_infos`** (`00002`) — the warehouse PROFILE, moved whole from team_service ([the-warehouse-profile-lives-in-warehouse-service](business/teams/warehouse/context_decision.md#the-warehouse-profile-lives-in-warehouse-service)): both weekly grids
-  as JSONB (validated by the handler) and the location. One row per warehouse; none reads as closed every day.
+  as JSONB (validated by the handler) and the location. One row per warehouse; none (or a receiving grid open on no day) means its hours are not set, which is not closed (a-warehouse-with-no-hours-is-not-closed).
 - **`warehouse_closures`** (`00002`) — one-off closures, whole days in Asia/Jakarta with a reason ([a-warehouse-records-its-holidays](business/teams/warehouse/context_decision.md#a-warehouse-records-its-holidays)). Indexed on
   `(warehouse_id, last_day)` — the profile and the receiving status read the ones still to come. They refuse nothing:
   `WarehouseReceivingStatus` only says a warehouse is closed, why and from when ([a-closed-day-warns-and-never-refuses](business/teams/warehouse/context_decision.md#a-closed-day-warns-and-never-refuses)).

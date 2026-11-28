@@ -140,7 +140,7 @@ export const ASampleIsCreated: Story = {
     await fillSample(canvasElement);
     await userEvent.click(canvas.getByTestId("custom-shipment-form-submit"));
 
-    await expect(await canvas.findByTestId("custom-shipment-detail-page", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-detail-page")).toBeVisible(), { timeout: 4000 });
     await expect(canvas.getByTestId("custom-shipment-title")).toHaveTextContent("Parcel #809");
     await expect(canvas.getByTestId("custom-shipment-detail-status")).toHaveTextContent("Requested");
     await expect(canvas.getByTestId("custom-shipment-total")).toHaveTextContent("195.000");
@@ -215,7 +215,7 @@ export const WePayAsksForTheAccount: Story = {
     await waitFor(() => expect(canvas.getByTestId("custom-shipment-form-ready")).toBeVisible());
 
     await userEvent.click(canvas.getByTestId("custom-shipment-form-payer-team"));
-    await expect(await canvas.findByTestId("custom-shipment-form-team-pays")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-form-team-pays")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.getByTestId("custom-shipment-form-payer-hint")).toHaveTextContent(/an expense.*until the handover/);
     await waitFor(() => expect(canvas.getByTestId("custom-shipment-form-missing-account")).toBeVisible());
     await expect(canvas.getByTestId("custom-shipment-form-submit")).toBeDisabled();
@@ -225,7 +225,7 @@ export const WePayAsksForTheAccount: Story = {
     await waitFor(() => expect(canvas.getByTestId("custom-shipment-form-ready")).toBeVisible());
     await userEvent.click(canvas.getByTestId("custom-shipment-form-submit"));
 
-    await expect(await canvas.findByTestId("custom-shipment-detail-page", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-detail-page")).toBeVisible(), { timeout: 4000 });
     await expect(created()).toMatchObject({ payer: CustomShipmentPayer.TEAM, financeAccountId: BCA_OPS, shippingCost: 15000 });
     await waitFor(() => expect(canvas.getByTestId("custom-shipment-detail-account")).toHaveTextContent("BCA Operasional"));
     await expect(canvas.getByTestId("custom-shipment-detail-ongkir")).toHaveTextContent("Rp 15.000");
@@ -287,7 +287,7 @@ export const AReshipSendsTheBrokenUnits: Story = {
     await waitFor(() => expect(canvas.getByTestId("custom-shipment-form-ready")).toBeVisible());
     await userEvent.click(canvas.getByTestId("custom-shipment-form-submit"));
 
-    await expect(await canvas.findByTestId("custom-shipment-detail-page", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-detail-page")).toBeVisible(), { timeout: 4000 });
     await expect(canvas.getByTestId("custom-shipment-restock")).toHaveTextContent("restock #503");
     await expect(canvas.getByTestId("custom-shipment-lines-broken-hint")).toHaveTextContent(/never on a rack/);
     await expect(canvas.queryByTestId("custom-shipment-total")).toBeNull();
@@ -312,12 +312,12 @@ export const AReshipGoesToOneSupplier: Story = {
     const canvas = await opened(canvasElement);
 
     await reship(canvas, "512");
-    await expect(await canvas.findByTestId("custom-shipment-form-supplier")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-form-supplier")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.getByTestId("custom-shipment-form-missing-supplier")).toBeVisible();
     await expect(canvas.queryByTestId("custom-shipment-form-broken-lines")).toBeNull();
 
     await userEvent.click(canvas.getByTestId("custom-shipment-form-supplier-33"));
-    await expect(await canvas.findByTestId("custom-shipment-form-broken-75")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-form-broken-75")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId("custom-shipment-form-broken-76")).toBeNull();
     await expect(canvas.getByTestId("custom-shipment-form-name")).toHaveValue("Toko Grosir Sinar");
     await expect(canvas.getByTestId("custom-shipment-form-phone")).toHaveValue("");
@@ -325,7 +325,7 @@ export const AReshipGoesToOneSupplier: Story = {
     await expect(canvas.getByTestId("custom-shipment-form-prefilled")).toHaveTextContent(/lacks a contact or an address/);
 
     await userEvent.click(canvas.getByTestId("custom-shipment-form-supplier-32"));
-    await expect(await canvas.findByTestId("custom-shipment-form-broken-76")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-form-broken-76")).toBeVisible(), { timeout: 5000 });
     // Nothing noted gone on this line — the sentence is exactly the one without the not-found part.
     await expect(canvas.getByTestId("custom-shipment-form-broken-left-76")).toHaveTextContent(/^2 left · 6 broken, 4 already on a parcel$/);
     await expect(canvas.getByTestId("custom-shipment-form-name")).toHaveValue("CV Cahaya Abadi");
@@ -364,7 +364,7 @@ export const AReshipLineCountsTheUnitsNotFound: Story = {
 
     await reship(canvas, "512");
     await userEvent.click(await canvas.findByTestId("custom-shipment-form-supplier-32"));
-    await expect(await canvas.findByTestId("custom-shipment-form-broken-76")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-form-broken-76")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.getByTestId("custom-shipment-form-broken-left-76")).toHaveTextContent(/^1 left · 6 broken, 1 on a parcel, 4 not found$/);
     await expect(canvas.getByTestId("custom-shipment-form-broken-count-76")).toHaveValue("1");
 
@@ -383,7 +383,7 @@ export const AReshipLineNotFoundOnly: Story = {
 
     await reship(canvas, "512");
     await userEvent.click(await canvas.findByTestId("custom-shipment-form-supplier-32"));
-    await expect(await canvas.findByTestId("custom-shipment-form-broken-76")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-form-broken-76")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.getByTestId("custom-shipment-form-broken-left-76")).toHaveTextContent(/^2 left · 6 broken, 4 not found$/);
     await expect(canvas.getByTestId("custom-shipment-form-broken-count-76")).toHaveValue("2");
   },

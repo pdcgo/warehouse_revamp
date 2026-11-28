@@ -14,9 +14,11 @@ import (
 const nextOpeningHorizon = 60
 
 // receivingState is the closed-day warning's answer for one warehouse at `now` (a-closed-day-warns-and-never-refuses,
-// a-warehouse-records-its-holidays), in Asia/Jakarta:
+// a-warehouse-records-its-holidays, a-warehouse-with-no-hours-is-not-closed), in Asia/Jakarta:
 //
-//   - in a closure today → closed, the closure's reason, the next opening AFTER it;
+//   - in a closure today → closed, the closure's reason, the next opening AFTER it — set hours or not;
+//   - its receiving hours not set (no grid, or one that opens on no day) → NOT closed: `hours_set` false and nothing
+//     else to say — "not set" is not "closed", and nobody knows when such a warehouse will handle an order;
 //   - inside today's receiving slot → receiving now;
 //   - otherwise → closed, and the next slot of the grid that falls on no closure day.
 func receivingState(
@@ -62,15 +64,23 @@ func receivingState(
 		return at(open), at(closeAt), true
 	}
 
-	state := &warehousev1.WarehouseReceivingState{}
+	// Hours not set: never receiving and no next opening either (no slot to find one in) — `hours_set` false is what
+	// tells the reader it is not closed. A closure still names its reason.
+	state := &warehousev1.WarehouseReceivingState{HoursSet: hoursSet(grid)}
 
 	closedToday := closureOn(today)
 	if closedToday != nil {
 		state.ClosureReason = closedToday.Reason
-	} else if open, closeAt, ok := slotOn(today); ok && !now.Before(open) && now.Before(closeAt) {
-		state.ReceivingNow = true
+	}
 
-		return state
+	// In a closure it is closed whatever the grid says; the next opening below skips the closure's days.
+	if closedToday == nil {
+		open, closeAt, ok := slotOn(today)
+		if ok && !now.Before(open) && now.Before(closeAt) {
+			state.ReceivingNow = true
+
+			return state
+		}
 	}
 
 	for i := 0; i <= nextOpeningHorizon; i++ {
@@ -88,6 +98,18 @@ func receivingState(
 	}
 
 	return state
+}
+
+// hoursSet is whether a receiving grid opens on any day (a-warehouse-with-no-hours-is-not-closed): no profile row, an
+// empty grid, or a week with every day closed is NOT SET — a week closed every day is not a schedule anyone means.
+func hoursSet(grid []dayHoursJSON) bool {
+	for _, row := range grid {
+		if row.Open {
+			return true
+		}
+	}
+
+	return false
 }
 
 // goWeekday maps the proto's Monday=1 … Sunday=7 onto Go's Sunday=0 … Saturday=6.

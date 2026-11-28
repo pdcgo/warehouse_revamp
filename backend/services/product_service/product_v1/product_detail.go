@@ -23,6 +23,9 @@ import (
 // This is NOT a licence to show archived products in a list something is picked FROM. Those read
 // through ProductList, whose status filter still defaults to ACTIVE for exactly that reason. A detail
 // read is somebody naming one row by id, which is a different act from browsing a catalogue.
+//
+// It carries the product's TAGS (products-have-their-own-tag-list) — the owning team's read, so the product page's Tag
+// card draws them; no other read of a Product does (ProductByIds and Discover serve other teams, who see none).
 func (s *Service) ProductDetail(
 	ctx context.Context,
 	req *connect.Request[productv1.ProductDetailRequest],
@@ -45,5 +48,13 @@ func (s *Service) ProductDetail(
 		return nil, dbError(err)
 	}
 
-	return connect.NewResponse(&productv1.ProductDetailResponse{Product: toProto(&product)}), nil
+	tags, err := productTagsOf(s.db.WithContext(ctx), []uint64{product.ID})
+	if err != nil {
+		return nil, dbError(err)
+	}
+
+	out := toProto(&product)
+	out.Tags = tags[product.ID]
+
+	return connect.NewResponse(&productv1.ProductDetailResponse{Product: out}), nil
 }

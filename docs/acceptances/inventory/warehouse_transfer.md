@@ -12,26 +12,26 @@ The selling team opens a transfer, fills its shipping cost while it can, calls i
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
-<tr><td rowspan="6" valign="top">1</td><td rowspan="6" valign="top"><code>selling:all</code> wants to move stock to another warehouse<br>(1 product · warehouse A to warehouse B · no shipping cost)</td><td rowspan="6" valign="top">create transfer</td><td>transfer created, status created</td><td>⬜ untested</td></tr>
-<tr><td>ready stock of 1 product at warehouse A decreases</td><td>⬜ untested</td></tr>
-<tr><td>in transit on the products page increases</td><td>⬜ untested</td></tr>
-<tr><td>outgoing at warehouse A, incoming at warehouse B</td><td>⬜ untested</td></tr>
-<tr><td>value worked out from warehouse A's batch prices</td><td>⬜ untested</td></tr>
-<tr><td>sent recorded in transfer analytic metric</td><td>⬜ untested</td></tr>
-<tr><td rowspan="4" valign="top">2</td><td rowspan="4" valign="top"><code>selling:all</code> wants to move stock to another warehouse<br>(1 product · warehouse A to warehouse B · shipping cost · paid from BCA)</td><td rowspan="4" valign="top">create transfer</td><td>transfer created with shipping cost</td><td>⬜ untested</td></tr>
-<tr><td>BCA decreases by shipping cost</td><td>⬜ untested</td></tr>
-<tr><td>recorded in BCA's history as expense, naming the transfer</td><td>⬜ untested</td></tr>
-<tr><td>recorded in finance analytic metric</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">3</td><td rowspan="1" valign="top"><code>selling:all</code> wants to move stock to another warehouse<br>(1 product · warehouse A to warehouse B · count more than warehouse A holds)</td><td rowspan="1" valign="top">create transfer</td><td>cannot create, says counts within the stock at warehouse A</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">4</td><td rowspan="1" valign="top"><code>selling:all</code> wants to move stock to another warehouse<br>(1 product · warehouse A to warehouse B · its units at warehouse A on a rack in a running stock opname)</td><td rowspan="1" valign="top">create transfer</td><td>cannot create, names the rack and the stock opname holding it</td><td>⬜ untested</td></tr>
-<tr><td rowspan="4" valign="top">5</td><td rowspan="4" valign="top"><code>selling:all</code> wants to record the shipping cost<br>(status: process · no shipping cost yet · shipping cost typed · paid from BCA)</td><td rowspan="4" valign="top">edit transfer cost</td><td>shipping cost shown on the transfer</td><td>⬜ untested</td></tr>
-<tr><td>BCA decreases by shipping cost</td><td>⬜ untested</td></tr>
-<tr><td>recorded in BCA's history</td><td>⬜ untested</td></tr>
-<tr><td>recorded in finance analytic metric</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">6</td><td rowspan="1" valign="top"><code>selling:all</code> wants to record the shipping cost<br>(status: process · shipping cost changed from Rp 20.000 to Rp 25.000 · same account BCA)</td><td rowspan="1" valign="top">edit transfer cost</td><td>BCA decreases by the difference</td><td>⬜ untested</td></tr>
-<tr><td rowspan="2" valign="top">7</td><td rowspan="2" valign="top"><code>selling:all</code> wants to record the shipping cost<br>(status: process · shipping cost paid from BCA · account changed to ShopeePay)</td><td rowspan="2" valign="top">edit transfer cost</td><td>shipping cost back into BCA</td><td>⬜ untested</td></tr>
-<tr><td>shipping cost out of ShopeePay</td><td>⬜ untested</td></tr>
-<tr><td rowspan="1" valign="top">8</td><td rowspan="1" valign="top"><code>selling:all</code> wants to record the shipping cost<br>(status: accepted)</td><td rowspan="1" valign="top">edit transfer cost</td><td>edit cost not offered</td><td>⬜ untested</td></tr>
+<tr><td rowspan="6" valign="top">1</td><td rowspan="6" valign="top"><code>selling:all</code> wants to move stock to another warehouse<br>(1 product · warehouse A to warehouse B · no shipping cost)</td><td rowspan="6" valign="top">create transfer</td><td>transfer created, status created</td><td>✅ ok</td></tr>
+<tr><td>ready stock of 1 product at warehouse A decreases</td><td>✅ ok</td></tr>
+<tr><td>in transit on the products page increases</td><td>✅ ok</td></tr>
+<tr><td>outgoing at warehouse A, incoming at warehouse B</td><td>✅ ok</td></tr>
+<tr><td>value worked out from warehouse A's batch prices</td><td>✅ ok</td></tr>
+<tr><td>sent recorded in transfer analytic metric</td><td>✅ ok</td></tr>
+<tr><td rowspan="4" valign="top">2</td><td rowspan="4" valign="top"><code>selling:all</code> wants to move stock to another warehouse<br>(1 product · warehouse A to warehouse B · shipping cost · paid from BCA)</td><td rowspan="4" valign="top">create transfer</td><td>transfer created with shipping cost</td><td>✅ ok</td></tr>
+<tr><td>BCA decreases by shipping cost</td><td>✅ ok</td></tr>
+<tr><td>recorded in BCA's history as expense, naming the transfer</td><td>✅ ok</td></tr>
+<tr><td>recorded in finance analytic metric</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">3</td><td rowspan="1" valign="top"><code>selling:all</code> wants to move stock to another warehouse<br>(1 product · warehouse A to warehouse B · count more than warehouse A holds)</td><td rowspan="1" valign="top">create transfer</td><td>cannot create, says counts within the stock at warehouse A</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">4</td><td rowspan="1" valign="top"><code>selling:all</code> wants to move stock to another warehouse<br>(1 product · warehouse A to warehouse B · its units at warehouse A on a rack in a running stock opname)</td><td rowspan="1" valign="top">create transfer</td><td>cannot create, names the rack and the stock opname holding it</td><td>✅ ok</td></tr>
+<tr><td rowspan="4" valign="top">5</td><td rowspan="4" valign="top"><code>selling:all</code> wants to record the shipping cost<br>(status: process · no shipping cost yet · shipping cost typed · paid from BCA)</td><td rowspan="4" valign="top">edit transfer cost</td><td>shipping cost shown on the transfer</td><td>✅ ok</td></tr>
+<tr><td>BCA decreases by shipping cost</td><td>✅ ok</td></tr>
+<tr><td>recorded in BCA's history</td><td>✅ ok</td></tr>
+<tr><td>recorded in finance analytic metric</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">6</td><td rowspan="1" valign="top"><code>selling:all</code> wants to record the shipping cost<br>(status: process · shipping cost changed from Rp 20.000 to Rp 25.000 · same account BCA)</td><td rowspan="1" valign="top">edit transfer cost</td><td>BCA decreases by the difference</td><td>✅ ok</td></tr>
+<tr><td rowspan="2" valign="top">7</td><td rowspan="2" valign="top"><code>selling:all</code> wants to record the shipping cost<br>(status: process · shipping cost paid from BCA · account changed to ShopeePay)</td><td rowspan="2" valign="top">edit transfer cost</td><td>shipping cost back into BCA</td><td>✅ ok</td></tr>
+<tr><td>shipping cost out of ShopeePay</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">8</td><td rowspan="1" valign="top"><code>selling:all</code> wants to record the shipping cost<br>(status: accepted)</td><td rowspan="1" valign="top">edit transfer cost</td><td>edit cost not offered</td><td>✅ ok</td></tr>
 <tr><td rowspan="4" valign="top">9</td><td rowspan="4" valign="top"><code>selling:all</code> wants to call a transfer off<br>(status: created · 1 product · shipping cost paid from BCA · reason)</td><td rowspan="4" valign="top">cancel transfer</td><td>status cancelled</td><td>⬜ untested</td></tr>
 <tr><td>ready stock of 1 product back at warehouse A</td><td>⬜ untested</td></tr>
 <tr><td>shipping cost back into BCA</td><td>⬜ untested</td></tr>

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
 import { asAdminTeam } from "../../../../.storybook/sessionScenario";
 import { At, AtStore, SHOP_DETAIL_META, loaded } from "./kit";
@@ -26,7 +26,7 @@ export const AnotherTeamsShopIsNotFound: Story = {
   render: () => <AtKenanga />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByTestId("shop-detail-error", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("shop-detail-error")).toBeVisible(), { timeout: 4000 });
   },
 };
 
@@ -38,7 +38,7 @@ export const MonitoringOffersNoWrite: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await expect(await canvas.findByTestId("shop-users-list", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("shop-users-list")).toBeVisible(), { timeout: 4000 });
     await expect(canvas.queryByTestId("shop-detail-edit")).toBeNull();
     await expect(canvas.queryByTestId("shop-detail-delete")).toBeNull();
     await expect(canvas.queryByTestId("shop-add-user")).toBeNull();

@@ -599,7 +599,8 @@ func TestOrderReturnAccept_AnOrderWithNoTakeIsRefused(t *testing.T) {
 }
 
 // THE COURIER'S ASK (a-return-may-carry-the-couriers-ask) rides the event, and is written on the accept's row with what
-// it was for. A charge with no note is refused (an-incidental-line-must-say-what-it-was-for).
+// it was for. (A charge with no note is accepted too — the note is optional:
+// TestOrderReturnAccept_AChargeWithNoNoteIsAccepted.)
 func TestOrderReturnAccept_TheCourierChargeRidesTheEvent(t *testing.T) {
 	db := san_testdb.DB(t)
 	rec := &recorder{}
@@ -610,13 +611,7 @@ func TestOrderReturnAccept_TheCourierChargeRidesTheEvent(t *testing.T) {
 	orderID, items := returnedOrder(t, svc, orderReq(shop))
 	rec.events = nil
 
-	_, err := acceptReturn(svc, context.Background(), testWarehouse, orderID, whole(items), func(r *sellingv1.OrderReturnAcceptRequest) {
-		r.CourierCharge = 15_000
-		r.CourierChargeNote = "   "
-	})
-	wantCode(t, err, connect.CodeInvalidArgument)
-
-	_, err = acceptReturn(svc, asUser(31), testWarehouse, orderID, whole(items), func(r *sellingv1.OrderReturnAcceptRequest) {
+	_, err := acceptReturn(svc, asUser(31), testWarehouse, orderID, whole(items), func(r *sellingv1.OrderReturnAcceptRequest) {
 		r.CourierCharge = 15_000
 		r.CourierChargeNote = " ongkir retur J&T "
 	})
@@ -634,6 +629,41 @@ func TestOrderReturnAccept_TheCourierChargeRidesTheEvent(t *testing.T) {
 	accepted := rec.events[0].GetOrderReturnAccepted()
 	if accepted.GetCourierCharge() != 15_000 || accepted.GetCourierChargeNote() != "ongkir retur J&T" {
 		t.Fatalf("event charge %v %q, want 15.000 and its trimmed note", accepted.GetCourierCharge(), accepted.GetCourierChargeNote())
+	}
+}
+
+// A CHARGE WITH NO NOTE IS ACCEPTED (the-couriers-charge-note-is-optional, which reverses the return's *note required
+// above 0* — inverted from "a charge with no note is refused"): a blank note is no note; the order is accepted, the
+// accept's row names the amount alone (no dangling colon), and OrderReturnAccepted carries the charge with an empty note,
+// so the selling team owes it as it would with a note.
+func TestOrderReturnAccept_AChargeWithNoNoteIsAccepted(t *testing.T) {
+	db := san_testdb.DB(t)
+	rec := &recorder{}
+	svc, _ := returnAccept(t, db, rec, &fakeCatalog{})
+	shop := insertShop(t, db, mapTeam, "Toko A", "TOKO-A", "shopee")
+	configureReturnWarehouse(t, db, mapTeam, testWarehouse)
+
+	orderID, items := returnedOrder(t, svc, orderReq(shop))
+	rec.events = nil
+
+	_, err := acceptReturn(svc, asUser(31), testWarehouse, orderID, whole(items), func(r *sellingv1.OrderReturnAcceptRequest) {
+		r.CourierCharge = 15_000
+		r.CourierChargeNote = "   "
+	})
+	if err != nil {
+		t.Fatalf("OrderReturnAccept with a charge and no note = %v, want it accepted — the note is optional", err)
+	}
+
+	rows := timelineRows(t, db, orderID)
+	accept := rows[len(rows)-1]
+
+	if accept.Note != "Courier charge Rp 15.000" {
+		t.Fatalf("accept row note %q, want the charge alone", accept.Note)
+	}
+
+	accepted := rec.events[0].GetOrderReturnAccepted()
+	if accepted.GetCourierCharge() != 15_000 || accepted.GetCourierChargeNote() != "" {
+		t.Fatalf("event charge %v %q, want 15.000 and no note", accepted.GetCourierCharge(), accepted.GetCourierChargeNote())
 	}
 }
 

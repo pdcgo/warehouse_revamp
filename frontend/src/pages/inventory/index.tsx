@@ -16,8 +16,11 @@ const NOT_PICKED = -1n;
 //
 //   Inventory                                                                 [Gudang Pusat ⌄]
 //   Every product this warehouse holds or has held — any team's, at 0 too.
-//   [⌕ Search products by product code or name                ×]
-//   Product code   · Product                 · Owner          · On hand · Actions
+//   [⌕ Search products by product code or name                ×]  [All tags ⌄]
+//   Product code   · Product                 · Tags · Owner   · On hand · Actions
+//
+// The Tags column and the Tag filter are the list's own (backlog #148) — the products' tags a warehouse holding the
+// stock sees, read here by Root and the admin team as well.
 //
 // A WAREHOUSE reads the same list as its own Products (a-warehouses-products-is-what-it-holds), with no picker — it is
 // its own building — and rows that open the warehouse product page. The old Inventories ▸ Stock address forwards there

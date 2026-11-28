@@ -21,8 +21,6 @@ import (
 
 // The return accept's refusals, each a sentence for the person holding the parcel.
 var (
-	// an-incidental-line-must-say-what-it-was-for: a charge with no reason is a debt nobody can answer for.
-	errReturnChargeNoteMissing = errors.New("say what the courier's charge was for")
 	// The return is the order's: only an order CLAIMED as coming back is accepted. A parcel whose order is not in
 	// `return` is forced to return first (a-forced-return-follows-the-status-move).
 	errReturnNotClaimed = errors.New("only an order in return can be accepted")
@@ -79,13 +77,10 @@ func (s *Service) OrderReturnAccept(
 	teamID := req.Msg.GetTeamId()
 	orderID := req.Msg.GetOrderId()
 	// THE FREEZE POINT of the courier's charge, exact as typed (the-backend-never-rounds-money) — the event, the note
-	// and the balance all read this one figure.
+	// and the balance all read this one figure. What it was for is OPTIONAL (the-couriers-charge-note-is-optional): a
+	// charge with no note is accepted and owed as it is.
 	charge := req.Msg.GetCourierCharge()
 	chargeNote := strings.TrimSpace(req.Msg.GetCourierChargeNote())
-
-	if charge > 0 && chargeNote == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errReturnChargeNoteMissing)
-	}
 
 	if readsEveryTeam(teamID) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errReturnAcceptedByRoot)
@@ -661,10 +656,16 @@ func returnNotClaimed(status string) error {
 		fmt.Errorf("%w — this order is %s", errReturnNotClaimed, status))
 }
 
-// courierChargeText is the accept row's note: the courier's charge and what it was for, "" when there is none.
+// courierChargeText is the accept row's note: the courier's charge and what it was for — "Courier charge Rp 15.000:
+// ongkir retur", or the amount alone when no note was given (the-couriers-charge-note-is-optional) — "" when there is
+// no charge.
 func courierChargeText(charge float64, note string) string {
 	if charge <= 0 {
 		return ""
+	}
+
+	if note == "" {
+		return "Courier charge " + san_money.Text(charge)
 	}
 
 	return "Courier charge " + san_money.Text(charge) + ": " + note

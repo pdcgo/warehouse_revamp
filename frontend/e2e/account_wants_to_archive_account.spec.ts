@@ -5,12 +5,13 @@ import { API_URL } from "./env";
 import { SUFFIX, api, login } from "./restock_helpers";
 
 // An owner or an admin of either team type wants to close an account — the check behind
-// docs/acceptances/financial_account/account.md, section *accounts*, when *archive account* (givens 12–13).
+// docs/acceptances/financial_account/account.md, section *accounts*, when *archive account* (givens 18–19).
+// (Numbered 12–13 until hfrada's renumbering, aa6e65f6, 11-24.)
 // Both givens name selling:owner · selling:admin · warehouse:owner · warehouse:admin: one test per role and given,
 // each signed in as a person of that role, in a team of its OWN (an-account-is-archived-only-at-zero: an account
 // is archived only when its balance is zero — the money is moved out, or found missing, first).
 //
-//   12 (active bank BCA · balance Rp 0) — BCA Tutup, opened at Rp 100.000 and emptied by a transfer to BCA Utama,
+//   18 (active bank BCA · balance Rp 0) — BCA Tutup, opened at Rp 100.000 and emptied by a transfer to BCA Utama,
 //      so it has a history to keep. The row's Account actions → Archive, the confirm, Archive.
 //      then: gone from the list and every account picker, its history kept —
 //            · the list: no row after a reload; the Archived view lists it, badged
@@ -23,7 +24,7 @@ import { SUFFIX, api, login } from "./restock_helpers";
 //              the team's other accounts and not BCA Tutup
 //            · its history: the account's own page still opens, Archived, Rp 0, both rows — the opening balance
 //              and the transfer to BCA Utama
-//   13 (active bank BCA · balance Rp 100.000) — BCA Simpanan, opened at Rp 100.000. The row's Account actions.
+//   19 (active bank BCA · balance Rp 100.000) — BCA Simpanan, opened at Rp 100.000. The row's Account actions.
 //      then: not offered, says only at zero — the Archive item is there, disabled, reading "only at zero", and a
 //            click on it opens no confirm; the same on the account's own page. A `regression:` step: the server
 //            refuses the archive under the role's token (failed_precondition) and the account stays active.
@@ -169,7 +170,7 @@ test.beforeAll(async ({ browser }) => {
       role: r.role,
     });
 
-    // Given 12: BCA Tutup, Rp 100.000 moved out to BCA Utama — at zero, with a history. Both marked operational,
+    // Given 18: BCA Tutup, Rp 100.000 moved out to BCA Utama — at zero, with a history. Both marked operational,
     // so the Paid from feed offers BCA Tutup before the archive and still has BCA Utama after it.
     const closing = await open(teamId, CLOSING, number(1, r), 100_000);
     const main = await open(teamId, MAIN, number(2, r), 0);
@@ -189,7 +190,7 @@ test.beforeAll(async ({ browser }) => {
       });
     }
 
-    // Given 13: BCA Simpanan, still holding Rp 100.000.
+    // Given 19: BCA Simpanan, still holding Rp 100.000.
     const savings = await open(teamId, SAVINGS, number(3, r), 100_000);
 
     // An unknown account — a shop's withdrawal with no account named — whose "Move into" picker is the one every

@@ -1177,6 +1177,191 @@ func (x *ProductReturnMapByIdsResponse) GetItems() map[uint64]*ProductReturnMapB
 	return nil
 }
 
+// A product's DERIVED PRODUCTS — Produk Turunan, which IS the return map (produk-turunan-is-the-return-map) — in both
+// directions, ACROSS TEAMS. Unlike ProductReturnMapByIds (the order form's read, whose team is its filter), another
+// team's map is seen here: that is what the section draws.
+//
+//	derived_from   Turunan dari — the maps whose OWN product is this one: its owner team's maps, each naming the
+//	               other team's product it was mapped FROM. The map is unique on its SOURCE, not on its own product
+//	               (the-map-is-unique-on-its-source), so a team may land several borrowed products on one product of
+//	               its own — each is a map here.
+//	derived_to     Turunannya — the maps whose BORROWED product is this one, every team's: the own product each team
+//	               maps it to. At most one per team.
+//
+// The maps only — the screen names them with the reads it already makes: the products (name, SKU, cover) with
+// ProductByIds, the teams with TeamByIds, the ready stock with DiscoverStockByIds.
+//
+// CAPPED, not paged (HARD RULE 9's capped read: it can never return "everything"): each direction is its NEWEST 200
+// maps — CommonPagination's largest page, and the max_items of the three by-ids reads that name the rows, so one call
+// of each names a whole answer — with the direction's total beside it, so the count the section shows is never short.
+type ProductDerivedListRequest struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	TeamId        uint64                    `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	Filter        *ProductDerivedListFilter `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProductDerivedListRequest) Reset() {
+	*x = ProductDerivedListRequest{}
+	mi := &file_warehouse_selling_v1_return_configuration_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProductDerivedListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProductDerivedListRequest) ProtoMessage() {}
+
+func (x *ProductDerivedListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_return_configuration_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProductDerivedListRequest.ProtoReflect.Descriptor instead.
+func (*ProductDerivedListRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_return_configuration_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ProductDerivedListRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *ProductDerivedListRequest) GetFilter() *ProductDerivedListFilter {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+type ProductDerivedListFilter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Any team's product. One no map names — or nobody owns — reads two empty lists.
+	ProductId     uint64 `protobuf:"varint,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProductDerivedListFilter) Reset() {
+	*x = ProductDerivedListFilter{}
+	mi := &file_warehouse_selling_v1_return_configuration_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProductDerivedListFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProductDerivedListFilter) ProtoMessage() {}
+
+func (x *ProductDerivedListFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_return_configuration_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProductDerivedListFilter.ProtoReflect.Descriptor instead.
+func (*ProductDerivedListFilter) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_return_configuration_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ProductDerivedListFilter) GetProductId() uint64 {
+	if x != nil {
+		return x.ProductId
+	}
+	return 0
+}
+
+type ProductDerivedListResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Turunan dari — the maps whose own_product_id is the product, newest first, at most 200.
+	DerivedFrom []*ProductReturnMap `protobuf:"bytes,1,rep,name=derived_from,json=derivedFrom,proto3" json:"derived_from,omitempty"`
+	// Turunannya — the maps whose shared_product_id is the product, every team's, newest first, at most 200.
+	DerivedTo []*ProductReturnMap `protobuf:"bytes,2,rep,name=derived_to,json=derivedTo,proto3" json:"derived_to,omitempty"`
+	// How many maps each direction holds in all — the section's count. Above the list's length only when it was capped.
+	DerivedFromTotal int64 `protobuf:"varint,3,opt,name=derived_from_total,json=derivedFromTotal,proto3" json:"derived_from_total,omitempty"`
+	DerivedToTotal   int64 `protobuf:"varint,4,opt,name=derived_to_total,json=derivedToTotal,proto3" json:"derived_to_total,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ProductDerivedListResponse) Reset() {
+	*x = ProductDerivedListResponse{}
+	mi := &file_warehouse_selling_v1_return_configuration_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProductDerivedListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProductDerivedListResponse) ProtoMessage() {}
+
+func (x *ProductDerivedListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_selling_v1_return_configuration_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProductDerivedListResponse.ProtoReflect.Descriptor instead.
+func (*ProductDerivedListResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_selling_v1_return_configuration_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ProductDerivedListResponse) GetDerivedFrom() []*ProductReturnMap {
+	if x != nil {
+		return x.DerivedFrom
+	}
+	return nil
+}
+
+func (x *ProductDerivedListResponse) GetDerivedTo() []*ProductReturnMap {
+	if x != nil {
+		return x.DerivedTo
+	}
+	return nil
+}
+
+func (x *ProductDerivedListResponse) GetDerivedFromTotal() int64 {
+	if x != nil {
+		return x.DerivedFromTotal
+	}
+	return 0
+}
+
+func (x *ProductDerivedListResponse) GetDerivedToTotal() int64 {
+	if x != nil {
+		return x.DerivedToTotal
+	}
+	return 0
+}
+
 var File_warehouse_selling_v1_return_configuration_proto protoreflect.FileDescriptor
 
 const file_warehouse_selling_v1_return_configuration_proto_rawDesc = "" +
@@ -1255,19 +1440,33 @@ const file_warehouse_selling_v1_return_configuration_proto_rawDesc = "" +
 	"\n" +
 	"ItemsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x04R\x03key\x12M\n" +
-	"\x05value\x18\x02 \x01(\v27.warehouse.selling.v1.ProductReturnMapByIdsResponseListR\x05value:\x028\x01*\xa0\x01\n" +
+	"\x05value\x18\x02 \x01(\v27.warehouse.selling.v1.ProductReturnMapByIdsResponseListR\x05value:\x028\x01\"\x9e\x01\n" +
+	"\x19ProductDerivedListRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12N\n" +
+	"\x06filter\x18\x02 \x01(\v2..warehouse.selling.v1.ProductDerivedListFilterB\x06\xbaH\x03\xc8\x01\x01R\x06filter:\v\x92\xb5\x18\a\n" +
+	"\x05\x01\x02\x03\x04\x05\"B\n" +
+	"\x18ProductDerivedListFilter\x12&\n" +
+	"\n" +
+	"product_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\tproductId\"\x86\x02\n" +
+	"\x1aProductDerivedListResponse\x12I\n" +
+	"\fderived_from\x18\x01 \x03(\v2&.warehouse.selling.v1.ProductReturnMapR\vderivedFrom\x12E\n" +
+	"\n" +
+	"derived_to\x18\x02 \x03(\v2&.warehouse.selling.v1.ProductReturnMapR\tderivedTo\x12,\n" +
+	"\x12derived_from_total\x18\x03 \x01(\x03R\x10derivedFromTotal\x12(\n" +
+	"\x10derived_to_total\x18\x04 \x01(\x03R\x0ederivedToTotal*\xa0\x01\n" +
 	"$TeamReturnConfigurationByIdsDataType\x12:\n" +
 	"6TEAM_RETURN_CONFIGURATION_BY_IDS_DATA_TYPE_UNSPECIFIED\x10\x00\x12<\n" +
 	"8TEAM_RETURN_CONFIGURATION_BY_IDS_DATA_TYPE_CONFIGURATION\x10\x01*\x82\x01\n" +
 	"\x1dProductReturnMapByIdsDataType\x123\n" +
 	"/PRODUCT_RETURN_MAP_BY_IDS_DATA_TYPE_UNSPECIFIED\x10\x00\x12,\n" +
-	"(PRODUCT_RETURN_MAP_BY_IDS_DATA_TYPE_PAIR\x10\x012\xf8\x05\n" +
+	"(PRODUCT_RETURN_MAP_BY_IDS_DATA_TYPE_PAIR\x10\x012\xf6\x06\n" +
 	"\x1eTeamReturnConfigurationService\x12\x9d\x01\n" +
 	"\x1dTeamReturnConfigurationDetail\x12:.warehouse.selling.v1.TeamReturnConfigurationDetailRequest\x1a;.warehouse.selling.v1.TeamReturnConfigurationDetailResponse\"\x03\x90\x02\x01\x12\x8f\x01\n" +
 	"\x1aTeamReturnConfigurationSet\x127.warehouse.selling.v1.TeamReturnConfigurationSetRequest\x1a8.warehouse.selling.v1.TeamReturnConfigurationSetResponse\x12\x95\x01\n" +
 	"\x1cTeamReturnConfigurationByIds\x129.warehouse.selling.v1.TeamReturnConfigurationByIdsRequest\x1a:.warehouse.selling.v1.TeamReturnConfigurationByIdsResponse\x12\x83\x01\n" +
 	"\x16ProductReturnMapCreate\x123.warehouse.selling.v1.ProductReturnMapCreateRequest\x1a4.warehouse.selling.v1.ProductReturnMapCreateResponse\x12\x85\x01\n" +
-	"\x15ProductReturnMapByIds\x122.warehouse.selling.v1.ProductReturnMapByIdsRequest\x1a3.warehouse.selling.v1.ProductReturnMapByIdsResponse\"\x03\x90\x02\x01BNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
+	"\x15ProductReturnMapByIds\x122.warehouse.selling.v1.ProductReturnMapByIdsRequest\x1a3.warehouse.selling.v1.ProductReturnMapByIdsResponse\"\x03\x90\x02\x01\x12|\n" +
+	"\x12ProductDerivedList\x12/.warehouse.selling.v1.ProductDerivedListRequest\x1a0.warehouse.selling.v1.ProductDerivedListResponse\"\x03\x90\x02\x01BNZLgithub.com/pdcgo/warehouse_revamp/backend/gen/warehouse/selling/v1;sellingv1b\x06proto3"
 
 var (
 	file_warehouse_selling_v1_return_configuration_proto_rawDescOnce sync.Once
@@ -1282,7 +1481,7 @@ func file_warehouse_selling_v1_return_configuration_proto_rawDescGZIP() []byte {
 }
 
 var file_warehouse_selling_v1_return_configuration_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_warehouse_selling_v1_return_configuration_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_warehouse_selling_v1_return_configuration_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_warehouse_selling_v1_return_configuration_proto_goTypes = []any{
 	(TeamReturnConfigurationByIdsDataType)(0),        // 0: warehouse.selling.v1.TeamReturnConfigurationByIdsDataType
 	(ProductReturnMapByIdsDataType)(0),               // 1: warehouse.selling.v1.ProductReturnMapByIdsDataType
@@ -1306,46 +1505,54 @@ var file_warehouse_selling_v1_return_configuration_proto_goTypes = []any{
 	(*ProductReturnMapByIdsResponseItem)(nil),        // 19: warehouse.selling.v1.ProductReturnMapByIdsResponseItem
 	(*ProductReturnMapByIdsResponseList)(nil),        // 20: warehouse.selling.v1.ProductReturnMapByIdsResponseList
 	(*ProductReturnMapByIdsResponse)(nil),            // 21: warehouse.selling.v1.ProductReturnMapByIdsResponse
-	nil,                                              // 22: warehouse.selling.v1.TeamReturnConfigurationMapItem.MapDataEntry
-	nil,                                              // 23: warehouse.selling.v1.TeamReturnConfigurationByIdsResponse.ItemsEntry
-	nil,                                              // 24: warehouse.selling.v1.ProductReturnMapPairItem.MapDataEntry
-	nil,                                              // 25: warehouse.selling.v1.ProductReturnMapByIdsResponse.ItemsEntry
+	(*ProductDerivedListRequest)(nil),                // 22: warehouse.selling.v1.ProductDerivedListRequest
+	(*ProductDerivedListFilter)(nil),                 // 23: warehouse.selling.v1.ProductDerivedListFilter
+	(*ProductDerivedListResponse)(nil),               // 24: warehouse.selling.v1.ProductDerivedListResponse
+	nil,                                              // 25: warehouse.selling.v1.TeamReturnConfigurationMapItem.MapDataEntry
+	nil,                                              // 26: warehouse.selling.v1.TeamReturnConfigurationByIdsResponse.ItemsEntry
+	nil,                                              // 27: warehouse.selling.v1.ProductReturnMapPairItem.MapDataEntry
+	nil,                                              // 28: warehouse.selling.v1.ProductReturnMapByIdsResponse.ItemsEntry
 }
 var file_warehouse_selling_v1_return_configuration_proto_depIdxs = []int32{
 	2,  // 0: warehouse.selling.v1.TeamReturnConfigurationDetailResponse.configuration:type_name -> warehouse.selling.v1.TeamReturnConfiguration
 	2,  // 1: warehouse.selling.v1.TeamReturnConfigurationSetResponse.configuration:type_name -> warehouse.selling.v1.TeamReturnConfiguration
 	8,  // 2: warehouse.selling.v1.TeamReturnConfigurationByIdsRequest.filter:type_name -> warehouse.selling.v1.TeamReturnConfigurationByIdsFilter
 	0,  // 3: warehouse.selling.v1.TeamReturnConfigurationByIdsRequest.data_request:type_name -> warehouse.selling.v1.TeamReturnConfigurationByIdsDataType
-	22, // 4: warehouse.selling.v1.TeamReturnConfigurationMapItem.map_data:type_name -> warehouse.selling.v1.TeamReturnConfigurationMapItem.MapDataEntry
+	25, // 4: warehouse.selling.v1.TeamReturnConfigurationMapItem.map_data:type_name -> warehouse.selling.v1.TeamReturnConfigurationMapItem.MapDataEntry
 	9,  // 5: warehouse.selling.v1.TeamReturnConfigurationByIdsResponseItem.configuration:type_name -> warehouse.selling.v1.TeamReturnConfigurationMapItem
 	10, // 6: warehouse.selling.v1.TeamReturnConfigurationByIdsResponseList.items:type_name -> warehouse.selling.v1.TeamReturnConfigurationByIdsResponseItem
-	23, // 7: warehouse.selling.v1.TeamReturnConfigurationByIdsResponse.items:type_name -> warehouse.selling.v1.TeamReturnConfigurationByIdsResponse.ItemsEntry
+	26, // 7: warehouse.selling.v1.TeamReturnConfigurationByIdsResponse.items:type_name -> warehouse.selling.v1.TeamReturnConfigurationByIdsResponse.ItemsEntry
 	13, // 8: warehouse.selling.v1.ProductReturnMapCreateResponse.map:type_name -> warehouse.selling.v1.ProductReturnMap
 	17, // 9: warehouse.selling.v1.ProductReturnMapByIdsRequest.filter:type_name -> warehouse.selling.v1.ProductReturnMapByIdsFilter
 	1,  // 10: warehouse.selling.v1.ProductReturnMapByIdsRequest.data_request:type_name -> warehouse.selling.v1.ProductReturnMapByIdsDataType
-	24, // 11: warehouse.selling.v1.ProductReturnMapPairItem.map_data:type_name -> warehouse.selling.v1.ProductReturnMapPairItem.MapDataEntry
+	27, // 11: warehouse.selling.v1.ProductReturnMapPairItem.map_data:type_name -> warehouse.selling.v1.ProductReturnMapPairItem.MapDataEntry
 	18, // 12: warehouse.selling.v1.ProductReturnMapByIdsResponseItem.pair:type_name -> warehouse.selling.v1.ProductReturnMapPairItem
 	19, // 13: warehouse.selling.v1.ProductReturnMapByIdsResponseList.items:type_name -> warehouse.selling.v1.ProductReturnMapByIdsResponseItem
-	25, // 14: warehouse.selling.v1.ProductReturnMapByIdsResponse.items:type_name -> warehouse.selling.v1.ProductReturnMapByIdsResponse.ItemsEntry
-	2,  // 15: warehouse.selling.v1.TeamReturnConfigurationMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.TeamReturnConfiguration
-	11, // 16: warehouse.selling.v1.TeamReturnConfigurationByIdsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.TeamReturnConfigurationByIdsResponseList
-	13, // 17: warehouse.selling.v1.ProductReturnMapPairItem.MapDataEntry.value:type_name -> warehouse.selling.v1.ProductReturnMap
-	20, // 18: warehouse.selling.v1.ProductReturnMapByIdsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.ProductReturnMapByIdsResponseList
-	3,  // 19: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationDetail:input_type -> warehouse.selling.v1.TeamReturnConfigurationDetailRequest
-	5,  // 20: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationSet:input_type -> warehouse.selling.v1.TeamReturnConfigurationSetRequest
-	7,  // 21: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationByIds:input_type -> warehouse.selling.v1.TeamReturnConfigurationByIdsRequest
-	14, // 22: warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapCreate:input_type -> warehouse.selling.v1.ProductReturnMapCreateRequest
-	16, // 23: warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapByIds:input_type -> warehouse.selling.v1.ProductReturnMapByIdsRequest
-	4,  // 24: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationDetail:output_type -> warehouse.selling.v1.TeamReturnConfigurationDetailResponse
-	6,  // 25: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationSet:output_type -> warehouse.selling.v1.TeamReturnConfigurationSetResponse
-	12, // 26: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationByIds:output_type -> warehouse.selling.v1.TeamReturnConfigurationByIdsResponse
-	15, // 27: warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapCreate:output_type -> warehouse.selling.v1.ProductReturnMapCreateResponse
-	21, // 28: warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapByIds:output_type -> warehouse.selling.v1.ProductReturnMapByIdsResponse
-	24, // [24:29] is the sub-list for method output_type
-	19, // [19:24] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	28, // 14: warehouse.selling.v1.ProductReturnMapByIdsResponse.items:type_name -> warehouse.selling.v1.ProductReturnMapByIdsResponse.ItemsEntry
+	23, // 15: warehouse.selling.v1.ProductDerivedListRequest.filter:type_name -> warehouse.selling.v1.ProductDerivedListFilter
+	13, // 16: warehouse.selling.v1.ProductDerivedListResponse.derived_from:type_name -> warehouse.selling.v1.ProductReturnMap
+	13, // 17: warehouse.selling.v1.ProductDerivedListResponse.derived_to:type_name -> warehouse.selling.v1.ProductReturnMap
+	2,  // 18: warehouse.selling.v1.TeamReturnConfigurationMapItem.MapDataEntry.value:type_name -> warehouse.selling.v1.TeamReturnConfiguration
+	11, // 19: warehouse.selling.v1.TeamReturnConfigurationByIdsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.TeamReturnConfigurationByIdsResponseList
+	13, // 20: warehouse.selling.v1.ProductReturnMapPairItem.MapDataEntry.value:type_name -> warehouse.selling.v1.ProductReturnMap
+	20, // 21: warehouse.selling.v1.ProductReturnMapByIdsResponse.ItemsEntry.value:type_name -> warehouse.selling.v1.ProductReturnMapByIdsResponseList
+	3,  // 22: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationDetail:input_type -> warehouse.selling.v1.TeamReturnConfigurationDetailRequest
+	5,  // 23: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationSet:input_type -> warehouse.selling.v1.TeamReturnConfigurationSetRequest
+	7,  // 24: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationByIds:input_type -> warehouse.selling.v1.TeamReturnConfigurationByIdsRequest
+	14, // 25: warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapCreate:input_type -> warehouse.selling.v1.ProductReturnMapCreateRequest
+	16, // 26: warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapByIds:input_type -> warehouse.selling.v1.ProductReturnMapByIdsRequest
+	22, // 27: warehouse.selling.v1.TeamReturnConfigurationService.ProductDerivedList:input_type -> warehouse.selling.v1.ProductDerivedListRequest
+	4,  // 28: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationDetail:output_type -> warehouse.selling.v1.TeamReturnConfigurationDetailResponse
+	6,  // 29: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationSet:output_type -> warehouse.selling.v1.TeamReturnConfigurationSetResponse
+	12, // 30: warehouse.selling.v1.TeamReturnConfigurationService.TeamReturnConfigurationByIds:output_type -> warehouse.selling.v1.TeamReturnConfigurationByIdsResponse
+	15, // 31: warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapCreate:output_type -> warehouse.selling.v1.ProductReturnMapCreateResponse
+	21, // 32: warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapByIds:output_type -> warehouse.selling.v1.ProductReturnMapByIdsResponse
+	24, // 33: warehouse.selling.v1.TeamReturnConfigurationService.ProductDerivedList:output_type -> warehouse.selling.v1.ProductDerivedListResponse
+	28, // [28:34] is the sub-list for method output_type
+	22, // [22:28] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_selling_v1_return_configuration_proto_init() }
@@ -1365,7 +1572,7 @@ func file_warehouse_selling_v1_return_configuration_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_selling_v1_return_configuration_proto_rawDesc), len(file_warehouse_selling_v1_return_configuration_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   24,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

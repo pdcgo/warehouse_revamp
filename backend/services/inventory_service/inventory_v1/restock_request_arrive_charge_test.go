@@ -154,8 +154,9 @@ func TestRestockRequestArrive_KeepsTheChargeNotedAtTheDoor(t *testing.T) {
 	}
 }
 
-// VALIDATION AS TERIMA'S: a charge with no note is refused and nothing is signed; a negative or non-finite one is the
-// contract's to refuse; a slip with no charge is dropped. A sign with nothing noted keeps nothing.
+// VALIDATION AS TERIMA'S: a charge with no note is kept and the box set arrived (the-couriers-charge-note-is-optional —
+// inverted from "refused, nothing signed"); a negative or non-finite one is the contract's to refuse; a slip with no
+// charge is dropped. A Set Arrived with nothing noted keeps nothing.
 func TestRestockRequestArrive_TheChargeFollowsTerimasRules(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc, _, _ := tibaService(db)
@@ -163,13 +164,15 @@ func TestRestockRequestArrive_TheChargeFollowsTerimasRules(t *testing.T) {
 	noNote := arrRaise(t, svc)
 
 	_, err := signWithCharge(svc, noNote.GetId(), 15000, "", tibaSlip)
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Fatalf("a charge without its note = %v, want InvalidArgument", err)
+	if err != nil {
+		t.Fatalf("a charge without its note = %v, want it kept — the note is optional", err)
 	}
 
-	if got := arrDetail(t, svc, noNote.GetId()); got.GetStatus() != ongoing || got.GetWarehouseAdditionalCost() != 0 {
-		t.Fatalf("after the refusal: %v with charge %v, want still ongoing with none", got.GetStatus(),
-			got.GetWarehouseAdditionalCost())
+	if got := arrDetail(t, svc, noNote.GetId()); got.GetStatus() != statusArrived || got.GetWarehouseAdditionalCost() != 15000 ||
+		got.GetWarehouseAdditionalCostNote() != "" || got.GetWarehouseAdditionalCostFile() != tibaSlip {
+		t.Fatalf("after a charge with no note: %v with charge %v %q, slip %q — want arrived with 15000, no note, its slip",
+			got.GetStatus(), got.GetWarehouseAdditionalCost(), got.GetWarehouseAdditionalCostNote(),
+			got.GetWarehouseAdditionalCostFile())
 	}
 
 	// The contract refuses what the handler never sees — as on Accept.
@@ -296,6 +299,37 @@ func TestRestockRequestAccept_TerimasFigureReplacesTibas(t *testing.T) {
 	}
 }
 
+// A CHARGE WITH NO NOTE GOES ALL THE WAY (the-couriers-charge-note-is-optional): noted at Set Arrived with no note, Terima
+// opens with it and sends it untouched — still with no note — and *Restock Accepted* carries it, so the selling team owes
+// the amount as it would with a note; the note travels empty.
+func TestRestockRequestAccept_TibasChargeWithNoNoteIsPosted(t *testing.T) {
+	db := san_testdb.DB(t)
+	svc, sender, _ := tibaService(db)
+
+	raised := arrRaise(t, svc)
+
+	_, err := signWithCharge(svc, raised.GetId(), 15000, "", "")
+	if err != nil {
+		t.Fatalf("arrive with a charge and no note: %v", err)
+	}
+
+	err = acceptWithCharge(t, db, svc, raised, 15000, "", "")
+	if err != nil {
+		t.Fatalf("accept with a charge and no note = %v, want it accepted", err)
+	}
+
+	if rr := storedRestock(t, db, raised.GetId()); rr.Status != "accepted" || rr.WarehouseAdditionalCost != 15000 ||
+		rr.WarehouseAdditionalCostNote != "" {
+		t.Fatalf("stored %q with %v %q — want accepted with 15000 and no note", rr.Status, rr.WarehouseAdditionalCost,
+			rr.WarehouseAdditionalCostNote)
+	}
+
+	events := acceptedEvents(sender)
+	if len(events) != 1 || events[0].GetWarehouseAdditionalCost() != 15000 || events[0].GetWarehouseAdditionalCostNote() != "" {
+		t.Fatalf("Restock Accepted = %v, want one carrying 15000 with no note", events)
+	}
+}
+
 // …and Terima opening with Tiba's and sending it UNTOUCHED posts it once — not twice; and Terima switched to Tidak ada
 // leaves no charge at all, Tiba's included: its figure is final.
 func TestRestockRequestAccept_TibasChargeIsPostedOnceOrDropped(t *testing.T) {
@@ -380,7 +414,7 @@ func TestRestockRequestArrive_ALateLostBoxTakesTheCharge(t *testing.T) {
 	}
 
 	steps := trail(arrDetail(t, svc, raised.GetId()))
-	if last := steps[len(steps)-1]; last != (trailStep{statusLost, statusArrived, "signed for the box"}) {
+	if last := steps[len(steps)-1]; last != (trailStep{statusLost, statusArrived, "set arrived"}) {
 		t.Fatalf("the trail ends %v, want lost → arrived", last)
 	}
 

@@ -156,6 +156,10 @@ const RestockAcceptPage = lazy(() =>
 const RestockLabelsPage = lazy(() =>
   import("./pages/restock-labels").then((m) => ({ default: m.RestockLabelsPage })),
 );
+// Cetak Ulang Kode — a warehouse's reprint of the products whose code changed (backlog #151), opened from its Products.
+const ProductReprintLabelsPage = lazy(() =>
+  import("./pages/product-reprint-labels").then((m) => ({ default: m.ProductReprintLabelsPage })),
+);
 const ExpensesPage = lazy(() =>
   import("./pages/expenses").then((m) => ({ default: m.ExpensesPage })),
 );
@@ -417,6 +421,9 @@ export const router = createBrowserRouter([
       { path: "products/bundles/new", element: write(<BundleEditPage />) },
       { path: "products/bundles/:bundleId", element: <BundleDetailPage /> },
       { path: "products/bundles/:bundleId/edit", element: write(<BundleEditPage />) },
+      // A warehouse's reprint of changed codes (backlog #151) — read by a monitor too, so no write() gate: Cetak is the
+      // page's own, for the warehouse's people. The static segment outranks `products/:productId`.
+      { path: "products/reprint-labels", element: <ProductReprintLabelsPage /> },
       { path: "products/:productId", element: <ProductDetailPage /> },
       { path: "products/:productId/edit", element: write(<ProductEditPage />) },
       { path: "shops", element: <ShopsPage /> },

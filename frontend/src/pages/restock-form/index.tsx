@@ -69,6 +69,7 @@ import {
   supplierOpen,
   toQty,
 } from "./draft";
+import { AccountHelp } from "./components/AccountHelp";
 import { LineCard } from "./components/LineCard";
 import { SummaryCard } from "./components/SummaryCard";
 import { SupplierBox } from "./components/SupplierBox";
@@ -718,9 +719,15 @@ export function RestockFormPage() {
                 value={financeAccountId}
                 onChange={setFinanceAccountId}
                 disabled={headerLocked}
+                // NOTHING TO PICK is said short in the box, and under it who can fix that — the owner and admin a link
+                // to Financial Accounts in a new tab, CS whom to ask (the-account-box-points-to-the-accounts-page); back
+                // on this tab, the accounts are read again (a-helper-link-opens-a-new-tab).
+                emptyText={t("restock.form.noOperationalAccount")}
+                rereadOnReturn
                 testId="restock-finance-account"
               />
             </Box>
+            {!headerLocked && <AccountHelp teamId={teamId} />}
             <Field.HelperText>{t("restock.form.financeAccountHelp")}</Field.HelperText>
           </Field.Root>
 

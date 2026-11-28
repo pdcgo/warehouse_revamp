@@ -9,13 +9,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
+	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	documentv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1"
 	"github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/document/v1/documentv1connect"
-	commonv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/common/v1"
 	role_basev1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/role_base/v1"
 	teamv1 "github.com/pdcgo/warehouse_revamp/backend/gen/warehouse/team/v1"
-	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/event_source"
+	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_auth"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_caches"
 	"github.com/pdcgo/warehouse_revamp/backend/pkgs/san_verification"
 	"github.com/pdcgo/warehouse_revamp/backend/services/user_service/access_interceptors"
@@ -153,6 +153,12 @@ func (f *fakeTeamClient) TeamDetail(context.Context, *connect.Request[teamv1.Tea
 	return nil, nil
 }
 func (f *fakeTeamClient) TeamInfoUpdate(context.Context, *connect.Request[teamv1.TeamInfoUpdateRequest]) (*connect.Response[teamv1.TeamInfoUpdateResponse], error) {
+	return nil, nil
+}
+func (f *fakeTeamClient) TeamCodeUpdate(context.Context, *connect.Request[teamv1.TeamCodeUpdateRequest]) (*connect.Response[teamv1.TeamCodeUpdateResponse], error) {
+	return nil, nil
+}
+func (f *fakeTeamClient) TeamCodePreview(context.Context, *connect.Request[teamv1.TeamCodePreviewRequest]) (*connect.Response[teamv1.TeamCodePreviewResponse], error) {
 	return nil, nil
 }
 

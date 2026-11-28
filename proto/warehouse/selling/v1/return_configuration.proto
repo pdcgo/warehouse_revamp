@@ -33,6 +33,14 @@ service TeamReturnConfigurationService {
     // the-admin-team-monitors-read-only).
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // PRODUK TURUNAN (produk-turunan-is-the-return-map) — one product's return maps in BOTH directions, read ACROSS
+  // TEAMS: every team's map from the product, and its owner's maps onto it. A separate read on purpose — the order
+  // form's ProductReturnMapByIds stays team-scoped, and another team's map is never seen there.
+  rpc ProductDerivedList(ProductDerivedListRequest) returns (ProductDerivedListResponse) {
+    // A READ — an agent's credential and the admin team's monitor may call it (an-agent-only-reads-for-now,
+    // the-admin-team-monitors-read-only).
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 }
 
 // One team's return warehouse.
@@ -265,4 +273,60 @@ message ProductReturnMapByIdsResponseList {
 // Keyed by borrowed product id. A product the team has not mapped is absent.
 message ProductReturnMapByIdsResponse {
   map<uint64, ProductReturnMapByIdsResponseList> items = 1;
+}
+
+// ============================================================================ produk turunan
+
+// A product's DERIVED PRODUCTS — Produk Turunan, which IS the return map (produk-turunan-is-the-return-map) — in both
+// directions, ACROSS TEAMS. Unlike ProductReturnMapByIds (the order form's read, whose team is its filter), another
+// team's map is seen here: that is what the section draws.
+//
+//   derived_from   Turunan dari — the maps whose OWN product is this one: its owner team's maps, each naming the
+//                  other team's product it was mapped FROM. The map is unique on its SOURCE, not on its own product
+//                  (the-map-is-unique-on-its-source), so a team may land several borrowed products on one product of
+//                  its own — each is a map here.
+//   derived_to     Turunannya — the maps whose BORROWED product is this one, every team's: the own product each team
+//                  maps it to. At most one per team.
+//
+// The maps only — the screen names them with the reads it already makes: the products (name, SKU, cover) with
+// ProductByIds, the teams with TeamByIds, the ready stock with DiscoverStockByIds.
+//
+// CAPPED, not paged (HARD RULE 9's capped read: it can never return "everything"): each direction is its NEWEST 200
+// maps — CommonPagination's largest page, and the max_items of the three by-ids reads that name the rows, so one call
+// of each names a whole answer — with the direction's total beside it, so the count the section shows is never short.
+message ProductDerivedListRequest {
+  // Read: whoever may browse Discover (ProductDiscover's policy) — the product's own page and the Discover detail both
+  // draw the section; a warehouse role is refused, as Discover refuses it. The maps are every team's, so team_id only
+  // authorizes — it never narrows them.
+  option (warehouse.role_base.v1.request_policy) = {
+    roles: [
+      ROLE_ROOT,
+      ROLE_ADMINISTRATOR,
+      ROLE_SELLING_OWNER,
+      ROLE_SELLING_ADMIN,
+      ROLE_SELLING_CS
+    ]
+  };
+
+  uint64 team_id = 1 [
+    (buf.validate.field).uint64.gt = 0,
+    (warehouse.role_base.v1.use_scope) = true
+  ];
+
+  ProductDerivedListFilter filter = 2 [(buf.validate.field).required = true];
+}
+
+message ProductDerivedListFilter {
+  // Any team's product. One no map names — or nobody owns — reads two empty lists.
+  uint64 product_id = 1 [(buf.validate.field).uint64.gt = 0];
+}
+
+message ProductDerivedListResponse {
+  // Turunan dari — the maps whose own_product_id is the product, newest first, at most 200.
+  repeated ProductReturnMap derived_from = 1;
+  // Turunannya — the maps whose shared_product_id is the product, every team's, newest first, at most 200.
+  repeated ProductReturnMap derived_to = 2;
+  // How many maps each direction holds in all — the section's count. Above the list's length only when it was capped.
+  int64 derived_from_total = 3;
+  int64 derived_to_total = 4;
 }

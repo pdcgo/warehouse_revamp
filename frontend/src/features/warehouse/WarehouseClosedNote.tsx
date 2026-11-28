@@ -2,17 +2,20 @@ import { Badge, Text } from "@chakra-ui/react";
 import { useTranslation } from "react-i18next";
 
 import { formatUnixDateTimeShort } from "../../lib/datetime";
+import { warehouseIsClosed } from "./hours";
 import { useWarehouseReceiving } from "./queries";
 
 // WAREHOUSE CLOSED NOW (a-closed-day-warns-and-never-refuses, a-warehouse-records-its-holidays) — a warning, never a
 // refusal: an order is created whatever the hours say, and this says when the warehouse will handle it. Nothing while it
-// receives. `compact` is the picker's badge; otherwise the band's sentence, with a closure's reason when one is why.
+// receives, and nothing for a warehouse whose hours are not set — not set is not closed
+// (a-warehouse-with-no-hours-is-not-closed); a closure still warns for it. `compact` is the picker's badge; otherwise
+// the band's sentence, with a closure's reason when one is why.
 export function WarehouseClosedNote({ warehouseId, compact }: { warehouseId: bigint; compact?: boolean }) {
   const { t } = useTranslation();
   const query = useWarehouseReceiving(warehouseId);
   const state = query.data;
 
-  if (!state || state.receivingNow) {
+  if (!state || !warehouseIsClosed(state)) {
     return null;
   }
 

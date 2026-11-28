@@ -174,7 +174,6 @@ export function totals(lines: LineDraft[], shippingCost: string) {
 /** What still stands between the form and Save — each an i18n key under `restock.form.missing`. */
 export type MissingId =
   | "lines"
-  | "supplier"
   | "count"
   | "total"
   | "newLineNote"
@@ -190,14 +189,15 @@ export type MissingId =
 /**
  * IN THE ORDER THE FORM IS CHECKED (owner: *"untuk urutan validasi restocknya mulai dari produk, gudang, rekening, resi"*,
  * *"di produk perlu cek semuanya punya supplier dulu"*, the-checks-run-products-warehouse-account-resi): the products —
- * there are some, every one names its supplier, every count is real, an added one says why — then the warehouse, then
+ * there are some, every count is real, an added one says why (a supplier is OPTIONAL — owner 2026-11-27,
+ * the-supplier-popup-points-to-create-supplier-when-none-exists, restock.md given 15) — then the warehouse, then
  * the payment card top to bottom: the paying account, the Order ID not on another restock, the courier, the resi — given,
  * and not on another restock (the-courier-is-required-on-the-form, a-reference-in-use-stops-the-restock-form). The first
  * entry is the one the line by Buat Restok names.
  *
  * A reference still being CHECKED holds Buat back too: a check that a quick click could outrun is not a check.
  *
- * ⚠ Stricter than the server: it takes a line with no supplier, a restock with no courier or no resi, and a resi or
+ * ⚠ Stricter than the server: it takes a restock with no courier or no resi, and a resi or
  * Order ID another restock holds. A supplier closed by the box's arrival, and the payment and parcel closed with it,
  * are never asked for — they cannot be given.
  */
@@ -216,7 +216,6 @@ export function missingParts(args: {
   const parcelOpen = mode !== "arrived";
 
   if (lines.length === 0) out.push("lines");
-  if (lines.some((l) => supplierOpen(mode, l) && l.supplierId === 0n)) out.push("supplier");
   if (lines.some((l) => toQty(l.count) < 1)) out.push("count");
   // A TOTAL ABOVE ZERO on every line (owner: *"jumlah dan total produk juga wajib"*, the-count-and-total-are-required) —
   // a blank total no longer passes as a free sample.

@@ -53,3 +53,23 @@ test("Language: switching to Indonesian translates the shell and persists", asyn
   await expect(page.getByRole("link", { name: "Home" }).first()).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
 });
+
+// #155 — Settings' team picture card goes through i18n (`account.teamPicture*`): read in English first (the positive
+// control), then switched to Indonesian on the same page, its heading, button and hint read id.json's words. Root is a
+// team manager in the root team, so the hint is the format line (not the select-a-team / managers-only one).
+test("Language: in Indonesian, Settings' team picture card reads its own words (#155)", async ({ page }) => {
+  await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+  await page.goto("/settings");
+  await expect(page.getByTestId("change-team-picture")).toHaveText("Change picture");
+  await expect(page.getByTestId("team-picture-hint")).toHaveText("JPG or PNG, shown across the app.");
+
+  await page.getByTestId("user-menu").click();
+  await expect(page.getByTestId("lang-switch")).toContainText("EN");
+  await page.getByTestId("lang-switch").click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "id");
+  await page.keyboard.press("Escape");
+
+  await expect(page.getByRole("heading", { name: "Foto Tim" })).toBeVisible();
+  await expect(page.getByTestId("change-team-picture")).toHaveText("Ubah foto");
+  await expect(page.getByTestId("team-picture-hint")).toHaveText("JPG atau PNG, ditampilkan di seluruh aplikasi.");
+});

@@ -130,7 +130,7 @@ func (s *Service) OwnerStockHistory(
 			ProductId:     r.ProductID,
 			WarehouseId:   r.WarehouseID,
 			BatchId:       r.BatchID,
-			Kind:          kindOf(r.ChangeType, r.Delta),
+			Kind:          productPageKindOf(r.ChangeType, r.Delta),
 			Delta:         r.Delta,
 			Balance:       r.Balance,
 			Reason:        r.Reason,
@@ -175,4 +175,24 @@ func (s *Service) OwnerStockHistory(
 		Ids:      ids,
 		PageInfo: pageInfo(page, total),
 	}), nil
+}
+
+// productPageKindOf is kindOf as the PRODUCT PAGES' histories have always read it: the selling product page's Stock
+// History (OwnerStockHistory) and Discover's Riwayat Stok (DiscoverStockHistory) answer an order's units coming back as
+// RETURN and a broken or a found unit as ADJUST — the kinds they answered before #143 split CANCEL, BROKEN and FOUND
+// out for the WAREHOUSE's Stock History (docs/acceptances/inventory/transaction.md givens 2–3). Their decisions name no
+// word for the new kinds (the-product-history-names-the-transaction: Retur, Penyesuaian; stock-history-is-everyones,
+// the-discover-history-names-no-batch), so they must not gain one on the wire. Folded here, in their handlers — the
+// warehouse's read (StockHistory) keeps kindOf's own answer.
+func productPageKindOf(changeType string, change int64) inventoryv1.MovementKind {
+	kind := kindOf(changeType, change)
+
+	switch kind {
+	case inventoryv1.MovementKind_MOVEMENT_KIND_CANCEL:
+		return inventoryv1.MovementKind_MOVEMENT_KIND_RETURN
+	case inventoryv1.MovementKind_MOVEMENT_KIND_BROKEN, inventoryv1.MovementKind_MOVEMENT_KIND_FOUND:
+		return inventoryv1.MovementKind_MOVEMENT_KIND_ADJUST
+	}
+
+	return kind
 }

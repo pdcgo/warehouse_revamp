@@ -41,7 +41,7 @@ export const ArrivedOffersAcceptOnly: Story = {
 
 // a-late-lost-box-is-signed-for-as-arrived — lost: Sign for Box only; it cannot be accepted until it is signed for.
 export const LostOffersSignForBox: Story = {
-  name: "Lost · sign for box",
+  name: "Lost · set arrived",
   render: () => <At504 />,
   play: async ({ canvasElement }) => {
     await loaded(canvasElement);

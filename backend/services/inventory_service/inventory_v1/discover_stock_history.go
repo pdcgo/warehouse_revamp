@@ -109,7 +109,7 @@ func (s *Service) DiscoverStockHistory(
 			Id:            r.ID,
 			ProductId:     r.ProductID,
 			WarehouseId:   r.WarehouseID,
-			Kind:          kindOf(r.ChangeType, r.Delta),
+			Kind:          productPageKindOf(r.ChangeType, r.Delta),
 			Delta:         r.Delta,
 			Balance:       r.Balance,
 			CreatedAtUnix: r.CreatedAt.Unix(),

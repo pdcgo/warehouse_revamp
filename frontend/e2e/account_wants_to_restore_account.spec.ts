@@ -5,12 +5,13 @@ import { API_URL } from "./env";
 import { SUFFIX, api, login } from "./restock_helpers";
 
 // An owner or an admin of either team type wants to use a closed account again — the check behind
-// docs/acceptances/financial_account/account.md, section *accounts*, when *restore account* (given 14).
+// docs/acceptances/financial_account/account.md, section *accounts*, when *restore account* (given 20).
+// (Numbered 14 until hfrada's renumbering, aa6e65f6, 11-24.)
 // The given names selling:owner · selling:admin · warehouse:owner · warehouse:admin: one test per role, each signed
 // in as a person of that role, in a team of its OWN (open, archive, restore an account is admin and up —
 // seeing-is-team-wide-moving-is-admin-and-up; archived --> active: restore, an-account-is-archived-only-at-zero).
 //
-//   14 (archived bank BCA · balance Rp 0) — BCA Lama, opened at Rp 100.000, emptied by a transfer to BCA Utama and
+//   20 (archived bank BCA · balance Rp 0) — BCA Lama, opened at Rp 100.000, emptied by a transfer to BCA Utama and
 //      archived. The Archived view (`?view=archived`) lists it, badged; its row's Restore (no confirm — archiving it
 //      again undoes it).
 //      then: back in the list and the pickers —
@@ -158,7 +159,7 @@ test.beforeAll(async ({ browser }) => {
       role: r.role,
     });
 
-    // Given 14: BCA Lama, Rp 100.000 moved out to BCA Utama — at zero, with a history — then archived.
+    // Given 20: BCA Lama, Rp 100.000 moved out to BCA Utama — at zero, with a history — then archived.
     const oldNumber = number(1, r);
     const old = await open(teamId, OLD, oldNumber, 100_000);
     const main = await open(teamId, MAIN, number(2, r), 0);

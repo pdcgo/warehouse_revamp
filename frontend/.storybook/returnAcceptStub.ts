@@ -176,9 +176,7 @@ export function orderReturnAccept(req: OrderReturnAcceptRequest) {
     }
   }
 
-  if (req.courierCharge > 0 && req.courierChargeNote.trim() === "") {
-    throw new ConnectError("say what the courier's charge was for", Code.InvalidArgument);
-  }
+  // What the courier's charge was for is optional (the-couriers-charge-note-is-optional) — never refused.
 
   if (returnAcceptScenario.refusal) {
     throw new ConnectError(returnAcceptScenario.refusal, Code.FailedPrecondition);

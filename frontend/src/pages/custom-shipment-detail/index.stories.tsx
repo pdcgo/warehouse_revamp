@@ -178,6 +178,6 @@ export const AnotherTeamsParcelIsNotFound: Story = {
   name: "Another team's parcel is not found",
   render: () => <At807 />,
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByTestId("custom-shipment-not-found", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(within(canvasElement).getByTestId("custom-shipment-not-found")).toBeVisible(), { timeout: 4000 });
   },
 };

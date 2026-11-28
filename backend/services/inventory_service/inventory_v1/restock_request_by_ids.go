@@ -85,7 +85,7 @@ func (s *Service) RestockRequestByIds(
 			return nil, restockErr(err)
 		}
 
-		sets, err := restockLabelSets(db, teamID, accepted)
+		sets, err := s.restockLabelSets(ctx, db, teamID, accepted)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}

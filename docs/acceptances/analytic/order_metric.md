@@ -26,5 +26,5 @@ Business: [order_statistic_metric.md](../../business/order/order_statistic_metri
 <tr><td rowspan="1" valign="top">12</td><td rowspan="1" valign="top"><code>selling:all</code> · <code>warehouse:all</code> wants to see statistics<br>(<b>group: daily</b> · add <b>type: order status moves</b> · 1 order completed today)</td><td rowspan="1" valign="top">add analytic metric</td><td>completed 1</td><td>✅ ok</td></tr>
 <tr><td rowspan="1" valign="top">13</td><td rowspan="1" valign="top"><code>selling:all</code> · <code>warehouse:all</code> wants to see statistics<br>(<b>group: daily</b> · add <b>type: order status moves</b> · 1 order marked problem today)</td><td rowspan="1" valign="top">add analytic metric</td><td>problem 1</td><td>✅ ok</td></tr>
 <tr><td rowspan="2" valign="top">14</td><td rowspan="2" valign="top"><code>selling:all</code> · <code>warehouse:all</code> wants to see statistics<br>(<b>group: daily</b> · add <b>type: order status moves</b> · 1 dispute resolved today)</td><td rowspan="2" valign="top">add analytic metric</td><td>completed 1</td><td>✅ ok</td></tr>
-<tr><td>disputes resolved 1</td><td>⬜ untested</td></tr>
+<tr><td>disputes resolved 1</td><td>✅ ok</td></tr>
 </table>

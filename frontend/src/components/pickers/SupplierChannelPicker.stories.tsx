@@ -4,6 +4,7 @@ import { Text } from "@chakra-ui/react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { channelFixture, supplierFixture } from "../../../.storybook/supplierFixtures";
+import { noSuppliersForStory } from "../../../.storybook/supplierStub";
 import { SupplierChannelPicker, type SupplierChannelPick, description } from "./SupplierChannelPicker";
 
 // a-line-connects-to-any-teams-supplier-from-a-popup · a-line-may-name-a-supplier-without-a-channel
@@ -211,5 +212,34 @@ export const TheDialogKeepsItsHeight: Story = {
 
     await expect(Math.abs(content.getBoundingClientRect().height - opened)).toBeLessThan(1);
     await expect(dialog.getByTestId(`${ID}-confirm`)).toBeVisible();
+  },
+};
+
+// ── Nothing to list (the-supplier-popup-points-to-create-supplier-when-none-exists) ─────────────────────────
+
+// NO SUPPLIER IN ANY TEAM, AND A PLACE TO MAKE ONE — the popup links there, in a new tab (a-helper-link-opens-a-new-tab).
+export const NothingAnywhereLinksToCreateSupplier: Story = {
+  name: "Nothing anywhere · the Create Supplier link",
+  args: { createSupplierHref: "/inventories/suppliers" },
+  beforeEach: () => noSuppliersForStory(),
+  play: async ({ canvasElement }) => {
+    const dialog = await openPicker(canvasElement);
+
+    const link = await dialog.findByTestId(`${ID}-create-supplier`, {}, { timeout: 4000 });
+    await expect(link).toHaveAttribute("href", "/inventories/suppliers");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(dialog.getByTestId(`${ID}-empty`)).toHaveTextContent("No suppliers yet.");
+  },
+};
+
+// …only where the caller says where a supplier is made: without `createSupplierHref` the empty list says so, no link.
+export const NothingAnywhereWithoutAPlaceNoLink: Story = {
+  name: "Nothing anywhere · no place given, no link",
+  beforeEach: () => noSuppliersForStory(),
+  play: async ({ canvasElement }) => {
+    const dialog = await openPicker(canvasElement);
+
+    await waitFor(() => expect(dialog.getByTestId(`${ID}-empty`)).toHaveTextContent("No suppliers yet."), { timeout: 4000 });
+    await expect(dialog.queryByTestId(`${ID}-create-supplier`)).toBeNull();
   },
 };

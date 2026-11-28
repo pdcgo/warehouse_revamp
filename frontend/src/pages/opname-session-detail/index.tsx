@@ -49,6 +49,7 @@ import { ConfirmDialog } from "../../components/feedback/ConfirmDialog";
 import { RefreshOverlay } from "../../components/feedback/RefreshOverlay";
 import { toaster } from "../../components/feedback/Toaster";
 import { RackSelect } from "../../components/pickers/RackSelect";
+import { useRacks } from "../../features/racks/queries";
 import { useIsMobile } from "../../layouts/shell";
 import { formatUnixDateTime } from "../../lib/datetime";
 import { canManageOpname } from "../../lib/roles";
@@ -92,6 +93,10 @@ export function OpnameSessionDetailPage() {
   const sendBack = useSendBackOpnameRow();
   const cancel = useCancelOpnameSession();
   const teams = useTeamsByIds({ ids: (rows.data?.rows ?? []).map((r) => r.teamId) });
+  // THE RACK FILTER'S RACKS, read beside the session (#134, the-speed-audits-old-findings-are-fixed-smallest-first): they
+  // need only the warehouse, but the filter mounts under the session once it is named — the speed audit's
+  // OpnameSessionDetail → UserByIDs → RackList. Handed to the picker, which then reads none of its own.
+  const racks = useRacks({ warehouseId: teamId ?? 0n, enabled: teamId !== undefined && canManageOpname(current?.role) });
 
   const refilter = (apply: () => void) => {
     apply();
@@ -298,6 +303,7 @@ export function OpnameSessionDetailPage() {
         <FilterField w="14rem" testId="opname-detail-rack-filter">
           <RackSelect
             warehouseId={teamId}
+            racks={racks}
             value={rack}
             onChange={(v) => refilter(() => setRack(v))}
             placeholder={t("opnameSession.detail.rackAll")}

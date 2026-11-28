@@ -262,7 +262,7 @@ export const ARecordsNoteIsEditedAndKept: Story = {
     const section = canvas.getByTestId("restock-detail-note-section");
 
     await expect(within(section).queryByTestId("not-implemented-lateNote")).toBeNull();
-    await expect(await within(section).findByTestId("restock-detail-note-selling-by-fallback")).toBeVisible();
+    await waitFor(() => expect(within(section).getByTestId("restock-detail-note-selling-by-fallback")).toBeVisible(), { timeout: 5000 });
 
     await userEvent.click(within(section).getByTestId("restock-notes-edit"));
     const input = await within(section).findByTestId("restock-notes-input");

@@ -5,12 +5,13 @@ import { API_URL } from "./env";
 import { SUFFIX, api, login } from "./restock_helpers";
 
 // An owner or an admin of either team type wants to choose which accounts pay — the check behind
-// docs/acceptances/financial_account/account.md, section *accounts*, when *mark operational* (given 15).
+// docs/acceptances/financial_account/account.md, section *accounts*, when *mark operational* (given 21).
+// (Numbered 15 until hfrada's renumbering, aa6e65f6, 11-24.)
 // The given names selling:owner · selling:admin · warehouse:owner · warehouse:admin: one test per role, each signed
 // in as a person of that role, in a team of its OWN (marking an account is admin and up —
 // seeing-is-team-wide-moving-is-admin-and-up; operational-accounts-pay-for-operations).
 //
-//   15 (active bank BCA · not operational) — BCA Belanja, active, never marked, beside BCA Tabungan (never marked
+//   21 (active bank BCA · not operational) — BCA Belanja, active, never marked, beside BCA Tabungan (never marked
 //      either, so "offered" can be told from "every account"). The row menu's Mark Operational.
 //      then: asks first — the Mark … as Operational confirm opens and nothing is sent while it stands; its Cancel
 //            leaves the account unmarked (no FinancialAccountOperationalSet, the Paid from feed still lacks it, no
@@ -139,7 +140,7 @@ test.beforeAll(async ({ browser }) => {
       role: r.role,
     });
 
-    // Given 15: BCA Belanja, active, not operational — beside BCA Tabungan, not operational either.
+    // Given 21: BCA Belanja, active, not operational — beside BCA Tabungan, not operational either.
     const paying = await open(teamId, PAYING, number(1, r));
     const other = await open(teamId, OTHER, number(2, r));
     const depot = r.side === "warehouse" ? await open(teamId, DEPOT, number(3, r)) : "";
@@ -195,11 +196,16 @@ test.describe(`acct wants to choose which accounts pay (${C15})`, () => {
       // The given: BCA Belanja is active and not operational — the Paid from feed lacks it, its row has no badge…
       expect(await paidFromFeed(page, teamId)).not.toContain(a.paying);
       if (r.side === "selling") {
-        // …and the two Paid from pickers have nothing to offer yet.
+        // …and the two Paid from pickers have nothing to offer yet. The restock form's box says so short, and under it
+        // what is missing — for the owner and admin, accounts but none marked, with the link to Financial Accounts
+        // (#144, the-account-box-points-to-the-accounts-page).
         await openRestockForm(page);
-        await expect(page.getByTestId("restock-finance-account")).toContainText(
-          "No operational account — ask an admin to mark one",
+        await expect(page.getByTestId("restock-finance-account")).toContainText("No operational account");
+        await expect(page.getByTestId("restock-finance-account-missing")).toHaveAttribute("data-case", "unmarked");
+        await expect(page.getByTestId("restock-finance-account-missing-text")).toHaveText(
+          "No account marked operational — mark one.",
         );
+        await expect(page.getByTestId("restock-finance-account-open")).toHaveAttribute("href", "/financial-accounts");
         await openExpenseDialog(page);
         await expect(page.getByTestId("expense-no-operational")).toBeVisible();
         await expect(page.getByTestId("expense-paid-from")).toBeDisabled();

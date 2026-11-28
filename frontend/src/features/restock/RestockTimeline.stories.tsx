@@ -26,7 +26,7 @@ export const ArrivedWithAnEdit: Story = {
       "Kopi Arabika 250g · 10 → 12 pcs · “extra stock — 2 bonus dari supplier”",
     );
     await expect(canvas.queryByTestId("restock-timeline-3-description")).toBeNull();
-    await expect(canvas.getByTestId("restock-timeline-2-description")).toHaveTextContent(/signed for/i);
+    await expect(canvas.getByTestId("restock-timeline-2-description")).toHaveTextContent(/set arrived/i);
   },
 };
 

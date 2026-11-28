@@ -73,7 +73,7 @@ export const OneSupplierForAllInTwoSteps: Story = {
     const rule = canvas.getByTestId("restock-supplier-products-rule");
     await expect(block).toBeVisible();
     await expect(canvas.getByTestId("restock-all-supplier-none")).toBeVisible();
-    await expect(canvas.getByTestId("restock-all-supplier-help")).toHaveTextContent(/^Every product needs a supplier/);
+    await expect(canvas.getByTestId("restock-all-supplier-help")).toHaveTextContent(/^Optional — choose one supplier for all products/);
     await expect(after(block, rule)).toBe(true);
     await expect(after(rule, canvas.getByTestId("restock-no-products"))).toBe(true);
     await expect(after(rule, canvas.getByTestId("restock-pick-products"))).toBe(true);

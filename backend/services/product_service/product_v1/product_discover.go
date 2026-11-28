@@ -45,6 +45,12 @@ func (s *Service) ProductDiscover(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errListOnlyFilter)
 	}
 
+	// Nor is the TAG filter: other teams on Discover see no tags (products-have-their-own-tag-list, its 🔄 *who sees*), so
+	// they filter by none — a filter would tell them which tags a product carries. Discover's rows never carry tags.
+	if len(filter.GetTagIds()) > 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errTagFilterIsTheLists)
+	}
+
 	// The picked category's whole subtree, read once — every copy of the scope binds the same list.
 	categoryID := req.Msg.GetCategoryId()
 

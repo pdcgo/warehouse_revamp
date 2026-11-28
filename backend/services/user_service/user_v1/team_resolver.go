@@ -16,8 +16,9 @@ import (
 // teamByIdsMax mirrors the contract's max_items on TeamByIdsRequest.ids.
 const teamByIdsMax = 200
 
-// teamCacheTTL — teams are near-static (admin-only writes; type and team_code are immutable
-// after create), so the worst staleness here is a display name.
+// teamCacheTTL — teams are near-static (admin-only writes; type is immutable after create), so the worst staleness here
+// is a display name. The cache holds a team's name, type and picture — never its code, which a selling team can now
+// change (TeamCodeUpdate); nothing here reads it.
 const teamCacheTTL = time.Minute
 
 // teamResolver replaces the cross-service SQL JOIN.

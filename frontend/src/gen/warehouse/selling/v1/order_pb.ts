@@ -1648,8 +1648,8 @@ export type OrderReturnAcceptRequest = Message<"warehouse.selling.v1.OrderReturn
   courierCharge: number;
 
   /**
-   * What it was for — required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for); the handler
-   * checks, since a rule across two fields is not written here. Ignored when there is no charge.
+   * What it was for — optional (the-couriers-charge-note-is-optional): a charge with no note is accepted. Ignored when
+   * there is no charge.
    *
    * @generated from field: string courier_charge_note = 5;
    */

@@ -147,6 +147,6 @@ export const AWarehouseReadsNothing: Story = {
   name: "Warehouse — not its form",
   ...WAREHOUSE_META,
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByTestId("reshipping-unavailable", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(within(canvasElement).getByTestId("reshipping-unavailable")).toBeVisible(), { timeout: 4000 });
   },
 };

@@ -85,6 +85,66 @@ func (TeamType) EnumDescriptor() ([]byte, []int) {
 	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{0}
 }
 
+// What a TeamCodeUpdate to the code would do.
+type TeamCodePreviewVerdict int32
+
+const (
+	TeamCodePreviewVerdict_TEAM_CODE_PREVIEW_VERDICT_UNSPECIFIED TeamCodePreviewVerdict = 0
+	// The team would take the code: the counts below say what follows.
+	TeamCodePreviewVerdict_TEAM_CODE_PREVIEW_VERDICT_CHANGES TeamCodePreviewVerdict = 1
+	// The code is the team's own already — the write would change nothing.
+	TeamCodePreviewVerdict_TEAM_CODE_PREVIEW_VERDICT_SAME TeamCodePreviewVerdict = 2
+	// Another team holds the code now — the write would be refused AlreadyExists; `holder_team_name` names it.
+	TeamCodePreviewVerdict_TEAM_CODE_PREVIEW_VERDICT_TAKEN TeamCodePreviewVerdict = 3
+	// Another team held the code once (a former code is never given to another team) — refused as TAKEN is.
+	TeamCodePreviewVerdict_TEAM_CODE_PREVIEW_VERDICT_FORMER TeamCodePreviewVerdict = 4
+)
+
+// Enum value maps for TeamCodePreviewVerdict.
+var (
+	TeamCodePreviewVerdict_name = map[int32]string{
+		0: "TEAM_CODE_PREVIEW_VERDICT_UNSPECIFIED",
+		1: "TEAM_CODE_PREVIEW_VERDICT_CHANGES",
+		2: "TEAM_CODE_PREVIEW_VERDICT_SAME",
+		3: "TEAM_CODE_PREVIEW_VERDICT_TAKEN",
+		4: "TEAM_CODE_PREVIEW_VERDICT_FORMER",
+	}
+	TeamCodePreviewVerdict_value = map[string]int32{
+		"TEAM_CODE_PREVIEW_VERDICT_UNSPECIFIED": 0,
+		"TEAM_CODE_PREVIEW_VERDICT_CHANGES":     1,
+		"TEAM_CODE_PREVIEW_VERDICT_SAME":        2,
+		"TEAM_CODE_PREVIEW_VERDICT_TAKEN":       3,
+		"TEAM_CODE_PREVIEW_VERDICT_FORMER":      4,
+	}
+)
+
+func (x TeamCodePreviewVerdict) Enum() *TeamCodePreviewVerdict {
+	p := new(TeamCodePreviewVerdict)
+	*p = x
+	return p
+}
+
+func (x TeamCodePreviewVerdict) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TeamCodePreviewVerdict) Descriptor() protoreflect.EnumDescriptor {
+	return file_warehouse_team_v1_team_proto_enumTypes[1].Descriptor()
+}
+
+func (TeamCodePreviewVerdict) Type() protoreflect.EnumType {
+	return &file_warehouse_team_v1_team_proto_enumTypes[1]
+}
+
+func (x TeamCodePreviewVerdict) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TeamCodePreviewVerdict.Descriptor instead.
+func (TeamCodePreviewVerdict) EnumDescriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{1}
+}
+
 // TeamListDataType selects which slices the response carries per team.
 type TeamListDataType int32
 
@@ -120,11 +180,11 @@ func (x TeamListDataType) String() string {
 }
 
 func (TeamListDataType) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_team_v1_team_proto_enumTypes[1].Descriptor()
+	return file_warehouse_team_v1_team_proto_enumTypes[2].Descriptor()
 }
 
 func (TeamListDataType) Type() protoreflect.EnumType {
-	return &file_warehouse_team_v1_team_proto_enumTypes[1]
+	return &file_warehouse_team_v1_team_proto_enumTypes[2]
 }
 
 func (x TeamListDataType) Number() protoreflect.EnumNumber {
@@ -133,7 +193,7 @@ func (x TeamListDataType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TeamListDataType.Descriptor instead.
 func (TeamListDataType) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{1}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{2}
 }
 
 // TeamRowSort is the sort selection paired with the TEAM (row) slice.
@@ -173,11 +233,11 @@ func (x TeamRowSort) String() string {
 }
 
 func (TeamRowSort) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_team_v1_team_proto_enumTypes[2].Descriptor()
+	return file_warehouse_team_v1_team_proto_enumTypes[3].Descriptor()
 }
 
 func (TeamRowSort) Type() protoreflect.EnumType {
-	return &file_warehouse_team_v1_team_proto_enumTypes[2]
+	return &file_warehouse_team_v1_team_proto_enumTypes[3]
 }
 
 func (x TeamRowSort) Number() protoreflect.EnumNumber {
@@ -186,7 +246,7 @@ func (x TeamRowSort) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TeamRowSort.Descriptor instead.
 func (TeamRowSort) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{2}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{3}
 }
 
 // TeamByIdsDataType selects which slices the by-ids response carries per team.
@@ -223,11 +283,11 @@ func (x TeamByIdsDataType) String() string {
 }
 
 func (TeamByIdsDataType) Descriptor() protoreflect.EnumDescriptor {
-	return file_warehouse_team_v1_team_proto_enumTypes[3].Descriptor()
+	return file_warehouse_team_v1_team_proto_enumTypes[4].Descriptor()
 }
 
 func (TeamByIdsDataType) Type() protoreflect.EnumType {
-	return &file_warehouse_team_v1_team_proto_enumTypes[3]
+	return &file_warehouse_team_v1_team_proto_enumTypes[4]
 }
 
 func (x TeamByIdsDataType) Number() protoreflect.EnumNumber {
@@ -236,7 +296,7 @@ func (x TeamByIdsDataType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TeamByIdsDataType.Descriptor instead.
 func (TeamByIdsDataType) EnumDescriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{3}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{4}
 }
 
 type TeamInfo struct {
@@ -428,11 +488,13 @@ func (x *Team) GetPriorityProduct() bool {
 }
 
 type TeamCreateRequest struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	Type        TeamType               `protobuf:"varint,1,opt,name=type,proto3,enum=warehouse.team.v1.TeamType" json:"type,omitempty"`
-	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	TeamCode    string                 `protobuf:"bytes,3,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
-	Description string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Type  TeamType               `protobuf:"varint,1,opt,name=type,proto3,enum=warehouse.team.v1.TeamType" json:"type,omitempty"`
+	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// A code another team holds — or held once, a former code being never given to another team
+	// (a-team-code-change-recomposes-its-product-codes) — is AlreadyExists, a TeamCodeTaken detail naming that team.
+	TeamCode    string `protobuf:"bytes,3,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
+	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 	// The person who becomes the team's first Owner, picked or created on the Create Team form, and granted
 	// the team type's Owner role. The person creating the team is NOT made a member: Root and the
 	// Administrator reach every team from the switcher's All teams
@@ -559,7 +621,8 @@ type TeamUpdateRequest struct {
 	// the team/warehouse OWNER and ADMIN entries become dead letters — the policy would claim a
 	// team manager may edit their team while the system silently required root/admin.
 	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
-	// Absent = leave alone. `type` and `team_code` are immutable after create.
+	// Absent = leave alone. `type` is immutable after create; `team_code` changes only through TeamCodeUpdate, whose
+	// policy is narrower (a selling team's owner and admin, Root, the Administrator) and which recomposes the products.
 	Name        *string `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	Description *string `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`
 	// The compact team picture URL (see Team.image_url). Present & empty = clear it.
@@ -670,6 +733,370 @@ func (x *TeamUpdateResponse) GetTeam() *Team {
 	return nil
 }
 
+// THE TEAM CODE EDIT (backlog #149, a-team-code-change-recomposes-its-product-codes; the screens' design
+// the-team-code-and-product-tags-prototype-is-accepted). The selling Owner and Admin on their own team (Settings' Kode tim),
+// Root and the Administrator on any selling team (Teams → Edit Team) — the acceptance rows' givens. A warehouse or admin
+// team's code is refused (FailedPrecondition): no product is composed from it.
+type TeamCodeUpdateRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// use_scope is LOAD-BEARING: the selling roles above are evaluated in this team.
+	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// The new code, 1–10 characters as TeamCreate takes it; trimmed of surrounding space (blank is InvalidArgument).
+	// The code the team has already is no change: nothing is written and nothing recomposed.
+	TeamCode      string `protobuf:"bytes,2,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeamCodeUpdateRequest) Reset() {
+	*x = TeamCodeUpdateRequest{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamCodeUpdateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamCodeUpdateRequest) ProtoMessage() {}
+
+func (x *TeamCodeUpdateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamCodeUpdateRequest.ProtoReflect.Descriptor instead.
+func (*TeamCodeUpdateRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *TeamCodeUpdateRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *TeamCodeUpdateRequest) GetTeamCode() string {
+	if x != nil {
+		return x.TeamCode
+	}
+	return ""
+}
+
+type TeamCodeUpdateResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Team  *Team                  `protobuf:"bytes,1,opt,name=team,proto3" json:"team,omitempty"`
+	// false when the code sent is the team's code already — nothing was written.
+	Changed bool `protobuf:"varint,2,opt,name=changed,proto3" json:"changed,omitempty"`
+	// How many of the team's products took the new code — every one whose code began with the old code and a dash,
+	// archived ones too.
+	ProductsRecomposed uint32 `protobuf:"varint,3,opt,name=products_recomposed,json=productsRecomposed,proto3" json:"products_recomposed,omitempty"`
+	// How many of them were tagged `need_reprint_code` — those some warehouse holds stock of; one with nothing on a shelf
+	// takes the new code untagged.
+	ProductsTagged uint32 `protobuf:"varint,4,opt,name=products_tagged,json=productsTagged,proto3" json:"products_tagged,omitempty"`
+	// How many of the team's products did NOT begin with the old code and a dash, and were left as they were (rows written
+	// before codes were composed); `left_alone_codes` names the first 20 of them.
+	ProductsLeftAlone uint32   `protobuf:"varint,5,opt,name=products_left_alone,json=productsLeftAlone,proto3" json:"products_left_alone,omitempty"`
+	LeftAloneCodes    []string `protobuf:"bytes,6,rep,name=left_alone_codes,json=leftAloneCodes,proto3" json:"left_alone_codes,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *TeamCodeUpdateResponse) Reset() {
+	*x = TeamCodeUpdateResponse{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamCodeUpdateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamCodeUpdateResponse) ProtoMessage() {}
+
+func (x *TeamCodeUpdateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamCodeUpdateResponse.ProtoReflect.Descriptor instead.
+func (*TeamCodeUpdateResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *TeamCodeUpdateResponse) GetTeam() *Team {
+	if x != nil {
+		return x.Team
+	}
+	return nil
+}
+
+func (x *TeamCodeUpdateResponse) GetChanged() bool {
+	if x != nil {
+		return x.Changed
+	}
+	return false
+}
+
+func (x *TeamCodeUpdateResponse) GetProductsRecomposed() uint32 {
+	if x != nil {
+		return x.ProductsRecomposed
+	}
+	return 0
+}
+
+func (x *TeamCodeUpdateResponse) GetProductsTagged() uint32 {
+	if x != nil {
+		return x.ProductsTagged
+	}
+	return 0
+}
+
+func (x *TeamCodeUpdateResponse) GetProductsLeftAlone() uint32 {
+	if x != nil {
+		return x.ProductsLeftAlone
+	}
+	return 0
+}
+
+func (x *TeamCodeUpdateResponse) GetLeftAloneCodes() []string {
+	if x != nil {
+		return x.LeftAloneCodes
+	}
+	return nil
+}
+
+// THE TEAM CODE PREVIEW (backlog #150) — the figures of the confirm Settings' Kode tim card and root's Edit Team open
+// BEFORE TeamCodeUpdate is sent (the-team-code-and-product-tags-prototype-is-accepted, *the confirm*): read when the
+// confirm opens, never on a page load. TeamCodeUpdate's policy and scope — whoever may change the code may ask first.
+type TeamCodePreviewRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// use_scope is LOAD-BEARING: the selling roles above are evaluated in this team.
+	TeamId uint64 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
+	// The code the person typed, as TeamCodeUpdate takes it: 1–10 characters, trimmed (blank is InvalidArgument).
+	TeamCode      string `protobuf:"bytes,2,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeamCodePreviewRequest) Reset() {
+	*x = TeamCodePreviewRequest{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamCodePreviewRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamCodePreviewRequest) ProtoMessage() {}
+
+func (x *TeamCodePreviewRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamCodePreviewRequest.ProtoReflect.Descriptor instead.
+func (*TeamCodePreviewRequest) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *TeamCodePreviewRequest) GetTeamId() uint64 {
+	if x != nil {
+		return x.TeamId
+	}
+	return 0
+}
+
+func (x *TeamCodePreviewRequest) GetTeamCode() string {
+	if x != nil {
+		return x.TeamCode
+	}
+	return ""
+}
+
+type TeamCodePreviewResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Verdict TeamCodePreviewVerdict `protobuf:"varint,1,opt,name=verdict,proto3,enum=warehouse.team.v1.TeamCodePreviewVerdict" json:"verdict,omitempty"`
+	// TAKEN / FORMER: the team that holds the code, or held it — the refusal's words (*SL-01 sudah ada — dipakai Toko
+	// Melati*). Empty otherwise.
+	HolderTeamName string `protobuf:"bytes,2,opt,name=holder_team_name,json=holderTeamName,proto3" json:"holder_team_name,omitempty"`
+	// CHANGES only — everything below is empty for any other verdict.
+	// How many of the team's products would take the new code: every one whose code begins with the team's code and a
+	// dash, archived ones too (TeamCodeUpdate's rule).
+	Products uint32 `protobuf:"varint,3,opt,name=products,proto3" json:"products,omitempty"`
+	// One of them, old → new (an active product first): SL-03-ANG-001 → ANGR-ANG-001. Empty when there is none.
+	ExampleOldCode string `protobuf:"bytes,4,opt,name=example_old_code,json=exampleOldCode,proto3" json:"example_old_code,omitempty"`
+	ExampleNewCode string `protobuf:"bytes,5,opt,name=example_new_code,json=exampleNewCode,proto3" json:"example_new_code,omitempty"`
+	// The warehouses holding units of those products on a shelf now — each must reprint their labels, and the products
+	// carry `need_reprint_code` until it does. By name, sorted; a product with nothing on a shelf is counted above and
+	// names no warehouse.
+	WarehouseNames []string `protobuf:"bytes,6,rep,name=warehouse_names,json=warehouseNames,proto3" json:"warehouse_names,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *TeamCodePreviewResponse) Reset() {
+	*x = TeamCodePreviewResponse{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamCodePreviewResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamCodePreviewResponse) ProtoMessage() {}
+
+func (x *TeamCodePreviewResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamCodePreviewResponse.ProtoReflect.Descriptor instead.
+func (*TeamCodePreviewResponse) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *TeamCodePreviewResponse) GetVerdict() TeamCodePreviewVerdict {
+	if x != nil {
+		return x.Verdict
+	}
+	return TeamCodePreviewVerdict_TEAM_CODE_PREVIEW_VERDICT_UNSPECIFIED
+}
+
+func (x *TeamCodePreviewResponse) GetHolderTeamName() string {
+	if x != nil {
+		return x.HolderTeamName
+	}
+	return ""
+}
+
+func (x *TeamCodePreviewResponse) GetProducts() uint32 {
+	if x != nil {
+		return x.Products
+	}
+	return 0
+}
+
+func (x *TeamCodePreviewResponse) GetExampleOldCode() string {
+	if x != nil {
+		return x.ExampleOldCode
+	}
+	return ""
+}
+
+func (x *TeamCodePreviewResponse) GetExampleNewCode() string {
+	if x != nil {
+		return x.ExampleNewCode
+	}
+	return ""
+}
+
+func (x *TeamCodePreviewResponse) GetWarehouseNames() []string {
+	if x != nil {
+		return x.WarehouseNames
+	}
+	return nil
+}
+
+// TeamCodeTaken rides the AlreadyExists of a TeamCodeUpdate — and of a TeamCreate — whose code another team holds now, or
+// held once (a former code is never given to another team). It names that team for the refusal's words
+// (*SL-01 sudah ada — dipakai Toko Melati*).
+type TeamCodeTaken struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	TeamCode string                 `protobuf:"bytes,1,opt,name=team_code,json=teamCode,proto3" json:"team_code,omitempty"`
+	TeamName string                 `protobuf:"bytes,2,opt,name=team_name,json=teamName,proto3" json:"team_name,omitempty"`
+	// true: the team held it once and has another code now.
+	Former        bool `protobuf:"varint,3,opt,name=former,proto3" json:"former,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeamCodeTaken) Reset() {
+	*x = TeamCodeTaken{}
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeamCodeTaken) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeamCodeTaken) ProtoMessage() {}
+
+func (x *TeamCodeTaken) ProtoReflect() protoreflect.Message {
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeamCodeTaken.ProtoReflect.Descriptor instead.
+func (*TeamCodeTaken) Descriptor() ([]byte, []int) {
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *TeamCodeTaken) GetTeamCode() string {
+	if x != nil {
+		return x.TeamCode
+	}
+	return ""
+}
+
+func (x *TeamCodeTaken) GetTeamName() string {
+	if x != nil {
+		return x.TeamName
+	}
+	return ""
+}
+
+func (x *TeamCodeTaken) GetFormer() bool {
+	if x != nil {
+		return x.Former
+	}
+	return false
+}
+
 type TeamDeleteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TeamId        uint64                 `protobuf:"varint,1,opt,name=team_id,json=teamId,proto3" json:"team_id,omitempty"`
@@ -679,7 +1106,7 @@ type TeamDeleteRequest struct {
 
 func (x *TeamDeleteRequest) Reset() {
 	*x = TeamDeleteRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[6]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -691,7 +1118,7 @@ func (x *TeamDeleteRequest) String() string {
 func (*TeamDeleteRequest) ProtoMessage() {}
 
 func (x *TeamDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[6]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -704,7 +1131,7 @@ func (x *TeamDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamDeleteRequest.ProtoReflect.Descriptor instead.
 func (*TeamDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{6}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TeamDeleteRequest) GetTeamId() uint64 {
@@ -722,7 +1149,7 @@ type TeamDeleteResponse struct {
 
 func (x *TeamDeleteResponse) Reset() {
 	*x = TeamDeleteResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[7]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -734,7 +1161,7 @@ func (x *TeamDeleteResponse) String() string {
 func (*TeamDeleteResponse) ProtoMessage() {}
 
 func (x *TeamDeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[7]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -747,7 +1174,7 @@ func (x *TeamDeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamDeleteResponse.ProtoReflect.Descriptor instead.
 func (*TeamDeleteResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{7}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{12}
 }
 
 // TeamListFilter holds the filters. TeamList is UNSCOPED (the roster is the same for every caller),
@@ -770,7 +1197,7 @@ type TeamListFilter struct {
 
 func (x *TeamListFilter) Reset() {
 	*x = TeamListFilter{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[8]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -782,7 +1209,7 @@ func (x *TeamListFilter) String() string {
 func (*TeamListFilter) ProtoMessage() {}
 
 func (x *TeamListFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[8]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -795,7 +1222,7 @@ func (x *TeamListFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamListFilter.ProtoReflect.Descriptor instead.
 func (*TeamListFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{8}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *TeamListFilter) GetQ() string {
@@ -833,7 +1260,7 @@ type TeamListFilterSort struct {
 
 func (x *TeamListFilterSort) Reset() {
 	*x = TeamListFilterSort{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[9]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -845,7 +1272,7 @@ func (x *TeamListFilterSort) String() string {
 func (*TeamListFilterSort) ProtoMessage() {}
 
 func (x *TeamListFilterSort) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[9]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -858,7 +1285,7 @@ func (x *TeamListFilterSort) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamListFilterSort.ProtoReflect.Descriptor instead.
 func (*TeamListFilterSort) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{9}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *TeamListFilterSort) GetSortType() v1.CommonSortType {
@@ -921,7 +1348,7 @@ type TeamListRequest struct {
 
 func (x *TeamListRequest) Reset() {
 	*x = TeamListRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[10]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -933,7 +1360,7 @@ func (x *TeamListRequest) String() string {
 func (*TeamListRequest) ProtoMessage() {}
 
 func (x *TeamListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[10]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -946,7 +1373,7 @@ func (x *TeamListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamListRequest.ProtoReflect.Descriptor instead.
 func (*TeamListRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{10}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *TeamListRequest) GetFilter() *TeamListFilter {
@@ -996,7 +1423,7 @@ type TeamRowItem struct {
 
 func (x *TeamRowItem) Reset() {
 	*x = TeamRowItem{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[11]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1008,7 +1435,7 @@ func (x *TeamRowItem) String() string {
 func (*TeamRowItem) ProtoMessage() {}
 
 func (x *TeamRowItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[11]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1021,7 +1448,7 @@ func (x *TeamRowItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamRowItem.ProtoReflect.Descriptor instead.
 func (*TeamRowItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{11}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *TeamRowItem) GetId() uint64 {
@@ -1089,7 +1516,7 @@ type TeamRowMapItem struct {
 
 func (x *TeamRowMapItem) Reset() {
 	*x = TeamRowMapItem{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[12]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1101,7 +1528,7 @@ func (x *TeamRowMapItem) String() string {
 func (*TeamRowMapItem) ProtoMessage() {}
 
 func (x *TeamRowMapItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[12]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1114,7 +1541,7 @@ func (x *TeamRowMapItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamRowMapItem.ProtoReflect.Descriptor instead.
 func (*TeamRowMapItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{12}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *TeamRowMapItem) GetMapData() map[uint64]*TeamRowItem {
@@ -1137,7 +1564,7 @@ type TeamListResponseItem struct {
 
 func (x *TeamListResponseItem) Reset() {
 	*x = TeamListResponseItem{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[13]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1149,7 +1576,7 @@ func (x *TeamListResponseItem) String() string {
 func (*TeamListResponseItem) ProtoMessage() {}
 
 func (x *TeamListResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[13]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1162,7 +1589,7 @@ func (x *TeamListResponseItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamListResponseItem.ProtoReflect.Descriptor instead.
 func (*TeamListResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{13}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *TeamListResponseItem) GetD() isTeamListResponseItem_D {
@@ -1217,7 +1644,7 @@ type TeamListResponse struct {
 
 func (x *TeamListResponse) Reset() {
 	*x = TeamListResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1229,7 +1656,7 @@ func (x *TeamListResponse) String() string {
 func (*TeamListResponse) ProtoMessage() {}
 
 func (x *TeamListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[14]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1242,7 +1669,7 @@ func (x *TeamListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamListResponse.ProtoReflect.Descriptor instead.
 func (*TeamListResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{14}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *TeamListResponse) GetItems() []*TeamListResponseItem {
@@ -1275,7 +1702,7 @@ type TeamDetailRequest struct {
 
 func (x *TeamDetailRequest) Reset() {
 	*x = TeamDetailRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1287,7 +1714,7 @@ func (x *TeamDetailRequest) String() string {
 func (*TeamDetailRequest) ProtoMessage() {}
 
 func (x *TeamDetailRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[15]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1300,7 +1727,7 @@ func (x *TeamDetailRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamDetailRequest.ProtoReflect.Descriptor instead.
 func (*TeamDetailRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{15}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *TeamDetailRequest) GetTeamId() uint64 {
@@ -1319,7 +1746,7 @@ type TeamDetailResponse struct {
 
 func (x *TeamDetailResponse) Reset() {
 	*x = TeamDetailResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[16]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1331,7 +1758,7 @@ func (x *TeamDetailResponse) String() string {
 func (*TeamDetailResponse) ProtoMessage() {}
 
 func (x *TeamDetailResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[16]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1344,7 +1771,7 @@ func (x *TeamDetailResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamDetailResponse.ProtoReflect.Descriptor instead.
 func (*TeamDetailResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{16}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *TeamDetailResponse) GetTeam() *Team {
@@ -1365,7 +1792,7 @@ type TeamByIdsFilter struct {
 
 func (x *TeamByIdsFilter) Reset() {
 	*x = TeamByIdsFilter{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[17]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1377,7 +1804,7 @@ func (x *TeamByIdsFilter) String() string {
 func (*TeamByIdsFilter) ProtoMessage() {}
 
 func (x *TeamByIdsFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[17]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1390,7 +1817,7 @@ func (x *TeamByIdsFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamByIdsFilter.ProtoReflect.Descriptor instead.
 func (*TeamByIdsFilter) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{17}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *TeamByIdsFilter) GetIds() []uint64 {
@@ -1411,7 +1838,7 @@ type TeamByIdsRequest struct {
 
 func (x *TeamByIdsRequest) Reset() {
 	*x = TeamByIdsRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[18]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1423,7 +1850,7 @@ func (x *TeamByIdsRequest) String() string {
 func (*TeamByIdsRequest) ProtoMessage() {}
 
 func (x *TeamByIdsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[18]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1436,7 +1863,7 @@ func (x *TeamByIdsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamByIdsRequest.ProtoReflect.Descriptor instead.
 func (*TeamByIdsRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{18}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *TeamByIdsRequest) GetFilter() *TeamByIdsFilter {
@@ -1466,7 +1893,7 @@ type TeamByIdsResponseItem struct {
 
 func (x *TeamByIdsResponseItem) Reset() {
 	*x = TeamByIdsResponseItem{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[19]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1478,7 +1905,7 @@ func (x *TeamByIdsResponseItem) String() string {
 func (*TeamByIdsResponseItem) ProtoMessage() {}
 
 func (x *TeamByIdsResponseItem) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[19]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1491,7 +1918,7 @@ func (x *TeamByIdsResponseItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamByIdsResponseItem.ProtoReflect.Descriptor instead.
 func (*TeamByIdsResponseItem) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{19}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *TeamByIdsResponseItem) GetD() isTeamByIdsResponseItem_D {
@@ -1544,7 +1971,7 @@ type TeamByIdsResponseList struct {
 
 func (x *TeamByIdsResponseList) Reset() {
 	*x = TeamByIdsResponseList{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[20]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1556,7 +1983,7 @@ func (x *TeamByIdsResponseList) String() string {
 func (*TeamByIdsResponseList) ProtoMessage() {}
 
 func (x *TeamByIdsResponseList) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[20]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1569,7 +1996,7 @@ func (x *TeamByIdsResponseList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamByIdsResponseList.ProtoReflect.Descriptor instead.
 func (*TeamByIdsResponseList) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{20}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *TeamByIdsResponseList) GetItems() []*TeamByIdsResponseItem {
@@ -1590,7 +2017,7 @@ type TeamByIdsResponse struct {
 
 func (x *TeamByIdsResponse) Reset() {
 	*x = TeamByIdsResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[21]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1602,7 +2029,7 @@ func (x *TeamByIdsResponse) String() string {
 func (*TeamByIdsResponse) ProtoMessage() {}
 
 func (x *TeamByIdsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[21]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1615,7 +2042,7 @@ func (x *TeamByIdsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamByIdsResponse.ProtoReflect.Descriptor instead.
 func (*TeamByIdsResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{21}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *TeamByIdsResponse) GetItems() map[uint64]*TeamByIdsResponseList {
@@ -1639,7 +2066,7 @@ type TeamInfoUpdateRequest struct {
 
 func (x *TeamInfoUpdateRequest) Reset() {
 	*x = TeamInfoUpdateRequest{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[22]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1651,7 +2078,7 @@ func (x *TeamInfoUpdateRequest) String() string {
 func (*TeamInfoUpdateRequest) ProtoMessage() {}
 
 func (x *TeamInfoUpdateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[22]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1664,7 +2091,7 @@ func (x *TeamInfoUpdateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamInfoUpdateRequest.ProtoReflect.Descriptor instead.
 func (*TeamInfoUpdateRequest) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{22}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *TeamInfoUpdateRequest) GetTeamId() uint64 {
@@ -1697,7 +2124,7 @@ type TeamInfoUpdateResponse struct {
 
 func (x *TeamInfoUpdateResponse) Reset() {
 	*x = TeamInfoUpdateResponse{}
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[23]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1709,7 +2136,7 @@ func (x *TeamInfoUpdateResponse) String() string {
 func (*TeamInfoUpdateResponse) ProtoMessage() {}
 
 func (x *TeamInfoUpdateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_warehouse_team_v1_team_proto_msgTypes[23]
+	mi := &file_warehouse_team_v1_team_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1722,7 +2149,7 @@ func (x *TeamInfoUpdateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TeamInfoUpdateResponse.ProtoReflect.Descriptor instead.
 func (*TeamInfoUpdateResponse) Descriptor() ([]byte, []int) {
-	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{23}
+	return file_warehouse_team_v1_team_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *TeamInfoUpdateResponse) GetInfo() *TeamInfo {
@@ -1775,7 +2202,37 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\n" +
 	"_image_url\"A\n" +
 	"\x12TeamUpdateResponse\x12+\n" +
-	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"?\n" +
+	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\"q\n" +
+	"\x15TeamCodeUpdateRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
+	"\tteam_code\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\n" +
+	"R\bteamCode:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x03\x04\"\x93\x02\n" +
+	"\x16TeamCodeUpdateResponse\x12+\n" +
+	"\x04team\x18\x01 \x01(\v2\x17.warehouse.team.v1.TeamR\x04team\x12\x18\n" +
+	"\achanged\x18\x02 \x01(\bR\achanged\x12/\n" +
+	"\x13products_recomposed\x18\x03 \x01(\rR\x12productsRecomposed\x12'\n" +
+	"\x0fproducts_tagged\x18\x04 \x01(\rR\x0eproductsTagged\x12.\n" +
+	"\x13products_left_alone\x18\x05 \x01(\rR\x11productsLeftAlone\x12(\n" +
+	"\x10left_alone_codes\x18\x06 \x03(\tR\x0eleftAloneCodes\"r\n" +
+	"\x16TeamCodePreviewRequest\x12$\n" +
+	"\ateam_id\x18\x01 \x01(\x04B\v\xbaH\x042\x02 \x00\x90\xb5\x18\x01R\x06teamId\x12&\n" +
+	"\tteam_code\x18\x02 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\n" +
+	"R\bteamCode:\n" +
+	"\x92\xb5\x18\x06\n" +
+	"\x04\x01\x02\x03\x04\"\xa1\x02\n" +
+	"\x17TeamCodePreviewResponse\x12C\n" +
+	"\averdict\x18\x01 \x01(\x0e2).warehouse.team.v1.TeamCodePreviewVerdictR\averdict\x12(\n" +
+	"\x10holder_team_name\x18\x02 \x01(\tR\x0eholderTeamName\x12\x1a\n" +
+	"\bproducts\x18\x03 \x01(\rR\bproducts\x12(\n" +
+	"\x10example_old_code\x18\x04 \x01(\tR\x0eexampleOldCode\x12(\n" +
+	"\x10example_new_code\x18\x05 \x01(\tR\x0eexampleNewCode\x12'\n" +
+	"\x0fwarehouse_names\x18\x06 \x03(\tR\x0ewarehouseNames\"a\n" +
+	"\rTeamCodeTaken\x12\x1b\n" +
+	"\tteam_code\x18\x01 \x01(\tR\bteamCode\x12\x1b\n" +
+	"\tteam_name\x18\x02 \x01(\tR\bteamName\x12\x16\n" +
+	"\x06former\x18\x03 \x01(\bR\x06former\"?\n" +
 	"\x11TeamDeleteRequest\x12 \n" +
 	"\ateam_id\x18\x01 \x01(\x04B\a\xbaH\x042\x02 \x00R\x06teamId:\b\x92\xb5\x18\x04\n" +
 	"\x02\x01\x02\"\x14\n" +
@@ -1852,7 +2309,13 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x0eTEAM_TYPE_ROOT\x10\x01\x12\x13\n" +
 	"\x0fTEAM_TYPE_ADMIN\x10\x02\x12\x17\n" +
 	"\x13TEAM_TYPE_WAREHOUSE\x10\x03\x12\x15\n" +
-	"\x11TEAM_TYPE_SELLING\x10\x04*v\n" +
+	"\x11TEAM_TYPE_SELLING\x10\x04*\xd9\x01\n" +
+	"\x16TeamCodePreviewVerdict\x12)\n" +
+	"%TEAM_CODE_PREVIEW_VERDICT_UNSPECIFIED\x10\x00\x12%\n" +
+	"!TEAM_CODE_PREVIEW_VERDICT_CHANGES\x10\x01\x12\"\n" +
+	"\x1eTEAM_CODE_PREVIEW_VERDICT_SAME\x10\x02\x12#\n" +
+	"\x1fTEAM_CODE_PREVIEW_VERDICT_TAKEN\x10\x03\x12$\n" +
+	" TEAM_CODE_PREVIEW_VERDICT_FORMER\x10\x04*v\n" +
 	"\x10TeamListDataType\x12#\n" +
 	"\x1fTEAM_LIST_DATA_TYPE_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bTEAM_LIST_DATA_TYPE_GENERAL\x10\x01\x12\x1c\n" +
@@ -1865,12 +2328,14 @@ const file_warehouse_team_v1_team_proto_rawDesc = "" +
 	"\x11TeamByIdsDataType\x12%\n" +
 	"!TEAM_BY_IDS_DATA_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dTEAM_BY_IDS_DATA_TYPE_GENERAL\x10\x01\x12\x1e\n" +
-	"\x1aTEAM_BY_IDS_DATA_TYPE_TEAM\x10\x022\x97\x05\n" +
+	"\x1aTEAM_BY_IDS_DATA_TYPE_TEAM\x10\x022\xed\x06\n" +
 	"\vTeamService\x12Y\n" +
 	"\n" +
 	"TeamCreate\x12$.warehouse.team.v1.TeamCreateRequest\x1a%.warehouse.team.v1.TeamCreateResponse\x12Y\n" +
 	"\n" +
-	"TeamUpdate\x12$.warehouse.team.v1.TeamUpdateRequest\x1a%.warehouse.team.v1.TeamUpdateResponse\x12Y\n" +
+	"TeamUpdate\x12$.warehouse.team.v1.TeamUpdateRequest\x1a%.warehouse.team.v1.TeamUpdateResponse\x12e\n" +
+	"\x0eTeamCodeUpdate\x12(.warehouse.team.v1.TeamCodeUpdateRequest\x1a).warehouse.team.v1.TeamCodeUpdateResponse\x12m\n" +
+	"\x0fTeamCodePreview\x12).warehouse.team.v1.TeamCodePreviewRequest\x1a*.warehouse.team.v1.TeamCodePreviewResponse\"\x03\x90\x02\x01\x12Y\n" +
 	"\n" +
 	"TeamDelete\x12$.warehouse.team.v1.TeamDeleteRequest\x1a%.warehouse.team.v1.TeamDeleteResponse\x12X\n" +
 	"\bTeamList\x12\".warehouse.team.v1.TeamListRequest\x1a#.warehouse.team.v1.TeamListResponse\"\x03\x90\x02\x01\x12Y\n" +
@@ -1891,94 +2356,106 @@ func file_warehouse_team_v1_team_proto_rawDescGZIP() []byte {
 	return file_warehouse_team_v1_team_proto_rawDescData
 }
 
-var file_warehouse_team_v1_team_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_warehouse_team_v1_team_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_warehouse_team_v1_team_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_warehouse_team_v1_team_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_warehouse_team_v1_team_proto_goTypes = []any{
-	(TeamType)(0),                  // 0: warehouse.team.v1.TeamType
-	(TeamListDataType)(0),          // 1: warehouse.team.v1.TeamListDataType
-	(TeamRowSort)(0),               // 2: warehouse.team.v1.TeamRowSort
-	(TeamByIdsDataType)(0),         // 3: warehouse.team.v1.TeamByIdsDataType
-	(*TeamInfo)(nil),               // 4: warehouse.team.v1.TeamInfo
-	(*Team)(nil),                   // 5: warehouse.team.v1.Team
-	(*TeamCreateRequest)(nil),      // 6: warehouse.team.v1.TeamCreateRequest
-	(*TeamCreateResponse)(nil),     // 7: warehouse.team.v1.TeamCreateResponse
-	(*TeamUpdateRequest)(nil),      // 8: warehouse.team.v1.TeamUpdateRequest
-	(*TeamUpdateResponse)(nil),     // 9: warehouse.team.v1.TeamUpdateResponse
-	(*TeamDeleteRequest)(nil),      // 10: warehouse.team.v1.TeamDeleteRequest
-	(*TeamDeleteResponse)(nil),     // 11: warehouse.team.v1.TeamDeleteResponse
-	(*TeamListFilter)(nil),         // 12: warehouse.team.v1.TeamListFilter
-	(*TeamListFilterSort)(nil),     // 13: warehouse.team.v1.TeamListFilterSort
-	(*TeamListRequest)(nil),        // 14: warehouse.team.v1.TeamListRequest
-	(*TeamRowItem)(nil),            // 15: warehouse.team.v1.TeamRowItem
-	(*TeamRowMapItem)(nil),         // 16: warehouse.team.v1.TeamRowMapItem
-	(*TeamListResponseItem)(nil),   // 17: warehouse.team.v1.TeamListResponseItem
-	(*TeamListResponse)(nil),       // 18: warehouse.team.v1.TeamListResponse
-	(*TeamDetailRequest)(nil),      // 19: warehouse.team.v1.TeamDetailRequest
-	(*TeamDetailResponse)(nil),     // 20: warehouse.team.v1.TeamDetailResponse
-	(*TeamByIdsFilter)(nil),        // 21: warehouse.team.v1.TeamByIdsFilter
-	(*TeamByIdsRequest)(nil),       // 22: warehouse.team.v1.TeamByIdsRequest
-	(*TeamByIdsResponseItem)(nil),  // 23: warehouse.team.v1.TeamByIdsResponseItem
-	(*TeamByIdsResponseList)(nil),  // 24: warehouse.team.v1.TeamByIdsResponseList
-	(*TeamByIdsResponse)(nil),      // 25: warehouse.team.v1.TeamByIdsResponse
-	(*TeamInfoUpdateRequest)(nil),  // 26: warehouse.team.v1.TeamInfoUpdateRequest
-	(*TeamInfoUpdateResponse)(nil), // 27: warehouse.team.v1.TeamInfoUpdateResponse
-	nil,                            // 28: warehouse.team.v1.TeamRowMapItem.MapDataEntry
-	nil,                            // 29: warehouse.team.v1.TeamByIdsResponse.ItemsEntry
-	(v1.CommonSortType)(0),         // 30: warehouse.common.v1.CommonSortType
-	(v1.GeneralSort)(0),            // 31: warehouse.common.v1.GeneralSort
-	(*v1.CommonPagination)(nil),    // 32: warehouse.common.v1.CommonPagination
-	(*v1.GeneralMapItem)(nil),      // 33: warehouse.common.v1.GeneralMapItem
-	(*v1.PageInfo)(nil),            // 34: warehouse.common.v1.PageInfo
+	(TeamType)(0),                   // 0: warehouse.team.v1.TeamType
+	(TeamCodePreviewVerdict)(0),     // 1: warehouse.team.v1.TeamCodePreviewVerdict
+	(TeamListDataType)(0),           // 2: warehouse.team.v1.TeamListDataType
+	(TeamRowSort)(0),                // 3: warehouse.team.v1.TeamRowSort
+	(TeamByIdsDataType)(0),          // 4: warehouse.team.v1.TeamByIdsDataType
+	(*TeamInfo)(nil),                // 5: warehouse.team.v1.TeamInfo
+	(*Team)(nil),                    // 6: warehouse.team.v1.Team
+	(*TeamCreateRequest)(nil),       // 7: warehouse.team.v1.TeamCreateRequest
+	(*TeamCreateResponse)(nil),      // 8: warehouse.team.v1.TeamCreateResponse
+	(*TeamUpdateRequest)(nil),       // 9: warehouse.team.v1.TeamUpdateRequest
+	(*TeamUpdateResponse)(nil),      // 10: warehouse.team.v1.TeamUpdateResponse
+	(*TeamCodeUpdateRequest)(nil),   // 11: warehouse.team.v1.TeamCodeUpdateRequest
+	(*TeamCodeUpdateResponse)(nil),  // 12: warehouse.team.v1.TeamCodeUpdateResponse
+	(*TeamCodePreviewRequest)(nil),  // 13: warehouse.team.v1.TeamCodePreviewRequest
+	(*TeamCodePreviewResponse)(nil), // 14: warehouse.team.v1.TeamCodePreviewResponse
+	(*TeamCodeTaken)(nil),           // 15: warehouse.team.v1.TeamCodeTaken
+	(*TeamDeleteRequest)(nil),       // 16: warehouse.team.v1.TeamDeleteRequest
+	(*TeamDeleteResponse)(nil),      // 17: warehouse.team.v1.TeamDeleteResponse
+	(*TeamListFilter)(nil),          // 18: warehouse.team.v1.TeamListFilter
+	(*TeamListFilterSort)(nil),      // 19: warehouse.team.v1.TeamListFilterSort
+	(*TeamListRequest)(nil),         // 20: warehouse.team.v1.TeamListRequest
+	(*TeamRowItem)(nil),             // 21: warehouse.team.v1.TeamRowItem
+	(*TeamRowMapItem)(nil),          // 22: warehouse.team.v1.TeamRowMapItem
+	(*TeamListResponseItem)(nil),    // 23: warehouse.team.v1.TeamListResponseItem
+	(*TeamListResponse)(nil),        // 24: warehouse.team.v1.TeamListResponse
+	(*TeamDetailRequest)(nil),       // 25: warehouse.team.v1.TeamDetailRequest
+	(*TeamDetailResponse)(nil),      // 26: warehouse.team.v1.TeamDetailResponse
+	(*TeamByIdsFilter)(nil),         // 27: warehouse.team.v1.TeamByIdsFilter
+	(*TeamByIdsRequest)(nil),        // 28: warehouse.team.v1.TeamByIdsRequest
+	(*TeamByIdsResponseItem)(nil),   // 29: warehouse.team.v1.TeamByIdsResponseItem
+	(*TeamByIdsResponseList)(nil),   // 30: warehouse.team.v1.TeamByIdsResponseList
+	(*TeamByIdsResponse)(nil),       // 31: warehouse.team.v1.TeamByIdsResponse
+	(*TeamInfoUpdateRequest)(nil),   // 32: warehouse.team.v1.TeamInfoUpdateRequest
+	(*TeamInfoUpdateResponse)(nil),  // 33: warehouse.team.v1.TeamInfoUpdateResponse
+	nil,                             // 34: warehouse.team.v1.TeamRowMapItem.MapDataEntry
+	nil,                             // 35: warehouse.team.v1.TeamByIdsResponse.ItemsEntry
+	(v1.CommonSortType)(0),          // 36: warehouse.common.v1.CommonSortType
+	(v1.GeneralSort)(0),             // 37: warehouse.common.v1.GeneralSort
+	(*v1.CommonPagination)(nil),     // 38: warehouse.common.v1.CommonPagination
+	(*v1.GeneralMapItem)(nil),       // 39: warehouse.common.v1.GeneralMapItem
+	(*v1.PageInfo)(nil),             // 40: warehouse.common.v1.PageInfo
 }
 var file_warehouse_team_v1_team_proto_depIdxs = []int32{
 	0,  // 0: warehouse.team.v1.Team.type:type_name -> warehouse.team.v1.TeamType
-	4,  // 1: warehouse.team.v1.Team.info:type_name -> warehouse.team.v1.TeamInfo
+	5,  // 1: warehouse.team.v1.Team.info:type_name -> warehouse.team.v1.TeamInfo
 	0,  // 2: warehouse.team.v1.TeamCreateRequest.type:type_name -> warehouse.team.v1.TeamType
-	5,  // 3: warehouse.team.v1.TeamCreateResponse.team:type_name -> warehouse.team.v1.Team
-	5,  // 4: warehouse.team.v1.TeamUpdateResponse.team:type_name -> warehouse.team.v1.Team
-	0,  // 5: warehouse.team.v1.TeamListFilter.team_type:type_name -> warehouse.team.v1.TeamType
-	30, // 6: warehouse.team.v1.TeamListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
-	31, // 7: warehouse.team.v1.TeamListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
-	2,  // 8: warehouse.team.v1.TeamListFilterSort.team:type_name -> warehouse.team.v1.TeamRowSort
-	12, // 9: warehouse.team.v1.TeamListRequest.filter:type_name -> warehouse.team.v1.TeamListFilter
-	13, // 10: warehouse.team.v1.TeamListRequest.sort:type_name -> warehouse.team.v1.TeamListFilterSort
-	1,  // 11: warehouse.team.v1.TeamListRequest.data_request:type_name -> warehouse.team.v1.TeamListDataType
-	32, // 12: warehouse.team.v1.TeamListRequest.page:type_name -> warehouse.common.v1.CommonPagination
-	0,  // 13: warehouse.team.v1.TeamRowItem.type:type_name -> warehouse.team.v1.TeamType
-	28, // 14: warehouse.team.v1.TeamRowMapItem.map_data:type_name -> warehouse.team.v1.TeamRowMapItem.MapDataEntry
-	33, // 15: warehouse.team.v1.TeamListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	16, // 16: warehouse.team.v1.TeamListResponseItem.team:type_name -> warehouse.team.v1.TeamRowMapItem
-	17, // 17: warehouse.team.v1.TeamListResponse.items:type_name -> warehouse.team.v1.TeamListResponseItem
-	34, // 18: warehouse.team.v1.TeamListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
-	5,  // 19: warehouse.team.v1.TeamDetailResponse.team:type_name -> warehouse.team.v1.Team
-	21, // 20: warehouse.team.v1.TeamByIdsRequest.filter:type_name -> warehouse.team.v1.TeamByIdsFilter
-	3,  // 21: warehouse.team.v1.TeamByIdsRequest.data_request:type_name -> warehouse.team.v1.TeamByIdsDataType
-	33, // 22: warehouse.team.v1.TeamByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
-	16, // 23: warehouse.team.v1.TeamByIdsResponseItem.team:type_name -> warehouse.team.v1.TeamRowMapItem
-	23, // 24: warehouse.team.v1.TeamByIdsResponseList.items:type_name -> warehouse.team.v1.TeamByIdsResponseItem
-	29, // 25: warehouse.team.v1.TeamByIdsResponse.items:type_name -> warehouse.team.v1.TeamByIdsResponse.ItemsEntry
-	4,  // 26: warehouse.team.v1.TeamInfoUpdateResponse.info:type_name -> warehouse.team.v1.TeamInfo
-	15, // 27: warehouse.team.v1.TeamRowMapItem.MapDataEntry.value:type_name -> warehouse.team.v1.TeamRowItem
-	24, // 28: warehouse.team.v1.TeamByIdsResponse.ItemsEntry.value:type_name -> warehouse.team.v1.TeamByIdsResponseList
-	6,  // 29: warehouse.team.v1.TeamService.TeamCreate:input_type -> warehouse.team.v1.TeamCreateRequest
-	8,  // 30: warehouse.team.v1.TeamService.TeamUpdate:input_type -> warehouse.team.v1.TeamUpdateRequest
-	10, // 31: warehouse.team.v1.TeamService.TeamDelete:input_type -> warehouse.team.v1.TeamDeleteRequest
-	14, // 32: warehouse.team.v1.TeamService.TeamList:input_type -> warehouse.team.v1.TeamListRequest
-	19, // 33: warehouse.team.v1.TeamService.TeamDetail:input_type -> warehouse.team.v1.TeamDetailRequest
-	22, // 34: warehouse.team.v1.TeamService.TeamByIds:input_type -> warehouse.team.v1.TeamByIdsRequest
-	26, // 35: warehouse.team.v1.TeamService.TeamInfoUpdate:input_type -> warehouse.team.v1.TeamInfoUpdateRequest
-	7,  // 36: warehouse.team.v1.TeamService.TeamCreate:output_type -> warehouse.team.v1.TeamCreateResponse
-	9,  // 37: warehouse.team.v1.TeamService.TeamUpdate:output_type -> warehouse.team.v1.TeamUpdateResponse
-	11, // 38: warehouse.team.v1.TeamService.TeamDelete:output_type -> warehouse.team.v1.TeamDeleteResponse
-	18, // 39: warehouse.team.v1.TeamService.TeamList:output_type -> warehouse.team.v1.TeamListResponse
-	20, // 40: warehouse.team.v1.TeamService.TeamDetail:output_type -> warehouse.team.v1.TeamDetailResponse
-	25, // 41: warehouse.team.v1.TeamService.TeamByIds:output_type -> warehouse.team.v1.TeamByIdsResponse
-	27, // 42: warehouse.team.v1.TeamService.TeamInfoUpdate:output_type -> warehouse.team.v1.TeamInfoUpdateResponse
-	36, // [36:43] is the sub-list for method output_type
-	29, // [29:36] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	6,  // 3: warehouse.team.v1.TeamCreateResponse.team:type_name -> warehouse.team.v1.Team
+	6,  // 4: warehouse.team.v1.TeamUpdateResponse.team:type_name -> warehouse.team.v1.Team
+	6,  // 5: warehouse.team.v1.TeamCodeUpdateResponse.team:type_name -> warehouse.team.v1.Team
+	1,  // 6: warehouse.team.v1.TeamCodePreviewResponse.verdict:type_name -> warehouse.team.v1.TeamCodePreviewVerdict
+	0,  // 7: warehouse.team.v1.TeamListFilter.team_type:type_name -> warehouse.team.v1.TeamType
+	36, // 8: warehouse.team.v1.TeamListFilterSort.sort_type:type_name -> warehouse.common.v1.CommonSortType
+	37, // 9: warehouse.team.v1.TeamListFilterSort.general:type_name -> warehouse.common.v1.GeneralSort
+	3,  // 10: warehouse.team.v1.TeamListFilterSort.team:type_name -> warehouse.team.v1.TeamRowSort
+	18, // 11: warehouse.team.v1.TeamListRequest.filter:type_name -> warehouse.team.v1.TeamListFilter
+	19, // 12: warehouse.team.v1.TeamListRequest.sort:type_name -> warehouse.team.v1.TeamListFilterSort
+	2,  // 13: warehouse.team.v1.TeamListRequest.data_request:type_name -> warehouse.team.v1.TeamListDataType
+	38, // 14: warehouse.team.v1.TeamListRequest.page:type_name -> warehouse.common.v1.CommonPagination
+	0,  // 15: warehouse.team.v1.TeamRowItem.type:type_name -> warehouse.team.v1.TeamType
+	34, // 16: warehouse.team.v1.TeamRowMapItem.map_data:type_name -> warehouse.team.v1.TeamRowMapItem.MapDataEntry
+	39, // 17: warehouse.team.v1.TeamListResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	22, // 18: warehouse.team.v1.TeamListResponseItem.team:type_name -> warehouse.team.v1.TeamRowMapItem
+	23, // 19: warehouse.team.v1.TeamListResponse.items:type_name -> warehouse.team.v1.TeamListResponseItem
+	40, // 20: warehouse.team.v1.TeamListResponse.page_info:type_name -> warehouse.common.v1.PageInfo
+	6,  // 21: warehouse.team.v1.TeamDetailResponse.team:type_name -> warehouse.team.v1.Team
+	27, // 22: warehouse.team.v1.TeamByIdsRequest.filter:type_name -> warehouse.team.v1.TeamByIdsFilter
+	4,  // 23: warehouse.team.v1.TeamByIdsRequest.data_request:type_name -> warehouse.team.v1.TeamByIdsDataType
+	39, // 24: warehouse.team.v1.TeamByIdsResponseItem.general:type_name -> warehouse.common.v1.GeneralMapItem
+	22, // 25: warehouse.team.v1.TeamByIdsResponseItem.team:type_name -> warehouse.team.v1.TeamRowMapItem
+	29, // 26: warehouse.team.v1.TeamByIdsResponseList.items:type_name -> warehouse.team.v1.TeamByIdsResponseItem
+	35, // 27: warehouse.team.v1.TeamByIdsResponse.items:type_name -> warehouse.team.v1.TeamByIdsResponse.ItemsEntry
+	5,  // 28: warehouse.team.v1.TeamInfoUpdateResponse.info:type_name -> warehouse.team.v1.TeamInfo
+	21, // 29: warehouse.team.v1.TeamRowMapItem.MapDataEntry.value:type_name -> warehouse.team.v1.TeamRowItem
+	30, // 30: warehouse.team.v1.TeamByIdsResponse.ItemsEntry.value:type_name -> warehouse.team.v1.TeamByIdsResponseList
+	7,  // 31: warehouse.team.v1.TeamService.TeamCreate:input_type -> warehouse.team.v1.TeamCreateRequest
+	9,  // 32: warehouse.team.v1.TeamService.TeamUpdate:input_type -> warehouse.team.v1.TeamUpdateRequest
+	11, // 33: warehouse.team.v1.TeamService.TeamCodeUpdate:input_type -> warehouse.team.v1.TeamCodeUpdateRequest
+	13, // 34: warehouse.team.v1.TeamService.TeamCodePreview:input_type -> warehouse.team.v1.TeamCodePreviewRequest
+	16, // 35: warehouse.team.v1.TeamService.TeamDelete:input_type -> warehouse.team.v1.TeamDeleteRequest
+	20, // 36: warehouse.team.v1.TeamService.TeamList:input_type -> warehouse.team.v1.TeamListRequest
+	25, // 37: warehouse.team.v1.TeamService.TeamDetail:input_type -> warehouse.team.v1.TeamDetailRequest
+	28, // 38: warehouse.team.v1.TeamService.TeamByIds:input_type -> warehouse.team.v1.TeamByIdsRequest
+	32, // 39: warehouse.team.v1.TeamService.TeamInfoUpdate:input_type -> warehouse.team.v1.TeamInfoUpdateRequest
+	8,  // 40: warehouse.team.v1.TeamService.TeamCreate:output_type -> warehouse.team.v1.TeamCreateResponse
+	10, // 41: warehouse.team.v1.TeamService.TeamUpdate:output_type -> warehouse.team.v1.TeamUpdateResponse
+	12, // 42: warehouse.team.v1.TeamService.TeamCodeUpdate:output_type -> warehouse.team.v1.TeamCodeUpdateResponse
+	14, // 43: warehouse.team.v1.TeamService.TeamCodePreview:output_type -> warehouse.team.v1.TeamCodePreviewResponse
+	17, // 44: warehouse.team.v1.TeamService.TeamDelete:output_type -> warehouse.team.v1.TeamDeleteResponse
+	24, // 45: warehouse.team.v1.TeamService.TeamList:output_type -> warehouse.team.v1.TeamListResponse
+	26, // 46: warehouse.team.v1.TeamService.TeamDetail:output_type -> warehouse.team.v1.TeamDetailResponse
+	31, // 47: warehouse.team.v1.TeamService.TeamByIds:output_type -> warehouse.team.v1.TeamByIdsResponse
+	33, // 48: warehouse.team.v1.TeamService.TeamInfoUpdate:output_type -> warehouse.team.v1.TeamInfoUpdateResponse
+	40, // [40:49] is the sub-list for method output_type
+	31, // [31:40] is the sub-list for method input_type
+	31, // [31:31] is the sub-list for extension type_name
+	31, // [31:31] is the sub-list for extension extendee
+	0,  // [0:31] is the sub-list for field type_name
 }
 
 func init() { file_warehouse_team_v1_team_proto_init() }
@@ -1987,26 +2464,26 @@ func file_warehouse_team_v1_team_proto_init() {
 		return
 	}
 	file_warehouse_team_v1_team_proto_msgTypes[4].OneofWrappers = []any{}
-	file_warehouse_team_v1_team_proto_msgTypes[9].OneofWrappers = []any{
+	file_warehouse_team_v1_team_proto_msgTypes[14].OneofWrappers = []any{
 		(*TeamListFilterSort_General)(nil),
 		(*TeamListFilterSort_Team)(nil),
 	}
-	file_warehouse_team_v1_team_proto_msgTypes[13].OneofWrappers = []any{
+	file_warehouse_team_v1_team_proto_msgTypes[18].OneofWrappers = []any{
 		(*TeamListResponseItem_General)(nil),
 		(*TeamListResponseItem_Team)(nil),
 	}
-	file_warehouse_team_v1_team_proto_msgTypes[19].OneofWrappers = []any{
+	file_warehouse_team_v1_team_proto_msgTypes[24].OneofWrappers = []any{
 		(*TeamByIdsResponseItem_General)(nil),
 		(*TeamByIdsResponseItem_Team)(nil),
 	}
-	file_warehouse_team_v1_team_proto_msgTypes[22].OneofWrappers = []any{}
+	file_warehouse_team_v1_team_proto_msgTypes[27].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_warehouse_team_v1_team_proto_rawDesc), len(file_warehouse_team_v1_team_proto_rawDesc)),
-			NumEnums:      4,
-			NumMessages:   26,
+			NumEnums:      5,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

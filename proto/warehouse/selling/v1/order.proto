@@ -1246,8 +1246,8 @@ message OrderReturnAcceptRequest {
     gte: 0
     finite: true
   }];
-  // What it was for — required when the charge is above 0 (an-incidental-line-must-say-what-it-was-for); the handler
-  // checks, since a rule across two fields is not written here. Ignored when there is no charge.
+  // What it was for — optional (the-couriers-charge-note-is-optional): a charge with no note is accepted. Ignored when
+  // there is no charge.
   string courier_charge_note = 5 [(buf.validate.field).string.max_len = 200];
   // EVERY LINE OF THE ORDER, ONCE, as the crew counted it (the-return-accept-page-is-accepted). The return is whole
   // (a-return-is-never-partial): sound = the line's quantity − broken − missing goes onto the racks named.

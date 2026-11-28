@@ -4,6 +4,7 @@ import { ROOT_PASSWORD, ROOT_USERNAME, ROOT_USER_ID } from "./global-setup";
 import { API_URL } from "./env";
 import { SUFFIX, login, api, ongoingOf, inboundRow, readyAt } from "./restock_helpers";
 import { listLanded } from "./pickers";
+import { send } from "./warehouse_hours_helpers";
 
 // warehouse:all wants to accept a restock — split out of restock.spec.ts by its describe block (backlog #51), every test and title
 // unchanged. Self-contained: the block seeds its own ground in beforeAll; the helpers live in restock_helpers.ts.
@@ -391,7 +392,9 @@ test.describe("warehouse:all wants to accept a restock", () => {
     const printed = page.getByTestId("labels-print-root");
     await expect.soft(printed.locator(".print-label")).toHaveCount(units);
     await expect.soft(printed.locator(".print-label svg")).toHaveCount(units);
-    await expect.soft(printed.getByTestId("label-sku").first()).toHaveText(code);
+    // #151: Cetak Label prints the product's LIVE code — its team's code in front of its own (`PS…-<code>`,
+    // a-team-code-change-recomposes-its-product-codes) — not the restock line's copy, which keeps the code it was raised with.
+    await expect.soft(printed.getByTestId("label-sku").first()).toHaveText(`PS${SUFFIX}-${code}`);
     await expect.soft(printed.getByTestId("label-placement").first()).toHaveText(`acp-${SUFFIX}`);
 
     await page.evaluate(() => {
@@ -791,4 +794,330 @@ test.describe("warehouse:all wants to accept a restock", () => {
       await expect(page.getByTestId(`accept-broken-to-rack-${productId}`)).toBeVisible({ timeout: 5_000 });
     });
   });
+});
+
+// ── Given 33: a warehouse with NO rack — the accept page points to the Racks page (#144) ─────────────────────────────────
+//
+// the-accept-page-points-to-the-racks-page (owner "C"): in a warehouse with no rack, every placement picker of the accept
+// page says so and links to Racks, for owner, admin AND staff, and the accept cannot finish until a rack exists.
+// a-helper-link-opens-a-new-tab: the link opens Racks in a NEW tab. Back on the accept page, the picker reads its racks
+// again (only while it has none: api/rereadOnReturn.ts, TanStack's `visibilitychange`), so the rack made there can be
+// picked, and every count typed before the trip is still in its box.
+//
+// One warehouse per role, made here with no rack, and one arrived restock in each. Root raises it and Sets it Arrived
+// through RestockRequestArrive, the same seeding as the (status: arrived …) given above. It has two lines, so EVERY picker
+// is read. The counts are typed on the page before the trip: line X 10 in, 2 of them broken (with a note); line Y 4 in.
+// The rack is made through the Racks page's own form (open-create-rack → rack-code → submit-rack). The role makes it
+// itself, in the new tab — except staff. RackCreate refuses staff (rack.proto: root, administrator, warehouse owner and
+// admin; placement.md given 7, *cannot create rack*), and the decision keeps that, so the staff's tab shows the refusal
+// (a `regression:` step) and an ADMIN of the staff's own warehouse makes the rack on a page of its own.
+// The return: `bringToFront()` on the accept page first. It fires no RackList re-read in the e2e's headless Chromium (every
+// page stays visible there, so no `visibilitychange` — seen in all three roles' first run, 11-27), so the event a browser
+// fires at a tab shown again is then dispatched at the accept page's document. Which one was needed is annotated on the
+// test (`reread`) and logged; the day bringToFront does fire it, the dispatch is skipped.
+test.describe("warehouse:all wants to accept a restock in a warehouse with no rack", () => {
+  test.describe.configure({ timeout: 120_000 });
+
+  const NO_RACK = "status: arrived · all received · no COD · no rack in this warehouse";
+  const PASSWORD = "e2e-acceptance-pass-1";
+  const ROLES = [
+    { given: "warehouse:owner", role: "ROLE_WAREHOUSE_OWNER", key: "own", code: "O" },
+    { given: "warehouse:admin", role: "ROLE_WAREHOUSE_ADMIN", key: "adm", code: "A" },
+    { given: "warehouse:staff", role: "ROLE_WAREHOUSE_STAFF", key: "stf", code: "T" },
+  ] as const;
+  const username = (key: string) => `e2eacpnr${key}${SUFFIX}`;
+  // The staff's warehouse also has an admin: RackCreate refuses staff, so the admin makes the staff's rack.
+  const STAFFS_ADMIN = `e2eacpnrhlp${SUFFIX}`;
+  // Line X: 10 ordered, all 10 in, 2 of them broken; line Y: 4 ordered, all 4 in.
+  const X = { count: 10, broken: 2, total: 100_000 };
+  const Y = { count: 4, total: 40_000 };
+  const BROKEN_NOTE = `crushed in transit ${SUFFIX}`;
+  const productCode = (key: string, line: "X" | "Y") => `ACPNR${key.toUpperCase()}${line}${SUFFIX}`;
+  const rackCode = (key: string) => `nr-${key}-${SUFFIX}`;
+  const RACK_LIST = "/warehouse.inventory.v1.RackService/RackList";
+
+  type Raised = { request: { id: string; items: { id: string; productId: string }[] } };
+  const ground = {
+    seller: "",
+    account: "",
+    warehouses: {} as Record<string, string>,
+    products: {} as Record<string, string>,
+    restocks: {} as Record<string, Raised>,
+  };
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await login(page, ROOT_USERNAME, ROOT_PASSWORD);
+
+    const team = async (name: string, teamCode: string, type: string) =>
+      String((await api(page, "team.v1.TeamService/TeamCreate", { name, teamCode, type, ownerUserId: ROOT_USER_ID })).team.id);
+
+    ground.seller = await team(`E2E AcpNR Seller ${SUFFIX}`, `PX${SUFFIX}`, "TEAM_TYPE_SELLING");
+    for (const r of ROLES) {
+      // GIVEN — a warehouse of the role's own, with no rack in it.
+      ground.warehouses[r.key] = await team(`E2E AcpNR ${r.key} ${SUFFIX}`, `PX${r.code}${SUFFIX}`, "TEAM_TYPE_WAREHOUSE");
+      await api(page, "user.v1.UserService/CreateUser", {
+        teamId: ground.warehouses[r.key],
+        username: username(r.key),
+        password: PASSWORD,
+        name: `AcpNR ${r.given} ${SUFFIX}`,
+        role: r.role,
+      });
+    }
+    await api(page, "user.v1.UserService/CreateUser", {
+      teamId: ground.warehouses.stf,
+      username: STAFFS_ADMIN,
+      password: PASSWORD,
+      name: `AcpNR staff's admin ${SUFFIX}`,
+      role: "ROLE_WAREHOUSE_ADMIN",
+    });
+
+    const supplier = String(
+      (await api(page, "supplier.v1.SupplierService/SupplierCreate", { teamId: ground.seller, name: `E2E AcpNR Sup ${SUFFIX}` }))
+        .supplier.id,
+    );
+    const category = await api(page, "category.v1.CategoryService/CategoryCreate", { name: `E2E AcpNR Cat ${SUFFIX}` });
+    for (const r of ROLES) {
+      for (const line of ["X", "Y"] as const) {
+        const code = productCode(r.key, line);
+        const created = await api(page, "product.v1.ProductService/ProductCreate", {
+          teamId: ground.seller,
+          productCodePart: code,
+          name: `E2E ${code}`,
+          categoryId: category.category.id,
+        });
+        ground.products[code] = String(created.product.id);
+      }
+    }
+
+    const account = await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountCreate", {
+      teamId: ground.seller,
+      type: "FINANCIAL_ACCOUNT_TYPE_BANK_ACCOUNT",
+      provider: "FINANCIAL_ACCOUNT_PROVIDER_BCA",
+      name: `E2E AcpNR BCA ${SUFFIX}`,
+      holderName: "E2E",
+      accountNumber: `79${SUFFIX}02`,
+      openingBalance: 10_000_000,
+      openingOn: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }),
+    });
+    ground.account = String(account.account.id);
+    await api(page, "financial_account.v1.FinancialAccountService/FinancialAccountOperationalSet", {
+      teamId: ground.seller,
+      accountId: ground.account,
+      operational: true,
+    });
+
+    // GIVEN — per role, a restock to its warehouse, set arrived: the box is in the building, not counted yet.
+    for (const r of ROLES) {
+      const line = (l: "X" | "Y", count: number, total: number) => {
+        const code = productCode(r.key, l);
+        return { productId: ground.products[code], productCode: code, name: `E2E ${code}`, count, total, supplierId: supplier };
+      };
+      const raised = (await api(page, "inventory.v1.RestockRequestService/RestockRequestCreate", {
+        teamId: ground.seller,
+        warehouseId: ground.warehouses[r.key],
+        financeAccountId: ground.account,
+        items: [line("X", X.count, X.total), line("Y", Y.count, Y.total)],
+      })) as Raised;
+      await api(page, "inventory.v1.RestockRequestService/RestockRequestArrive", {
+        teamId: ground.warehouses[r.key],
+        requestId: raised.request.id,
+      });
+      ground.restocks[r.key] = raised;
+    }
+
+    await page.close();
+  });
+
+  async function signIn(page: Page, user: string, team: string) {
+    await login(page, user, PASSWORD);
+    await page.evaluate((id) => window.sessionStorage.setItem("warehouse_revamp.team", id), team);
+  }
+
+  // The restock's line for the product — matched by product, since the answer's order is not the point.
+  function itemOf(restock: Raised, productId: string): string {
+    const item = restock.request.items.find((i) => String(i.productId) === productId);
+    if (!item) throw new Error(`restock ${restock.request.id} has no line for product ${productId}`);
+    return item.id;
+  }
+
+  // The Racks page's own create form, on `page`: the RackCreate answer it got.
+  async function createOnRacksPage(page: Page, code: string) {
+    await page.getByTestId("open-create-rack").click();
+    await expect(page.getByTestId("rack-form")).toBeVisible();
+    await page.getByTestId("rack-code").fill(code);
+    const answer = page.waitForResponse((res) => res.url().endsWith("/warehouse.inventory.v1.RackService/RackCreate"));
+    await page.getByTestId("submit-rack").click();
+    return answer;
+  }
+
+  for (const r of ROLES) {
+    test(`${r.given} accept restock (${NO_RACK})`, async ({ page, browser }) => {
+      const restock = ground.restocks[r.key];
+      const id = restock.request.id;
+      const warehouse = ground.warehouses[r.key];
+      const x = ground.products[productCode(r.key, "X")];
+      const y = ground.products[productCode(r.key, "Y")];
+
+      await signIn(page, username(r.key), warehouse);
+
+      // GIVEN — arrived, all in the box, no COD, and not one rack in this warehouse.
+      await expect((await inboundRow(page, id, productCode(r.key, "X"))).getByTestId("restock-status-4")).toBeVisible();
+      const racks = await api(page, "inventory.v1.RackService/RackList", { teamId: warehouse, page: { page: 1, limit: 10 } });
+      expect(racks.ids ?? []).toHaveLength(0);
+
+      await page.goto(`/inventories/restock/${id}/accept`);
+      const acceptUrl = page.url();
+      await expect(page.getByTestId(`accept-line-${x}`)).toBeVisible();
+      await expect(page.getByTestId(`accept-line-${y}`)).toBeVisible();
+
+      const tab = await test.step("then: placement picker links to Racks", async () => {
+        // Every line's picker says so, before anything is counted…
+        for (const pid of [x, y]) {
+          const help = page.getByTestId(`accept-placement-${pid}-0-no-rack`);
+          await expect(help).toBeVisible();
+          await expect.soft(help).toContainText("This warehouse has no rack yet.");
+          const link = help.getByTestId(`accept-placement-${pid}-0-open-racks`);
+          await expect.soft(link).toHaveAttribute("href", "/inventories/racks");
+          await expect.soft(link).toHaveAttribute("target", "_blank");
+          await expect.soft(link).toHaveAttribute("rel", "noopener noreferrer");
+          await expect.soft(link).toHaveAccessibleName("Open Racks, opens in a new tab");
+        }
+
+        // WHEN — …and once the box is counted (X: 10 in, 2 broken, with a note; Y: 4 in), still: a place is what is missing.
+        await page.getByTestId(`accept-received-${x}`).fill(String(X.count));
+        await page.getByTestId(`accept-broken-${x}`).fill(String(X.broken));
+        await page.getByTestId(`accept-broken-note-${x}`).fill(BROKEN_NOTE);
+        await page.getByTestId(`accept-received-${y}`).fill(String(Y.count));
+        await expect.soft(page.getByTestId(`accept-placement-${x}-0-no-rack`)).toBeVisible();
+        await expect.soft(page.getByTestId(`accept-placement-${y}-0-no-rack`)).toBeVisible();
+
+        // The link opens Racks in a NEW tab, and the accept page stays where it is.
+        const opened = page.context().waitForEvent("page");
+        await page.getByTestId(`accept-placement-${x}-0-open-racks`).click();
+        const racksTab = await opened;
+        await racksTab.waitForLoadState();
+        await expect(racksTab).toHaveURL(/\/inventories\/racks$/);
+        await expect(racksTab.getByTestId("racks-page")).toBeVisible();
+        await expect.soft(racksTab.getByTestId("racks-empty").first()).toBeVisible();
+        expect.soft(page.url()).toBe(acceptUrl);
+        return racksTab;
+      });
+
+      await test.step("then: accept cannot finish", async () => {
+        // On screen: Terima stays off, and the ready line names the placement it waits for.
+        await expect.soft(page.getByTestId("accept-submit")).toBeDisabled();
+        await expect.soft(page.getByTestId("accept-ready-line-missing")).toContainText("placement");
+        await expect.soft(page.getByTestId("accept-ready-line-ready")).toHaveCount(0);
+
+        // The same count sent anyway, under the role's own token, with nowhere to put the good units: refused — and the
+        // restock is still arrived.
+        const refused = await send(page, "inventory.v1.RestockRequestService/RestockRequestAccept", {
+          teamId: warehouse,
+          requestId: id,
+          lines: [
+            { itemId: itemOf(restock, x), receivedCount: X.count, brokenCount: X.broken, brokenNote: BROKEN_NOTE, placements: [] },
+            { itemId: itemOf(restock, y), receivedCount: Y.count, placements: [] },
+          ],
+        });
+        expect.soft(refused.status).not.toBe(200);
+        expect.soft(refused.json.code).toBe("invalid_argument");
+        const detail = await api(page, "inventory.v1.RestockRequestService/RestockRequestDetail", { teamId: warehouse, requestId: id });
+        expect.soft(detail.request.status).toBe("RESTOCK_REQUEST_STATUS_ARRIVED");
+        await expect.soft(page.getByTestId("restock-accept-page").getByTestId("restock-status-4").first()).toBeVisible();
+      });
+
+      // WHEN — in the Racks tab, a rack is made: by the role itself, or — staff being refused — by its warehouse's admin.
+      let rackId = "";
+      if (r.key !== "stf") {
+        const made = await createOnRacksPage(tab, rackCode(r.key));
+        expect(made.status()).toBe(200);
+        rackId = String((await made.json()).rack.id);
+        await expect(tab.getByTestId(`rack-row-${rackCode(r.key)}`)).toBeVisible();
+      } else {
+        await test.step("regression: staff reach Racks and are refused the create there (the-accept-page-points-to-the-racks-page)", async () => {
+          const offered = await tab.getByTestId("open-create-rack").isVisible();
+          console.log(`[ra144] warehouse:staff: the Racks page offers its create form: ${offered}`);
+          if (offered) {
+            const refused = await createOnRacksPage(tab, rackCode(r.key));
+            expect.soft(refused.status()).not.toBe(200);
+            await expect.soft(tab.getByTestId("rack-form-error")).toBeVisible();
+            await tab.keyboard.press("Escape");
+          }
+          const direct = await send(tab, "inventory.v1.RackService/RackCreate", { teamId: warehouse, code: rackCode(r.key) });
+          expect.soft(direct.status).not.toBe(200);
+          expect.soft(direct.json.code).toBe("permission_denied");
+        });
+
+        const admin = await browser.newPage();
+        await signIn(admin, STAFFS_ADMIN, warehouse);
+        await admin.goto("/inventories/racks");
+        await expect(admin.getByTestId("racks-page")).toBeVisible();
+        const made = await createOnRacksPage(admin, rackCode(r.key));
+        expect(made.status()).toBe(200);
+        rackId = String((await made.json()).rack.id);
+        await expect(admin.getByTestId(`rack-row-${rackCode(r.key)}`)).toBeVisible();
+        await admin.close();
+      }
+
+      await test.step("then: back on the accept page, new rack can be picked, counts kept", async () => {
+        // Back on the accept page's tab: the racks are read again. A focus re-read goes out at once, so 2.5 s is ample.
+        const rereadOn = (timeout: number) =>
+          page.waitForRequest((req) => req.url().endsWith(RACK_LIST), { timeout }).then(
+            () => true,
+            () => false,
+          );
+        const onFront = rereadOn(2_500);
+        await page.bringToFront();
+        let how = "bringToFront";
+        if (!(await onFront)) {
+          how = "visibilitychange dispatched";
+          const onEvent = rereadOn(10_000);
+          await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
+          expect(await onEvent, "the racks are read again on return").toBe(true);
+        }
+        test.info().annotations.push({ type: "reread", description: how });
+        console.log(`[ra144] ${r.given}: the racks were read again on return by ${how}`);
+
+        // The helper is gone from every picker, and each offers the new rack.
+        for (const pid of [x, y]) {
+          await expect.soft(page.getByTestId(`accept-placement-${pid}-0-no-rack`)).toHaveCount(0);
+          await listLanded(page.getByTestId(`accept-placement-${pid}-0`).getByTestId(`rack-select-option-${rackId}`));
+        }
+
+        // The counts typed before the trip are still in their boxes.
+        await expect.soft(page.getByTestId(`accept-received-${x}`)).toHaveValue(String(X.count));
+        await expect.soft(page.getByTestId(`accept-broken-${x}`)).toHaveValue(String(X.broken));
+        await expect.soft(page.getByTestId(`accept-broken-note-${x}`)).toHaveValue(BROKEN_NOTE);
+        await expect.soft(page.getByTestId(`accept-received-${y}`)).toHaveValue(String(Y.count));
+
+        // …and the new rack can be picked: each line then balances, its good units on it.
+        for (const pid of [x, y]) {
+          const picker = page.getByTestId(`accept-placement-${pid}-0`);
+          await picker.getByTestId("rack-select").click();
+          await picker.getByTestId(`rack-select-option-${rackId}`).click();
+          await expect.soft(page.getByTestId(`accept-balanced-${pid}`)).toBeVisible();
+        }
+      });
+
+      await test.step("regression: with the new rack picked, the accept finishes", async () => {
+        const submit = page.getByTestId("accept-submit");
+        await expect(submit).toBeEnabled();
+        const accepted = page.waitForResponse((res) =>
+          res.url().endsWith("/warehouse.inventory.v1.RestockRequestService/RestockRequestAccept"),
+        );
+        await submit.click();
+        await page.getByTestId("confirm-action").click();
+        expect((await accepted).status()).toBe(200);
+
+        const after = await inboundRow(page, id, productCode(r.key, "X"));
+        await expect.soft(after.getByTestId("restock-status-2")).toBeVisible();
+        await page.goto(`/inventories/racks/${rackId}`);
+        await expect.soft(page.getByTestId(`rack-stock-onhand-${x}`)).toHaveText(String(X.count - X.broken));
+        await expect.soft(page.getByTestId(`rack-stock-onhand-${y}`)).toHaveText(String(Y.count));
+      });
+
+      await tab.close();
+    });
+  }
 });

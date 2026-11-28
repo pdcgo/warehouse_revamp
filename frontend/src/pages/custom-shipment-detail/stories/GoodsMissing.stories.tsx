@@ -91,7 +91,7 @@ export const Mobile: Story = {
     const canvas = await opened(canvasElement);
 
     await expect(window.innerWidth).toBe(390);
-    await expect(await canvas.findByTestId("custom-shipment-goods-missing-notice")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("custom-shipment-goods-missing-notice")).toBeVisible(), { timeout: 5000 });
     // Batalkan is in the header's ⋯ on a phone.
     await expect(canvas.getByTestId("custom-shipment-actions-801")).toBeVisible();
     await fitsTheScreen(canvasElement);

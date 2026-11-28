@@ -961,7 +961,8 @@ export type OrderReturnAccepted = Message<"warehouse.events.v1.OrderReturnAccept
   courierCharge: number;
 
   /**
-   * What it was for (an-incidental-line-must-say-what-it-was-for). Set whenever the charge is.
+   * What it was for — optional (the-couriers-charge-note-is-optional): "" when none was given, and always "" with no
+   * charge.
    *
    * @generated from field: string courier_charge_note = 8;
    */

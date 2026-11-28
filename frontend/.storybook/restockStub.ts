@@ -1006,13 +1006,12 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
 
   restockRequestArrive(req) {
     const r = comingTo(req.teamId, req.requestId);
-    if (r.status !== S.ONGOING && r.status !== S.LOST) throw precondition("only an ongoing or lost restock can be signed for");
-    // THE COURIER'S CHARGE NOTED AT THE DOOR, as the server checks and keeps it
-    // (the-courier-charge-is-noted-at-tiba-and-final-at-terima): Terima's rules — a note once above 0, the slip only with a
-    // charge. A story may call the stub with a plain object, so an absent field reads as none.
+    if (r.status !== S.ONGOING && r.status !== S.LOST) throw precondition("only an ongoing or lost restock can be set arrived");
+    // THE COURIER'S CHARGE NOTED AT THE DOOR, as the server keeps it (the-courier-charge-is-noted-at-tiba-and-final-at-terima):
+    // Terima's rules — its note optional (the-couriers-charge-note-is-optional), the slip only with a charge. A story may
+    // call the stub with a plain object, so an absent field reads as none.
     const charge = req.warehouseAdditionalCost ?? 0;
     const note = req.warehouseAdditionalCostNote ?? "";
-    if (charge > 0 && note.trim() === "") throw invalid("the courier's charge needs a note");
 
     const from = r.status;
     r.status = S.ARRIVED;
@@ -1021,7 +1020,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     r.warehouseAdditionalCost = charge;
     r.warehouseAdditionalCostNote = note;
     r.warehouseAdditionalCostFile = charge > 0 ? (req.warehouseAdditionalCostFile ?? "") : "";
-    appendLog(r, from, S.ARRIVED, from === S.LOST ? "signed for the box — it turned up after all" : "signed for the box");
+    appendLog(r, from, S.ARRIVED, from === S.LOST ? "set arrived — it turned up after all" : "set arrived");
 
     return { request: toWire(r, true, req.teamId) };
   },
@@ -1031,9 +1030,7 @@ export const restockRequestService: Partial<ServiceImpl<typeof RestockRequestSer
     if (r.status !== S.ONGOING && r.status !== S.ARRIVED) {
       throw precondition("restock request can only be accepted while ongoing or arrived");
     }
-    if (req.warehouseAdditionalCost > 0 && req.warehouseAdditionalCostNote.trim() === "") {
-      throw invalid("the courier's charge needs a note");
-    }
+    // What the courier's charge was for is optional (the-couriers-charge-note-is-optional) — never refused.
 
     const counted = new Map(req.lines.map((l) => [l.itemId.toString(), l]));
     if (counted.size !== req.lines.length || counted.size !== r.items.length) {

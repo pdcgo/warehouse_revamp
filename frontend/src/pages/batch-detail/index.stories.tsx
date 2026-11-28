@@ -6,7 +6,8 @@ import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/tes
 import { productLeftItsRacksForStory, productPlacesForStory } from "../../../.storybook/batchStub";
 import { LocationProbe, asTeam, marker, routedPage } from "../../../.storybook/pageStory";
 import { asRole } from "../../../.storybook/sessionScenario";
-import { inventoryClient } from "../../api/clients";
+import { type HeldRpc, callsOf, holdRpc } from "../../../.storybook/holdRpc";
+import { inventoryClient, productClient, supplierClient, teamClient, userClient } from "../../api/clients";
 import { Role } from "../../gen/warehouse/role_base/v1/role_pb";
 import { MovementKind } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import { cameFrom } from "../../lib/cameFrom";
@@ -530,5 +531,57 @@ export const TheRacksAreReadOnce: Story = {
     // Rusak takes THIS batch — nothing opens to pick one.
     await userEvent.click(screen.getByTestId("adjust-reason-option-damaged"));
     await expect(screen.queryByTestId("adjust-batch")).toBeNull();
+  },
+};
+
+// THE BATCH'S READS GO OUT SIDE BY SIDE (#134, the-speed-audits-old-findings-are-fixed-smallest-first) — once the batch
+// itself has answered, where its product sits, its product and owner, its supplier, who accepted it and Riwayat are asked
+// together: none of them needs another's answer. They ran one after another — seven round trips. The page still draws
+// once ALL of it is in, never by halves.
+let shelvesHeld: HeldRpc | undefined;
+
+export const ItsReadsGoOutSideBySide: Story = {
+  name: "Reads side by side",
+  beforeEach: () => {
+    // Where the product sits answers late — the reads that used to queue behind it go out meanwhile.
+    shelvesHeld = holdRpc(inventoryClient, "productPlaces");
+    const spies = [
+      spyOn(inventoryClient, "stockHistory"),
+      spyOn(productClient, "productByIds"),
+      spyOn(teamClient, "teamByIds"),
+      spyOn(supplierClient, "supplierByIds"),
+      spyOn(userClient, "userByIDs"),
+    ];
+
+    return () => {
+      shelvesHeld?.restore();
+      for (const spy of spies) spy.mockRestore();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Held: the shelves. Asked all the same — Riwayat (the batch's product is all it needs), the product and its owner,
+    // the supplier, who accepted it.
+    await waitFor(
+      () => {
+        expect(callsOf(inventoryClient.stockHistory).length).toBeGreaterThan(0);
+        expect(callsOf(productClient.productByIds).length).toBeGreaterThan(0);
+        expect(callsOf(teamClient.teamByIds).length).toBeGreaterThan(0);
+        expect(callsOf(supplierClient.supplierByIds).length).toBeGreaterThan(0);
+        expect(callsOf(userClient.userByIDs).length).toBeGreaterThan(0);
+      },
+      { timeout: 5000 },
+    );
+    // ...and the page is not drawn by halves: still its first load's shape.
+    await expect(canvas.getByTestId("batch-detail-loading")).toBeVisible();
+    await expect(canvas.queryByTestId("batch-detail-page")).toBeNull();
+
+    shelvesHeld?.release();
+    const page = await loaded(canvasElement);
+
+    // All of it at once: whose goods, the shelves by their codes.
+    await expect(page.getByTestId("batch-detail-owner")).toHaveTextContent("Toko Melati");
+    await waitFor(() => expect(page.getByTestId("batch-detail-shelf-41")).toHaveTextContent("A-01-1"), { timeout: 5000 });
   },
 };

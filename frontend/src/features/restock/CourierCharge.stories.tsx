@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { toRupiah } from "./counting";
 import { CourierCharge } from "./CourierCharge";
 
 // THE COURIER'S CHARGE AT THE DOOR — one amount and its note, drawn by the Tandai Tiba dialog and the Terima page alike
@@ -12,7 +11,6 @@ function Harness({ hint, startAsked = false }: { hint?: string; startAsked?: boo
   const [asked, setAsked] = useState(startAsked);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
-  const charged = asked && toRupiah(amount) > 0;
 
   return (
     <CourierCharge
@@ -20,7 +18,6 @@ function Harness({ hint, startAsked = false }: { hint?: string; startAsked?: boo
       onAsked={setAsked}
       amount={amount}
       note={note}
-      noteMissing={charged && note.trim() === ""}
       onAmount={setAmount}
       onNote={setNote}
       hint={hint}
@@ -44,12 +41,12 @@ export const AtArrival: Story = {
   args: { hint: "If the courier asked for a charge when handing the box over — it can still be entered or changed at Accept." },
 };
 
-/** On Ada: the amount and the note, both required. */
+/** On Ada: the amount, required, and the note — optional (the-couriers-charge-note-is-optional). */
 export const Asked: Story = { args: { startAsked: true } };
 
 // ASKED FIRST, THEN FILLED (owner: *"default formnya ongkir dsb itu disabled, baru enabled saat interaksi tertentu"*) — no
-// fields on Tidak ada, the default; on Ada, the amount and the note appear, the note a textarea with its count; its error shows once
-// there is an amount, and goes once it is written. Back to Tidak ada, the fields go.
+// fields on Tidak ada, the default; on Ada, the amount and the note appear, the note a textarea with its count. Back to
+// Tidak ada, the fields go.
 export const TheChargeIsAskedFirst: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -61,15 +58,33 @@ export const TheChargeIsAskedFirst: Story = {
     const note = await canvas.findByTestId("accept-courier-note");
     await expect(note.tagName).toBe("TEXTAREA");
     await expect(canvas.getByTestId("accept-courier-note-count")).toHaveTextContent("0/200");
-    await expect(canvas.queryByTestId("accept-courier-note-error")).toBeNull();
 
     await userEvent.type(canvas.getByTestId("accept-courier-charge"), "5000", { delay: 20 });
-    await expect(await canvas.findByTestId("accept-courier-note-error")).toBeVisible();
-
     await userEvent.type(note, "Biaya COD", { delay: 20 });
-    await waitFor(() => expect(canvas.queryByTestId("accept-courier-note-error")).toBeNull());
+    await waitFor(() => expect(canvas.getByTestId("accept-courier-note-count")).toHaveTextContent("9/200"));
 
     await userEvent.click(canvas.getByTestId("accept-courier-asked-none"));
     await waitFor(() => expect(canvas.queryByTestId("accept-courier-charge")).toBeNull());
+  },
+};
+
+// THE NOTE IS OPTIONAL (the-couriers-charge-note-is-optional — owner: *"note "what it was for" is optional too"*): on
+// Ada the amount carries the red mark, the note says "(optional)" as the slip's photo does, and an amount with no note
+// raises no error — the count stays under it. (Inverted from "a note is required once there is an amount".)
+export const TheNoteIsOptional: Story = {
+  args: { startAsked: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const note = await canvas.findByTestId("accept-courier-note");
+    await expect(canvas.getByTestId("accept-courier-note-optional")).toHaveTextContent("(optional)");
+    await expect(note).not.toBeRequired();
+    await expect(note).not.toHaveAttribute("aria-invalid", "true");
+
+    await userEvent.type(canvas.getByTestId("accept-courier-charge"), "5000", { delay: 20 });
+    await waitFor(() => expect(canvas.getByTestId("accept-courier-charge")).toHaveValue("5.000"));
+    await expect(note).not.toHaveAttribute("aria-invalid", "true");
+    await expect(canvas.queryByTestId("accept-courier-note-error")).toBeNull();
+    await expect(canvas.getByTestId("accept-courier-note-count")).toHaveTextContent("0/200");
   },
 };

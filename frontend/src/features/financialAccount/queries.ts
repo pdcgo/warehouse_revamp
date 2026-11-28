@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { financialAccountClient } from "../../api/clients";
 import { key, listQuery, referenceQuery } from "../../api/queryClient";
+import { rereadOnReturnWhileEmpty } from "../../api/rereadOnReturn";
 import type { SortState } from "../../components/chrome/SortableHeader";
 import { CommonSortType } from "../../gen/warehouse/common/v1/list_pb";
 import {
@@ -23,6 +24,7 @@ import {
   logsFromList,
   typeTotalsFromOverview,
 } from "./adapt";
+import { isUnknown } from "./vocab";
 
 // The team's financial accounts — docs/business/financial_account/context_decision.md.
 //
@@ -107,14 +109,24 @@ export function useFinancialAccounts(args: {
 /**
  * The PICKER feed — active accounts only, one large page. A picker names an account to record a FACT
  * (which one paid), so it reads as reference data; any write drops it with the rest of the prefix.
+ *
+ * `rereadOnReturn` — while it offers NOTHING (no account, or only `unknown` ones no picker offers), it is read again
+ * when the person comes back to the tab: the restock form's account box sends the owner and admin to Financial Accounts
+ * in a new tab, and the account made or marked there must be pickable on return (a-helper-link-opens-a-new-tab).
  */
-export function useFinancialAccountOptions(args: { teamId: bigint; operationalOnly?: boolean }) {
-  const { teamId, operationalOnly = false } = args;
+export function useFinancialAccountOptions(args: {
+  teamId: bigint;
+  operationalOnly?: boolean;
+  enabled?: boolean;
+  rereadOnReturn?: boolean;
+}) {
+  const { teamId, operationalOnly = false, enabled = true, rereadOnReturn = false } = args;
 
   return useQuery({
     ...referenceQuery,
     queryKey: key.financialAccounts(teamId, { options: true, operationalOnly }),
-    enabled: teamId > 0n,
+    enabled: enabled && teamId > 0n,
+    ...(rereadOnReturn ? { refetchOnWindowFocus: rereadOnReturnWhileEmpty(nothingToPick) } : {}),
     queryFn: async () => {
       const res = await financialAccountClient.financialAccountList({
         teamId,
@@ -127,6 +139,9 @@ export function useFinancialAccountOptions(args: { teamId: bigint; operationalOn
     },
   });
 }
+
+/** Nothing a picker could offer: no account, or only `unknown` ones (a-shop-with-no-account-gets-an-unknown-one). */
+export const nothingToPick = (accounts: { type: FinancialAccountType }[]) => accounts.every(isUnknown);
 
 /**
  * The account a shop withdraws into now — at most one (a-shop-has-one-account). `null` when it names

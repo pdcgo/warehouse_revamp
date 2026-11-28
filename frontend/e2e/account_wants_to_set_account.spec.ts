@@ -5,22 +5,24 @@ import { API_URL } from "./env";
 import { SUFFIX, api, login } from "./restock_helpers";
 
 // An owner or an admin of either team type wants to name where a withdrawal landed — the check behind
-// docs/acceptances/financial_account/account.md, section *accounts*, when *set account* (givens 16–17). Both givens
+// docs/acceptances/financial_account/account.md, section *accounts*, when *set account* (givens 23–24). Both givens
 // name selling:owner · selling:admin · warehouse:owner · warehouse:admin: one test per role and given, each signed in
-// as a person of that role, in a team of its OWN (a name is unique in a team, and given 16 fills in the very name
-// given 17 has registered already).
+// as a person of that role, in a team of its OWN (a name is unique in a team, and given 23 fills in the very name
+// given 24 has registered already).
+// (Numbered 16–17 until hfrada's renumbering, aa6e65f6, 11-24 — the code keeps the old numbers in its keys; the cases
+// read *from shop Melati* since then.)
 //
 // The unknown account is the listener's (a-shop-with-no-account-gets-an-unknown-one): settlement's withdrawal row
 // for a shop that names no account, pushed to the listener's route as Pub/Sub would deliver it. It becomes the real
 // one through one action, Set Account (an-unknown-account-is-filled-in-or-moved-in):
 //
-//   16 (unknown account Rp 300.000 from Melati · Melati's bank not registered · details filled as BCA TikTok)
+//   23 (unknown account Rp 300.000 from shop Melati · Melati's bank not registered · details filled as BCA TikTok)
 //      The row's Account actions → Set Account → *Complete details*: bank, BCA, a number, PT Melati, "BCA TikTok".
 //      then: it becomes BCA TikTok, its Rp 300.000 row kept — the SAME account (same id) reads BCA TikTok on the list,
 //            the *No account set yet* warning gone, still Rp 300.000 and still the team's one account, counted under
 //            Bank accounts; its own page is headed BCA TikTok with no unknown notice, and its one row is still the
 //            Withdrawal of +Rp 300.000
-//   17 (unknown account Rp 300.000 from Melati · BCA TikTok already registered · moved into it)
+//   24 (unknown account Rp 300.000 from shop Melati · BCA TikTok already registered · moved into it)
 //      BCA TikTok registered at Rp 0. The row's Account actions → Set Account → *Move balance* → BCA TikTok.
 //      then: Rp 300.000 moves into BCA TikTok — BCA TikTok at Rp 300.000 on the list and its page, with a Transfer
 //            row of +Rp 300.000; the team's total unchanged
@@ -35,8 +37,8 @@ import { SUFFIX, api, login } from "./restock_helpers";
 // team from a shop id no shop has (the listener does not need the shop to exist), and the screen those roles would
 // read is the one checked; "Melati" is that shop id there (named `shop #<id>` / `#<id>`). Named in the report.
 //
-// The ground (root, once): per role and given a team, the role's person (made in the given-16 team, added to the
-// given-17 one), Melati (selling) or a shop id (warehouse), its Rp 300.000 withdrawal, and — given 17 — BCA TikTok.
+// The ground (root, once): per role and given a team, the role's person (made in the given-23 team, added to the
+// given-24 one), Melati (selling) or a shop id (warehouse), its Rp 300.000 withdrawal, and — given 24 — BCA TikTok.
 
 const PASSWORD = "e2e-acct-set-pass-1";
 type Side = "selling" | "warehouse";
@@ -50,8 +52,8 @@ const MANAGERS: Role[] = [
 ];
 
 // The givens' case texts, verbatim from account.md — the marking script finds the tests by them.
-const C16 = "unknown account Rp 300.000 from Melati · Melati's bank not registered · details filled as BCA TikTok";
-const C17 = "unknown account Rp 300.000 from Melati · BCA TikTok already registered · moved into it";
+const C16 = "unknown account Rp 300.000 from shop Melati · Melati's bank not registered · details filled as BCA TikTok";
+const C17 = "unknown account Rp 300.000 from shop Melati · BCA TikTok already registered · moved into it";
 const GIVENS = [16, 17] as const;
 type Given = (typeof GIVENS)[number];
 
@@ -144,7 +146,7 @@ test.beforeAll(async ({ browser }) => {
       });
       const teamId = String(team.team.id);
 
-      // The role's one person: made in its given-16 team, added to the given-17 one with the same role.
+      // The role's one person: made in its given-23 team, added to the given-24 one with the same role.
       if (!userId) {
         const made = await api(page, "user.v1.UserService/CreateUser", {
           teamId,
@@ -173,7 +175,7 @@ test.beforeAll(async ({ browser }) => {
             )
           : orphanShop(g, r);
 
-      // Given 17: BCA TikTok, the real account, registered already (at Rp 0).
+      // Given 24: BCA TikTok, the real account, registered already (at Rp 0).
       let tiktok = "";
       if (g === 17) {
         tiktok = String(

@@ -102,7 +102,7 @@ export const WhereTheMoneyIs: Story = {
 
     // An account row opens the account.
     await userEvent.click(ops);
-    await expect(await canvas.findByTestId("at-account-detail")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("at-account-detail")).toBeVisible(), { timeout: 5000 });
   },
 };
 

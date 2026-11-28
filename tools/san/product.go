@@ -22,7 +22,7 @@ import (
 // code is composed from. Its user client is nil — TeamByIds never calls user_service, and no san command reaches a
 // team_service path that does.
 func NewTeamCodes(db *gorm.DB) *team_v1.Service {
-	return team_v1.NewService(db, nil)
+	return team_v1.NewService(db, nil, nil)
 }
 
 // productCommand is product_service's operator actions: today, the one-shot recompose of the codes written before a code
@@ -40,7 +40,9 @@ func productCommand() *cli.Command {
 					"owning team's team_code, and rewrites SHOE-42 as ABC-SHOE-42 — archived products too, since they keep\n" +
 					"their code. A code that already begins with its team's code and a dash is left alone, so a second\n" +
 					"run changes nothing. A product whose team has no code (unknown or deleted) is left as it was and\n" +
-					"named. Refused — nothing written — if two products would end up carrying one code.\n" +
+					"named, and so is one under a code its team HELD ONCE (a team code change recomposes its products\n" +
+					"itself, so such a code is never a bare part). Refused — nothing written — if two products would end\n" +
+					"up carrying one code.\n" +
 					"Order, restock and transfer lines keep the code they were written under: they are snapshots.",
 				Action: runProductRecompose,
 			},
@@ -63,14 +65,26 @@ func runProductRecompose(ctx context.Context, cmd *cli.Command) error {
 				len(report.NoTeamCode), report.NoTeamCode)
 		}
 
+		if len(report.UnderFormerCode) > 0 {
+			log.Printf("[%s] product codes: %d left as they were — under a code their team held once, not a bare part: products %v",
+				san.target, len(report.UnderFormerCode), report.UnderFormerCode)
+		}
+
 		return nil
 	})
 }
 
 // RecomposeProductCodes runs product_service's own recompose, the team codes read through team_service's TeamByIds
-// handler — never its table.
+// handler — never its table — and each team's FORMER codes through team_service's own FormerCodesOf (backlog #149): a
+// product still under a code its team held once is not a bare part, and is left alone rather than given a second prefix
+// after a real team code change.
 func (s *San) RecomposeProductCodes(ctx context.Context) (product_v1.RecomposeReport, error) {
-	return product_v1.RecomposeProductCodes(ctx, s.db, s.teamCodes)
+	return product_v1.RecomposeProductCodes(ctx, s.db, s.teamCodes, s.formerCodes)
+}
+
+// formerCodes is the guard's read: each team's former codes, from team_service's own function over its own table.
+func (s *San) formerCodes(ctx context.Context, teamIDs []uint64) (map[uint64][]string, error) {
+	return team_v1.FormerCodesOf(ctx, s.db, teamIDs)
 }
 
 // teamCodes is the recompose's bulk team-code read: TeamByIds over every owning team, in pages of the most the filter
@@ -137,8 +151,8 @@ func recomposeCodesOn(ctx context.Context, db *sql.DB, target string) error {
 		return err
 	}
 
-	fmt.Printf("  %d recomposed, %d already composed, %d left without a team code\n",
-		report.Recomposed, report.AlreadyComposed, len(report.NoTeamCode))
+	fmt.Printf("  %d recomposed, %d already composed, %d left without a team code, %d left under a former team code\n",
+		report.Recomposed, report.AlreadyComposed, len(report.NoTeamCode), len(report.UnderFormerCode))
 
 	return nil
 }

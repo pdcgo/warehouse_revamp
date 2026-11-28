@@ -63,6 +63,45 @@ const (
 	// ProductServiceProductDeleteProcedure is the fully-qualified name of the ProductService's
 	// ProductDelete RPC.
 	ProductServiceProductDeleteProcedure = "/warehouse.product.v1.ProductService/ProductDelete"
+	// ProductServiceProductTagListProcedure is the fully-qualified name of the ProductService's
+	// ProductTagList RPC.
+	ProductServiceProductTagListProcedure = "/warehouse.product.v1.ProductService/ProductTagList"
+	// ProductServiceProductTagManageListProcedure is the fully-qualified name of the ProductService's
+	// ProductTagManageList RPC.
+	ProductServiceProductTagManageListProcedure = "/warehouse.product.v1.ProductService/ProductTagManageList"
+	// ProductServiceProductTagsByIdsProcedure is the fully-qualified name of the ProductService's
+	// ProductTagsByIds RPC.
+	ProductServiceProductTagsByIdsProcedure = "/warehouse.product.v1.ProductService/ProductTagsByIds"
+	// ProductServiceProductTagCreateProcedure is the fully-qualified name of the ProductService's
+	// ProductTagCreate RPC.
+	ProductServiceProductTagCreateProcedure = "/warehouse.product.v1.ProductService/ProductTagCreate"
+	// ProductServiceProductTagSystemCreateProcedure is the fully-qualified name of the ProductService's
+	// ProductTagSystemCreate RPC.
+	ProductServiceProductTagSystemCreateProcedure = "/warehouse.product.v1.ProductService/ProductTagSystemCreate"
+	// ProductServiceProductTagRenameProcedure is the fully-qualified name of the ProductService's
+	// ProductTagRename RPC.
+	ProductServiceProductTagRenameProcedure = "/warehouse.product.v1.ProductService/ProductTagRename"
+	// ProductServiceProductTagDeleteProcedure is the fully-qualified name of the ProductService's
+	// ProductTagDelete RPC.
+	ProductServiceProductTagDeleteProcedure = "/warehouse.product.v1.ProductService/ProductTagDelete"
+	// ProductServiceProductTagAddProcedure is the fully-qualified name of the ProductService's
+	// ProductTagAdd RPC.
+	ProductServiceProductTagAddProcedure = "/warehouse.product.v1.ProductService/ProductTagAdd"
+	// ProductServiceProductTagRemoveProcedure is the fully-qualified name of the ProductService's
+	// ProductTagRemove RPC.
+	ProductServiceProductTagRemoveProcedure = "/warehouse.product.v1.ProductService/ProductTagRemove"
+	// ProductServiceProductSystemTagAddProcedure is the fully-qualified name of the ProductService's
+	// ProductSystemTagAdd RPC.
+	ProductServiceProductSystemTagAddProcedure = "/warehouse.product.v1.ProductService/ProductSystemTagAdd"
+	// ProductServiceProductSystemTagRemoveProcedure is the fully-qualified name of the ProductService's
+	// ProductSystemTagRemove RPC.
+	ProductServiceProductSystemTagRemoveProcedure = "/warehouse.product.v1.ProductService/ProductSystemTagRemove"
+	// ProductServiceProductLogListProcedure is the fully-qualified name of the ProductService's
+	// ProductLogList RPC.
+	ProductServiceProductLogListProcedure = "/warehouse.product.v1.ProductService/ProductLogList"
+	// ProductServiceProductCodesByIdsProcedure is the fully-qualified name of the ProductService's
+	// ProductCodesByIds RPC.
+	ProductServiceProductCodesByIdsProcedure = "/warehouse.product.v1.ProductService/ProductCodesByIds"
 )
 
 // ProductServiceClient is a client for the warehouse.product.v1.ProductService service.
@@ -87,6 +126,39 @@ type ProductServiceClient interface {
 	// ProductDelete removes a product for good — ONLY one with no history: never in a stock movement, an order line or a
 	// restock line. It strands nothing, because nothing ever pointed at it. Refused otherwise: archive it instead.
 	ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error)
+	// ── PRODUCT TAGS (backlog #147, products-have-their-own-tag-list; messages in product_tag.proto) ──────────────────
+	//
+	// The products' OWN tag list — apart from the orders' and the restocks' — one for every team, system and custom tags,
+	// and the app's locked `need_reprint_code`.
+	//
+	// The products' list, every team's — both Products lists' Tag filter and the product page's add box.
+	ProductTagList(context.Context, *connect.Request[v1.ProductTagListRequest]) (*connect.Response[v1.ProductTagListResponse], error)
+	// The admins' Kelola tag produk: each tag with how many products carry it.
+	ProductTagManageList(context.Context, *connect.Request[v1.ProductTagManageListRequest]) (*connect.Response[v1.ProductTagManageListResponse], error)
+	// The tags of known products, each side only its own — the warehouse's product page.
+	ProductTagsByIds(context.Context, *connect.Request[v1.ProductTagsByIdsRequest]) (*connect.Response[v1.ProductTagsByIdsResponse], error)
+	// A custom tag; a name already on the products' list answers that tag, never a twin.
+	ProductTagCreate(context.Context, *connect.Request[v1.ProductTagCreateRequest]) (*connect.Response[v1.ProductTagCreateResponse], error)
+	// A system tag, by an admin; the same one-name-one-tag answer.
+	ProductTagSystemCreate(context.Context, *connect.Request[v1.ProductTagSystemCreateRequest]) (*connect.Response[v1.ProductTagSystemCreateResponse], error)
+	// Rename, the admins' alone — never the app's tag.
+	ProductTagRename(context.Context, *connect.Request[v1.ProductTagRenameRequest]) (*connect.Response[v1.ProductTagRenameResponse], error)
+	// Delete, the admins' alone — off every product too; never the app's tag.
+	ProductTagDelete(context.Context, *connect.Request[v1.ProductTagDeleteRequest]) (*connect.Response[v1.ProductTagDeleteResponse], error)
+	// A custom tag on / off a product — its writers in the owning team.
+	ProductTagAdd(context.Context, *connect.Request[v1.ProductTagAddRequest]) (*connect.Response[v1.ProductTagAddResponse], error)
+	ProductTagRemove(context.Context, *connect.Request[v1.ProductTagRemoveRequest]) (*connect.Response[v1.ProductTagRemoveResponse], error)
+	// An admin's system tag on / off a product — never the app's tag.
+	ProductSystemTagAdd(context.Context, *connect.Request[v1.ProductSystemTagAddRequest]) (*connect.Response[v1.ProductSystemTagAddResponse], error)
+	ProductSystemTagRemove(context.Context, *connect.Request[v1.ProductSystemTagRemoveRequest]) (*connect.Response[v1.ProductSystemTagRemoveResponse], error)
+	// ── THE PRODUCT'S HISTORY (backlog #149; messages in product_log.proto) ───────────────────────────────────────────
+	//
+	// A product's history lines, newest first — today the code it took when its team's code changed (old → new, who,
+	// when): the product page's Riwayat Produk card.
+	ProductLogList(context.Context, *connect.Request[v1.ProductLogListRequest]) (*connect.Response[v1.ProductLogListResponse], error)
+	// The codes that still find known products — each one's code now and every former code (backlog #152): the pick pages'
+	// item scan, once per page. Each side only its own, as ProductTagsByIds.
+	ProductCodesByIds(context.Context, *connect.Request[v1.ProductCodesByIdsRequest]) (*connect.Response[v1.ProductCodesByIdsResponse], error)
 }
 
 // NewProductServiceClient constructs a client for the warehouse.product.v1.ProductService service.
@@ -165,21 +237,117 @@ func NewProductServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(productServiceMethods.ByName("ProductDelete")),
 			connect.WithClientOptions(opts...),
 		),
+		productTagList: connect.NewClient[v1.ProductTagListRequest, v1.ProductTagListResponse](
+			httpClient,
+			baseURL+ProductServiceProductTagListProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductTagList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		productTagManageList: connect.NewClient[v1.ProductTagManageListRequest, v1.ProductTagManageListResponse](
+			httpClient,
+			baseURL+ProductServiceProductTagManageListProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductTagManageList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		productTagsByIds: connect.NewClient[v1.ProductTagsByIdsRequest, v1.ProductTagsByIdsResponse](
+			httpClient,
+			baseURL+ProductServiceProductTagsByIdsProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductTagsByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		productTagCreate: connect.NewClient[v1.ProductTagCreateRequest, v1.ProductTagCreateResponse](
+			httpClient,
+			baseURL+ProductServiceProductTagCreateProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductTagCreate")),
+			connect.WithClientOptions(opts...),
+		),
+		productTagSystemCreate: connect.NewClient[v1.ProductTagSystemCreateRequest, v1.ProductTagSystemCreateResponse](
+			httpClient,
+			baseURL+ProductServiceProductTagSystemCreateProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductTagSystemCreate")),
+			connect.WithClientOptions(opts...),
+		),
+		productTagRename: connect.NewClient[v1.ProductTagRenameRequest, v1.ProductTagRenameResponse](
+			httpClient,
+			baseURL+ProductServiceProductTagRenameProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductTagRename")),
+			connect.WithClientOptions(opts...),
+		),
+		productTagDelete: connect.NewClient[v1.ProductTagDeleteRequest, v1.ProductTagDeleteResponse](
+			httpClient,
+			baseURL+ProductServiceProductTagDeleteProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductTagDelete")),
+			connect.WithClientOptions(opts...),
+		),
+		productTagAdd: connect.NewClient[v1.ProductTagAddRequest, v1.ProductTagAddResponse](
+			httpClient,
+			baseURL+ProductServiceProductTagAddProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductTagAdd")),
+			connect.WithClientOptions(opts...),
+		),
+		productTagRemove: connect.NewClient[v1.ProductTagRemoveRequest, v1.ProductTagRemoveResponse](
+			httpClient,
+			baseURL+ProductServiceProductTagRemoveProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductTagRemove")),
+			connect.WithClientOptions(opts...),
+		),
+		productSystemTagAdd: connect.NewClient[v1.ProductSystemTagAddRequest, v1.ProductSystemTagAddResponse](
+			httpClient,
+			baseURL+ProductServiceProductSystemTagAddProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductSystemTagAdd")),
+			connect.WithClientOptions(opts...),
+		),
+		productSystemTagRemove: connect.NewClient[v1.ProductSystemTagRemoveRequest, v1.ProductSystemTagRemoveResponse](
+			httpClient,
+			baseURL+ProductServiceProductSystemTagRemoveProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductSystemTagRemove")),
+			connect.WithClientOptions(opts...),
+		),
+		productLogList: connect.NewClient[v1.ProductLogListRequest, v1.ProductLogListResponse](
+			httpClient,
+			baseURL+ProductServiceProductLogListProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductLogList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		productCodesByIds: connect.NewClient[v1.ProductCodesByIdsRequest, v1.ProductCodesByIdsResponse](
+			httpClient,
+			baseURL+ProductServiceProductCodesByIdsProcedure,
+			connect.WithSchema(productServiceMethods.ByName("ProductCodesByIds")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // productServiceClient implements ProductServiceClient.
 type productServiceClient struct {
-	productCreate         *connect.Client[v1.ProductCreateRequest, v1.ProductCreateResponse]
-	productList           *connect.Client[v1.ProductListRequest, v1.ProductListResponse]
-	productDiscover       *connect.Client[v1.ProductDiscoverRequest, v1.ProductDiscoverResponse]
-	productByIds          *connect.Client[v1.ProductByIdsRequest, v1.ProductByIdsResponse]
-	productDetail         *connect.Client[v1.ProductDetailRequest, v1.ProductDetailResponse]
-	productCategoryCounts *connect.Client[v1.ProductCategoryCountsRequest, v1.ProductCategoryCountsResponse]
-	productUpdate         *connect.Client[v1.ProductUpdateRequest, v1.ProductUpdateResponse]
-	productArchive        *connect.Client[v1.ProductArchiveRequest, v1.ProductArchiveResponse]
-	productUnarchive      *connect.Client[v1.ProductUnarchiveRequest, v1.ProductUnarchiveResponse]
-	productDelete         *connect.Client[v1.ProductDeleteRequest, v1.ProductDeleteResponse]
+	productCreate          *connect.Client[v1.ProductCreateRequest, v1.ProductCreateResponse]
+	productList            *connect.Client[v1.ProductListRequest, v1.ProductListResponse]
+	productDiscover        *connect.Client[v1.ProductDiscoverRequest, v1.ProductDiscoverResponse]
+	productByIds           *connect.Client[v1.ProductByIdsRequest, v1.ProductByIdsResponse]
+	productDetail          *connect.Client[v1.ProductDetailRequest, v1.ProductDetailResponse]
+	productCategoryCounts  *connect.Client[v1.ProductCategoryCountsRequest, v1.ProductCategoryCountsResponse]
+	productUpdate          *connect.Client[v1.ProductUpdateRequest, v1.ProductUpdateResponse]
+	productArchive         *connect.Client[v1.ProductArchiveRequest, v1.ProductArchiveResponse]
+	productUnarchive       *connect.Client[v1.ProductUnarchiveRequest, v1.ProductUnarchiveResponse]
+	productDelete          *connect.Client[v1.ProductDeleteRequest, v1.ProductDeleteResponse]
+	productTagList         *connect.Client[v1.ProductTagListRequest, v1.ProductTagListResponse]
+	productTagManageList   *connect.Client[v1.ProductTagManageListRequest, v1.ProductTagManageListResponse]
+	productTagsByIds       *connect.Client[v1.ProductTagsByIdsRequest, v1.ProductTagsByIdsResponse]
+	productTagCreate       *connect.Client[v1.ProductTagCreateRequest, v1.ProductTagCreateResponse]
+	productTagSystemCreate *connect.Client[v1.ProductTagSystemCreateRequest, v1.ProductTagSystemCreateResponse]
+	productTagRename       *connect.Client[v1.ProductTagRenameRequest, v1.ProductTagRenameResponse]
+	productTagDelete       *connect.Client[v1.ProductTagDeleteRequest, v1.ProductTagDeleteResponse]
+	productTagAdd          *connect.Client[v1.ProductTagAddRequest, v1.ProductTagAddResponse]
+	productTagRemove       *connect.Client[v1.ProductTagRemoveRequest, v1.ProductTagRemoveResponse]
+	productSystemTagAdd    *connect.Client[v1.ProductSystemTagAddRequest, v1.ProductSystemTagAddResponse]
+	productSystemTagRemove *connect.Client[v1.ProductSystemTagRemoveRequest, v1.ProductSystemTagRemoveResponse]
+	productLogList         *connect.Client[v1.ProductLogListRequest, v1.ProductLogListResponse]
+	productCodesByIds      *connect.Client[v1.ProductCodesByIdsRequest, v1.ProductCodesByIdsResponse]
 }
 
 // ProductCreate calls warehouse.product.v1.ProductService.ProductCreate.
@@ -232,6 +400,71 @@ func (c *productServiceClient) ProductDelete(ctx context.Context, req *connect.R
 	return c.productDelete.CallUnary(ctx, req)
 }
 
+// ProductTagList calls warehouse.product.v1.ProductService.ProductTagList.
+func (c *productServiceClient) ProductTagList(ctx context.Context, req *connect.Request[v1.ProductTagListRequest]) (*connect.Response[v1.ProductTagListResponse], error) {
+	return c.productTagList.CallUnary(ctx, req)
+}
+
+// ProductTagManageList calls warehouse.product.v1.ProductService.ProductTagManageList.
+func (c *productServiceClient) ProductTagManageList(ctx context.Context, req *connect.Request[v1.ProductTagManageListRequest]) (*connect.Response[v1.ProductTagManageListResponse], error) {
+	return c.productTagManageList.CallUnary(ctx, req)
+}
+
+// ProductTagsByIds calls warehouse.product.v1.ProductService.ProductTagsByIds.
+func (c *productServiceClient) ProductTagsByIds(ctx context.Context, req *connect.Request[v1.ProductTagsByIdsRequest]) (*connect.Response[v1.ProductTagsByIdsResponse], error) {
+	return c.productTagsByIds.CallUnary(ctx, req)
+}
+
+// ProductTagCreate calls warehouse.product.v1.ProductService.ProductTagCreate.
+func (c *productServiceClient) ProductTagCreate(ctx context.Context, req *connect.Request[v1.ProductTagCreateRequest]) (*connect.Response[v1.ProductTagCreateResponse], error) {
+	return c.productTagCreate.CallUnary(ctx, req)
+}
+
+// ProductTagSystemCreate calls warehouse.product.v1.ProductService.ProductTagSystemCreate.
+func (c *productServiceClient) ProductTagSystemCreate(ctx context.Context, req *connect.Request[v1.ProductTagSystemCreateRequest]) (*connect.Response[v1.ProductTagSystemCreateResponse], error) {
+	return c.productTagSystemCreate.CallUnary(ctx, req)
+}
+
+// ProductTagRename calls warehouse.product.v1.ProductService.ProductTagRename.
+func (c *productServiceClient) ProductTagRename(ctx context.Context, req *connect.Request[v1.ProductTagRenameRequest]) (*connect.Response[v1.ProductTagRenameResponse], error) {
+	return c.productTagRename.CallUnary(ctx, req)
+}
+
+// ProductTagDelete calls warehouse.product.v1.ProductService.ProductTagDelete.
+func (c *productServiceClient) ProductTagDelete(ctx context.Context, req *connect.Request[v1.ProductTagDeleteRequest]) (*connect.Response[v1.ProductTagDeleteResponse], error) {
+	return c.productTagDelete.CallUnary(ctx, req)
+}
+
+// ProductTagAdd calls warehouse.product.v1.ProductService.ProductTagAdd.
+func (c *productServiceClient) ProductTagAdd(ctx context.Context, req *connect.Request[v1.ProductTagAddRequest]) (*connect.Response[v1.ProductTagAddResponse], error) {
+	return c.productTagAdd.CallUnary(ctx, req)
+}
+
+// ProductTagRemove calls warehouse.product.v1.ProductService.ProductTagRemove.
+func (c *productServiceClient) ProductTagRemove(ctx context.Context, req *connect.Request[v1.ProductTagRemoveRequest]) (*connect.Response[v1.ProductTagRemoveResponse], error) {
+	return c.productTagRemove.CallUnary(ctx, req)
+}
+
+// ProductSystemTagAdd calls warehouse.product.v1.ProductService.ProductSystemTagAdd.
+func (c *productServiceClient) ProductSystemTagAdd(ctx context.Context, req *connect.Request[v1.ProductSystemTagAddRequest]) (*connect.Response[v1.ProductSystemTagAddResponse], error) {
+	return c.productSystemTagAdd.CallUnary(ctx, req)
+}
+
+// ProductSystemTagRemove calls warehouse.product.v1.ProductService.ProductSystemTagRemove.
+func (c *productServiceClient) ProductSystemTagRemove(ctx context.Context, req *connect.Request[v1.ProductSystemTagRemoveRequest]) (*connect.Response[v1.ProductSystemTagRemoveResponse], error) {
+	return c.productSystemTagRemove.CallUnary(ctx, req)
+}
+
+// ProductLogList calls warehouse.product.v1.ProductService.ProductLogList.
+func (c *productServiceClient) ProductLogList(ctx context.Context, req *connect.Request[v1.ProductLogListRequest]) (*connect.Response[v1.ProductLogListResponse], error) {
+	return c.productLogList.CallUnary(ctx, req)
+}
+
+// ProductCodesByIds calls warehouse.product.v1.ProductService.ProductCodesByIds.
+func (c *productServiceClient) ProductCodesByIds(ctx context.Context, req *connect.Request[v1.ProductCodesByIdsRequest]) (*connect.Response[v1.ProductCodesByIdsResponse], error) {
+	return c.productCodesByIds.CallUnary(ctx, req)
+}
+
 // ProductServiceHandler is an implementation of the warehouse.product.v1.ProductService service.
 type ProductServiceHandler interface {
 	ProductCreate(context.Context, *connect.Request[v1.ProductCreateRequest]) (*connect.Response[v1.ProductCreateResponse], error)
@@ -254,6 +487,39 @@ type ProductServiceHandler interface {
 	// ProductDelete removes a product for good — ONLY one with no history: never in a stock movement, an order line or a
 	// restock line. It strands nothing, because nothing ever pointed at it. Refused otherwise: archive it instead.
 	ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error)
+	// ── PRODUCT TAGS (backlog #147, products-have-their-own-tag-list; messages in product_tag.proto) ──────────────────
+	//
+	// The products' OWN tag list — apart from the orders' and the restocks' — one for every team, system and custom tags,
+	// and the app's locked `need_reprint_code`.
+	//
+	// The products' list, every team's — both Products lists' Tag filter and the product page's add box.
+	ProductTagList(context.Context, *connect.Request[v1.ProductTagListRequest]) (*connect.Response[v1.ProductTagListResponse], error)
+	// The admins' Kelola tag produk: each tag with how many products carry it.
+	ProductTagManageList(context.Context, *connect.Request[v1.ProductTagManageListRequest]) (*connect.Response[v1.ProductTagManageListResponse], error)
+	// The tags of known products, each side only its own — the warehouse's product page.
+	ProductTagsByIds(context.Context, *connect.Request[v1.ProductTagsByIdsRequest]) (*connect.Response[v1.ProductTagsByIdsResponse], error)
+	// A custom tag; a name already on the products' list answers that tag, never a twin.
+	ProductTagCreate(context.Context, *connect.Request[v1.ProductTagCreateRequest]) (*connect.Response[v1.ProductTagCreateResponse], error)
+	// A system tag, by an admin; the same one-name-one-tag answer.
+	ProductTagSystemCreate(context.Context, *connect.Request[v1.ProductTagSystemCreateRequest]) (*connect.Response[v1.ProductTagSystemCreateResponse], error)
+	// Rename, the admins' alone — never the app's tag.
+	ProductTagRename(context.Context, *connect.Request[v1.ProductTagRenameRequest]) (*connect.Response[v1.ProductTagRenameResponse], error)
+	// Delete, the admins' alone — off every product too; never the app's tag.
+	ProductTagDelete(context.Context, *connect.Request[v1.ProductTagDeleteRequest]) (*connect.Response[v1.ProductTagDeleteResponse], error)
+	// A custom tag on / off a product — its writers in the owning team.
+	ProductTagAdd(context.Context, *connect.Request[v1.ProductTagAddRequest]) (*connect.Response[v1.ProductTagAddResponse], error)
+	ProductTagRemove(context.Context, *connect.Request[v1.ProductTagRemoveRequest]) (*connect.Response[v1.ProductTagRemoveResponse], error)
+	// An admin's system tag on / off a product — never the app's tag.
+	ProductSystemTagAdd(context.Context, *connect.Request[v1.ProductSystemTagAddRequest]) (*connect.Response[v1.ProductSystemTagAddResponse], error)
+	ProductSystemTagRemove(context.Context, *connect.Request[v1.ProductSystemTagRemoveRequest]) (*connect.Response[v1.ProductSystemTagRemoveResponse], error)
+	// ── THE PRODUCT'S HISTORY (backlog #149; messages in product_log.proto) ───────────────────────────────────────────
+	//
+	// A product's history lines, newest first — today the code it took when its team's code changed (old → new, who,
+	// when): the product page's Riwayat Produk card.
+	ProductLogList(context.Context, *connect.Request[v1.ProductLogListRequest]) (*connect.Response[v1.ProductLogListResponse], error)
+	// The codes that still find known products — each one's code now and every former code (backlog #152): the pick pages'
+	// item scan, once per page. Each side only its own, as ProductTagsByIds.
+	ProductCodesByIds(context.Context, *connect.Request[v1.ProductCodesByIdsRequest]) (*connect.Response[v1.ProductCodesByIdsResponse], error)
 }
 
 // NewProductServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -328,6 +594,89 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 		connect.WithSchema(productServiceMethods.ByName("ProductDelete")),
 		connect.WithHandlerOptions(opts...),
 	)
+	productServiceProductTagListHandler := connect.NewUnaryHandler(
+		ProductServiceProductTagListProcedure,
+		svc.ProductTagList,
+		connect.WithSchema(productServiceMethods.ByName("ProductTagList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductTagManageListHandler := connect.NewUnaryHandler(
+		ProductServiceProductTagManageListProcedure,
+		svc.ProductTagManageList,
+		connect.WithSchema(productServiceMethods.ByName("ProductTagManageList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductTagsByIdsHandler := connect.NewUnaryHandler(
+		ProductServiceProductTagsByIdsProcedure,
+		svc.ProductTagsByIds,
+		connect.WithSchema(productServiceMethods.ByName("ProductTagsByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductTagCreateHandler := connect.NewUnaryHandler(
+		ProductServiceProductTagCreateProcedure,
+		svc.ProductTagCreate,
+		connect.WithSchema(productServiceMethods.ByName("ProductTagCreate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductTagSystemCreateHandler := connect.NewUnaryHandler(
+		ProductServiceProductTagSystemCreateProcedure,
+		svc.ProductTagSystemCreate,
+		connect.WithSchema(productServiceMethods.ByName("ProductTagSystemCreate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductTagRenameHandler := connect.NewUnaryHandler(
+		ProductServiceProductTagRenameProcedure,
+		svc.ProductTagRename,
+		connect.WithSchema(productServiceMethods.ByName("ProductTagRename")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductTagDeleteHandler := connect.NewUnaryHandler(
+		ProductServiceProductTagDeleteProcedure,
+		svc.ProductTagDelete,
+		connect.WithSchema(productServiceMethods.ByName("ProductTagDelete")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductTagAddHandler := connect.NewUnaryHandler(
+		ProductServiceProductTagAddProcedure,
+		svc.ProductTagAdd,
+		connect.WithSchema(productServiceMethods.ByName("ProductTagAdd")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductTagRemoveHandler := connect.NewUnaryHandler(
+		ProductServiceProductTagRemoveProcedure,
+		svc.ProductTagRemove,
+		connect.WithSchema(productServiceMethods.ByName("ProductTagRemove")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductSystemTagAddHandler := connect.NewUnaryHandler(
+		ProductServiceProductSystemTagAddProcedure,
+		svc.ProductSystemTagAdd,
+		connect.WithSchema(productServiceMethods.ByName("ProductSystemTagAdd")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductSystemTagRemoveHandler := connect.NewUnaryHandler(
+		ProductServiceProductSystemTagRemoveProcedure,
+		svc.ProductSystemTagRemove,
+		connect.WithSchema(productServiceMethods.ByName("ProductSystemTagRemove")),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductLogListHandler := connect.NewUnaryHandler(
+		ProductServiceProductLogListProcedure,
+		svc.ProductLogList,
+		connect.WithSchema(productServiceMethods.ByName("ProductLogList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	productServiceProductCodesByIdsHandler := connect.NewUnaryHandler(
+		ProductServiceProductCodesByIdsProcedure,
+		svc.ProductCodesByIds,
+		connect.WithSchema(productServiceMethods.ByName("ProductCodesByIds")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.product.v1.ProductService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProductServiceProductCreateProcedure:
@@ -350,6 +699,32 @@ func NewProductServiceHandler(svc ProductServiceHandler, opts ...connect.Handler
 			productServiceProductUnarchiveHandler.ServeHTTP(w, r)
 		case ProductServiceProductDeleteProcedure:
 			productServiceProductDeleteHandler.ServeHTTP(w, r)
+		case ProductServiceProductTagListProcedure:
+			productServiceProductTagListHandler.ServeHTTP(w, r)
+		case ProductServiceProductTagManageListProcedure:
+			productServiceProductTagManageListHandler.ServeHTTP(w, r)
+		case ProductServiceProductTagsByIdsProcedure:
+			productServiceProductTagsByIdsHandler.ServeHTTP(w, r)
+		case ProductServiceProductTagCreateProcedure:
+			productServiceProductTagCreateHandler.ServeHTTP(w, r)
+		case ProductServiceProductTagSystemCreateProcedure:
+			productServiceProductTagSystemCreateHandler.ServeHTTP(w, r)
+		case ProductServiceProductTagRenameProcedure:
+			productServiceProductTagRenameHandler.ServeHTTP(w, r)
+		case ProductServiceProductTagDeleteProcedure:
+			productServiceProductTagDeleteHandler.ServeHTTP(w, r)
+		case ProductServiceProductTagAddProcedure:
+			productServiceProductTagAddHandler.ServeHTTP(w, r)
+		case ProductServiceProductTagRemoveProcedure:
+			productServiceProductTagRemoveHandler.ServeHTTP(w, r)
+		case ProductServiceProductSystemTagAddProcedure:
+			productServiceProductSystemTagAddHandler.ServeHTTP(w, r)
+		case ProductServiceProductSystemTagRemoveProcedure:
+			productServiceProductSystemTagRemoveHandler.ServeHTTP(w, r)
+		case ProductServiceProductLogListProcedure:
+			productServiceProductLogListHandler.ServeHTTP(w, r)
+		case ProductServiceProductCodesByIdsProcedure:
+			productServiceProductCodesByIdsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -397,4 +772,56 @@ func (UnimplementedProductServiceHandler) ProductUnarchive(context.Context, *con
 
 func (UnimplementedProductServiceHandler) ProductDelete(context.Context, *connect.Request[v1.ProductDeleteRequest]) (*connect.Response[v1.ProductDeleteResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductDelete is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductTagList(context.Context, *connect.Request[v1.ProductTagListRequest]) (*connect.Response[v1.ProductTagListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductTagList is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductTagManageList(context.Context, *connect.Request[v1.ProductTagManageListRequest]) (*connect.Response[v1.ProductTagManageListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductTagManageList is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductTagsByIds(context.Context, *connect.Request[v1.ProductTagsByIdsRequest]) (*connect.Response[v1.ProductTagsByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductTagsByIds is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductTagCreate(context.Context, *connect.Request[v1.ProductTagCreateRequest]) (*connect.Response[v1.ProductTagCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductTagCreate is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductTagSystemCreate(context.Context, *connect.Request[v1.ProductTagSystemCreateRequest]) (*connect.Response[v1.ProductTagSystemCreateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductTagSystemCreate is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductTagRename(context.Context, *connect.Request[v1.ProductTagRenameRequest]) (*connect.Response[v1.ProductTagRenameResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductTagRename is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductTagDelete(context.Context, *connect.Request[v1.ProductTagDeleteRequest]) (*connect.Response[v1.ProductTagDeleteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductTagDelete is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductTagAdd(context.Context, *connect.Request[v1.ProductTagAddRequest]) (*connect.Response[v1.ProductTagAddResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductTagAdd is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductTagRemove(context.Context, *connect.Request[v1.ProductTagRemoveRequest]) (*connect.Response[v1.ProductTagRemoveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductTagRemove is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductSystemTagAdd(context.Context, *connect.Request[v1.ProductSystemTagAddRequest]) (*connect.Response[v1.ProductSystemTagAddResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductSystemTagAdd is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductSystemTagRemove(context.Context, *connect.Request[v1.ProductSystemTagRemoveRequest]) (*connect.Response[v1.ProductSystemTagRemoveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductSystemTagRemove is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductLogList(context.Context, *connect.Request[v1.ProductLogListRequest]) (*connect.Response[v1.ProductLogListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductLogList is not implemented"))
+}
+
+func (UnimplementedProductServiceHandler) ProductCodesByIds(context.Context, *connect.Request[v1.ProductCodesByIdsRequest]) (*connect.Response[v1.ProductCodesByIdsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.product.v1.ProductService.ProductCodesByIds is not implemented"))
 }

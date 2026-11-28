@@ -49,7 +49,7 @@ func TestRecomposeProductCodes_PutsEachTeamsCodeInFrontOnce(t *testing.T) {
 	theirs := insertProduct(t, db, 3, "SHOE-43", "Their shoe")
 	orphan := insertProduct(t, db, 77, "LOST-1", "A team team_service does not know")
 
-	report, err := product_v1.RecomposeProductCodes(context.Background(), db, lookupCodes)
+	report, err := product_v1.RecomposeProductCodes(context.Background(), db, lookupCodes, nil)
 	if err != nil {
 		t.Fatalf("recompose: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestRecomposeProductCodes_PutsEachTeamsCodeInFrontOnce(t *testing.T) {
 	}
 
 	// Run again: everything already reads as composed, and nothing changes.
-	again, err := product_v1.RecomposeProductCodes(context.Background(), db, lookupCodes)
+	again, err := product_v1.RecomposeProductCodes(context.Background(), db, lookupCodes, nil)
 	if err != nil {
 		t.Fatalf("second recompose: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestRecomposeProductCodes_ACollisionWritesNothing(t *testing.T) {
 	bare := insertProduct(t, db, 2, "SHOE-42", "Typed bare")
 	other := insertProduct(t, db, 3, "CAP-1", "Their cap")
 
-	_, err := product_v1.RecomposeProductCodes(context.Background(), db, lookupCodes)
+	_, err := product_v1.RecomposeProductCodes(context.Background(), db, lookupCodes, nil)
 	if err == nil {
 		t.Fatalf("recompose onto a code already carried succeeded")
 	}

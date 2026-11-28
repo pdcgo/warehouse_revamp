@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, spyOn, waitFor, within } from "storybook/test";
 
+import { callsOf } from "../../../../.storybook/holdRpc";
 import { asTeam } from "../../../../.storybook/pageStory";
 import { asPlatformOnly, asRole } from "../../../../.storybook/sessionScenario";
+import { teamClient } from "../../../api/clients";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { At43, RACK_DETAIL_META, loaded, stock } from "./kit";
 
@@ -110,6 +112,57 @@ export const AnEmptyRack: Story = {
     const empty = await canvas.findByTestId("rack-detail-empty", {}, { timeout: 4000 });
     await expect(empty).toHaveTextContent("moved to it from another");
     await expect(canvas.getByTestId("rack-summary-last-counted")).toHaveTextContent("Never counted");
-    await expect(await canvas.findByTestId("rack-history-empty")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("rack-history-empty")).toBeVisible(), { timeout: 5000 });
+  },
+};
+
+// THE OWNERS ARE ASKED WITH THE NAMES (#138, a-chains-server-read-waits-for-a-frontend-probe) — the shelf's team read
+// starts inside the shelf's own read, the moment ProductByIds has answered: when TeamByIds goes out, no row is on the
+// page yet (started from the shelf's hook alone, it went out only once the rows had rendered). The rows still never wait
+// for it (#120): with its answer held they draw, each product named, each team on TeamItem's "Team #<id>", and the
+// names land in place once it answers — TeamByIds asked once, the hook joining the read already out.
+let releaseOwners = () => {};
+let rowsDrawnWhenAsked: boolean[] = [];
+
+export const OwnersAskedWithTheNames: Story = {
+  name: "Owners asked with the names",
+  beforeEach: () => {
+    rowsDrawnWhenAsked = [];
+    const gate = new Promise<void>((resolve) => {
+      releaseOwners = () => resolve();
+    });
+    const real = teamClient.teamByIds.bind(teamClient);
+    const spy = spyOn(teamClient, "teamByIds").mockImplementation(async (...args: Parameters<typeof real>) => {
+      // Is a shelf row on the page at the moment the owners are asked?
+      rowsDrawnWhenAsked.push(document.querySelector('[data-testid^="rack-stock-row-"]') !== null);
+      await gate;
+
+      return real(...args);
+    });
+
+    return () => {
+      releaseOwners();
+      spy.mockRestore();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+
+    // The owners' answer is still held, and the rows are drawn: the lines with their products' names, each team on its
+    // fallback.
+    await waitFor(() => expect(stock(canvas).getByTestId("rack-stock-onhand-71")).toHaveTextContent("12"), { timeout: 5000 });
+    await expect(stock(canvas).getByTestId("rack-stock-row-71")).toHaveTextContent("Kopi Arabika 250g");
+    await expect(stock(canvas).getByTestId("rack-stock-team-74")).toHaveTextContent("Team #12");
+    // …and the owners were asked before any of those rows drew — from inside the shelf's read, for its three teams.
+    await expect(rowsDrawnWhenAsked).toEqual([false]);
+    await expect(callsOf(teamClient.teamByIds)[0]?.[0]).toMatchObject({ filter: { ids: [11n, 12n, 13n] } });
+
+    releaseOwners();
+    await waitFor(() => expect(stock(canvas).getByTestId("rack-stock-team-74")).toHaveTextContent("Toko Melati"), {
+      timeout: 5000,
+    });
+    await expect(stock(canvas).getByTestId("rack-stock-team-73")).toHaveTextContent("Toko Kenanga");
+    await expect(stock(canvas).getByTestId("rack-stock-team-71")).toHaveTextContent("Gudang Pusat");
+    await expect(callsOf(teamClient.teamByIds)).toHaveLength(1);
   },
 };

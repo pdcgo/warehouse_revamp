@@ -176,13 +176,10 @@ export function LineCard({
         <SimpleGrid columns={{ base: 1, md: 2 }} gap="card" alignItems="start">
           {/* ── Where it was bought ─────────────────────────────────────────────────────────────── */}
           <Stack gap="1.5" minW="0" data-testid={`${id}-supplier`}>
-            {/* Every product names its supplier (the-checks-run-products-warehouse-account-resi) — marked as a required
-                field is, where it can still be given. */}
-            <Field.Root required={!supplierLocked}>
-              <Field.Label>
-                {t("restock.form.boughtFrom")}
-                {!supplierLocked && <Field.RequiredIndicator data-testid={`${id}-supplier-required`} />}
-              </Field.Label>
+            {/* A supplier is OPTIONAL (owner 2026-11-27, the-supplier-popup-points-to-create-supplier-when-none-exists;
+                restock.md given 15) — the label carries no required mark. */}
+            <Field.Root>
+              <Field.Label>{t("restock.form.boughtFrom")}</Field.Label>
             </Field.Root>
 
             {/* THE SAME BOX AS THE CARD'S SUPPLIER PART (owner: *"hubungkan supplier per produk desainnya kurang"*,

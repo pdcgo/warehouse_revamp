@@ -51,7 +51,8 @@ const AtGudangCabang = routedPage(routes, "/products?warehouse=14");
 const onlyTheMinyak = () => transfersInTransitForStory(IN_TRANSIT_SAMPLE.find((l) => l.productId === 700n)!);
 
 /** The list as it was before the figure: eight columns. */
-const TODAYS_HEADERS = ["Product", "Cross", "Cost range", "Lock", "Ready", "Ongoing", "Stock age", "Actions"];
+// The Tag column after the product is live since #148 (the-team-code-and-product-tags-prototype-is-accepted).
+const TODAYS_HEADERS = ["Product", "Tags", "Cross", "Cost range", "Lock", "Ready", "Ongoing", "Stock age", "Actions"];
 
 const meta = {
   title: "Pages/Products/Products/InTransit",
@@ -96,8 +97,8 @@ export const UnitsInTransitShowTheColumn: Story = {
     await waitFor(() => expect(tileValue(canvas)).toHaveTextContent(/^11 pcs$/));
     await waitFor(() => expect(canvas.getByTestId("products-in-transit-header")).toBeInTheDocument());
     const headers = headersOf(canvas);
-    await expect(headers).toHaveLength(9);
-    await expect(headers.slice(4, 8)).toEqual(["Ready", "Ongoing", "In transit", "Stock age"]);
+    await expect(headers).toHaveLength(10);
+    await expect(headers.slice(5, 9)).toEqual(["Ready", "Ongoing", "In transit", "Stock age"]);
     await expect(canvas.getByTestId("products-in-transit-header")).toHaveAttribute(
       "title",
       "Units on a transfer between warehouses, not yet accepted",
@@ -106,20 +107,20 @@ export const UnitsInTransitShowTheColumn: Story = {
     await waitFor(() => expect(canvas.getByTestId("in-transit-SL-03-ANG-001")).toHaveTextContent(/^3 pcs$/));
     await expect(canvas.getByTestId("in-transit-SL-03-ANG-001")).toHaveAttribute("title", "Rp 137.100");
     const minyak = cellsOf(canvas, "SL-03-ANG-001");
-    await expect(minyak[4]).toHaveTextContent(/^79 pcs/);
-    await expect(minyak[5]).toHaveTextContent(/^12 pcs/);
-    await expect(minyak[6]).toHaveTextContent(/^3 pcs$/);
+    await expect(minyak[5]).toHaveTextContent(/^79 pcs/);
+    await expect(minyak[6]).toHaveTextContent(/^12 pcs/);
+    await expect(minyak[7]).toHaveTextContent(/^3 pcs$/);
 
     // Zero as Dikirim writes it — "0 pcs", never a dash, and no worth on its title.
     const none = canvas.getByTestId("in-transit-SL-03-ANG-002");
     await expect(none).toHaveTextContent(/^0 pcs$/);
     await expect(none).toHaveAttribute("data-zero", "true");
     await expect(none).not.toHaveAttribute("title");
-    await expect(cellsOf(canvas, "SL-03-ANG-002")[5]).toHaveTextContent(/^0 pcs/);
+    await expect(cellsOf(canvas, "SL-03-ANG-002")[6]).toHaveTextContent(/^0 pcs/);
 
     // Only in transit: nothing ready on any shelf, 8 on their way.
     const tepung = cellsOf(canvas, "SL-03-ANG-003");
-    await expect(tepung[4]).toHaveTextContent(/^0 pcs/);
+    await expect(tepung[5]).toHaveTextContent(/^0 pcs/);
     await expect(canvas.getByTestId("in-transit-SL-03-ANG-003")).toHaveTextContent(/^8 pcs$/);
     await expect(canvas.getByTestId("in-transit-SL-03-ANG-003")).toHaveAttribute("title", "Rp 76.000");
 
@@ -137,14 +138,14 @@ export const NoUnitsInTransitNoColumn: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await waitFor(() => expect(cellsOf(canvas, "SL-03-ANG-001")[4]).toHaveTextContent(/^79 pcs/));
+    await waitFor(() => expect(cellsOf(canvas, "SL-03-ANG-001")[5]).toHaveTextContent(/^79 pcs/));
     await waitFor(() => expect(tileValue(canvas)).toHaveTextContent(/^0 pcs$/));
     await expect(canvas.getByTestId("products-in-transit-stock")).toHaveTextContent("Rp 0 · between warehouses, at cost");
 
     await expect(headersOf(canvas)).toEqual(TODAYS_HEADERS);
     await expect(canvas.queryByTestId("products-in-transit-header")).toBeNull();
     await expect(canvas.queryAllByTestId(/^in-transit-/)).toHaveLength(0);
-    await expect(cellsOf(canvas, "SL-03-ANG-001")).toHaveLength(8);
+    await expect(cellsOf(canvas, "SL-03-ANG-001")).toHaveLength(9);
     await thePageDoesNotScrollSideways(canvasElement);
   },
 };
@@ -239,7 +240,7 @@ export const UnderAWarehouseLens: Story = {
     await waitFor(() => expect(header).toHaveTextContent(/^In transit · Gudang Cabang$/));
     await expect(header).toHaveAttribute("title", "Units on their way to Gudang Cabang, not yet accepted");
 
-    await waitFor(() => expect(cellsOf(canvas, "SL-03-ANG-001")[4]).toHaveTextContent(/^25 pcs/));
+    await waitFor(() => expect(cellsOf(canvas, "SL-03-ANG-001")[5]).toHaveTextContent(/^25 pcs/));
     await expect(canvas.getByTestId("in-transit-SL-03-ANG-001")).toHaveTextContent(/^3 pcs$/);
     await expect(canvas.getByTestId("in-transit-SL-03-ANG-003")).toHaveTextContent(/^0 pcs$/);
 
@@ -263,7 +264,7 @@ export const TheSendersLensHasNoColumn: Story = {
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
 
-    await waitFor(() => expect(cellsOf(canvas, "SL-03-ANG-001")[4]).toHaveTextContent(/^54 pcs/));
+    await waitFor(() => expect(cellsOf(canvas, "SL-03-ANG-001")[5]).toHaveTextContent(/^54 pcs/));
     const tile = canvas.getByTestId("products-in-transit-stock");
     await waitFor(() => expect(tileValue(canvas)).toHaveTextContent(/^0 pcs$/));
     await expect(tile).toHaveTextContent("In transit · Gudang Pusat");

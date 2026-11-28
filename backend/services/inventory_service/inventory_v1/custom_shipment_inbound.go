@@ -34,7 +34,6 @@ import (
 
 var (
 	errInboundOnly           = errors.New("only an inbound parcel (a supplier's reshipping) is moved this way")
-	errInboundChargeNote     = errors.New("door_charge_note: required when the courier's charge at the door is above 0")
 	errInboundLineUnknown    = errors.New("a line names an item that is not this parcel's")
 	errInboundLineTwice      = errors.New("a parcel line appears once")
 	errInboundCountMissing   = errors.New("every line of the parcel is counted at Terima")
@@ -184,26 +183,26 @@ func lockInboundParcel(tx *gorm.DB, id, teamID uint64, side customShipmentSide) 
 	return cs, nil
 }
 
-// doorCharge is the courier's charge at the door under a restock's rule: a note is required above 0.
-func doorCharge(charge float64, note string) (float64, string, error) {
-	note = strings.TrimSpace(note)
-
-	if san_money.Positive(charge) && note == "" {
-		return 0, "", errInboundChargeNote
-	}
-
+// doorCharge is the courier's charge at the door under a restock's rule: its note — what it was for — is OPTIONAL
+// (the-couriers-charge-note-is-optional), so an amount with no note is kept as it is; with no amount there is no note.
+func doorCharge(charge float64, note string) (float64, string) {
 	if !san_money.Positive(charge) {
-		return 0, "", nil
+		return 0, ""
 	}
 
-	return charge, note, nil
+	return charge, strings.TrimSpace(note)
 }
 
 // doorChargeText is the trail's words for a noted charge — the warehouse's own money, read by both sides
-// (the-warehouse-sees-the-ongkir-it-paid).
+// (the-warehouse-sees-the-ongkir-it-paid): "courier's charge Rp 8.000 — COD", or the amount alone when no note was
+// given (the-couriers-charge-note-is-optional).
 func doorChargeText(charge float64, note string) string {
 	if !san_money.Positive(charge) {
 		return ""
+	}
+
+	if note == "" {
+		return "courier's charge " + san_money.Text(charge)
 	}
 
 	return "courier's charge " + san_money.Text(charge) + " — " + note
@@ -223,8 +222,7 @@ func inboundErr(err error) error {
 	switch {
 	case errors.Is(err, errInboundOnly):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
-	case errors.Is(err, errInboundChargeNote),
-		errors.Is(err, errInboundLineUnknown),
+	case errors.Is(err, errInboundLineUnknown),
 		errors.Is(err, errInboundLineTwice),
 		errors.Is(err, errInboundCountMissing),
 		errors.Is(err, errInboundOverCount),

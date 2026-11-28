@@ -259,7 +259,7 @@ export const AnotherMonth: Story = {
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent(`month=${LAST_MONTH}`));
 
     fireEvent.change(canvas.getByTestId("expenses-month"), { target: { value: EMPTY_MONTH } });
-    await expect(await canvas.findByTestId("expenses-empty", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("expenses-empty")).toBeVisible(), { timeout: 4000 });
     await expect(canvas.getByTestId("expenses-total")).toHaveTextContent("Rp 0");
     await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent(`month=${EMPTY_MONTH}`));
   },

@@ -34,6 +34,7 @@ import {
   type StockChangeType,
 } from "../../gen/warehouse/inventory/v1/inventory_pb";
 import type { OrderProductActivityByIdsResponse } from "../../gen/warehouse/selling/v1/order_pb";
+import type { ProductDerivedListResponse } from "../../gen/warehouse/selling/v1/return_configuration_pb";
 
 // The guideline list/by-ids RPCs (guidelines/service-guideline.md) return per-id "slices" keyed by
 // product id, plus a sorted `ids` list, instead of a flat Product[]. The product screens still want
@@ -59,6 +60,9 @@ function rowToProduct(r: ProductRowItem): Product {
     crossMarkupBps: r.crossMarkupBps,
     crossLocked: r.crossLocked,
     reservedStock: r.reservedStock,
+    // Its tags — filled by ProductList only, the owning team's list (products-have-their-own-tag-list, 🔄 who sees); a
+    // by-ids row carries none.
+    tags: r.tags,
   });
 }
 
@@ -390,4 +394,68 @@ export function productDailyFromList(res: ProductDailyMovesResponse): DailyRow[]
   }
 
   return out;
+}
+
+// ── Produk Turunan — the return map, both ways and across teams (produk-turunan-is-the-return-map) ──────────────────
+
+/** One derived product as the Produk Turunan section draws it: a return map, named by the reads the page already makes. */
+export interface DerivedProduct {
+  productId: bigint;
+  /** The product's name — `#<id>` when ProductByIds does not answer for it. */
+  name: string;
+  productCode: string;
+  /** Turunan dari: the borrowed product's OWNER. Turunannya: the team whose map it is (it owns the product). */
+  teamName: string;
+  /** Its stock ready on a shelf, every warehouse — DiscoverStockByIds' figure, the Discover card's own. */
+  readyQty: bigint;
+  /** Its cover, for the Lihat Semua dialog — "" for none. */
+  imageUrl: string;
+}
+
+export interface DerivedProducts {
+  /** Turunan dari — the other teams' products this one was mapped FROM, newest first. Several can land on one. */
+  from: DerivedProduct[];
+  /** Turunannya — every team's own product mapped from this one, newest first. */
+  to: DerivedProduct[];
+  /** Each direction's whole count — the section's count, never short of a capped list. */
+  fromTotal: number;
+  toTotal: number;
+}
+
+/** Every product a product's maps name — what ProductByIds and DiscoverStockByIds are asked about, each id once. */
+export function derivedProductIds(maps: ProductDerivedListResponse): bigint[] {
+  const ids = [...maps.derivedFrom.map((m) => m.sharedProductId), ...maps.derivedTo.map((m) => m.ownProductId)];
+
+  return [...new Set(ids.map(String))].sort().map((id) => BigInt(id));
+}
+
+/** The maps named: each line's product from `products`, its team's name from `teams`, its ready stock from `stock`. */
+export function derivedFromMaps(
+  maps: ProductDerivedListResponse,
+  products: Map<string, Product>,
+  stock: Map<string, DiscoverStockRow>,
+  teams: { [id: string]: string },
+): DerivedProducts {
+  const teamName = (teamId: bigint) => teams[teamId.toString()] ?? (teamId > 0n ? `#${teamId}` : "—");
+  const line = (productId: bigint, teamId: bigint): DerivedProduct => {
+    const p = products.get(productId.toString());
+
+    return {
+      productId,
+      name: p?.name ?? `#${productId}`,
+      productCode: p?.productCode ?? "",
+      teamName: teamName(teamId),
+      readyQty: stock.get(productId.toString())?.readyQty ?? 0n,
+      imageUrl: p ? p.defaultImageThumbnailUrl || p.defaultImageUrl : "",
+    };
+  };
+
+  return {
+    // The other team's product — named by ITS owner, which only its record says.
+    from: maps.derivedFrom.map((m) => line(m.sharedProductId, products.get(m.sharedProductId.toString())?.teamId ?? 0n)),
+    // The map's team owns the product it maps to (the write refuses anything else).
+    to: maps.derivedTo.map((m) => line(m.ownProductId, m.teamId)),
+    fromTotal: Number(maps.derivedFromTotal),
+    toTotal: Number(maps.derivedToTotal),
+  };
 }

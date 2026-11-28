@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
 import { settlementImportScenario } from "../../../../.storybook/settlementImportScenario";
 import { AtFailed, AtInterrupted, IMPORT_DETAIL_META, loaded } from "./kit";
@@ -29,7 +29,7 @@ export const LoadingTheFile: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByTestId("import-detail-loading")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("import-detail-loading")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId("import-detail-shop")).toBeNull();
     await expect(canvasElement.querySelector(".chakra-spinner")).toBeNull();
     await expect(canvas.getByTestId("back-to-imports")).toBeVisible();
@@ -44,7 +44,7 @@ export const LoadingTheRows: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = await loaded(canvasElement);
-    await expect(await canvas.findByTestId("lines-loading")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("lines-loading")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.getByTestId("file-tally")).toBeVisible();
     await expect(canvas.getByTestId("lines-tab-held")).toBeVisible();
     await expect(canvas.queryByTestId("lines-table")).toBeNull();

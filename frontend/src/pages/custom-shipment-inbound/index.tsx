@@ -162,9 +162,10 @@ export function CustomShipmentInboundPage() {
                   {parcel.doorCharge > 0 ? formatRupiahNumber(parcel.doorCharge) : t("restockResolution.inbound.noCharge")}
                 </Text>
                 {parcel.doorCharge > 0 && (
-                  <Text fontSize="xs" color="fg.muted">
-                    {parcel.doorChargeNote}
-                    {" — "}
+                  <Text fontSize="xs" color="fg.muted" data-testid="inbound-door-charge-line">
+                    {/* The note is optional (the-couriers-charge-note-is-optional): with none, the line starts at its
+                        meaning — no dangling dash. */}
+                    {parcel.doorChargeNote !== "" && `${parcel.doorChargeNote} — `}
                     {t(
                       counted
                         ? side === "selling"

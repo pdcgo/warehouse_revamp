@@ -8,19 +8,17 @@ import type { PendingList, PendingPart } from "../../features/pending/registry";
 // in every warehouse and in each (2026-11-14; the `ongoing` and `crossPrice` samples are gone). The gallery is the by-ids
 // IMAGES slice and another team's Riwayat Stok is DiscoverStockHistory (2026-11-16; the `gallery` and `history` marks are
 // gone), Pemasok is ProductSupplierGoods and Keluar Masuk Harian is ProductDailyMoves (2026-11-21; the `suppliers` and
-// `daily` marks are gone). What is not real is the division the card also invents and the section below. See
-// `features/pending` for the kinds. In the order they appear down the page.
+// `daily` marks are gone), and Produk Turunan is the return maps, read across teams by ProductDerivedList (2026-11-27,
+// produk-turunan-is-the-return-map; the `derived` sample is gone). What is not real is the division the card also
+// invents. See `features/pending` for the kinds.
 
 /** One unwired part of the page. The id is also its i18n key (`discoverDetail.pending.<id>`). */
-export type DiscoverDetailPendingId = "division" | "derived";
+export type DiscoverDetailPendingId = "division";
 
 const PARTS: PendingPart<DiscoverDetailPendingId>[] = [
   // PRIORITAS · RISET, beside the name — the card's badge (discover-opens-on-priority): set per product, stored nowhere,
   // so the same invented one the card shows (`sampleDivision`).
   { id: "division", kind: "sample" },
-  // PRODUK TURUNAN — the owner's page's section and its rows (`sampleDerived`): the link a return to another team makes
-  // between two products is recorded nowhere yet.
-  { id: "derived", kind: "sample" },
 ];
 
 export const DISCOVER_DETAIL_PENDING: PendingList<DiscoverDetailPendingId> = {

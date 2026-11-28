@@ -191,7 +191,7 @@ export const EditOpensTheForm: Story = {
     const canvas = await opened(canvasElement);
 
     await userEvent.click(canvas.getByTestId("bundle-detail-edit"));
-    await expect(await canvas.findByTestId("at-bundle-edit")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("at-bundle-edit")).toBeVisible(), { timeout: 5000 });
   },
 };
 

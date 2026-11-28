@@ -109,7 +109,7 @@ func TestRestockRequestArrive_SignsAnOngoingBox(t *testing.T) {
 	}
 
 	got := trail(arrDetail(t, svc, raised.GetId()))
-	want := []trailStep{stepCreated, {ongoing, statusArrived, "signed for the box"}}
+	want := []trailStep{stepCreated, {ongoing, statusArrived, "set arrived"}}
 
 	if len(got) != len(want) || got[1] != want[1] {
 		t.Fatalf("trail = %v, want %v", got, want)
@@ -142,7 +142,7 @@ func TestRestockRequestArrive_SignsALateLostBox(t *testing.T) {
 	}
 
 	got := trail(arrDetail(t, svc, raised.GetId()))
-	if len(got) != 3 || got[1].to != statusLost || got[2] != (trailStep{statusLost, statusArrived, "signed for the box"}) {
+	if len(got) != 3 || got[1].to != statusLost || got[2] != (trailStep{statusLost, statusArrived, "set arrived"}) {
 		t.Fatalf("trail = %v, want created, ongoing → lost, lost → arrived", got)
 	}
 }

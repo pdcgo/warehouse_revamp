@@ -11,6 +11,7 @@ import { CustomShipmentKind as WireKind } from "../../gen/warehouse/inventory/v1
 import type { InboundParcel } from "../restockResolution/resolutions";
 import { inboundFromWire, isInbound } from "../restockResolution/resolutions";
 import { withSupplierNames } from "../restockResolution/queries";
+import { type ScanCodes, readScanCodes } from "../picking/scanCodes";
 
 // THE CUSTOM SHIPMENTS' READS AND WRITES — inventory_service's CustomShipmentService (backlog #88), for the five accepted
 // screens (the-custom-shipments-prototype-is-accepted). Every read is the current team's: the server answers the selling
@@ -105,21 +106,27 @@ export function useCustomShipmentPick(args: { warehouseId: bigint | undefined; i
   return useQuery({
     queryKey: key.customShipments(warehouseId, { pick: id.toString() }),
     enabled: warehouseId !== undefined && id > 0n,
-    queryFn: async (): Promise<{ shipment: CustomShipment | null; picks: CustomShipmentPick[] }> => {
+    queryFn: async (): Promise<{ shipment: CustomShipment | null; picks: CustomShipmentPick[]; codes: ScanCodes }> => {
       let shipment: CustomShipment | null = null;
       try {
         const res = await customShipmentClient.customShipmentDetail({ teamId: warehouseId!, id });
         shipment = res.customShipment ? customShipmentFromWire(res.customShipment) : null;
       } catch (err) {
-        if (notFound(err)) return { shipment: null, picks: [] };
+        if (notFound(err)) return { shipment: null, picks: [], codes: new Map() };
         throw err;
       }
 
       const transactionId = shipment?.transactionId ?? 0n;
-      const places =
+      // THE CODES ITS ITEM SCAN TAKES (backlog #152) — a requested parcel is the one being scanned: its products' codes now
+      // and former codes, beside the racks, one read for the page (the order pick page's own, features/picking).
+      const scanned = shipment?.status === "REQUESTED" ? shipment.items.map((item) => item.productId) : [];
+
+      const [places, codes] = await Promise.all([
         shipment?.kind === "SAMPLE" && transactionId > 0n
-          ? await inventoryClient.stockPickLocations({ warehouseId: warehouseId!, transactionId })
-          : { locations: [] };
+          ? inventoryClient.stockPickLocations({ warehouseId: warehouseId!, transactionId })
+          : Promise.resolve({ locations: [] }),
+        scanned.length > 0 ? readScanCodes(warehouseId!, scanned) : Promise.resolve<ScanCodes>(new Map()),
+      ]);
 
       return {
         shipment,
@@ -129,6 +136,7 @@ export function useCustomShipmentPick(args: { warehouseId: bigint | undefined; i
           rackCode: loc.rackCode,
           quantity: BigInt(loc.quantity),
         })),
+        codes,
       };
     },
   });

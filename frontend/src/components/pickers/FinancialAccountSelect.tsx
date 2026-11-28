@@ -20,6 +20,17 @@ export interface FinancialAccountSelectProps {
   /** Pick the only option when there is exactly one — the restock form's pre-fill. */
   autoPickSingle?: boolean;
   placeholder?: string;
+  /**
+   * What the trigger says when there is nothing to pick — the restock form's short *No operational account*, its
+   * account box saying under it who can fix that (the-account-box-points-to-the-accounts-page). Default: the picker's
+   * own line for the case.
+   */
+  emptyText?: string;
+  /**
+   * While there is nothing to pick, read the accounts again when the person comes back to the tab — the restock form's
+   * helper opens Financial Accounts in a new tab (a-helper-link-opens-a-new-tab).
+   */
+  rereadOnReturn?: boolean;
   disabled?: boolean;
   testId?: string;
 }
@@ -51,11 +62,13 @@ export function FinancialAccountSelect({
   excludeIds = [],
   autoPickSingle = false,
   placeholder,
+  emptyText: emptyTextProp,
+  rereadOnReturn = false,
   disabled,
   testId = "financial-account-select",
 }: FinancialAccountSelectProps) {
   const { t } = useTranslation();
-  const query = useFinancialAccountOptions({ teamId, operationalOnly });
+  const query = useFinancialAccountOptions({ teamId, operationalOnly, rereadOnReturn });
 
   const excluded = excludeIds.map(String).join(",");
   const accounts = useMemo(
@@ -86,7 +99,8 @@ export function FinancialAccountSelect({
 
   // NOTHING TO PICK says why, and what to do about it — an empty dropdown reads as a broken control.
   // For *Paid from* the fix is an admin's: marking an operational account is admin and up.
-  const emptyText = operationalOnly ? t("financialAccounts.select.noOperational") : t("financialAccounts.select.empty");
+  const emptyText =
+    emptyTextProp ?? (operationalOnly ? t("financialAccounts.select.noOperational") : t("financialAccounts.select.empty"));
 
   return (
     <Select.Root

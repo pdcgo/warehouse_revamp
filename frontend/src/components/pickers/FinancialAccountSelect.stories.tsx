@@ -1,8 +1,10 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, spyOn, userEvent, waitFor, within } from "storybook/test";
 
+import { withTheAppsFocusRule } from "../../../.storybook/appFocusRule";
 import { account } from "../../../.storybook/financialAccountFixtures";
+import { financialAccountClient } from "../../api/clients";
 import { FinancialAccountSelect, description, type FinancialAccountSelectProps } from "./FinancialAccountSelect";
 
 // docs/business/financial_account — accepted at design_accept (the-prototype-and-its-contract-are-accepted). The picker a restock's and an
@@ -117,6 +119,60 @@ export const NoOperationalAccountSaysWhatToDo: Story = {
     await waitFor(() =>
       expect(canvas.getByTestId("financial-account-select")).toHaveTextContent("ask an admin to mark one"),
     );
+  },
+};
+
+// A CALLER'S OWN WORDS for nothing to pick — the restock form's short line, its account box saying under it who can fix
+// it (the-account-box-points-to-the-accounts-page).
+export const EmptyTextIsTheCallers: Story = {
+  args: { teamId: 14n, operationalOnly: true, emptyText: "No operational account" },
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByTestId("financial-account-select");
+
+    await waitFor(() => expect(trigger).toHaveTextContent("No operational account"));
+    await expect(trigger).not.toHaveTextContent("ask an admin");
+  },
+};
+
+let reads = 0;
+function countReads() {
+  reads = 0;
+  const real = financialAccountClient.financialAccountList.bind(financialAccountClient);
+  const spy = spyOn(financialAccountClient, "financialAccountList").mockImplementation(async (req, options) => {
+    reads += 1;
+    return real(req, options);
+  });
+
+  return () => spy.mockRestore();
+}
+
+/** Back on the tab: the browser fires `visibilitychange` at the document — TanStack's window-focus event. */
+const comeBack = () => document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+
+// `rereadOnReturn` (a-helper-link-opens-a-new-tab) — with NOTHING to pick, the accounts are read again when the person
+// comes back to the tab…
+export const RereadsOnReturnWhileEmpty: Story = {
+  args: { teamId: 14n, operationalOnly: true, rereadOnReturn: true },
+  decorators: [withTheAppsFocusRule],
+  beforeEach: countReads,
+  play: async () => {
+    await waitFor(() => expect(reads).toBe(1));
+    comeBack();
+    await waitFor(() => expect(reads).toBe(2));
+  },
+};
+
+// …and with something to pick, never: no request per alt-tab (HARD RULE 10).
+export const NoRereadOnReturnWithAccounts: Story = {
+  args: { teamId: 12n, operationalOnly: true, rereadOnReturn: true },
+  decorators: [withTheAppsFocusRule],
+  beforeEach: countReads,
+  play: async ({ canvasElement }) => {
+    await open(canvasElement);
+    await waitFor(() => expect(reads).toBe(1));
+    comeBack();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await expect(reads).toBe(1);
   },
 };
 

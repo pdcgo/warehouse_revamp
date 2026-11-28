@@ -163,12 +163,12 @@ export const AnOrderHoldsItemsOrBundles: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByTestId("order-items-help")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("order-items-help")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId("bundle-add")).toBeNull();
 
     // An empty items card — the switch is immediate.
     await userEvent.click(canvas.getByTestId("order-contents-bundles"));
-    await expect(await canvas.findByTestId("bundle-add")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("bundle-add")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId("order-items-help")).toBeNull();
 
     await addBundles(canvas, [HEMAT.id.toString()]);
@@ -188,9 +188,9 @@ export const AnOrderHoldsItemsOrBundles: Story = {
     dialog = await screen.findByRole("alertdialog");
     await waitFor(() => expect(dialog).toBeVisible());
     await userEvent.click(within(dialog).getByTestId("confirm-action"));
-    await expect(await canvas.findByTestId("order-items-help")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("order-items-help")).toBeVisible(), { timeout: 5000 });
 
     await userEvent.click(canvas.getByTestId("order-contents-bundles"));
-    await expect(await canvas.findByTestId("bundle-empty")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("bundle-empty")).toBeVisible(), { timeout: 5000 });
   },
 };

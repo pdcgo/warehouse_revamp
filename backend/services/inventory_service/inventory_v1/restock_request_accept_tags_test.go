@@ -109,19 +109,22 @@ func TestRestockRequestAccept_PutsTheProblemTagsOn(t *testing.T) {
 	}
 }
 
-// A REFUSED COUNT PUTS NOTHING ON — the tags go on only with an accept that commits: a count refused (a courier's charge
-// with no note) leaves the restock untagged, its problems unrecorded.
+// A REFUSED COUNT PUTS NOTHING ON — the tags go on only with an accept that commits: a count refused (an expiry that is
+// not a day on the calendar) leaves the restock untagged, its problems unrecorded. (It was a courier's charge with no
+// note until that became optional — the-couriers-charge-note-is-optional — so a refusal of the count itself stands in.)
 func TestRestockRequestAccept_ARefusedCountPutsNoTagOn(t *testing.T) {
 	db := san_testdb.DB(t)
 	svc := tgService(t, db)
 
 	raised := nsRaise(t, svc, "")
 
+	lines := tgCount(t, raised, stagingPlacement(t, db, arrWarehouse), [2]int64{8, 1}, [2]int64{5, 0})
+	// The shape passes the contract; the day is not on the calendar — refused as the count is read.
+	lines[0].ExpiresOn = "2026-02-30"
+
 	_, err := svc.RestockRequestAccept(ctxUser(arrCounter), connect.NewRequest(&inventoryv1.RestockRequestAcceptRequest{
 		TeamId: arrWarehouse, RequestId: raised.GetId(),
-		Lines: tgCount(t, raised, stagingPlacement(t, db, arrWarehouse), [2]int64{8, 1}, [2]int64{5, 0}),
-		// A charge with no note: refused after the count is read.
-		WarehouseAdditionalCost: 5000,
+		Lines: lines,
 	}))
 	if err == nil {
 		t.Fatal("the accept went through — the test needs a refused one")

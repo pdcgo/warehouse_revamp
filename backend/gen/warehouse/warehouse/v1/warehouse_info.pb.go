@@ -769,16 +769,22 @@ func (x *WarehouseReceivingStatusRequest) GetWarehouseIds() []uint64 {
 	return nil
 }
 
-// WarehouseReceivingState — one warehouse's answer, NOW, in Asia/Jakarta.
+// WarehouseReceivingState — one warehouse's answer, NOW, in Asia/Jakarta. It is CLOSED when `closure_reason` is set,
+// or when `hours_set` and not `receiving_now`; a warehouse whose hours are not set is not closed
+// (a-warehouse-with-no-hours-is-not-closed) — only a closure warns for it.
 type WarehouseReceivingState struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	WarehouseId uint64                 `protobuf:"varint,1,opt,name=warehouse_id,json=warehouseId,proto3" json:"warehouse_id,omitempty"`
 	// Inside today's receiving slot and in no closure.
 	ReceivingNow bool `protobuf:"varint,2,opt,name=receiving_now,json=receivingNow,proto3" json:"receiving_now,omitempty"`
-	// When it receives next, unix seconds — 0 while receiving now, or when no slot opens in the next 60 days.
+	// When it receives next, unix seconds — 0 while receiving now, when no slot opens in the next 60 days, or when its
+	// hours are not set.
 	NextOpeningUnix int64 `protobuf:"varint,3,opt,name=next_opening_unix,json=nextOpeningUnix,proto3" json:"next_opening_unix,omitempty"`
-	// Set when a one-off closure is why it is closed — "Idul Fitri".
+	// Set when a one-off closure is why it is closed — "Idul Fitri" — set hours or not.
 	ClosureReason string `protobuf:"bytes,4,opt,name=closure_reason,json=closureReason,proto3" json:"closure_reason,omitempty"`
+	// Whether the warehouse has set its receiving hours: false with no profile, or with a grid that opens on no day. Not
+	// set is NOT closed: no warning, no badge — `receiving_now` and `next_opening_unix` then say nothing.
+	HoursSet      bool `protobuf:"varint,5,opt,name=hours_set,json=hoursSet,proto3" json:"hours_set,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -839,6 +845,13 @@ func (x *WarehouseReceivingState) GetClosureReason() string {
 		return x.ClosureReason
 	}
 	return ""
+}
+
+func (x *WarehouseReceivingState) GetHoursSet() bool {
+	if x != nil {
+		return x.HoursSet
+	}
+	return false
 }
 
 type WarehouseReceivingStatusResponse struct {
@@ -942,12 +955,13 @@ const file_warehouse_warehouse_v1_warehouse_info_proto_rawDesc = "" +
 	"\x1eWarehouseClosureDeleteResponse\"Z\n" +
 	"\x1fWarehouseReceivingStatusRequest\x12/\n" +
 	"\rwarehouse_ids\x18\x01 \x03(\x04B\n" +
-	"\xbaH\a\x92\x01\x04\b\x01\x10dR\fwarehouseIds:\x06\x92\xb5\x18\x02 \x01\"\xb4\x01\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10dR\fwarehouseIds:\x06\x92\xb5\x18\x02 \x01\"\xd1\x01\n" +
 	"\x17WarehouseReceivingState\x12!\n" +
 	"\fwarehouse_id\x18\x01 \x01(\x04R\vwarehouseId\x12#\n" +
 	"\rreceiving_now\x18\x02 \x01(\bR\freceivingNow\x12*\n" +
 	"\x11next_opening_unix\x18\x03 \x01(\x03R\x0fnextOpeningUnix\x12%\n" +
-	"\x0eclosure_reason\x18\x04 \x01(\tR\rclosureReason\"\xec\x01\n" +
+	"\x0eclosure_reason\x18\x04 \x01(\tR\rclosureReason\x12\x1b\n" +
+	"\thours_set\x18\x05 \x01(\bR\bhoursSet\"\xec\x01\n" +
 	" WarehouseReceivingStatusResponse\x12\\\n" +
 	"\x06states\x18\x01 \x03(\v2D.warehouse.warehouse.v1.WarehouseReceivingStatusResponse.StatesEntryR\x06states\x1aj\n" +
 	"\vStatesEntry\x12\x10\n" +

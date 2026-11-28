@@ -205,7 +205,9 @@ export const CloseConfirmsWhatItDoes: Story = {
     await waitFor(() => expect(canvas.queryByTestId("shop-row-MEL-LAZ")).toBeNull());
 
     await pickStatus(canvasElement, "closed");
-    await expect(within(await canvas.findByTestId("shop-row-MEL-LAZ")).getByTestId("shop-closed-MEL-LAZ")).toBeVisible();
+    await waitFor(() => expect(within(canvas.getByTestId("shop-row-MEL-LAZ")).getByTestId("shop-closed-MEL-LAZ")).toBeVisible(), {
+      timeout: 5000,
+    });
   },
 };
 

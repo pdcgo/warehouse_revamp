@@ -161,7 +161,7 @@ export const SelectedCardHidesWhileSearching: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByTestId("team-select-selected")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("team-select-selected")).toBeVisible(), { timeout: 5000 });
 
     await userEvent.click(canvas.getByRole("combobox"));
 

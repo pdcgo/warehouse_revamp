@@ -20,6 +20,8 @@ the old one, never an edit to it (HARD RULE 12). The open set lives in [context_
 | [a-warehouse-records-its-holidays](#a-warehouse-records-its-holidays) | a warehouse keeps a list of one-off closures — a date range and a reason — read by the closed-day warning beside the weekly grid |
 | [one-warehouse-team-is-one-building](#one-warehouse-team-is-one-building) | a warehouse team is one building; a second site is a second warehouse team |
 | [the-warehouse-service-owns-the-profile-and-the-fee](#the-warehouse-service-owns-the-profile-and-the-fee) | the warehouse service owns the profile, the closures and the fee — never stock, money owed, membership or orders |
+| [a-warehouse-with-no-hours-is-not-closed](#a-warehouse-with-no-hours-is-not-closed) | a warehouse with no receiving hours set is not closed — no warning, no badge; its owner and admin are prompted to set them; a closure still warns |
+| [the-warehouse-sets-its-own-hours-in-settings](#the-warehouse-sets-its-own-hours-in-settings) | the warehouse owner and admin set the receiving and operating hours, the closures and the location in their own Settings; root keeps Teams → Edit warehouse |
 
 ---
 
@@ -405,6 +407,8 @@ detail read the new client. ⚠ my build detail: it no longer asks whether a tea
 team_service's table — so the update is gated by a warehouse role alone, which exists only on a warehouse team, and a
 team with no profile reads as closed every day.
 
+🔄 *(2026-11-27, owner "A")* *A team with no profile reads as closed every day* no longer holds — a warehouse with no hours set is not closed: [a-warehouse-with-no-hours-is-not-closed](#a-warehouse-with-no-hours-is-not-closed).
+
 ## a-closed-day-warns-and-never-refuses
 
 > Owner, in chat (2026-10-31): *"yes, i follow your recomendation"* — to
@@ -447,6 +451,8 @@ The order form's warehouse band says it under the picker — *"Closed for Idul F
 handled from 7 Apr 08:00 WIB"* — and the picker badges a closed warehouse, still selectable; Save is never held for it.
 Tests: the grid and the closure cases as pure functions, the handler against Postgres, the `Features/Orders/WarehouseBand`
 stories.
+
+🔄 *(2026-11-27, owner "A")* A warehouse with no hours set is not closed: [a-warehouse-with-no-hours-is-not-closed](#a-warehouse-with-no-hours-is-not-closed).
 
 ## a-warehouse-records-its-holidays
 
@@ -533,3 +539,29 @@ flowchart LR
 **What it leaves** (HARD RULE 11): [context.md](./context.md) §Responsbility 1, *"we must have warehouse service that manage
 warehouse teams"* — managing teams is team_service's — and the doc has no *Whats Not*; reported in the clarify's
 [responsibility-names-team-services-job](./context_clarify.md#responsibility-names-team-services-job).
+
+---
+
+## a-warehouse-with-no-hours-is-not-closed
+
+> Owner (Heri), in `default`'s desktop chat (2026-11-27): *"A"*, **as recommended** — after *"because in staging warehouse is always closed"* — to: what should a warehouse with no hours set show? A: no closed warning and no badge — "not set" is not "closed", and the warning exists to say when the order will be handled, which nobody knows; the warehouse's owner sees a prompt to set the hours instead; B: keep "closed every day" and just fill in staging's hours; C: treat it as open around the clock — A's warning, no prompt.
+
+**Why staging reads closed.** The hours were not carried over when the profile moved to `warehouse_service` on 2026-11-02 ([the-warehouse-profile-lives-in-warehouse-service](#the-warehouse-profile-lives-in-warehouse-service): *existing rows — dev data only, re-entered or re-seeded*), and that build read a warehouse with no profile as **closed every day** — my build detail, never his. Every warehouse whose hours were not entered again warned *closed* on every order.
+
+**The verdict.** A warehouse whose **receiving hours are not set** is **not closed**: the order form shows no closed warning for it and the warehouse picker no badge. Its owner and admin are shown a prompt to set the hours. A closure (a holiday) still warns as before, set hours or not.
+
+*(Not asked — what counts as "not set": no profile row, or a grid with no open slot on any day. My spec: both — a week with every day closed is not a schedule anyone means.)* ⛔ Not built — backlog #145.
+
+✅ Built 2026-11-27 (#145) — `WarehouseReceivingStatus` answers `hours_set` (proto field 5): false with no `warehouse_infos` row or a receiving grid that opens on no day (the spec above: both), and then never receiving and no next opening; a closure still names its reason, set hours or not — with none set the warning names the reason alone, there being no slot to name an opening from ([receiving.go](../../../../backend/services/warehouse_service/warehouse_v1/receiving.go) `hoursSet`). The order form reads closed = a closure, or hours set and not receiving now (`features/warehouse/hours.ts` `warehouseIsClosed`): no sentence under the band and no badge in the picker for a warehouse with no hours. The owner and admin see the *set your hours* prompt on their Settings ([the-warehouse-sets-its-own-hours-in-settings](#the-warehouse-sets-its-own-hours-in-settings)). Tests: the pure cases and the handler against Postgres (no row, an all-closed grid, set hours open / closed now, a closure on a no-hours warehouse); the `Features/Orders/WarehouseBand` stories.
+
+---
+
+## the-warehouse-sets-its-own-hours-in-settings
+
+> Owner (Heri), in `default`'s desktop chat (2026-11-27): *"A"*, **as recommended** — he asked *"and can warehouse admin set it in setting page ?"* (not today: only root and the administrator get *Edit warehouse*, `WarehouseInfoSection.tsx`'s `isGlobalAdmin`; the warehouse's own Settings shows only the fee card, though `WarehouseInfoUpdate` and `WarehouseClosureAdd` already take `ROLE_WAREHOUSE_OWNER` and `ROLE_WAREHOUSE_ADMIN`), then, offered: A: the warehouse's Settings gets the receiving hours, the operating hours, the closures and the location, with the same editors as Edit warehouse, for the warehouse owner and admin, the *set your hours* prompt there, root keeping Teams → Edit warehouse; B: a link from Settings to Edit warehouse, opened to the owner and admin; C: as A, the owner only.
+
+**The verdict.** A warehouse's **owner and admin** set the warehouse's **receiving hours, operating hours, closures and location** on their own **Settings** page, with the editors the Edit warehouse page uses, and the prompt of [a-warehouse-with-no-hours-is-not-closed](#a-warehouse-with-no-hours-is-not-closed) shows there. Root and the administrator keep Teams → Edit warehouse; both pages save the same profile. Warehouse staff get no editor.
+
+*(Not asked — whether staff see the hours read-only in Settings.)* ⛔ Not built — backlog #145.
+
+✅ Built 2026-11-27 (#145) — the warehouse's Settings draws *Hours and location* (the location, the operating and the receiving hours, one Save → `WarehouseInfoUpdate`) and the *Closures* card, for a role `WarehouseInfoUpdate` takes (`lib/roles.ts` `editsWarehouseProfile`: the warehouse Owner and Admin, and root / the administrator acting inside the warehouse) on a team it may write — Staff and a monitor get no card, no read-only one either (the build's default for the point not asked). The editors moved from `pages/warehouse-edit/components/` to `features/warehouse/` (`WeeklyHoursEditor`, `ClosuresEditor`, and the location field as `WarehouseLocationField`) and Edit warehouse uses the same ones, unchanged on a desktop; on a phone the weekly grid now wraps its times under the day (it ran ~45px past a 390px screen once a day was open). The prompt reads the saved profile and goes once the hours are stored. Stories: `Pages/Settings/SettingsPage`; screenshots for the owner in `accepts/145/`.

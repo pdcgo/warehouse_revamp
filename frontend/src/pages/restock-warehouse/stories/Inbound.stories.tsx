@@ -54,7 +54,7 @@ export const InTheIncomingList: Story = {
     await expect(row901.getByTestId("custom-shipment-kind-reshipping")).toHaveTextContent("Reshipping from supplier");
     await waitFor(() => expect(row901.getByTestId("inbound-for-901")).toHaveTextContent("for restock #503 · Toko Melati"));
     await expect(row901.getByTestId("inbound-status-on_the_way")).toBeVisible();
-    await expect(row901.getByTestId("inbound-action-sign-901")).toHaveTextContent("Sign for Box");
+    await expect(row901.getByTestId("inbound-action-sign-901")).toHaveTextContent("Set Arrived");
     await expect(within(canvas.getByTestId("inbound-row-902")).getByTestId("inbound-action-receive-902")).toHaveTextContent("Count In");
     await expect(canvas.getByTestId("inbound-row-901")).not.toHaveTextContent("65.000");
     await expect(canvas.getByTestId("restock-row-501")).toBeVisible();
@@ -93,6 +93,31 @@ export const SignForItWithACharge: Story = {
     await expect(canvas.getByTestId("inbound-action-receive-901")).toBeVisible();
     await expect(resolutionCalls().map((c) => c.rpc)).toEqual(["CustomShipmentArrive"]);
     await expect(resolutionCalls()[0]!.req).toMatchObject({ teamId: 11n, id: 901n, doorCharge: 5000, doorChargeNote: "COD diminta kurir" });
+  },
+};
+
+/**
+ * SET ARRIVED WITH A CHARGE AND NO NOTE (the-couriers-charge-note-is-optional; an-arrival-is-set-arrived): the dialog is
+ * *Set Arrived — Reshipping #901*; on Ada the amount alone frees it, and the parcel is set arrived with an empty note.
+ */
+export const SetArrivedWithAChargeAndNoNote: Story = {
+  name: "Set Arrived — a charge with no note",
+  play: async ({ canvasElement }) => {
+    const canvas = await listed(canvasElement);
+    await userEvent.click(canvas.getByTestId("inbound-action-sign-901"));
+    const box = await screen.findByRole("alertdialog", {}, { timeout: 3000 });
+    const dialog = within(box);
+    await expect(box).toHaveTextContent("Set Arrived — Reshipping #901");
+    await expect(dialog.getByTestId("confirm-action")).toHaveTextContent("Set Arrived");
+
+    await userEvent.click(dialog.getByTestId("inbound-sign-courier-asked-yes"));
+    await expect(await dialog.findByTestId("confirm-action")).toBeDisabled();
+    await typeInto(dialog.getByTestId("inbound-sign-courier-charge"), "5000");
+    await waitFor(() => expect(dialog.getByTestId("confirm-action")).toBeEnabled());
+    await userEvent.click(dialog.getByTestId("confirm-action"));
+
+    await waitFor(() => expect(within(canvas.getByTestId("inbound-row-901")).getByTestId("inbound-status-arrived")).toBeVisible());
+    await expect(resolutionCalls()[0]!.req).toMatchObject({ teamId: 11n, id: 901n, doorCharge: 5000, doorChargeNote: "" });
   },
 };
 

@@ -12,5 +12,6 @@ Every big feature with an acceptance, and its small features. The statuses are c
 | [analytic](analytic/context.md) | [report](analytic/report.md) · [order_metric](analytic/order_metric.md) · [settlement_metric](analytic/settlement_metric.md) · [inventory_metric](analytic/inventory_metric.md) · [expense_metric](analytic/expense_metric.md) · [finance_metric](analytic/finance_metric.md) |
 | [supplier](supplier/context.md) | [manage](supplier/manage.md) |
 | [product](product/context.md) | [catalogue](product/catalogue.md) · [pricing](product/pricing.md) · [cross](product/cross.md) · [bundle](product/bundle.md) |
+| [teams](teams/context.md) | [team_code](teams/team_code.md) · [warehouse_hours](teams/warehouse_hours.md) |
 
 A new big feature or small feature gets its row here in the same change that creates its file.

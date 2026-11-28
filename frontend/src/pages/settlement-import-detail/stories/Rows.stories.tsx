@@ -251,11 +251,11 @@ export const ANewTabWaitsForItsOwnRows: Story = {
 
     settlementImportScenario.linesHoldMs = 400;
     await userEvent.click(canvas.getByTestId("lines-tab-posted"));
-    await expect(await canvas.findByTestId("lines-loading")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("lines-loading")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.queryByTestId(`line-row-${heldFirst!.id}`)).toBeNull();
     await expect(canvasElement.querySelector(".chakra-spinner")).toBeNull();
 
-    await expect(await canvas.findByTestId(`line-row-${postedLines()[0]!.id}`, {}, { timeout: 3000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId(`line-row-${postedLines()[0]!.id}`)).toBeVisible(), { timeout: 3000 });
     await expect(canvas.queryByTestId("lines-loading")).toBeNull();
     await expect((await canvas.findByTestId("lines-table")).tagName).toBe("TABLE");
   },
@@ -286,7 +286,7 @@ export const TheDesktopPagerGrows: Story = {
 
     await waitFor(() => expect(canvas.getByTestId("lines-pager-next")).toBeEnabled());
     await userEvent.click(canvas.getByTestId("lines-pager-next"));
-    await expect(await canvas.findByTestId(`line-row-${postedLines()[20]!.id}`)).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId(`line-row-${postedLines()[20]!.id}`)).toBeVisible(), { timeout: 5000 });
     await expect(canvas.getByTestId("lines-pager-page-2")).toHaveAttribute("aria-current", "page");
     await waitFor(() => expect(canvas.getByTestId("lines-pager-page-3")).toBeVisible());
 

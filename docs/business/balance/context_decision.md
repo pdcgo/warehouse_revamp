@@ -34,6 +34,7 @@ reversed is renamed and its references grepped (RULE 12), never quietly edited a
 | [the-liability-day-is-the-jakarta-day](#the-liability-day-is-the-jakarta-day) | the liability daily view groups by the Jakarta day, not UTC | owner, as recommended | — |
 | [the-warehouse-statement-says-ongkir-cod](#the-warehouse-statement-says-ongkir-cod) | the warehouse's daily statement calls the courier money Ongkir COD / Courier COD | owner, as recommended | — |
 | [a-pending-payment-is-cancelled-by-its-selling-team](#a-pending-payment-is-cancelled-by-its-selling-team) | a pending payment can be cancelled by the paying selling team's owner or admin only; nothing moves, it stays in history, the team may pay again |
+| [the-couriers-charge-note-is-optional](#the-couriers-charge-note-is-optional) | the courier's charge note (*What it was for*) is optional everywhere it is asked — reverses an-incidental-line-must-say-what-it-was-for |
 
 ---
 
@@ -883,6 +884,7 @@ That is the price, and it is why this was not settled without asking.
 | ⚠ existing rows | a `cod_shipping` line written before today may have an **empty** note, and no migration can invent one. Validation binds new writes only |
 | handler | the pair rule in `restock_request_fulfill.go` goes — `protovalidate` covers it |
 
+🔄 *(2026-11-27, owner)* *"note "what it was for" is optional too"* — the courier's charge note is no longer required: [the-couriers-charge-note-is-optional](#the-couriers-charge-note-is-optional).
 
 ---
 
@@ -1435,3 +1437,21 @@ flowchart LR
 **The verdict.** A payment still **pending** (recorded, not yet accepted or rejected) can be **cancelled by the paying selling team's owner or admin** — no other role, and not a warehouse payer. A cancelled payment moves no money (none moved while pending), leaves the creditor's confirm list, stays in the history marked cancelled, and the team may pay again. It is a new arm *before* the accept, so [an-accepted-payment-is-final](#an-accepted-payment-is-final) is untouched. ⛔ Not built — backlog #81.
 
 ✅ Built 2026-11-18 — `LiabilityPaymentCancel` with `LIABILITY_PAYMENT_STATUS_CANCELLED = 5` (3 stays reserved; no migration — `status` has no CHECK): policy Root, Administrator, Selling Owner, Selling Admin; the payer's own payment only (another team reads NotFound), only while `recorded` (accepted, rejected or cancelled → FailedPrecondition), the payer's type asked of team_service so Root inside a warehouse is refused too; the row `FOR UPDATE`, raced against confirm and reject. It posts nothing and publishes nothing, keeps the proof, drops out of the creditor's awaiting list, badge and filter, stays in both histories; paying again is a new Record. The pair detail's My payments offers **Batalkan** on a pending row to the selling Owner and Admin through a confirmation, and a cancelled row reads **Dibatalkan** in the rejected badge's tone ([rpc.md](../../services/liability_service/rpc.md#the-payer-takes-a-pending-claim-back--liabilitypaymentcancel-built-2026-11-18)).
+
+---
+
+## the-couriers-charge-note-is-optional
+
+> Owner (Heri), in `default`'s desktop chat (2026-11-27): *"and note "what it was for" is optional too"* — in the same message as *"in delivery accept, sign for box is ambigue, change set arrived"* ([an-arrival-is-set-arrived](../../technical/frontend/context_decision.md#an-arrival-is-set-arrived)).
+
+**The verdict.** The note on the **courier's charge at the door** — *What it was for* / *Untuk apa* — is **optional**. A charge above 0 with no note is saved, at the arrival and at the accept alike.
+
+| | |
+| --- | --- |
+| reverses | [an-incidental-line-must-say-what-it-was-for](#an-incidental-line-must-say-what-it-was-for) (*"yes"* to Q12: every cost line requires a note) and the return's *the note required above 0* ([return_decision](../inventory/return_decision.md)) |
+| ⚠ my spec — where | everywhere the field is asked, since it is one rule: a restock's Set Arrived and accept, a reshipping's arrival, a warehouse transfer's accept, a return's accept — the screens stop holding the save back, the services stop refusing (`errInboundChargeNote`, `errTransferChargeNoteNeeded`, the restock's and the return's checks) |
+| unchanged | a note given is kept and shown as today; the charge itself |
+
+⛔ Not built — backlog #146.
+
+✅ Built 2026-11-27 (#146) — what the courier's charge was for is optional at a restock's Set Arrived and accept, a reshipping's Set Arrived and count-in, a transfer's accept and a return's accept: the services stop refusing (`errRestockCostNoteMissing`, `errInboundChargeNote`, `errTransferChargeNoteNeeded`, `errReturnChargeNoteMissing` removed) and inventory migration 00065 drops the transfer's row CHECK `warehouse_transfers_charge_has_note`; the screens stop holding the save (the shared courier form marks *Untuk apa* *(opsional)*, no error under it). An amount with no note is kept and owed as it is: the trail and timeline words name the amount alone (*courier's charge Rp 8.000*, *Courier charge Rp 15.000*), a note given reads as before, and Team Balance's postings never read the note. Pinned per site by Go tests (`…AChargeWithNoNote…`, inverted from the refusal tests) and the stories `TheNoteIsOptional`, `ACourierChargeNeedsNoNote`, `TheCourierAskNeedsNoNote`, `AChargeNeedsNoNote`, `AChargeWithNoNote`.

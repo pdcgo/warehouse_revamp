@@ -43,6 +43,11 @@ export interface SupplierBoxProps {
 //   └──────────────────────────────────────────────┘
 //
 // One height, picked or not, and it never wraps: the name gives way, the buttons hold their place.
+//
+// Every box's popup, with nothing to list, links to the suppliers page — where Tambah Pemasok is — in a new tab
+// (the-supplier-popup-points-to-create-supplier-when-none-exists, a-helper-link-opens-a-new-tab).
+const SUPPLIERS_PAGE = "/inventories/suppliers";
+
 export function SupplierBox({
   teamId,
   value,
@@ -97,6 +102,7 @@ export function SupplierBox({
             teamId={teamId}
             value={chosen ? value : undefined}
             onChange={onPick}
+            createSupplierHref={SUPPLIERS_PAGE}
             testId={chosen ? changeTestId : pickerTestId}
             trigger={
               <Button type="button" size="xs" variant="outline">

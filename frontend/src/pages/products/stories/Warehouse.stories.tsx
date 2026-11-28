@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, screen, spyOn, userEvent, waitFor, within } from "storybook/test";
 
+import { type HeldRpc, callsOf, holdRpc } from "../../../../.storybook/holdRpc";
 import { asTeam } from "../../../../.storybook/pageStory";
 import { asRole } from "../../../../.storybook/sessionScenario";
+import { teamClient, userClient } from "../../../api/clients";
 import { Role } from "../../../gen/warehouse/role_base/v1/role_pb";
 import { PRODUCTS_META } from "./kit";
 
@@ -71,7 +73,8 @@ export const AWarehouseListsWhatItHolds: Story = {
 };
 
 /** The seller's columns leave a warehouse's view — no Cross markup, no Lock, no cost range, no catalogue figures, no
- * lens or lock filters, no New Product or Archive: five columns, the warehouse's own. */
+ * lens or lock filters, no New Product or Archive: six columns, the warehouse's own — the Tags a warehouse holding the
+ * stock sees among them (products-have-their-own-tag-list, 🔄 who sees). */
 export const AWarehouseSeesNoSellerColumns: Story = {
   name: "No seller columns",
   play: async ({ canvasElement }) => {
@@ -80,7 +83,7 @@ export const AWarehouseSeesNoSellerColumns: Story = {
     const headers = within(canvas.getByTestId("inventory-table"))
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    await expect(headers).toEqual(["Product code", "Product", "Owner", "On hand", "Actions"]);
+    await expect(headers).toEqual(["Product code", "Product", "Tags", "Owner", "On hand", "Actions"]);
 
     await expect(canvas.queryByTestId("products-table")).toBeNull();
     await expect(canvas.queryAllByTestId(/^cross-/)).toHaveLength(0);
@@ -135,6 +138,28 @@ export const AWarehouseSearchNarrows: Story = {
   },
 };
 
+/**
+ * A FORMER CODE FINDS WHAT IT HOLDS (backlog #152 — a-team-code-change-recomposes-its-product-codes, its 🔄 *an old
+ * sticker scanned before the reprint*, owner Q1 "A"): Minyak was TA-ANG-001 before Toko Anggrek's code became SL-03 —
+ * the old code typed whole, in any case, finds it, and not its sibling SL-03-ANG-001-L; a piece of it finds nothing.
+ */
+export const AWarehouseSearchFindsAFormerCode: Story = {
+  name: "Search, a former code",
+  play: async ({ canvasElement }) => {
+    const canvas = await heldLoaded(canvasElement);
+    const search = canvas.getByTestId("inventory-search");
+
+    await userEvent.type(search, "Ta-Ang-001", { delay: 40 });
+    await waitFor(() => expect(held(canvas)).toEqual(["SL-03-ANG-001"]), { timeout: 5000 });
+    await expect(canvas.getByTestId("location-search")).toHaveTextContent("q=Ta-Ang-001");
+
+    // A piece of the old code is no former code.
+    await userEvent.type(search, "{Backspace}", { delay: 40 });
+    await waitFor(() => expect(canvas.getByTestId("location-search")).toHaveTextContent("q=Ta-Ang-00"), { timeout: 5000 });
+    await waitFor(() => expect(canvas.queryAllByTestId(/^stock-row-/)).toHaveLength(0), { timeout: 5000 });
+  },
+};
+
 /** On a phone each product is a block — name, code and owner, the units at the end; the block opens the product, its
  * ⋯ does not. */
 export const AWarehouseOnAPhone: Story = {
@@ -155,5 +180,42 @@ export const AWarehouseOnAPhone: Story = {
 
     await userEvent.click(beras.getByText("Beras Pandan Wangi 5kg"));
     await expect(await canvas.findByTestId("at-warehouse-product")).toHaveTextContent("74");
+  },
+};
+
+// THE TEAM KNOWN LATE (#136): until the memberships answer, the page does not know it stands in a warehouse, so it draws
+// nothing and asks nothing — never the catalogue's branch for a beat (its warehouse lens's TeamList, its "no team" line),
+// which is what sent the warehouse's Products one TeamList too many on some loads. Once they answer, the held list, as
+// always — and no TeamList at all: the warehouse's screen has no lens.
+let membershipsHeld: HeldRpc | undefined;
+
+export const TheTeamKnownLate: Story = {
+  name: "Team known late",
+  beforeEach: () => {
+    membershipsHeld = holdRpc(userClient, "teamAccessList");
+    const teamList = spyOn(teamClient, "teamList");
+
+    return () => {
+      membershipsHeld?.restore();
+      teamList.mockRestore();
+    };
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // The memberships are asked and held: nothing else is asked meanwhile, and nothing of either screen is drawn.
+    await waitFor(() => expect(callsOf(userClient.teamAccessList)).toHaveLength(1), { timeout: 5000 });
+    await expect(callsOf(teamClient.teamList)).toHaveLength(0);
+    await expect(canvas.queryByTestId("products-no-team")).toBeNull();
+    await expect(canvas.queryByTestId("products-page")).toBeNull();
+    await expect(canvas.queryByTestId("warehouse-products-page")).toBeNull();
+
+    membershipsHeld?.release();
+    const page = await heldLoaded(canvasElement);
+
+    await expect(page.getByTestId("warehouse-products-page")).toBeVisible();
+    await expect(held(page)).toEqual(GUDANG_PUSAT);
+    await expect(page.queryByTestId("products-page")).toBeNull();
+    await expect(callsOf(teamClient.teamList)).toHaveLength(0);
   },
 };

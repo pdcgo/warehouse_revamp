@@ -92,6 +92,18 @@ The selling team orders goods for a warehouse, and changes the restock while it 
 <tr><td>edit recorded in account history</td><td>✅ ok</td></tr>
 <tr><td>edit recorded in finance analytic metric</td><td>✅ ok</td></tr>
 <tr><td>restock analytic metric adjusted</td><td>✅ ok</td></tr>
+<tr><td rowspan="3" valign="top">15</td><td rowspan="3" valign="top"><code>selling:all</code> wants to restock<br>(1 product · 1 warehouse · operational account · no supplier in any team)</td><td rowspan="3" valign="top">create restock</td><td>supplier popup links to Create Supplier</td><td>✅ ok</td></tr>
+<tr><td>back on the form, new supplier can be picked, lines kept</td><td>✅ ok</td></tr>
+<tr><td>restock created without a supplier</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">16</td><td rowspan="1" valign="top"><code>selling:all</code> wants to restock<br>(1 product · 1 warehouse · operational account · other teams have suppliers · none of its own)</td><td rowspan="1" valign="top">create restock</td><td>no helper, other teams' suppliers listed</td><td>✅ ok</td></tr>
+<tr><td rowspan="3" valign="top">17</td><td rowspan="3" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to restock<br>(1 product · 1 warehouse · no account)</td><td rowspan="3" valign="top">create restock</td><td>account box says create one and mark it operational</td><td>✅ ok</td></tr>
+<tr><td>link opens Financial Accounts</td><td>✅ ok</td></tr>
+<tr><td>back on the form, new account can be picked, lines kept</td><td>✅ ok</td></tr>
+<tr><td rowspan="3" valign="top">18</td><td rowspan="3" valign="top"><code>selling:owner</code> · <code>selling:admin</code> wants to restock<br>(1 product · 1 warehouse · accounts · none operational)</td><td rowspan="3" valign="top">create restock</td><td>account box says mark one operational</td><td>✅ ok</td></tr>
+<tr><td>link opens Financial Accounts</td><td>✅ ok</td></tr>
+<tr><td>back on the form, account marked operational can be picked, lines kept</td><td>✅ ok</td></tr>
+<tr><td rowspan="2" valign="top">19</td><td rowspan="2" valign="top"><code>selling:cs</code> wants to restock<br>(1 product · 1 warehouse · no operational account)</td><td rowspan="2" valign="top">create restock</td><td>account box says ask owner or admin</td><td>✅ ok</td></tr>
+<tr><td>no link to Financial Accounts</td><td>✅ ok</td></tr>
 </table>
 
 ## receive
@@ -100,15 +112,15 @@ The warehouse signs for the box, counts it in, and corrects a count found wrong 
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
-<tr><td rowspan="3" valign="top">15</td><td rowspan="3" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: ongoing · no COD)</td><td rowspan="3" valign="top">mark arrived restock</td><td>status changed from ongoing to arrived</td><td>✅ ok</td></tr>
+<tr><td rowspan="3" valign="top">20</td><td rowspan="3" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: ongoing · no COD)</td><td rowspan="3" valign="top">mark arrived restock</td><td>status changed from ongoing to arrived</td><td>✅ ok</td></tr>
 <tr><td>receiver and time recorded</td><td>✅ ok</td></tr>
 <tr><td>can print barcode</td><td>✅ ok</td></tr>
-<tr><td rowspan="3" valign="top">16</td><td rowspan="3" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: lost · no COD)</td><td rowspan="3" valign="top">mark arrived restock</td><td>status changed from lost to arrived</td><td>✅ ok</td></tr>
+<tr><td rowspan="3" valign="top">21</td><td rowspan="3" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: lost · no COD)</td><td rowspan="3" valign="top">mark arrived restock</td><td>status changed from lost to arrived</td><td>✅ ok</td></tr>
 <tr><td>receiver and time recorded</td><td>✅ ok</td></tr>
 <tr><td>can print barcode</td><td>✅ ok</td></tr>
-<tr><td rowspan="2" valign="top">17</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: ongoing · COD)</td><td rowspan="2" valign="top">mark arrived restock</td><td>COD recorded on restock</td><td>✅ ok</td></tr>
+<tr><td rowspan="2" valign="top">22</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to receive a restock<br>(status: ongoing · COD)</td><td rowspan="2" valign="top">mark arrived restock</td><td>COD recorded on restock</td><td>✅ ok</td></tr>
 <tr><td>can print barcode</td><td>✅ ok</td></tr>
-<tr><td rowspan="10" valign="top">18</td><td rowspan="10" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: arrived · all received · new product · no COD · 1 supplier)</td><td rowspan="10" valign="top">accept restock</td><td>status changed from arrived to accepted</td><td>✅ ok</td></tr>
+<tr><td rowspan="10" valign="top">23</td><td rowspan="10" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: arrived · all received · new product · no COD · 1 supplier)</td><td rowspan="10" valign="top">accept restock</td><td>status changed from arrived to accepted</td><td>✅ ok</td></tr>
 <tr><td>ready stock increases by all received</td><td>✅ ok</td></tr>
 <tr><td>ongoing stock decreases by all received</td><td>✅ ok</td></tr>
 <tr><td>all received on rack</td><td>✅ ok</td></tr>
@@ -118,7 +130,7 @@ The warehouse signs for the box, counts it in, and corrects a count found wrong 
 <tr><td>recorded at 1 supplier</td><td>✅ ok</td></tr>
 <tr><td>can print barcode</td><td>✅ ok</td></tr>
 <tr><td>all received recorded in analytic metric</td><td>✅ ok</td></tr>
-<tr><td rowspan="11" valign="top">19</td><td rowspan="11" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · no COD · 1 supplier)</td><td rowspan="11" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
+<tr><td rowspan="11" valign="top">24</td><td rowspan="11" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · no COD · 1 supplier)</td><td rowspan="11" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
 <tr><td>ready stock increases by all received</td><td>✅ ok</td></tr>
 <tr><td>ongoing stock decreases by all received</td><td>✅ ok</td></tr>
 <tr><td>all received on rack</td><td>✅ ok</td></tr>
@@ -129,23 +141,23 @@ The warehouse signs for the box, counts it in, and corrects a count found wrong 
 <tr><td>recorded at 1 supplier</td><td>✅ ok</td></tr>
 <tr><td>can print barcode</td><td>✅ ok</td></tr>
 <tr><td>all received recorded in analytic metric</td><td>✅ ok</td></tr>
-<tr><td rowspan="4" valign="top">20</td><td rowspan="4" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · brokens thrown away · new product · no COD · 1 supplier)</td><td rowspan="4" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
+<tr><td rowspan="4" valign="top">25</td><td rowspan="4" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · brokens thrown away · new product · no COD · 1 supplier)</td><td rowspan="4" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
 <tr><td>ready stock increases, brokens excluded</td><td>✅ ok</td></tr>
 <tr><td>brokens thrown away recorded</td><td>✅ ok</td></tr>
 <tr><td>brokens recorded in analytic metric</td><td>✅ ok</td></tr>
-<tr><td rowspan="2" valign="top">21</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · brokens on rack · new product · no COD · 1 supplier)</td><td rowspan="2" valign="top">accept restock</td><td>brokens on rack</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="2" valign="top">26</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · brokens on rack · new product · no COD · 1 supplier)</td><td rowspan="2" valign="top">accept restock</td><td>brokens on rack</td><td>🚧 unimplemented</td></tr>
 <tr><td>brokens recorded in analytic metric</td><td>✅ ok</td></tr>
-<tr><td rowspan="4" valign="top">22</td><td rowspan="4" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · missing items · new product · no COD · 1 supplier)</td><td rowspan="4" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
+<tr><td rowspan="4" valign="top">27</td><td rowspan="4" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · missing items · new product · no COD · 1 supplier)</td><td rowspan="4" valign="top">accept restock</td><td>status changed from ongoing to accepted</td><td>✅ ok</td></tr>
 <tr><td>ready stock increases, missing items excluded</td><td>✅ ok</td></tr>
 <tr><td>missing items recorded</td><td>✅ ok</td></tr>
 <tr><td>missing items recorded in analytic metric</td><td>✅ ok</td></tr>
-<tr><td rowspan="2" valign="top">23</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · listed product · no COD · 1 supplier)</td><td rowspan="2" valign="top">accept restock</td><td>listed product not listed again</td><td>✅ ok</td></tr>
+<tr><td rowspan="2" valign="top">28</td><td rowspan="2" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · listed product · no COD · 1 supplier)</td><td rowspan="2" valign="top">accept restock</td><td>listed product not listed again</td><td>✅ ok</td></tr>
 <tr><td>all received recorded in analytic metric</td><td>✅ ok</td></tr>
-<tr><td rowspan="3" valign="top">24</td><td rowspan="3" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · COD · 1 supplier)</td><td rowspan="3" valign="top">accept restock</td><td>COD recorded on restock</td><td>✅ ok</td></tr>
+<tr><td rowspan="3" valign="top">29</td><td rowspan="3" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · COD · 1 supplier)</td><td rowspan="3" valign="top">accept restock</td><td>COD recorded on restock</td><td>✅ ok</td></tr>
 <tr><td>COD recorded in liability</td><td>✅ ok</td></tr>
 <tr><td>COD recorded in analytic metric</td><td>✅ ok</td></tr>
-<tr><td rowspan="1" valign="top">25</td><td><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · no COD · multi suppliers)</td><td>accept restock</td><td>recorded at each supplier</td><td>✅ ok</td></tr>
-<tr><td rowspan="9" valign="top">26</td><td rowspan="9" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to correct a received count<br>(status: accepted · all received · received count too high · 1 product · 1 rack · 1 supplier)</td><td rowspan="9" valign="top">correct received count restock</td><td>restock shows corrected received count</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">30</td><td><code>warehouse:all</code> wants to accept a restock<br>(status: ongoing · all received · new product · no COD · multi suppliers)</td><td>accept restock</td><td>recorded at each supplier</td><td>✅ ok</td></tr>
+<tr><td rowspan="9" valign="top">31</td><td rowspan="9" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to correct a received count<br>(status: accepted · all received · received count too high · 1 product · 1 rack · 1 supplier)</td><td rowspan="9" valign="top">correct received count restock</td><td>restock shows corrected received count</td><td>✅ ok</td></tr>
 <tr><td>correction recorded in restock timeline</td><td>✅ ok</td></tr>
 <tr><td>ready stock decreases</td><td>✅ ok</td></tr>
 <tr><td>stock on 1 rack decreases</td><td>✅ ok</td></tr>
@@ -154,7 +166,7 @@ The warehouse signs for the box, counts it in, and corrects a count found wrong 
 <tr><td>correction recorded in product history</td><td>✅ ok</td></tr>
 <tr><td>missing items recorded in analytic metric</td><td>✅ ok</td></tr>
 <tr><td>recorded at 1 supplier</td><td>✅ ok</td></tr>
-<tr><td rowspan="9" valign="top">27</td><td rowspan="9" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to correct a received count<br>(status: accepted · missing items · received count too low · 1 product · 1 rack · 1 supplier)</td><td rowspan="9" valign="top">correct received count restock</td><td>restock shows corrected received count</td><td>✅ ok</td></tr>
+<tr><td rowspan="9" valign="top">32</td><td rowspan="9" valign="top"><code>warehouse:owner</code> · <code>warehouse:admin</code> wants to correct a received count<br>(status: accepted · missing items · received count too low · 1 product · 1 rack · 1 supplier)</td><td rowspan="9" valign="top">correct received count restock</td><td>restock shows corrected received count</td><td>✅ ok</td></tr>
 <tr><td>correction recorded in restock timeline</td><td>✅ ok</td></tr>
 <tr><td>ready stock increases</td><td>✅ ok</td></tr>
 <tr><td>stock on 1 rack increases</td><td>✅ ok</td></tr>
@@ -163,6 +175,9 @@ The warehouse signs for the box, counts it in, and corrects a count found wrong 
 <tr><td>correction recorded in product history</td><td>✅ ok</td></tr>
 <tr><td>missing items recorded in analytic metric</td><td>✅ ok</td></tr>
 <tr><td>recorded at 1 supplier</td><td>✅ ok</td></tr>
+<tr><td rowspan="3" valign="top">33</td><td rowspan="3" valign="top"><code>warehouse:all</code> wants to accept a restock<br>(status: arrived · all received · no COD · no rack in this warehouse)</td><td rowspan="3" valign="top">accept restock</td><td>placement picker links to Racks</td><td>✅ ok</td></tr>
+<tr><td>accept cannot finish</td><td>✅ ok</td></tr>
+<tr><td>back on the accept page, new rack can be picked, counts kept</td><td>✅ ok</td></tr>
 </table>
 
 ## cancel and lost
@@ -171,7 +186,7 @@ The selling team ends a restock before the box arrives: it is called off, or giv
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
-<tr><td rowspan="8" valign="top">28</td><td rowspan="8" valign="top"><code>selling:all</code> wants to cancel a restock<br>(status: ongoing · money returned · 1 product · shipping cost · 1 warehouse · operational account)</td><td rowspan="8" valign="top">cancel restock<br><a href="#cancel-restock-is-still-to-be-checked">⚠ still to be checked</a></td><td>status changed from ongoing to cancelled</td><td>✅ ok</td></tr>
+<tr><td rowspan="8" valign="top">34</td><td rowspan="8" valign="top"><code>selling:all</code> wants to cancel a restock<br>(status: ongoing · money returned · 1 product · shipping cost · 1 warehouse · operational account)</td><td rowspan="8" valign="top">cancel restock<br><a href="#cancel-restock-is-still-to-be-checked">⚠ still to be checked</a></td><td>status changed from ongoing to cancelled</td><td>✅ ok</td></tr>
 <tr><td>cancel recorded in restock timeline</td><td>✅ ok</td></tr>
 <tr><td>ongoing stock of 1 product decreases</td><td>✅ ok</td></tr>
 <tr><td>target warehouse sees restock cancelled</td><td>✅ ok</td></tr>
@@ -179,13 +194,13 @@ The selling team ends a restock before the box arrives: it is called off, or giv
 <tr><td>operational account balance increases by product total + shipping cost</td><td>✅ ok</td></tr>
 <tr><td>cancel recorded in operational account history</td><td>✅ ok</td></tr>
 <tr><td>cancel recorded in finance analytic metric</td><td>✅ ok</td></tr>
-<tr><td rowspan="6" valign="top">29</td><td rowspan="6" valign="top"><code>selling:all</code> wants to cancel a restock<br>(status: ongoing · money not returned · 1 product · shipping cost · 1 warehouse · operational account)</td><td rowspan="6" valign="top">cancel restock<br><a href="#cancel-restock-is-still-to-be-checked">⚠ still to be checked</a></td><td>status changed from ongoing to cancelled</td><td>✅ ok</td></tr>
+<tr><td rowspan="6" valign="top">35</td><td rowspan="6" valign="top"><code>selling:all</code> wants to cancel a restock<br>(status: ongoing · money not returned · 1 product · shipping cost · 1 warehouse · operational account)</td><td rowspan="6" valign="top">cancel restock<br><a href="#cancel-restock-is-still-to-be-checked">⚠ still to be checked</a></td><td>status changed from ongoing to cancelled</td><td>✅ ok</td></tr>
 <tr><td>cancel recorded in restock timeline</td><td>✅ ok</td></tr>
 <tr><td>ongoing stock of 1 product decreases</td><td>✅ ok</td></tr>
 <tr><td>target warehouse sees restock cancelled</td><td>✅ ok</td></tr>
 <tr><td>total warehouse receive decreases</td><td>✅ ok</td></tr>
 <tr><td>operational account balance unchanged</td><td>✅ ok</td></tr>
-<tr><td rowspan="8" valign="top">30</td><td rowspan="8" valign="top"><code>selling:all</code> wants to report a lost restock<br>(status: ongoing · reason given · 1 product · 1 warehouse · operational account)</td><td rowspan="8" valign="top">mark lost restock</td><td>status changed from ongoing to lost</td><td>✅ ok</td></tr>
+<tr><td rowspan="8" valign="top">36</td><td rowspan="8" valign="top"><code>selling:all</code> wants to report a lost restock<br>(status: ongoing · reason given · 1 product · 1 warehouse · operational account)</td><td rowspan="8" valign="top">mark lost restock</td><td>status changed from ongoing to lost</td><td>✅ ok</td></tr>
 <tr><td>lost recorded in restock timeline</td><td>✅ ok</td></tr>
 <tr><td>reason shown in restock timeline</td><td>✅ ok</td></tr>
 <tr><td>ongoing stock of 1 product decreases</td><td>✅ ok</td></tr>
@@ -201,21 +216,21 @@ What happens after a problem: missing and broken units are settled with the supp
 
 <table style="border-collapse: collapse; text-align: left;" border="1">
 <tr><th>id</th><th>given</th><th>when</th><th>then</th><th>status</th></tr>
-<tr><td rowspan="1" valign="top">31</td><td rowspan="1" valign="top"><code>selling:all</code> wants to follow up restock problems<br>(status: accepted · missing items · broken items)</td><td rowspan="1" valign="top">list problem restock</td><td>restock listed with missing and broken count</td><td>✅ ok</td></tr>
-<tr><td rowspan="1" valign="top">32</td><td rowspan="1" valign="top"><code>selling:all</code> wants to follow up lost restocks<br>(status: lost)</td><td rowspan="1" valign="top">list lost restock</td><td>restock listed in lost tab</td><td>✅ ok</td></tr>
-<tr><td rowspan="4" valign="top">33</td><td rowspan="4" valign="top"><code>selling:all</code> wants to record the supplier's solution<br>(status: accepted · missing items · money refunded · operational account)</td><td rowspan="4" valign="top">resolve restock problem</td><td>solution recorded on restock</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">37</td><td rowspan="1" valign="top"><code>selling:all</code> wants to follow up restock problems<br>(status: accepted · missing items · broken items)</td><td rowspan="1" valign="top">list problem restock</td><td>restock listed with missing and broken count</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">38</td><td rowspan="1" valign="top"><code>selling:all</code> wants to follow up lost restocks<br>(status: lost)</td><td rowspan="1" valign="top">list lost restock</td><td>restock listed in lost tab</td><td>✅ ok</td></tr>
+<tr><td rowspan="4" valign="top">39</td><td rowspan="4" valign="top"><code>selling:all</code> wants to record the supplier's solution<br>(status: accepted · missing items · money refunded · operational account)</td><td rowspan="4" valign="top">resolve restock problem</td><td>solution recorded on restock</td><td>✅ ok</td></tr>
 <tr><td>solution shown in restock timeline</td><td>✅ ok</td></tr>
 <tr><td>operational account balance increases by refund</td><td>✅ ok</td></tr>
 <tr><td>refund recorded in operational account history</td><td>✅ ok</td></tr>
-<tr><td rowspan="2" valign="top">34</td><td rowspan="2" valign="top"><code>selling:all</code> wants to record the supplier's solution<br>(status: accepted · broken items · goods resent)</td><td rowspan="2" valign="top">resolve restock problem</td><td>solution recorded on restock</td><td>✅ ok</td></tr>
+<tr><td rowspan="2" valign="top">40</td><td rowspan="2" valign="top"><code>selling:all</code> wants to record the supplier's solution<br>(status: accepted · broken items · goods resent)</td><td rowspan="2" valign="top">resolve restock problem</td><td>solution recorded on restock</td><td>✅ ok</td></tr>
 <tr><td>resent goods arrive as new restock</td><td>🚧 unimplemented</td></tr>
-<tr><td rowspan="2" valign="top">35</td><td rowspan="2" valign="top"><code>selling:all</code> wants to record the platform's solution<br>(status: lost · money refunded · operational account)</td><td rowspan="2" valign="top">resolve lost restock</td><td>solution recorded on restock</td><td>✅ ok</td></tr>
+<tr><td rowspan="2" valign="top">41</td><td rowspan="2" valign="top"><code>selling:all</code> wants to record the platform's solution<br>(status: lost · money refunded · operational account)</td><td rowspan="2" valign="top">resolve lost restock</td><td>solution recorded on restock</td><td>✅ ok</td></tr>
 <tr><td>operational account balance increases by refund</td><td>✅ ok</td></tr>
-<tr><td rowspan="3" valign="top">36</td><td rowspan="3" valign="top"><code>selling:all</code> wants to record the supplier's solution<br>(status: accepted · 5 missing items · 3 resent · 2 refunded · operational account)</td><td rowspan="3" valign="top">resolve restock problem</td><td>both solutions recorded on restock</td><td>✅ ok</td></tr>
+<tr><td rowspan="3" valign="top">42</td><td rowspan="3" valign="top"><code>selling:all</code> wants to record the supplier's solution<br>(status: accepted · 5 missing items · 3 resent · 2 refunded · operational account)</td><td rowspan="3" valign="top">resolve restock problem</td><td>both solutions recorded on restock</td><td>✅ ok</td></tr>
 <tr><td>resent goods arrive as new restock</td><td>🚧 unimplemented</td></tr>
 <tr><td>operational account balance increases by refund</td><td>✅ ok</td></tr>
-<tr><td rowspan="1" valign="top">37</td><td rowspan="1" valign="top"><code>selling:all</code> wants to record the supplier's solution<br>(status: accepted · 5 missing items · 3 resent · 2 not settled yet)</td><td rowspan="1" valign="top">resolve restock problem</td><td>restock stays listed with 2 missing left</td><td>🚧 unimplemented</td></tr>
-<tr><td rowspan="3" valign="top">38</td><td rowspan="3" valign="top"><code>selling:all</code> wants to record the platform's solution<br>(status: lost · part refunded · rest resent · operational account)</td><td rowspan="3" valign="top">resolve lost restock</td><td>both solutions recorded on restock</td><td>✅ ok</td></tr>
+<tr><td rowspan="1" valign="top">43</td><td rowspan="1" valign="top"><code>selling:all</code> wants to record the supplier's solution<br>(status: accepted · 5 missing items · 3 resent · 2 not settled yet)</td><td rowspan="1" valign="top">resolve restock problem</td><td>restock stays listed with 2 missing left</td><td>🚧 unimplemented</td></tr>
+<tr><td rowspan="3" valign="top">44</td><td rowspan="3" valign="top"><code>selling:all</code> wants to record the platform's solution<br>(status: lost · part refunded · rest resent · operational account)</td><td rowspan="3" valign="top">resolve lost restock</td><td>both solutions recorded on restock</td><td>✅ ok</td></tr>
 <tr><td>operational account balance increases by refund</td><td>✅ ok</td></tr>
 <tr><td>resent goods arrive as new restock</td><td>🚧 unimplemented</td></tr>
 </table>

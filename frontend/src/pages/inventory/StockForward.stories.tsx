@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Text } from "@chakra-ui/react";
-import { expect, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
 import { LocationProbe, asTeam, routedPage } from "../../../.storybook/pageStory";
 import { ADMIN_TEAM, asAdminTeam, asPlatformOnly, asRole } from "../../../.storybook/sessionScenario";
@@ -48,7 +48,7 @@ export const AWarehouseLandsOnProducts: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByTestId("at-products", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("at-products")).toBeVisible(), { timeout: 4000 });
     await expect(canvas.getByTestId("location-search")).toHaveTextContent("q=beras");
     await expect(canvas.queryByTestId("at-inventory")).toBeNull();
   },
@@ -64,7 +64,7 @@ export const AMonitorLandsOnInventory: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByTestId("at-inventory", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("at-inventory")).toBeVisible(), { timeout: 4000 });
     await expect(canvas.getByTestId("location-search")).toHaveTextContent("q=beras");
   },
 };
@@ -78,7 +78,7 @@ export const RootLandsOnInventory: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByTestId("at-inventory", {}, { timeout: 4000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("at-inventory")).toBeVisible(), { timeout: 4000 });
     await expect(canvas.queryByTestId("at-products")).toBeNull();
   },
 };

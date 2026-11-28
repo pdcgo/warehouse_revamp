@@ -49,6 +49,9 @@ const (
 	// TeamReturnConfigurationServiceProductReturnMapByIdsProcedure is the fully-qualified name of the
 	// TeamReturnConfigurationService's ProductReturnMapByIds RPC.
 	TeamReturnConfigurationServiceProductReturnMapByIdsProcedure = "/warehouse.selling.v1.TeamReturnConfigurationService/ProductReturnMapByIds"
+	// TeamReturnConfigurationServiceProductDerivedListProcedure is the fully-qualified name of the
+	// TeamReturnConfigurationService's ProductDerivedList RPC.
+	TeamReturnConfigurationServiceProductDerivedListProcedure = "/warehouse.selling.v1.TeamReturnConfigurationService/ProductDerivedList"
 )
 
 // TeamReturnConfigurationServiceClient is a client for the
@@ -59,6 +62,10 @@ type TeamReturnConfigurationServiceClient interface {
 	TeamReturnConfigurationByIds(context.Context, *connect.Request[v1.TeamReturnConfigurationByIdsRequest]) (*connect.Response[v1.TeamReturnConfigurationByIdsResponse], error)
 	ProductReturnMapCreate(context.Context, *connect.Request[v1.ProductReturnMapCreateRequest]) (*connect.Response[v1.ProductReturnMapCreateResponse], error)
 	ProductReturnMapByIds(context.Context, *connect.Request[v1.ProductReturnMapByIdsRequest]) (*connect.Response[v1.ProductReturnMapByIdsResponse], error)
+	// PRODUK TURUNAN (produk-turunan-is-the-return-map) — one product's return maps in BOTH directions, read ACROSS
+	// TEAMS: every team's map from the product, and its owner's maps onto it. A separate read on purpose — the order
+	// form's ProductReturnMapByIds stays team-scoped, and another team's map is never seen there.
+	ProductDerivedList(context.Context, *connect.Request[v1.ProductDerivedListRequest]) (*connect.Response[v1.ProductDerivedListResponse], error)
 }
 
 // NewTeamReturnConfigurationServiceClient constructs a client for the
@@ -105,6 +112,13 @@ func NewTeamReturnConfigurationServiceClient(httpClient connect.HTTPClient, base
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		productDerivedList: connect.NewClient[v1.ProductDerivedListRequest, v1.ProductDerivedListResponse](
+			httpClient,
+			baseURL+TeamReturnConfigurationServiceProductDerivedListProcedure,
+			connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("ProductDerivedList")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -115,6 +129,7 @@ type teamReturnConfigurationServiceClient struct {
 	teamReturnConfigurationByIds  *connect.Client[v1.TeamReturnConfigurationByIdsRequest, v1.TeamReturnConfigurationByIdsResponse]
 	productReturnMapCreate        *connect.Client[v1.ProductReturnMapCreateRequest, v1.ProductReturnMapCreateResponse]
 	productReturnMapByIds         *connect.Client[v1.ProductReturnMapByIdsRequest, v1.ProductReturnMapByIdsResponse]
+	productDerivedList            *connect.Client[v1.ProductDerivedListRequest, v1.ProductDerivedListResponse]
 }
 
 // TeamReturnConfigurationDetail calls
@@ -147,6 +162,11 @@ func (c *teamReturnConfigurationServiceClient) ProductReturnMapByIds(ctx context
 	return c.productReturnMapByIds.CallUnary(ctx, req)
 }
 
+// ProductDerivedList calls warehouse.selling.v1.TeamReturnConfigurationService.ProductDerivedList.
+func (c *teamReturnConfigurationServiceClient) ProductDerivedList(ctx context.Context, req *connect.Request[v1.ProductDerivedListRequest]) (*connect.Response[v1.ProductDerivedListResponse], error) {
+	return c.productDerivedList.CallUnary(ctx, req)
+}
+
 // TeamReturnConfigurationServiceHandler is an implementation of the
 // warehouse.selling.v1.TeamReturnConfigurationService service.
 type TeamReturnConfigurationServiceHandler interface {
@@ -155,6 +175,10 @@ type TeamReturnConfigurationServiceHandler interface {
 	TeamReturnConfigurationByIds(context.Context, *connect.Request[v1.TeamReturnConfigurationByIdsRequest]) (*connect.Response[v1.TeamReturnConfigurationByIdsResponse], error)
 	ProductReturnMapCreate(context.Context, *connect.Request[v1.ProductReturnMapCreateRequest]) (*connect.Response[v1.ProductReturnMapCreateResponse], error)
 	ProductReturnMapByIds(context.Context, *connect.Request[v1.ProductReturnMapByIdsRequest]) (*connect.Response[v1.ProductReturnMapByIdsResponse], error)
+	// PRODUK TURUNAN (produk-turunan-is-the-return-map) — one product's return maps in BOTH directions, read ACROSS
+	// TEAMS: every team's map from the product, and its owner's maps onto it. A separate read on purpose — the order
+	// form's ProductReturnMapByIds stays team-scoped, and another team's map is never seen there.
+	ProductDerivedList(context.Context, *connect.Request[v1.ProductDerivedListRequest]) (*connect.Response[v1.ProductDerivedListResponse], error)
 }
 
 // NewTeamReturnConfigurationServiceHandler builds an HTTP handler from the service implementation.
@@ -196,6 +220,13 @@ func NewTeamReturnConfigurationServiceHandler(svc TeamReturnConfigurationService
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
+	teamReturnConfigurationServiceProductDerivedListHandler := connect.NewUnaryHandler(
+		TeamReturnConfigurationServiceProductDerivedListProcedure,
+		svc.ProductDerivedList,
+		connect.WithSchema(teamReturnConfigurationServiceMethods.ByName("ProductDerivedList")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/warehouse.selling.v1.TeamReturnConfigurationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TeamReturnConfigurationServiceTeamReturnConfigurationDetailProcedure:
@@ -208,6 +239,8 @@ func NewTeamReturnConfigurationServiceHandler(svc TeamReturnConfigurationService
 			teamReturnConfigurationServiceProductReturnMapCreateHandler.ServeHTTP(w, r)
 		case TeamReturnConfigurationServiceProductReturnMapByIdsProcedure:
 			teamReturnConfigurationServiceProductReturnMapByIdsHandler.ServeHTTP(w, r)
+		case TeamReturnConfigurationServiceProductDerivedListProcedure:
+			teamReturnConfigurationServiceProductDerivedListHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -235,4 +268,8 @@ func (UnimplementedTeamReturnConfigurationServiceHandler) ProductReturnMapCreate
 
 func (UnimplementedTeamReturnConfigurationServiceHandler) ProductReturnMapByIds(context.Context, *connect.Request[v1.ProductReturnMapByIdsRequest]) (*connect.Response[v1.ProductReturnMapByIdsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.TeamReturnConfigurationService.ProductReturnMapByIds is not implemented"))
+}
+
+func (UnimplementedTeamReturnConfigurationServiceHandler) ProductDerivedList(context.Context, *connect.Request[v1.ProductDerivedListRequest]) (*connect.Response[v1.ProductDerivedListResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("warehouse.selling.v1.TeamReturnConfigurationService.ProductDerivedList is not implemented"))
 }

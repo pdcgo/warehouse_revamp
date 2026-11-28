@@ -70,8 +70,8 @@ const C3 = "active bank BCA · active wallet ShopeePay · from BCA to ShopeePay 
 const C4 = "active bank BCA · active wallet ShopeePay · from BCA to ShopeePay · day tomorrow";
 const C5 = "active bank BCA · active wallet ShopeePay · from BCA to ShopeePay · amount Rp 0";
 const C6 = "transfer from active bank BCA · wallet ShopeePay already archived";
-const C7 = "transfer from active bank BCA · an unknown account made by Melati's withdrawal";
-const C8 = "unknown account Rp 300.000 from Melati · active bank BCA TikTok · from the unknown account to BCA TikTok";
+const C7 = "transfer from active bank BCA · an unknown account made by shop Melati's withdrawal";
+const C8 = "unknown account Rp 300.000 from shop Melati · active bank BCA TikTok · from the unknown account to BCA TikTok";
 // Givens 9 and 10 share this case; their roles and thens tell them apart.
 const C9 = "active bank BCA Rp 1.000.000";
 
@@ -710,9 +710,9 @@ test.describe(`selling owner · admin · warehouse owner wants to move money bet
   }
 });
 
-// ── 8 · transfer out of an unknown account (Rp 300.000 from Melati) into BCA TikTok ──────────────────────────────────
+// ── 8 · transfer out of an unknown account (Rp 300.000 from shop Melati) into BCA TikTok ──────────────────────────────────
 
-test.describe(`selling owner · admin · warehouse owner wants to move money between accounts (${C8})`, () => {
+test.describe(`selling owner · admin · warehouse owner wants to move a withdrawal into its real account (${C8})`, () => {
   for (const r of MOVERS) {
     test(`${r.given} transfer out (${C8})`, async ({ page }) => {
       const { unknown, tiktok } = ground.out[r.key]!;

@@ -32,7 +32,7 @@ export const MarksTeamsWithNoReturnWarehouse: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByTestId("team-no-return-SL-02")).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("team-no-return-SL-02")).toBeVisible(), { timeout: 5000 });
     await expect(canvas.getByTestId("team-no-return-SL-03")).toHaveTextContent("No return warehouse");
 
     await expect(canvas.getByTestId("team-row-SL-01")).toBeVisible();

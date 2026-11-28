@@ -65,6 +65,46 @@ export const ALostBoxIsSignedFor: Story = {
   },
 };
 
+// THE ARRIVAL IS SET ARRIVED (an-arrival-is-set-arrived): B's button, the dialog's title and its confirm say Set Arrived,
+// and the toast says the box was set arrived — never "sign for".
+export const SetArrivedIsTheArrivalsName: Story = {
+  args: { teamId: 14n, transfer: storyTransfer(603n) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByTestId("transfer-action-arrive-603")).toHaveTextContent("Set Arrived");
+    await userEvent.click(canvas.getByTestId("transfer-action-arrive-603"));
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    await expect(screen.getByRole("alertdialog")).toHaveTextContent("Set Arrived — Transfer #603");
+    await expect(confirm).toHaveTextContent("Set Arrived");
+    await userEvent.click(confirm);
+
+    await waitFor(() => expect(transferWire(603n).status).toBe(WarehouseTransferStatus.ARRIVED));
+    await waitFor(() => expect(screen.getByText("Box set arrived")).toBeVisible(), { timeout: 5000 });
+  },
+};
+
+// …and in Indonesian it is TANDAI TIBA — the transfer's old *Terima Paket* read as the accept (*Terima*): the button, the
+// lost box's dialog and its message all say *tandai tiba*.
+export const TandaiTibaInIndonesian: Story = {
+  args: { teamId: 14n, transfer: storyTransfer(607n) },
+  globals: { locale: "id" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await waitFor(() => expect(canvas.getByTestId("transfer-action-arrive-607")).toHaveTextContent("Tandai Tiba"));
+    await userEvent.click(canvas.getByTestId("transfer-action-arrive-607"));
+    const confirm = await screen.findByTestId("confirm-action");
+    await waitFor(() => expect(confirm).toBeVisible());
+    const dialog = screen.getByRole("alertdialog");
+    await expect(dialog).toHaveTextContent("Tandai Tiba Transfer #607");
+    await expect(dialog).toHaveTextContent("Menandainya tiba mencatat bahwa paket ternyata sampai.");
+    await expect(dialog).not.toHaveTextContent(/Terima Paket/);
+    await expect(confirm).toHaveTextContent("Tandai Tiba");
+  },
+};
+
 export const AsARow: Story = { args: { variant: "row", transfer: storyTransfer(602n) } };
 
 // Shipping records the label (the-sender-enters-the-courier-at-ship) and moves the transfer on.

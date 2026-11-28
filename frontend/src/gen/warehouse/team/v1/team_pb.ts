@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file warehouse/team/v1/team.proto.
  */
 export const file_warehouse_team_v1_team: GenFile = /*@__PURE__*/
-  fileDesc("Chx3YXJlaG91c2UvdGVhbS92MS90ZWFtLnByb3RvEhF3YXJlaG91c2UudGVhbS52MSLFAQoIVGVhbUluZm8SDwoHdGVhbV9pZBgBIAEoBBIWCg5jb250YWN0X251bWJlchgCIAEoCRIcChRkZWZhdWx0X3dhcmVob3VzZV9pZBgIIAEoBEoECAMQBEoECAQQBUoECAUQBkoECAYQB0oECAcQCFIJYmFua190eXBlUg9iYW5rX293bmVyX25hbWVSE2JhbmtfYWNjb3VudF9udW1iZXJSE3JldHVybl93YXJlaG91c2VfaWRSDnJldHVybl91c2VyX2lkItwBCgRUZWFtEgoKAmlkGAEgASgEEikKBHR5cGUYAiABKA4yGy53YXJlaG91c2UudGVhbS52MS5UZWFtVHlwZRIMCgRuYW1lGAMgASgJEhEKCXRlYW1fY29kZRgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCRIPCgdkZWxldGVkGAYgASgIEikKBGluZm8YByABKAsyGy53YXJlaG91c2UudGVhbS52MS5UZWFtSW5mbxIRCglpbWFnZV91cmwYCCABKAkSGAoQcHJpb3JpdHlfcHJvZHVjdBgJIAEoCCLNAQoRVGVhbUNyZWF0ZVJlcXVlc3QSNwoEdHlwZRgBIAEoDjIbLndhcmVob3VzZS50ZWFtLnYxLlRlYW1UeXBlQgy6SAmCAQYQASAAIAESGAoEbmFtZRgCIAEoCUIKukgHcgUQBBiAARIcCgl0ZWFtX2NvZGUYAyABKAlCCbpIBnIEEAEYChIdCgtkZXNjcmlwdGlvbhgEIAEoCUIIukgFcgMYrAISHgoNb3duZXJfdXNlcl9pZBgFIAEoBEIHukgEMgIgADoIkrUYBAoCAQIiOwoSVGVhbUNyZWF0ZVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtIs0BChFUZWFtVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCgRuYW1lGAIgASgJQgq6SAdyBRAEGIABSACIAQESIgoLZGVzY3JpcHRpb24YAyABKAlCCLpIBXIDGKwCSAGIAQESIAoJaW1hZ2VfdXJsGAQgASgJQgi6SAVyAxiACEgCiAEBOg6StRgKCggBAgMEBgkLDEIHCgVfbmFtZUIOCgxfZGVzY3JpcHRpb25CDAoKX2ltYWdlX3VybCI7ChJUZWFtVXBkYXRlUmVzcG9uc2USJQoEdGVhbRgBIAEoCzIXLndhcmVob3VzZS50ZWFtLnYxLlRlYW0iNwoRVGVhbURlbGV0ZVJlcXVlc3QSGAoHdGVhbV9pZBgBIAEoBEIHukgEMgIgADoIkrUYBAoCAQIiFAoSVGVhbURlbGV0ZVJlc3BvbnNlInMKDlRlYW1MaXN0RmlsdGVyEhIKAXEYASABKAlCB7pIBHICGGQSLgoJdGVhbV90eXBlGAIgASgOMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbVR5cGUSHQoVcHJpb3JpdHlfcHJvZHVjdF9vbmx5GAMgASgIIrYBChJUZWFtTGlzdEZpbHRlclNvcnQSNgoJc29ydF90eXBlGAEgASgOMiMud2FyZWhvdXNlLmNvbW1vbi52MS5Db21tb25Tb3J0VHlwZRIzCgdnZW5lcmFsGAIgASgOMiAud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsU29ydEgAEi4KBHRlYW0YAyABKA4yHi53YXJlaG91c2UudGVhbS52MS5UZWFtUm93U29ydEgAQgMKAXMi+QEKD1RlYW1MaXN0UmVxdWVzdBIxCgZmaWx0ZXIYASABKAsyIS53YXJlaG91c2UudGVhbS52MS5UZWFtTGlzdEZpbHRlchIzCgRzb3J0GAIgASgLMiUud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RGaWx0ZXJTb3J0EjkKDGRhdGFfcmVxdWVzdBgDIAMoDjIjLndhcmVob3VzZS50ZWFtLnYxLlRlYW1MaXN0RGF0YVR5cGUSOwoEcGFnZRgEIAEoCzIlLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uUGFnaW5hdGlvbkIGukgDyAEBOgaStRgCIAEiuAEKC1RlYW1Sb3dJdGVtEgoKAmlkGAEgASgEEikKBHR5cGUYAiABKA4yGy53YXJlaG91c2UudGVhbS52MS5UZWFtVHlwZRIMCgRuYW1lGAMgASgJEhEKCXRlYW1fY29kZRgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCRIPCgdkZWxldGVkGAYgASgIEhEKCWltYWdlX3VybBgHIAEoCRIYChBwcmlvcml0eV9wcm9kdWN0GAggASgIIqIBCg5UZWFtUm93TWFwSXRlbRJACghtYXBfZGF0YRgBIAMoCzIuLndhcmVob3VzZS50ZWFtLnYxLlRlYW1Sb3dNYXBJdGVtLk1hcERhdGFFbnRyeRpOCgxNYXBEYXRhRW50cnkSCwoDa2V5GAEgASgEEi0KBXZhbHVlGAIgASgLMh4ud2FyZWhvdXNlLnRlYW0udjEuVGVhbVJvd0l0ZW06AjgBIoYBChRUZWFtTGlzdFJlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjEKBHRlYW0YAiABKAsyIS53YXJlaG91c2UudGVhbS52MS5UZWFtUm93TWFwSXRlbUgAQgMKAWQiiQEKEFRlYW1MaXN0UmVzcG9uc2USNgoFaXRlbXMYASADKAsyJy53YXJlaG91c2UudGVhbS52MS5UZWFtTGlzdFJlc3BvbnNlSXRlbRILCgNpZHMYAiADKAQSMAoJcGFnZV9pbmZvGAMgASgLMh0ud2FyZWhvdXNlLmNvbW1vbi52MS5QYWdlSW5mbyI1ChFUZWFtRGV0YWlsUmVxdWVzdBIYCgd0ZWFtX2lkGAEgASgEQge6SAQyAiAAOgaStRgCIAEiOwoSVGVhbURldGFpbFJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtIjMKD1RlYW1CeUlkc0ZpbHRlchIgCgNpZHMYASADKARCE7pIEJIBDQgBEMgBGAEiBDICIAAikgEKEFRlYW1CeUlkc1JlcXVlc3QSOgoGZmlsdGVyGAEgASgLMiIud2FyZWhvdXNlLnRlYW0udjEuVGVhbUJ5SWRzRmlsdGVyQga6SAPIAQESOgoMZGF0YV9yZXF1ZXN0GAIgAygOMiQud2FyZWhvdXNlLnRlYW0udjEuVGVhbUJ5SWRzRGF0YVR5cGU6BpK1GAIgASKHAQoVVGVhbUJ5SWRzUmVzcG9uc2VJdGVtEjYKB2dlbmVyYWwYASABKAsyIy53YXJlaG91c2UuY29tbW9uLnYxLkdlbmVyYWxNYXBJdGVtSAASMQoEdGVhbRgCIAEoCzIhLndhcmVob3VzZS50ZWFtLnYxLlRlYW1Sb3dNYXBJdGVtSABCAwoBZCJQChVUZWFtQnlJZHNSZXNwb25zZUxpc3QSNwoFaXRlbXMYASADKAsyKC53YXJlaG91c2UudGVhbS52MS5UZWFtQnlJZHNSZXNwb25zZUl0ZW0iqwEKEVRlYW1CeUlkc1Jlc3BvbnNlEj4KBWl0ZW1zGAEgAygLMi8ud2FyZWhvdXNlLnRlYW0udjEuVGVhbUJ5SWRzUmVzcG9uc2UuSXRlbXNFbnRyeRpWCgpJdGVtc0VudHJ5EgsKA2tleRgBIAEoBBI3CgV2YWx1ZRgCIAEoCzIoLndhcmVob3VzZS50ZWFtLnYxLlRlYW1CeUlkc1Jlc3BvbnNlTGlzdDoCOAEirgIKFVRlYW1JbmZvVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIkCg5jb250YWN0X251bWJlchgCIAEoCUIHukgEcgIYKEgAiAEBEiEKFGRlZmF1bHRfd2FyZWhvdXNlX2lkGAggASgESAGIAQE6DpK1GAoKCAECAwQGCQsMQhEKD19jb250YWN0X251bWJlckIXChVfZGVmYXVsdF93YXJlaG91c2VfaWRKBAgDEARKBAgEEAVKBAgFEAZKBAgGEAdKBAgHEAhSCWJhbmtfdHlwZVIPYmFua19vd25lcl9uYW1lUhNiYW5rX2FjY291bnRfbnVtYmVyUhNyZXR1cm5fd2FyZWhvdXNlX2lkUg5yZXR1cm5fdXNlcl9pZCJDChZUZWFtSW5mb1VwZGF0ZVJlc3BvbnNlEikKBGluZm8YASABKAsyGy53YXJlaG91c2UudGVhbS52MS5UZWFtSW5mbyp+CghUZWFtVHlwZRIZChVURUFNX1RZUEVfVU5TUEVDSUZJRUQQABISCg5URUFNX1RZUEVfUk9PVBABEhMKD1RFQU1fVFlQRV9BRE1JThACEhcKE1RFQU1fVFlQRV9XQVJFSE9VU0UQAxIVChFURUFNX1RZUEVfU0VMTElORxAEKnYKEFRlYW1MaXN0RGF0YVR5cGUSIwofVEVBTV9MSVNUX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEh8KG1RFQU1fTElTVF9EQVRBX1RZUEVfR0VORVJBTBABEhwKGFRFQU1fTElTVF9EQVRBX1RZUEVfVEVBTRACKncKC1RlYW1Sb3dTb3J0Eh0KGVRFQU1fUk9XX1NPUlRfVU5TUEVDSUZJRUQQABIWChJURUFNX1JPV19TT1JUX05BTUUQARIbChdURUFNX1JPV19TT1JUX1RFQU1fQ09ERRACEhQKEFRFQU1fUk9XX1NPUlRfSUQQAyp9ChFUZWFtQnlJZHNEYXRhVHlwZRIlCiFURUFNX0JZX0lEU19EQVRBX1RZUEVfVU5TUEVDSUZJRUQQABIhCh1URUFNX0JZX0lEU19EQVRBX1RZUEVfR0VORVJBTBABEh4KGlRFQU1fQllfSURTX0RBVEFfVFlQRV9URUFNEAIylwUKC1RlYW1TZXJ2aWNlElkKClRlYW1DcmVhdGUSJC53YXJlaG91c2UudGVhbS52MS5UZWFtQ3JlYXRlUmVxdWVzdBolLndhcmVob3VzZS50ZWFtLnYxLlRlYW1DcmVhdGVSZXNwb25zZRJZCgpUZWFtVXBkYXRlEiQud2FyZWhvdXNlLnRlYW0udjEuVGVhbVVwZGF0ZVJlcXVlc3QaJS53YXJlaG91c2UudGVhbS52MS5UZWFtVXBkYXRlUmVzcG9uc2USWQoKVGVhbURlbGV0ZRIkLndhcmVob3VzZS50ZWFtLnYxLlRlYW1EZWxldGVSZXF1ZXN0GiUud2FyZWhvdXNlLnRlYW0udjEuVGVhbURlbGV0ZVJlc3BvbnNlElgKCFRlYW1MaXN0EiIud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RSZXF1ZXN0GiMud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RSZXNwb25zZSIDkAIBElkKClRlYW1EZXRhaWwSJC53YXJlaG91c2UudGVhbS52MS5UZWFtRGV0YWlsUmVxdWVzdBolLndhcmVob3VzZS50ZWFtLnYxLlRlYW1EZXRhaWxSZXNwb25zZRJbCglUZWFtQnlJZHMSIy53YXJlaG91c2UudGVhbS52MS5UZWFtQnlJZHNSZXF1ZXN0GiQud2FyZWhvdXNlLnRlYW0udjEuVGVhbUJ5SWRzUmVzcG9uc2UiA5ACARJlCg5UZWFtSW5mb1VwZGF0ZRIoLndhcmVob3VzZS50ZWFtLnYxLlRlYW1JbmZvVXBkYXRlUmVxdWVzdBopLndhcmVob3VzZS50ZWFtLnYxLlRlYW1JbmZvVXBkYXRlUmVzcG9uc2VCSFpGZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS90ZWFtL3YxO3RlYW12MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
+  fileDesc("Chx3YXJlaG91c2UvdGVhbS92MS90ZWFtLnByb3RvEhF3YXJlaG91c2UudGVhbS52MSLFAQoIVGVhbUluZm8SDwoHdGVhbV9pZBgBIAEoBBIWCg5jb250YWN0X251bWJlchgCIAEoCRIcChRkZWZhdWx0X3dhcmVob3VzZV9pZBgIIAEoBEoECAMQBEoECAQQBUoECAUQBkoECAYQB0oECAcQCFIJYmFua190eXBlUg9iYW5rX293bmVyX25hbWVSE2JhbmtfYWNjb3VudF9udW1iZXJSE3JldHVybl93YXJlaG91c2VfaWRSDnJldHVybl91c2VyX2lkItwBCgRUZWFtEgoKAmlkGAEgASgEEikKBHR5cGUYAiABKA4yGy53YXJlaG91c2UudGVhbS52MS5UZWFtVHlwZRIMCgRuYW1lGAMgASgJEhEKCXRlYW1fY29kZRgEIAEoCRITCgtkZXNjcmlwdGlvbhgFIAEoCRIPCgdkZWxldGVkGAYgASgIEikKBGluZm8YByABKAsyGy53YXJlaG91c2UudGVhbS52MS5UZWFtSW5mbxIRCglpbWFnZV91cmwYCCABKAkSGAoQcHJpb3JpdHlfcHJvZHVjdBgJIAEoCCLNAQoRVGVhbUNyZWF0ZVJlcXVlc3QSNwoEdHlwZRgBIAEoDjIbLndhcmVob3VzZS50ZWFtLnYxLlRlYW1UeXBlQgy6SAmCAQYQASAAIAESGAoEbmFtZRgCIAEoCUIKukgHcgUQBBiAARIcCgl0ZWFtX2NvZGUYAyABKAlCCbpIBnIEEAEYChIdCgtkZXNjcmlwdGlvbhgEIAEoCUIIukgFcgMYrAISHgoNb3duZXJfdXNlcl9pZBgFIAEoBEIHukgEMgIgADoIkrUYBAoCAQIiOwoSVGVhbUNyZWF0ZVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtIs0BChFUZWFtVXBkYXRlUmVxdWVzdBIcCgd0ZWFtX2lkGAEgASgEQgu6SAQyAiAAkLUYARIdCgRuYW1lGAIgASgJQgq6SAdyBRAEGIABSACIAQESIgoLZGVzY3JpcHRpb24YAyABKAlCCLpIBXIDGKwCSAGIAQESIAoJaW1hZ2VfdXJsGAQgASgJQgi6SAVyAxiACEgCiAEBOg6StRgKCggBAgMEBgkLDEIHCgVfbmFtZUIOCgxfZGVzY3JpcHRpb25CDAoKX2ltYWdlX3VybCI7ChJUZWFtVXBkYXRlUmVzcG9uc2USJQoEdGVhbRgBIAEoCzIXLndhcmVob3VzZS50ZWFtLnYxLlRlYW0iXwoVVGVhbUNvZGVVcGRhdGVSZXF1ZXN0EhwKB3RlYW1faWQYASABKARCC7pIBDICIACQtRgBEhwKCXRlYW1fY29kZRgCIAEoCUIJukgGcgQQARgKOgqStRgGCgQBAgMEIr0BChZUZWFtQ29kZVVwZGF0ZVJlc3BvbnNlEiUKBHRlYW0YASABKAsyFy53YXJlaG91c2UudGVhbS52MS5UZWFtEg8KB2NoYW5nZWQYAiABKAgSGwoTcHJvZHVjdHNfcmVjb21wb3NlZBgDIAEoDRIXCg9wcm9kdWN0c190YWdnZWQYBCABKA0SGwoTcHJvZHVjdHNfbGVmdF9hbG9uZRgFIAEoDRIYChBsZWZ0X2Fsb25lX2NvZGVzGAYgAygJImAKFlRlYW1Db2RlUHJldmlld1JlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESHAoJdGVhbV9jb2RlGAIgASgJQgm6SAZyBBABGAo6CpK1GAYKBAECAwQizgEKF1RlYW1Db2RlUHJldmlld1Jlc3BvbnNlEjoKB3ZlcmRpY3QYASABKA4yKS53YXJlaG91c2UudGVhbS52MS5UZWFtQ29kZVByZXZpZXdWZXJkaWN0EhgKEGhvbGRlcl90ZWFtX25hbWUYAiABKAkSEAoIcHJvZHVjdHMYAyABKA0SGAoQZXhhbXBsZV9vbGRfY29kZRgEIAEoCRIYChBleGFtcGxlX25ld19jb2RlGAUgASgJEhcKD3dhcmVob3VzZV9uYW1lcxgGIAMoCSJFCg1UZWFtQ29kZVRha2VuEhEKCXRlYW1fY29kZRgBIAEoCRIRCgl0ZWFtX25hbWUYAiABKAkSDgoGZm9ybWVyGAMgASgIIjcKEVRlYW1EZWxldGVSZXF1ZXN0EhgKB3RlYW1faWQYASABKARCB7pIBDICIAA6CJK1GAQKAgECIhQKElRlYW1EZWxldGVSZXNwb25zZSJzCg5UZWFtTGlzdEZpbHRlchISCgFxGAEgASgJQge6SARyAhhkEi4KCXRlYW1fdHlwZRgCIAEoDjIbLndhcmVob3VzZS50ZWFtLnYxLlRlYW1UeXBlEh0KFXByaW9yaXR5X3Byb2R1Y3Rfb25seRgDIAEoCCK2AQoSVGVhbUxpc3RGaWx0ZXJTb3J0EjYKCXNvcnRfdHlwZRgBIAEoDjIjLndhcmVob3VzZS5jb21tb24udjEuQ29tbW9uU29ydFR5cGUSMwoHZ2VuZXJhbBgCIAEoDjIgLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbFNvcnRIABIuCgR0ZWFtGAMgASgOMh4ud2FyZWhvdXNlLnRlYW0udjEuVGVhbVJvd1NvcnRIAEIDCgFzIvkBCg9UZWFtTGlzdFJlcXVlc3QSMQoGZmlsdGVyGAEgASgLMiEud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RGaWx0ZXISMwoEc29ydBgCIAEoCzIlLndhcmVob3VzZS50ZWFtLnYxLlRlYW1MaXN0RmlsdGVyU29ydBI5CgxkYXRhX3JlcXVlc3QYAyADKA4yIy53YXJlaG91c2UudGVhbS52MS5UZWFtTGlzdERhdGFUeXBlEjsKBHBhZ2UYBCABKAsyJS53YXJlaG91c2UuY29tbW9uLnYxLkNvbW1vblBhZ2luYXRpb25CBrpIA8gBAToGkrUYAiABIrgBCgtUZWFtUm93SXRlbRIKCgJpZBgBIAEoBBIpCgR0eXBlGAIgASgOMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbVR5cGUSDAoEbmFtZRgDIAEoCRIRCgl0ZWFtX2NvZGUYBCABKAkSEwoLZGVzY3JpcHRpb24YBSABKAkSDwoHZGVsZXRlZBgGIAEoCBIRCglpbWFnZV91cmwYByABKAkSGAoQcHJpb3JpdHlfcHJvZHVjdBgIIAEoCCKiAQoOVGVhbVJvd01hcEl0ZW0SQAoIbWFwX2RhdGEYASADKAsyLi53YXJlaG91c2UudGVhbS52MS5UZWFtUm93TWFwSXRlbS5NYXBEYXRhRW50cnkaTgoMTWFwRGF0YUVudHJ5EgsKA2tleRgBIAEoBBItCgV2YWx1ZRgCIAEoCzIeLndhcmVob3VzZS50ZWFtLnYxLlRlYW1Sb3dJdGVtOgI4ASKGAQoUVGVhbUxpc3RSZXNwb25zZUl0ZW0SNgoHZ2VuZXJhbBgBIAEoCzIjLndhcmVob3VzZS5jb21tb24udjEuR2VuZXJhbE1hcEl0ZW1IABIxCgR0ZWFtGAIgASgLMiEud2FyZWhvdXNlLnRlYW0udjEuVGVhbVJvd01hcEl0ZW1IAEIDCgFkIokBChBUZWFtTGlzdFJlc3BvbnNlEjYKBWl0ZW1zGAEgAygLMicud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RSZXNwb25zZUl0ZW0SCwoDaWRzGAIgAygEEjAKCXBhZ2VfaW5mbxgDIAEoCzIdLndhcmVob3VzZS5jb21tb24udjEuUGFnZUluZm8iNQoRVGVhbURldGFpbFJlcXVlc3QSGAoHdGVhbV9pZBgBIAEoBEIHukgEMgIgADoGkrUYAiABIjsKElRlYW1EZXRhaWxSZXNwb25zZRIlCgR0ZWFtGAEgASgLMhcud2FyZWhvdXNlLnRlYW0udjEuVGVhbSIzCg9UZWFtQnlJZHNGaWx0ZXISIAoDaWRzGAEgAygEQhO6SBCSAQ0IARDIARgBIgQyAiAAIpIBChBUZWFtQnlJZHNSZXF1ZXN0EjoKBmZpbHRlchgBIAEoCzIiLndhcmVob3VzZS50ZWFtLnYxLlRlYW1CeUlkc0ZpbHRlckIGukgDyAEBEjoKDGRhdGFfcmVxdWVzdBgCIAMoDjIkLndhcmVob3VzZS50ZWFtLnYxLlRlYW1CeUlkc0RhdGFUeXBlOgaStRgCIAEihwEKFVRlYW1CeUlkc1Jlc3BvbnNlSXRlbRI2CgdnZW5lcmFsGAEgASgLMiMud2FyZWhvdXNlLmNvbW1vbi52MS5HZW5lcmFsTWFwSXRlbUgAEjEKBHRlYW0YAiABKAsyIS53YXJlaG91c2UudGVhbS52MS5UZWFtUm93TWFwSXRlbUgAQgMKAWQiUAoVVGVhbUJ5SWRzUmVzcG9uc2VMaXN0EjcKBWl0ZW1zGAEgAygLMigud2FyZWhvdXNlLnRlYW0udjEuVGVhbUJ5SWRzUmVzcG9uc2VJdGVtIqsBChFUZWFtQnlJZHNSZXNwb25zZRI+CgVpdGVtcxgBIAMoCzIvLndhcmVob3VzZS50ZWFtLnYxLlRlYW1CeUlkc1Jlc3BvbnNlLkl0ZW1zRW50cnkaVgoKSXRlbXNFbnRyeRILCgNrZXkYASABKAQSNwoFdmFsdWUYAiABKAsyKC53YXJlaG91c2UudGVhbS52MS5UZWFtQnlJZHNSZXNwb25zZUxpc3Q6AjgBIq4CChVUZWFtSW5mb1VwZGF0ZVJlcXVlc3QSHAoHdGVhbV9pZBgBIAEoBEILukgEMgIgAJC1GAESJAoOY29udGFjdF9udW1iZXIYAiABKAlCB7pIBHICGChIAIgBARIhChRkZWZhdWx0X3dhcmVob3VzZV9pZBgIIAEoBEgBiAEBOg6StRgKCggBAgMEBgkLDEIRCg9fY29udGFjdF9udW1iZXJCFwoVX2RlZmF1bHRfd2FyZWhvdXNlX2lkSgQIAxAESgQIBBAFSgQIBRAGSgQIBhAHSgQIBxAIUgliYW5rX3R5cGVSD2Jhbmtfb3duZXJfbmFtZVITYmFua19hY2NvdW50X251bWJlclITcmV0dXJuX3dhcmVob3VzZV9pZFIOcmV0dXJuX3VzZXJfaWQiQwoWVGVhbUluZm9VcGRhdGVSZXNwb25zZRIpCgRpbmZvGAEgASgLMhsud2FyZWhvdXNlLnRlYW0udjEuVGVhbUluZm8qfgoIVGVhbVR5cGUSGQoVVEVBTV9UWVBFX1VOU1BFQ0lGSUVEEAASEgoOVEVBTV9UWVBFX1JPT1QQARITCg9URUFNX1RZUEVfQURNSU4QAhIXChNURUFNX1RZUEVfV0FSRUhPVVNFEAMSFQoRVEVBTV9UWVBFX1NFTExJTkcQBCrZAQoWVGVhbUNvZGVQcmV2aWV3VmVyZGljdBIpCiVURUFNX0NPREVfUFJFVklFV19WRVJESUNUX1VOU1BFQ0lGSUVEEAASJQohVEVBTV9DT0RFX1BSRVZJRVdfVkVSRElDVF9DSEFOR0VTEAESIgoeVEVBTV9DT0RFX1BSRVZJRVdfVkVSRElDVF9TQU1FEAISIwofVEVBTV9DT0RFX1BSRVZJRVdfVkVSRElDVF9UQUtFThADEiQKIFRFQU1fQ09ERV9QUkVWSUVXX1ZFUkRJQ1RfRk9STUVSEAQqdgoQVGVhbUxpc3REYXRhVHlwZRIjCh9URUFNX0xJU1RfREFUQV9UWVBFX1VOU1BFQ0lGSUVEEAASHwobVEVBTV9MSVNUX0RBVEFfVFlQRV9HRU5FUkFMEAESHAoYVEVBTV9MSVNUX0RBVEFfVFlQRV9URUFNEAIqdwoLVGVhbVJvd1NvcnQSHQoZVEVBTV9ST1dfU09SVF9VTlNQRUNJRklFRBAAEhYKElRFQU1fUk9XX1NPUlRfTkFNRRABEhsKF1RFQU1fUk9XX1NPUlRfVEVBTV9DT0RFEAISFAoQVEVBTV9ST1dfU09SVF9JRBADKn0KEVRlYW1CeUlkc0RhdGFUeXBlEiUKIVRFQU1fQllfSURTX0RBVEFfVFlQRV9VTlNQRUNJRklFRBAAEiEKHVRFQU1fQllfSURTX0RBVEFfVFlQRV9HRU5FUkFMEAESHgoaVEVBTV9CWV9JRFNfREFUQV9UWVBFX1RFQU0QAjLtBgoLVGVhbVNlcnZpY2USWQoKVGVhbUNyZWF0ZRIkLndhcmVob3VzZS50ZWFtLnYxLlRlYW1DcmVhdGVSZXF1ZXN0GiUud2FyZWhvdXNlLnRlYW0udjEuVGVhbUNyZWF0ZVJlc3BvbnNlElkKClRlYW1VcGRhdGUSJC53YXJlaG91c2UudGVhbS52MS5UZWFtVXBkYXRlUmVxdWVzdBolLndhcmVob3VzZS50ZWFtLnYxLlRlYW1VcGRhdGVSZXNwb25zZRJlCg5UZWFtQ29kZVVwZGF0ZRIoLndhcmVob3VzZS50ZWFtLnYxLlRlYW1Db2RlVXBkYXRlUmVxdWVzdBopLndhcmVob3VzZS50ZWFtLnYxLlRlYW1Db2RlVXBkYXRlUmVzcG9uc2USbQoPVGVhbUNvZGVQcmV2aWV3Eikud2FyZWhvdXNlLnRlYW0udjEuVGVhbUNvZGVQcmV2aWV3UmVxdWVzdBoqLndhcmVob3VzZS50ZWFtLnYxLlRlYW1Db2RlUHJldmlld1Jlc3BvbnNlIgOQAgESWQoKVGVhbURlbGV0ZRIkLndhcmVob3VzZS50ZWFtLnYxLlRlYW1EZWxldGVSZXF1ZXN0GiUud2FyZWhvdXNlLnRlYW0udjEuVGVhbURlbGV0ZVJlc3BvbnNlElgKCFRlYW1MaXN0EiIud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RSZXF1ZXN0GiMud2FyZWhvdXNlLnRlYW0udjEuVGVhbUxpc3RSZXNwb25zZSIDkAIBElkKClRlYW1EZXRhaWwSJC53YXJlaG91c2UudGVhbS52MS5UZWFtRGV0YWlsUmVxdWVzdBolLndhcmVob3VzZS50ZWFtLnYxLlRlYW1EZXRhaWxSZXNwb25zZRJbCglUZWFtQnlJZHMSIy53YXJlaG91c2UudGVhbS52MS5UZWFtQnlJZHNSZXF1ZXN0GiQud2FyZWhvdXNlLnRlYW0udjEuVGVhbUJ5SWRzUmVzcG9uc2UiA5ACARJlCg5UZWFtSW5mb1VwZGF0ZRIoLndhcmVob3VzZS50ZWFtLnYxLlRlYW1JbmZvVXBkYXRlUmVxdWVzdBopLndhcmVob3VzZS50ZWFtLnYxLlRlYW1JbmZvVXBkYXRlUmVzcG9uc2VCSFpGZ2l0aHViLmNvbS9wZGNnby93YXJlaG91c2VfcmV2YW1wL2JhY2tlbmQvZ2VuL3dhcmVob3VzZS90ZWFtL3YxO3RlYW12MWIGcHJvdG8z", [file_buf_validate_validate, file_warehouse_common_v1_list, file_warehouse_common_v1_page, file_warehouse_role_base_v1_role]);
 
 /**
  * @generated from message warehouse.team.v1.TeamInfo
@@ -141,6 +141,9 @@ export type TeamCreateRequest = Message<"warehouse.team.v1.TeamCreateRequest"> &
   name: string;
 
   /**
+   * A code another team holds — or held once, a former code being never given to another team
+   * (a-team-code-change-recomposes-its-product-codes) — is AlreadyExists, a TeamCodeTaken detail naming that team.
+   *
    * @generated from field: string team_code = 3;
    */
   teamCode: string;
@@ -201,7 +204,8 @@ export type TeamUpdateRequest = Message<"warehouse.team.v1.TeamUpdateRequest"> &
   teamId: bigint;
 
   /**
-   * Absent = leave alone. `type` and `team_code` are immutable after create.
+   * Absent = leave alone. `type` is immutable after create; `team_code` changes only through TeamCodeUpdate, whose
+   * policy is narrower (a selling team's owner and admin, Root, the Administrator) and which recomposes the products.
    *
    * @generated from field: optional string name = 2;
    */
@@ -245,6 +249,209 @@ export const TeamUpdateResponseSchema: GenMessage<TeamUpdateResponse> = /*@__PUR
   messageDesc(file_warehouse_team_v1_team, 5);
 
 /**
+ * THE TEAM CODE EDIT (backlog #149, a-team-code-change-recomposes-its-product-codes; the screens' design
+ * the-team-code-and-product-tags-prototype-is-accepted). The selling Owner and Admin on their own team (Settings' Kode tim),
+ * Root and the Administrator on any selling team (Teams → Edit Team) — the acceptance rows' givens. A warehouse or admin
+ * team's code is refused (FailedPrecondition): no product is composed from it.
+ *
+ * @generated from message warehouse.team.v1.TeamCodeUpdateRequest
+ */
+export type TeamCodeUpdateRequest = Message<"warehouse.team.v1.TeamCodeUpdateRequest"> & {
+  /**
+   * use_scope is LOAD-BEARING: the selling roles above are evaluated in this team.
+   *
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * The new code, 1–10 characters as TeamCreate takes it; trimmed of surrounding space (blank is InvalidArgument).
+   * The code the team has already is no change: nothing is written and nothing recomposed.
+   *
+   * @generated from field: string team_code = 2;
+   */
+  teamCode: string;
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamCodeUpdateRequest.
+ * Use `create(TeamCodeUpdateRequestSchema)` to create a new message.
+ */
+export const TeamCodeUpdateRequestSchema: GenMessage<TeamCodeUpdateRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 6);
+
+/**
+ * @generated from message warehouse.team.v1.TeamCodeUpdateResponse
+ */
+export type TeamCodeUpdateResponse = Message<"warehouse.team.v1.TeamCodeUpdateResponse"> & {
+  /**
+   * @generated from field: warehouse.team.v1.Team team = 1;
+   */
+  team?: Team | undefined;
+
+  /**
+   * false when the code sent is the team's code already — nothing was written.
+   *
+   * @generated from field: bool changed = 2;
+   */
+  changed: boolean;
+
+  /**
+   * How many of the team's products took the new code — every one whose code began with the old code and a dash,
+   * archived ones too.
+   *
+   * @generated from field: uint32 products_recomposed = 3;
+   */
+  productsRecomposed: number;
+
+  /**
+   * How many of them were tagged `need_reprint_code` — those some warehouse holds stock of; one with nothing on a shelf
+   * takes the new code untagged.
+   *
+   * @generated from field: uint32 products_tagged = 4;
+   */
+  productsTagged: number;
+
+  /**
+   * How many of the team's products did NOT begin with the old code and a dash, and were left as they were (rows written
+   * before codes were composed); `left_alone_codes` names the first 20 of them.
+   *
+   * @generated from field: uint32 products_left_alone = 5;
+   */
+  productsLeftAlone: number;
+
+  /**
+   * @generated from field: repeated string left_alone_codes = 6;
+   */
+  leftAloneCodes: string[];
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamCodeUpdateResponse.
+ * Use `create(TeamCodeUpdateResponseSchema)` to create a new message.
+ */
+export const TeamCodeUpdateResponseSchema: GenMessage<TeamCodeUpdateResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 7);
+
+/**
+ * THE TEAM CODE PREVIEW (backlog #150) — the figures of the confirm Settings' Kode tim card and root's Edit Team open
+ * BEFORE TeamCodeUpdate is sent (the-team-code-and-product-tags-prototype-is-accepted, *the confirm*): read when the
+ * confirm opens, never on a page load. TeamCodeUpdate's policy and scope — whoever may change the code may ask first.
+ *
+ * @generated from message warehouse.team.v1.TeamCodePreviewRequest
+ */
+export type TeamCodePreviewRequest = Message<"warehouse.team.v1.TeamCodePreviewRequest"> & {
+  /**
+   * use_scope is LOAD-BEARING: the selling roles above are evaluated in this team.
+   *
+   * @generated from field: uint64 team_id = 1;
+   */
+  teamId: bigint;
+
+  /**
+   * The code the person typed, as TeamCodeUpdate takes it: 1–10 characters, trimmed (blank is InvalidArgument).
+   *
+   * @generated from field: string team_code = 2;
+   */
+  teamCode: string;
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamCodePreviewRequest.
+ * Use `create(TeamCodePreviewRequestSchema)` to create a new message.
+ */
+export const TeamCodePreviewRequestSchema: GenMessage<TeamCodePreviewRequest> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 8);
+
+/**
+ * @generated from message warehouse.team.v1.TeamCodePreviewResponse
+ */
+export type TeamCodePreviewResponse = Message<"warehouse.team.v1.TeamCodePreviewResponse"> & {
+  /**
+   * @generated from field: warehouse.team.v1.TeamCodePreviewVerdict verdict = 1;
+   */
+  verdict: TeamCodePreviewVerdict;
+
+  /**
+   * TAKEN / FORMER: the team that holds the code, or held it — the refusal's words (*SL-01 sudah ada — dipakai Toko
+   * Melati*). Empty otherwise.
+   *
+   * @generated from field: string holder_team_name = 2;
+   */
+  holderTeamName: string;
+
+  /**
+   * CHANGES only — everything below is empty for any other verdict.
+   * How many of the team's products would take the new code: every one whose code begins with the team's code and a
+   * dash, archived ones too (TeamCodeUpdate's rule).
+   *
+   * @generated from field: uint32 products = 3;
+   */
+  products: number;
+
+  /**
+   * One of them, old → new (an active product first): SL-03-ANG-001 → ANGR-ANG-001. Empty when there is none.
+   *
+   * @generated from field: string example_old_code = 4;
+   */
+  exampleOldCode: string;
+
+  /**
+   * @generated from field: string example_new_code = 5;
+   */
+  exampleNewCode: string;
+
+  /**
+   * The warehouses holding units of those products on a shelf now — each must reprint their labels, and the products
+   * carry `need_reprint_code` until it does. By name, sorted; a product with nothing on a shelf is counted above and
+   * names no warehouse.
+   *
+   * @generated from field: repeated string warehouse_names = 6;
+   */
+  warehouseNames: string[];
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamCodePreviewResponse.
+ * Use `create(TeamCodePreviewResponseSchema)` to create a new message.
+ */
+export const TeamCodePreviewResponseSchema: GenMessage<TeamCodePreviewResponse> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 9);
+
+/**
+ * TeamCodeTaken rides the AlreadyExists of a TeamCodeUpdate — and of a TeamCreate — whose code another team holds now, or
+ * held once (a former code is never given to another team). It names that team for the refusal's words
+ * (*SL-01 sudah ada — dipakai Toko Melati*).
+ *
+ * @generated from message warehouse.team.v1.TeamCodeTaken
+ */
+export type TeamCodeTaken = Message<"warehouse.team.v1.TeamCodeTaken"> & {
+  /**
+   * @generated from field: string team_code = 1;
+   */
+  teamCode: string;
+
+  /**
+   * @generated from field: string team_name = 2;
+   */
+  teamName: string;
+
+  /**
+   * true: the team held it once and has another code now.
+   *
+   * @generated from field: bool former = 3;
+   */
+  former: boolean;
+};
+
+/**
+ * Describes the message warehouse.team.v1.TeamCodeTaken.
+ * Use `create(TeamCodeTakenSchema)` to create a new message.
+ */
+export const TeamCodeTakenSchema: GenMessage<TeamCodeTaken> = /*@__PURE__*/
+  messageDesc(file_warehouse_team_v1_team, 10);
+
+/**
  * @generated from message warehouse.team.v1.TeamDeleteRequest
  */
 export type TeamDeleteRequest = Message<"warehouse.team.v1.TeamDeleteRequest"> & {
@@ -259,7 +466,7 @@ export type TeamDeleteRequest = Message<"warehouse.team.v1.TeamDeleteRequest"> &
  * Use `create(TeamDeleteRequestSchema)` to create a new message.
  */
 export const TeamDeleteRequestSchema: GenMessage<TeamDeleteRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 6);
+  messageDesc(file_warehouse_team_v1_team, 11);
 
 /**
  * @generated from message warehouse.team.v1.TeamDeleteResponse
@@ -272,7 +479,7 @@ export type TeamDeleteResponse = Message<"warehouse.team.v1.TeamDeleteResponse">
  * Use `create(TeamDeleteResponseSchema)` to create a new message.
  */
 export const TeamDeleteResponseSchema: GenMessage<TeamDeleteResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 7);
+  messageDesc(file_warehouse_team_v1_team, 12);
 
 /**
  * TeamListFilter holds the filters. TeamList is UNSCOPED (the roster is the same for every caller),
@@ -310,7 +517,7 @@ export type TeamListFilter = Message<"warehouse.team.v1.TeamListFilter"> & {
  * Use `create(TeamListFilterSchema)` to create a new message.
  */
 export const TeamListFilterSchema: GenMessage<TeamListFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 8);
+  messageDesc(file_warehouse_team_v1_team, 13);
 
 /**
  * @generated from message warehouse.team.v1.TeamListFilterSort
@@ -344,7 +551,7 @@ export type TeamListFilterSort = Message<"warehouse.team.v1.TeamListFilterSort">
  * Use `create(TeamListFilterSortSchema)` to create a new message.
  */
 export const TeamListFilterSortSchema: GenMessage<TeamListFilterSort> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 9);
+  messageDesc(file_warehouse_team_v1_team, 14);
 
 /**
  * @generated from message warehouse.team.v1.TeamListRequest
@@ -376,7 +583,7 @@ export type TeamListRequest = Message<"warehouse.team.v1.TeamListRequest"> & {
  * Use `create(TeamListRequestSchema)` to create a new message.
  */
 export const TeamListRequestSchema: GenMessage<TeamListRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 10);
+  messageDesc(file_warehouse_team_v1_team, 15);
 
 /**
  * TeamRowItem is the TEAM slice — the fields a list/picker renders (mirrors Team minus `info`).
@@ -433,7 +640,7 @@ export type TeamRowItem = Message<"warehouse.team.v1.TeamRowItem"> & {
  * Use `create(TeamRowItemSchema)` to create a new message.
  */
 export const TeamRowItemSchema: GenMessage<TeamRowItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 11);
+  messageDesc(file_warehouse_team_v1_team, 16);
 
 /**
  * @generated from message warehouse.team.v1.TeamRowMapItem
@@ -450,7 +657,7 @@ export type TeamRowMapItem = Message<"warehouse.team.v1.TeamRowMapItem"> & {
  * Use `create(TeamRowMapItemSchema)` to create a new message.
  */
 export const TeamRowMapItemSchema: GenMessage<TeamRowMapItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 12);
+  messageDesc(file_warehouse_team_v1_team, 17);
 
 /**
  * @generated from message warehouse.team.v1.TeamListResponseItem
@@ -479,7 +686,7 @@ export type TeamListResponseItem = Message<"warehouse.team.v1.TeamListResponseIt
  * Use `create(TeamListResponseItemSchema)` to create a new message.
  */
 export const TeamListResponseItemSchema: GenMessage<TeamListResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 13);
+  messageDesc(file_warehouse_team_v1_team, 18);
 
 /**
  * @generated from message warehouse.team.v1.TeamListResponse
@@ -506,7 +713,7 @@ export type TeamListResponse = Message<"warehouse.team.v1.TeamListResponse"> & {
  * Use `create(TeamListResponseSchema)` to create a new message.
  */
 export const TeamListResponseSchema: GenMessage<TeamListResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 14);
+  messageDesc(file_warehouse_team_v1_team, 19);
 
 /**
  * @generated from message warehouse.team.v1.TeamDetailRequest
@@ -523,7 +730,7 @@ export type TeamDetailRequest = Message<"warehouse.team.v1.TeamDetailRequest"> &
  * Use `create(TeamDetailRequestSchema)` to create a new message.
  */
 export const TeamDetailRequestSchema: GenMessage<TeamDetailRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 15);
+  messageDesc(file_warehouse_team_v1_team, 20);
 
 /**
  * @generated from message warehouse.team.v1.TeamDetailResponse
@@ -540,7 +747,7 @@ export type TeamDetailResponse = Message<"warehouse.team.v1.TeamDetailResponse">
  * Use `create(TeamDetailResponseSchema)` to create a new message.
  */
 export const TeamDetailResponseSchema: GenMessage<TeamDetailResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 16);
+  messageDesc(file_warehouse_team_v1_team, 21);
 
 /**
  * TeamByIdsFilter carries the ids to resolve. Deliberately UNSCOPED (cross-team bulk lookup), so no
@@ -560,7 +767,7 @@ export type TeamByIdsFilter = Message<"warehouse.team.v1.TeamByIdsFilter"> & {
  * Use `create(TeamByIdsFilterSchema)` to create a new message.
  */
 export const TeamByIdsFilterSchema: GenMessage<TeamByIdsFilter> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 17);
+  messageDesc(file_warehouse_team_v1_team, 22);
 
 /**
  * @generated from message warehouse.team.v1.TeamByIdsRequest
@@ -584,7 +791,7 @@ export type TeamByIdsRequest = Message<"warehouse.team.v1.TeamByIdsRequest"> & {
  * Use `create(TeamByIdsRequestSchema)` to create a new message.
  */
 export const TeamByIdsRequestSchema: GenMessage<TeamByIdsRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 18);
+  messageDesc(file_warehouse_team_v1_team, 23);
 
 /**
  * @generated from message warehouse.team.v1.TeamByIdsResponseItem
@@ -613,7 +820,7 @@ export type TeamByIdsResponseItem = Message<"warehouse.team.v1.TeamByIdsResponse
  * Use `create(TeamByIdsResponseItemSchema)` to create a new message.
  */
 export const TeamByIdsResponseItemSchema: GenMessage<TeamByIdsResponseItem> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 19);
+  messageDesc(file_warehouse_team_v1_team, 24);
 
 /**
  * @generated from message warehouse.team.v1.TeamByIdsResponseList
@@ -630,7 +837,7 @@ export type TeamByIdsResponseList = Message<"warehouse.team.v1.TeamByIdsResponse
  * Use `create(TeamByIdsResponseListSchema)` to create a new message.
  */
 export const TeamByIdsResponseListSchema: GenMessage<TeamByIdsResponseList> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 20);
+  messageDesc(file_warehouse_team_v1_team, 25);
 
 /**
  * @generated from message warehouse.team.v1.TeamByIdsResponse
@@ -650,7 +857,7 @@ export type TeamByIdsResponse = Message<"warehouse.team.v1.TeamByIdsResponse"> &
  * Use `create(TeamByIdsResponseSchema)` to create a new message.
  */
 export const TeamByIdsResponseSchema: GenMessage<TeamByIdsResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 21);
+  messageDesc(file_warehouse_team_v1_team, 26);
 
 /**
  * @generated from message warehouse.team.v1.TeamInfoUpdateRequest
@@ -683,7 +890,7 @@ export type TeamInfoUpdateRequest = Message<"warehouse.team.v1.TeamInfoUpdateReq
  * Use `create(TeamInfoUpdateRequestSchema)` to create a new message.
  */
 export const TeamInfoUpdateRequestSchema: GenMessage<TeamInfoUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 22);
+  messageDesc(file_warehouse_team_v1_team, 27);
 
 /**
  * @generated from message warehouse.team.v1.TeamInfoUpdateResponse
@@ -700,7 +907,7 @@ export type TeamInfoUpdateResponse = Message<"warehouse.team.v1.TeamInfoUpdateRe
  * Use `create(TeamInfoUpdateResponseSchema)` to create a new message.
  */
 export const TeamInfoUpdateResponseSchema: GenMessage<TeamInfoUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_warehouse_team_v1_team, 23);
+  messageDesc(file_warehouse_team_v1_team, 28);
 
 /**
  * THE canonical TeamType — declared ONCE, here, by the service that owns the teams table.
@@ -746,6 +953,52 @@ export const TeamTypeSchema: GenEnum<TeamType> = /*@__PURE__*/
   enumDesc(file_warehouse_team_v1_team, 0);
 
 /**
+ * What a TeamCodeUpdate to the code would do.
+ *
+ * @generated from enum warehouse.team.v1.TeamCodePreviewVerdict
+ */
+export enum TeamCodePreviewVerdict {
+  /**
+   * @generated from enum value: TEAM_CODE_PREVIEW_VERDICT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * The team would take the code: the counts below say what follows.
+   *
+   * @generated from enum value: TEAM_CODE_PREVIEW_VERDICT_CHANGES = 1;
+   */
+  CHANGES = 1,
+
+  /**
+   * The code is the team's own already — the write would change nothing.
+   *
+   * @generated from enum value: TEAM_CODE_PREVIEW_VERDICT_SAME = 2;
+   */
+  SAME = 2,
+
+  /**
+   * Another team holds the code now — the write would be refused AlreadyExists; `holder_team_name` names it.
+   *
+   * @generated from enum value: TEAM_CODE_PREVIEW_VERDICT_TAKEN = 3;
+   */
+  TAKEN = 3,
+
+  /**
+   * Another team held the code once (a former code is never given to another team) — refused as TAKEN is.
+   *
+   * @generated from enum value: TEAM_CODE_PREVIEW_VERDICT_FORMER = 4;
+   */
+  FORMER = 4,
+}
+
+/**
+ * Describes the enum warehouse.team.v1.TeamCodePreviewVerdict.
+ */
+export const TeamCodePreviewVerdictSchema: GenEnum<TeamCodePreviewVerdict> = /*@__PURE__*/
+  enumDesc(file_warehouse_team_v1_team, 1);
+
+/**
  * TeamListDataType selects which slices the response carries per team.
  *
  * @generated from enum warehouse.team.v1.TeamListDataType
@@ -773,7 +1026,7 @@ export enum TeamListDataType {
  * Describes the enum warehouse.team.v1.TeamListDataType.
  */
 export const TeamListDataTypeSchema: GenEnum<TeamListDataType> = /*@__PURE__*/
-  enumDesc(file_warehouse_team_v1_team, 1);
+  enumDesc(file_warehouse_team_v1_team, 2);
 
 /**
  * TeamRowSort is the sort selection paired with the TEAM (row) slice.
@@ -806,7 +1059,7 @@ export enum TeamRowSort {
  * Describes the enum warehouse.team.v1.TeamRowSort.
  */
 export const TeamRowSortSchema: GenEnum<TeamRowSort> = /*@__PURE__*/
-  enumDesc(file_warehouse_team_v1_team, 2);
+  enumDesc(file_warehouse_team_v1_team, 3);
 
 /**
  * TeamByIdsDataType selects which slices the by-ids response carries per team.
@@ -834,7 +1087,7 @@ export enum TeamByIdsDataType {
  * Describes the enum warehouse.team.v1.TeamByIdsDataType.
  */
 export const TeamByIdsDataTypeSchema: GenEnum<TeamByIdsDataType> = /*@__PURE__*/
-  enumDesc(file_warehouse_team_v1_team, 3);
+  enumDesc(file_warehouse_team_v1_team, 4);
 
 /**
  * TeamService owns `teams` and `team_infos`.
@@ -861,6 +1114,33 @@ export const TeamService: GenService<{
     methodKind: "unary";
     input: typeof TeamUpdateRequestSchema;
     output: typeof TeamUpdateResponseSchema;
+  },
+  /**
+   * TeamCodeUpdate changes a SELLING team's code, and its products take the new one in the same transaction
+   * (a-team-code-change-recomposes-its-product-codes): ABC-SHOE-42 becomes XYZ-SHOE-42, archived products too, each one
+   * some warehouse holds stock of tagged `need_reprint_code` and waiting for that warehouse's reprint. A code another team
+   * holds — or EVER held — is refused naming that team (a former code stays taken, the decision's Q1 "A"); the team's own
+   * former code may be taken back. Its own request message: TeamUpdate's policy also admits warehouse and admin roles.
+   *
+   * @generated from rpc warehouse.team.v1.TeamService.TeamCodeUpdate
+   */
+  teamCodeUpdate: {
+    methodKind: "unary";
+    input: typeof TeamCodeUpdateRequestSchema;
+    output: typeof TeamCodeUpdateResponseSchema;
+  },
+  /**
+   * TeamCodePreview says what a TeamCodeUpdate to that code WOULD do, before anything is sent — the four-line confirm
+   * (the-team-code-and-product-tags-prototype-is-accepted): the refusal the write would give (another team holds the
+   * code, or held it once — named), else how many products take the new code with one example, and the warehouses that
+   * must reprint. TeamCodeUpdate's policy and scope; it writes nothing.
+   *
+   * @generated from rpc warehouse.team.v1.TeamService.TeamCodePreview
+   */
+  teamCodePreview: {
+    methodKind: "unary";
+    input: typeof TeamCodePreviewRequestSchema;
+    output: typeof TeamCodePreviewResponseSchema;
   },
   /**
    * @generated from rpc warehouse.team.v1.TeamService.TeamDelete

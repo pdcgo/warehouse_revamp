@@ -62,6 +62,31 @@ export const NothingMatchesAndClears: Story = {
   },
 };
 
+/**
+ * A FORMER CODE FINDS ITS PRODUCT (backlog #152 — a-team-code-change-recomposes-its-product-codes, its 🔄 *an old sticker
+ * scanned before the reprint*, owner Q1 "A"): Minyak was TA-ANG-001 before Toko Anggrek's code became SL-03 (its Riwayat
+ * Produk line) — the old code typed whole, in any case, finds it; a piece of it finds nothing. The term goes to the
+ * server as typed; the stub matches a former code as the server does (product_term_clause.go).
+ */
+export const AFormerCodeFindsItsProduct: Story = {
+  name: "Search, a former code",
+  play: async ({ canvasElement }) => {
+    const canvas = await loaded(canvasElement);
+    const search = canvas.getByTestId("product-search");
+
+    await userEvent.click(search);
+    await userEvent.paste("ta-ang-001");
+    await waitFor(() => expect(canvas.queryByTestId("product-row-SL-03-ANG-010")).toBeNull(), { timeout: 5000 });
+    await expect(canvas.getByTestId("product-row-SL-03-ANG-001")).toHaveTextContent("Minyak");
+    await waitFor(() => expect(productListCalls.at(-1)?.q).toBe("ta-ang-001"), { timeout: 5000 });
+
+    // A piece of the old code is no former code.
+    await userEvent.clear(search);
+    await userEvent.paste("ta-ang-00");
+    await waitFor(() => expect(canvas.getByTestId("products-empty")).toHaveTextContent("No products found."), { timeout: 5000 });
+  },
+};
+
 // ── The lock and the stock's age (lock-and-stock-age-filter-ahead-of-the-contract) ─────────────────────────────────────
 //
 // Both are the SERVER's filters now — sent, and narrowed before the count and the page; the stub narrows as the server
@@ -103,7 +128,8 @@ async function pickAge(canvas: ReturnType<typeof within>, days: string) {
 
 /** Every row on screen reads an age of at least `days` — the Umur stok figure, desktop cell or phone block alike. */
 function everyRowIsAtLeast(canvasElement: HTMLElement, days: number) {
-  const rows = [...canvasElement.querySelectorAll('[data-testid^="product-row-"]')];
+  // The rows only — a row's Tag chips (`product-row-tags-…`, #148) share the prefix.
+  const rows = [...canvasElement.querySelectorAll('[data-testid^="product-row-"]:not([data-testid^="product-row-tags-"])')];
   for (const r of rows) {
     const age = /(\d+) days(?! ago)/.exec(r.textContent ?? "");
     expect(age, `${r.getAttribute("data-testid")} shows no age`).not.toBeNull();
@@ -223,7 +249,7 @@ export const TheLockAndAgeComeBackFromTheUrl: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByTestId("product-row-SL-03-ANG-004", {}, { timeout: 5000 })).toBeVisible();
+    await waitFor(() => expect(canvas.getByTestId("product-row-SL-03-ANG-004")).toBeVisible(), { timeout: 5000 });
     await expect(row(canvas, "003")).toBeNull(); // locked now, but nothing on a shelf has an age
     await expect(row(canvas, "001")).toBeNull();
     await expect(canvas.getByTestId("product-lock-select")).toHaveTextContent("Locked now");

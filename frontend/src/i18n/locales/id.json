@@ -258,7 +258,8 @@
       "ready": "Ekspor siap — file sedang diunduh",
       "failed": "Ekspor tidak dapat diselesaikan",
       "noFile": "Ekspor berakhir tanpa file"
-    }
+    },
+    "opensInNewTab": "terbuka di tab baru"
   },
   "readyLine": {
     "missing": "Belum diisi:",
@@ -488,10 +489,6 @@
       "division": {
         "label": "Prioritas / Riset",
         "reason": "data contoh — pembagian produk diatur per produk tapi belum disimpan di mana pun, jadi sama dengan contoh di kartu Temukan Produk"
-      },
-      "derived": {
-        "label": "Produk turunan",
-        "reason": "data contoh — barang yang diretur ke tim lain menjadi produk tim itu; tautan itu belum dicatat, jadi baris yang tampil sama dengan contoh di halaman produk pemiliknya"
       }
     }
   },
@@ -636,14 +633,18 @@
         "batch": "Batch",
         "cross": "Tim lain",
         "derived": "Turunan",
-        "warehouse": "Per gudang"
+        "warehouse": "Per gudang",
+        "tags": "Tag",
+        "history": "Riwayat"
       },
       "section": {
         "info": "Info Produk",
         "batch": "Batch",
         "cross": "Penjualan Tim Lain",
         "derived": "Produk Turunan",
-        "warehouse": "Per Gudang"
+        "warehouse": "Per Gudang",
+        "tags": "Tag",
+        "history": "Riwayat Produk"
       },
       "layer": {
         "unitCost": "Harga modal",
@@ -661,12 +662,6 @@
       "emptyInWarehouse": "Coba gudang lain, atau semua gudang.",
       "batchTotal": "Siap dengan modal diketahui: {{value}}",
       "historyEmpty": "Belum ada pergerakan.",
-      "pending": {
-        "derived": {
-          "label": "Produk turunan",
-          "reason": "Barang yang diretur ke tim lain selain pemiliknya menjadi produk tim itu. Tautan itu belum dicatat, dan baris yang tampil — dua arah — adalah contoh."
-        }
-      },
       "suppliers": {
         "supplier": "Pemasok",
         "store": "Toko pemasok",
@@ -797,6 +792,73 @@
     "picker": {
       "archived": "Arsip",
       "none": "Produk tidak ditemukan"
+    },
+    "tags": {
+      "column": "Tag",
+      "filterAll": "Semua tag",
+      "filterSearch": "Cari tag",
+      "filterEmpty": "Belum ada tag",
+      "noMatch": "Tidak ada tag yang cocok",
+      "none": "Produk ini belum punya tag.",
+      "add": "Tambah tag…",
+      "addLabel": "Tambah tag",
+      "typeToCreate": "Ketik nama untuk membuat tag baru",
+      "createCustom": "Buat tag “{{name}}”",
+      "createSystem": "Buat tag sistem “{{name}}”",
+      "adminOnly": "Khusus admin",
+      "alreadyOn": "Sudah ada di produk ini",
+      "shared": "Tim pemilik dan setiap gudang yang menyimpan stoknya melihat tag yang sama.",
+      "lockedHint": "Tag sistem (bergembok) dipasang oleh aplikasi atau admin; Anda tidak bisa mengubahnya.",
+      "adminHint": "Sebagai admin, Anda juga bisa membuat tag sistem, memasang atau melepasnya, serta mengganti nama atau menghapus tag apa pun selain tag aplikasi.",
+      "byApp": "Dipasang aplikasi",
+      "saveFailed": "Tag tidak tersimpan",
+      "manage": {
+        "open": "Kelola tag",
+        "title": "Kelola tag produk",
+        "hint": "Tag produk semua tim. Ganti nama atau hapus berlaku di setiap produk yang memakainya.",
+        "usage_one": "{{count}} produk",
+        "usage_other": "{{count}} produk",
+        "rename": "Ganti nama {{name}}",
+        "delete": "Hapus {{name}}",
+        "save": "Simpan",
+        "taken": "Nama ini sudah dipakai tag lain.",
+        "deleteTitle": "Hapus tag “{{name}}”?",
+        "deleteMessage_one": "Tag ini dilepas dari {{count}} produk yang memakainya, di semua tim. Tidak bisa dibatalkan.",
+        "deleteMessage_other": "Tag ini dilepas dari {{count}} produk yang memakainya, di semua tim. Tidak bisa dibatalkan.",
+        "deleteMessageNone": "Belum ada produk yang memakainya. Tag ini hilang dari daftar semua tim.",
+        "deleteConfirm": "Hapus tag"
+      }
+    },
+    "history": {
+      "none": "Belum ada perubahan.",
+      "codeChanged": "Kode berubah",
+      "by": "oleh {{name}}"
+    },
+    "reprint": {
+      "open_one": "Cetak ulang kode ({{count}})",
+      "open_other": "Cetak ulang kode ({{count}})",
+      "title": "Cetak Ulang Kode",
+      "warehouseOnly": "Hanya gudang yang mencetak ulang labelnya.",
+      "back": "Kembali ke Produk",
+      "count_one": "{{labels}} label · {{count}} produk",
+      "count_other": "{{labels}} label · {{count}} produk",
+      "none": "Tidak ada kode yang menunggu dicetak ulang di sini",
+      "noneHint": "Setiap produk yang kodenya berganti sudah dicetak label barunya di gudang ini.",
+      "lead": "Kode produk berikut sudah berganti. Cetak labelnya dan tempel di raknya, menutup stiker lama — setelah dicetak, produknya tidak lagi menunggu di sini, dan tagnya lepas setelah setiap gudang yang menyimpannya mencetak.",
+      "settingsLine": "Pengaturan label: {{width}} × {{height}} mm · {{rows}} × {{columns}} — sesuai Cetak Label di perangkat ini.",
+      "more_one": "{{count}} label lagi menunggu cetakan berikutnya — satu cetakan mengirim sebanyak batas perangkat.",
+      "more_other": "{{count}} label lagi menunggu cetakan berikutnya — satu cetakan mengirim sebanyak batas perangkat.",
+      "toPrintLine_one": "{{count}} label, satu per rak",
+      "toPrintLine_other": "{{count}} label, satu per rak",
+      "formerCode": "dulu {{code}}",
+      "where_one": "{{placement}} · {{count}} pcs di rak",
+      "where_other": "{{placement}} · {{count}} pcs di rak",
+      "printed_one": "Dicetak — {{count}} produk tidak lagi menunggu di sini.",
+      "printed_other": "Dicetak — {{count}} produk tidak lagi menunggu di sini.",
+      "codeChanged_one": "Kode {{count}} produk berganti lagi sejak halaman ini dibaca — cetak label barunya sekarang.",
+      "codeChanged_other": "Kode {{count}} produk berganti lagi sejak halaman ini dibaca — cetak label barunya sekarang.",
+      "moreProducts_one": "{{count}} produk lagi menunggu setelah ini — tampil di sini setelah yang ini dicetak.",
+      "moreProducts_other": "{{count}} produk lagi menunggu setelah ini — tampil di sini setelah yang ini dicetak."
     }
   },
   "bundles": {
@@ -1696,7 +1758,7 @@
       "clearSupplier": "Hapus supplier",
       "allSupplierPick": "Pilih Supplier",
       "supplierTitle": "Supplier",
-      "supplierHelp": "Setiap produk perlu supplier — pilih satu untuk semua, atau atur di tiap produk.",
+      "supplierHelp": "Opsional — pilih satu supplier untuk semua produk, atau atur di tiap produk.",
       "allSupplierNone": "Belum dipilih",
       "clearAllSupplier": "Hapus supplier semua produk",
       "followsAll": "Ikut semua",
@@ -1708,6 +1770,11 @@
       "paymentAndParcel": "Pembayaran dan Paket",
       "financeAccount": "Dibayar dari",
       "financeAccountHelp": "Rekening operasional tim yang membayar restok ini.",
+      "noOperationalAccount": "Belum ada akun operasional",
+      "accountNoneYet": "Belum ada akun — buat satu dan tandai sebagai operasional.",
+      "accountNoneOperational": "Belum ada akun yang ditandai operasional — tandai satu.",
+      "accountAskOwner": "Minta owner atau admin Anda menyiapkan akun operasional.",
+      "openAccounts": "Buka Akun Keuangan",
       "invoiceRef": "Order ID",
       "invoiceRefHelp": "Order ID dari toko tempat membeli — satu per restok.",
       "invoiceRefPlaceholder": "Contoh: INV/2026/10/1001",
@@ -1882,7 +1949,7 @@
         "tracking": "Nomor resi",
         "orderId": "Order ID",
         "raised": "Dibuat",
-        "signedFor": "Diterima di pintu",
+        "signedFor": "Ditandai tiba",
         "note": "Catatan tim penjual"
       },
       "confirm": {
@@ -1936,6 +2003,8 @@
       "tooMany": "kelebihan {{count}}",
       "placed": "{{count}} ditempatkan",
       "placementPlaceholder": "Pilih penempatan",
+      "noRack": "Gudang ini belum punya rak.",
+      "openRacks": "Buka Rak",
       "placementQty": "Jumlah di penempatan ini",
       "courier": {
         "title": "Ongkir COD dari kurir",
@@ -1989,6 +2058,8 @@
       "storeCount_other": "{{count}} toko",
       "noMatch": "Tidak ada supplier yang cocok.",
       "empty": "Belum ada supplier.",
+      "createSupplier": "Buat Supplier",
+      "createSupplierHint": "Buat di tab baru — supplier tampil di sini saat Anda kembali.",
       "pickSupplierFirst": "Pilih supplier untuk melihat tokonya.",
       "noStore": "Tanpa toko — dibeli langsung",
       "noStoreHelp": "Lapak di pasar, atau dibeli langsung.",
@@ -2748,7 +2819,11 @@
     "ownerPlaceholder": "Cari orang berdasarkan nama, nama pengguna, atau telepon",
     "ownerRequired": "Pilih pemilik tim, atau buat pengguna baru.",
     "createOwner": "Buat Pengguna Baru",
-    "backToOwnerSearch": "Kembali ke Pencarian"
+    "backToOwnerSearch": "Kembali ke Pencarian",
+    "codeEdit": {
+      "help": "Produk tim ini ikut berganti kode; gudang yang menyimpan stoknya mencetak ulang label.",
+      "typeFixed": "Tipe tim tidak dapat diubah setelah dibuat."
+    }
   },
   "users": {
     "title": "Pengguna",
@@ -3140,6 +3215,11 @@
     "changePicture": "Ubah Foto",
     "selectTeamForPicture": "Pilih tim terlebih dahulu untuk mengubah foto Anda.",
     "pictureHint": "JPG atau PNG, ditampilkan di seluruh aplikasi.",
+    "teamPictureChange": "Ubah foto",
+    "teamPictureHint": "JPG atau PNG, ditampilkan di seluruh aplikasi.",
+    "teamPictureSelectTeam": "Pilih tim terlebih dahulu untuk mengubah fotonya.",
+    "teamPictureOnlyManagers": "Hanya pemilik tim atau admin yang dapat mengubah foto tim.",
+    "teamPictureUpdated": "Foto tim diperbarui",
     "settings": "Pengaturan",
     "selectTeamToManage": "Pilih tim untuk mengelola pengaturannya.",
     "teamNameUpdated": "Nama tim diperbarui",
@@ -3190,6 +3270,36 @@
       "title": "Tidak ada jawaban dari server — Anda masih masuk.",
       "help": "Sesi masuk Anda belum bisa diperiksa, jadi tetap disimpan. Tekan Coba Lagi, atau halaman ini memeriksa lagi sendiri saat koneksi kembali.",
       "tryAgain": "Coba Lagi"
+    },
+    "warehouseHours": {
+      "title": "Jam dan lokasi",
+      "hint": "Kapan gedung buka, kapan menerima pesanan, dan di mana lokasinya. Formulir pesanan penjual memberi peringatan saat gudang ini tutup.",
+      "promptTitle": "Atur jam penerimaan pesanan Anda",
+      "promptBody": "Jam ini belum diatur, jadi pesanan penjual tidak menampilkan peringatan tutup untuk gudang ini. Atur di bawah.",
+      "saved": "Jam dan lokasi disimpan"
+    },
+    "teamCode": {
+      "title": "Kode tim",
+      "lead": "Awalan setiap kode produk milik tim ini — {{example}}.",
+      "label": "Kode",
+      "help": "Paling banyak {{max}} karakter. Kode lama tetap milik tim ini.",
+      "tooLong": "Kode tim paling banyak {{max}} karakter.",
+      "taken": "{{code}} sudah ada — dipakai {{team}}.",
+      "former": "{{code}} sudah ada — pernah dipakai tim lain, dan kode tim yang pernah dipakai tidak diberikan ke tim lain.",
+      "onlyManagers": "Hanya pemilik tim atau admin yang dapat mengganti kode tim.",
+      "saved_one": "Kode tim sekarang {{code}} — {{count}} produk ikut berganti kode.",
+      "saved_other": "Kode tim sekarang {{code}} — {{count}} produk ikut berganti kode.",
+      "confirm": {
+        "title": "Ganti kode tim menjadi {{code}}?",
+        "action": "Ganti Kode",
+        "products_one": "{{count}} produk ikut berganti kode — {{old}} menjadi {{new}}.",
+        "products_other": "{{count}} produk ikut berganti kode — {{old}} menjadi {{new}}, dan seterusnya.",
+        "productsNone": "Belum ada produk yang memakai kode tim ini, jadi tidak ada kode produk yang berubah.",
+        "reprint": "Setiap gudang yang menyimpan stoknya mencetak ulang label: {{warehouses}}. Sampai dicetak, produknya bertag {{tag}}.",
+        "reprintNone": "Tidak ada gudang yang menyimpan stoknya, jadi tidak ada label yang perlu dicetak ulang.",
+        "past": "Pesanan, restock dan transfer yang sudah ada tetap memakai kode saat dibuat.",
+        "former": "{{code}} tetap milik tim ini: stiker lama masih menemukan produknya, dan tim lain tidak bisa memakai {{code}}."
+      }
     }
   },
   "picking": {
@@ -3522,7 +3632,10 @@
       "unknown": "Tidak diketahui",
       "sample": "Sampel",
       "all": "Semua kegiatan",
-      "none": "Tidak ada kegiatan yang cocok"
+      "none": "Tidak ada kegiatan yang cocok",
+      "cancel": "Dibatalkan",
+      "broken": "Rusak",
+      "found": "Ditemukan"
     },
     "incoming": "Dalam perjalanan",
     "lastOrder": "Pesanan terakhir",
@@ -4921,7 +5034,7 @@
       "markLost": "Tandai Hilang",
       "process": "Proses",
       "ship": "Kirim",
-      "arrive": "Terima Paket",
+      "arrive": "Tandai Tiba",
       "accept": "Terima"
     },
     "cost": {
@@ -4944,7 +5057,7 @@
     },
     "lost": {
       "title": "Tandai Transfer #{{id}} Hilang",
-      "message": "Paket tidak pernah sampai. Kerugiannya ditanggung tim Anda. Jika paket muncul, gudang penerima masih bisa menerimanya.",
+      "message": "Paket tidak pernah sampai. Kerugiannya ditanggung tim Anda. Jika paket muncul, gudang penerima masih bisa menandainya tiba.",
       "reason": "Alasan",
       "confirm": "Tandai Hilang",
       "keep": "Tetap Menunggu"
@@ -4965,9 +5078,9 @@
       "dismiss": "Nanti Saja"
     },
     "arrive": {
-      "title": "Terima Paket Transfer #{{id}}",
+      "title": "Tandai Tiba Transfer #{{id}}",
       "message": "Paket sudah sampai. Anda bisa menghitungnya sekarang atau nanti.",
-      "messageLost": "Paket ini sudah ditandai hilang. Menerimanya mencatat bahwa paket ternyata sampai.",
+      "messageLost": "Paket ini sudah ditandai hilang. Menandainya tiba mencatat bahwa paket ternyata sampai.",
       "dismiss": "Nanti Saja"
     },
     "timeline": {
@@ -4976,7 +5089,7 @@
       "changed": "Status berubah",
       "process": "Dikonfirmasi gudang pengirim",
       "shipped": "Diserahkan ke kurir",
-      "arrived": "Diterima di gudang penerima",
+      "arrived": "Ditandai tiba di gudang penerima",
       "accepted": "Dihitung masuk",
       "cancelled": "Dibatalkan",
       "lost": "Ditandai hilang",
@@ -4999,8 +5112,8 @@
       "processFailed": "Gagal mengonfirmasi transfer",
       "shipped": "Transfer dikirim",
       "shipFailed": "Gagal mengirim transfer",
-      "arrived": "Paket diterima",
-      "arriveFailed": "Gagal menerima paket",
+      "arrived": "Paket ditandai tiba",
+      "arriveFailed": "Gagal menandai paket tiba",
       "accepted": "Transfer diterima",
       "acceptFailed": "Gagal menerima transfer"
     },
